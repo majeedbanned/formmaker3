@@ -26,6 +26,18 @@ const sampleFormStructure = [
       requiredMessage: "First name is required",
     },
   },
+
+  {
+    name: "maaa",
+    title: "maa Name",
+    type: "text",
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "First name is required",
+    },
+  },
   {
     name: "lastName",
     title: "Last Name",

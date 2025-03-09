@@ -39,12 +39,44 @@ export async function GET(
       );
     }
 
+    const searchParams = new URL(request.url).searchParams;
+    const filters = searchParams.get('filters');
+    const searchQuery = searchParams.get('query');
+
     await connectToDatabase(connectionString);
     const model = getDynamicModel(params.collection);
-    const documents = await model.find().sort({ createdAt: -1 });
-    
+
+    // Build the MongoDB query
+    const query: any = {};
+
+    // Handle global search
+    if (searchQuery) {
+      const searchRegex = new RegExp(searchQuery, 'i');
+      query.$or = [
+        { 'data.$**': searchRegex }
+      ];
+    }
+
+    // Handle advanced filters
+    if (filters) {
+      const parsedFilters = JSON.parse(filters);
+      Object.entries(parsedFilters).forEach(([field, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          if (typeof value === 'string') {
+            // Case-insensitive search for string values
+            query[`data.${field}`] = new RegExp(value, 'i');
+          } else {
+            // Exact match for other types
+            query[`data.${field}`] = value;
+          }
+        }
+      });
+    }
+
+    const documents = await model.find(query).sort({ createdAt: -1 });
     return NextResponse.json(documents);
   } catch (error) {
+    console.error('Search error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch documents' },
       { status: 500 }
