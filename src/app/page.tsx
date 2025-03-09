@@ -7,6 +7,8 @@ const sampleFormStructure = [
     name: "firstName",
     title: "First Name",
     type: "text",
+    isShowInList: true,
+    isSearchable: true,
     required: true,
     enabled: true,
     visible: true,
@@ -19,6 +21,9 @@ const sampleFormStructure = [
     name: "fa",
     title: "fa Name",
     type: "text",
+    isShowInList: true,
+    isSearchable: true,
+
     required: true,
     enabled: true,
     visible: true,
@@ -31,6 +36,9 @@ const sampleFormStructure = [
     name: "maaa",
     title: "maa Name",
     type: "text",
+    isShowInList: true,
+    isSearchable: true,
+
     required: true,
     enabled: true,
     visible: true,
@@ -42,6 +50,9 @@ const sampleFormStructure = [
     name: "lastName",
     title: "Last Name",
     type: "text",
+    isShowInList: true,
+    isSearchable: true,
+
     required: true,
     enabled: true,
     visible: true,
@@ -51,6 +62,9 @@ const sampleFormStructure = [
   },
   {
     name: "email",
+    isShowInList: true,
+    isSearchable: true,
+
     title: "Email",
     type: "email",
     required: true,
@@ -66,7 +80,10 @@ const sampleFormStructure = [
     name: "role",
     title: "Role",
     type: "dropdown",
+    isSearchable: true,
+
     required: true,
+    isShowInList: true,
     enabled: true,
     visible: true,
     options: [
@@ -82,6 +99,9 @@ const sampleFormStructure = [
     name: "notes",
     title: "Notes",
     type: "textarea",
+    isShowInList: true,
+    isSearchable: true,
+
     required: false,
     enabled: true,
     visible: true,

@@ -47,10 +47,9 @@ export default function AdvancedSearchModal({
                 </Dialog.Title>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  {formStructure.map((field) => {
-                    if (!field.visible) return null;
-
-                    return (
+                  {formStructure
+                    .filter((field) => field.visible && field.isSearchable)
+                    .map((field) => (
                       <div key={field.name} className="space-y-2">
                         <label
                           htmlFor={field.name}
@@ -92,8 +91,7 @@ export default function AdvancedSearchModal({
                           />
                         )}
                       </div>
-                    );
-                  })}
+                    ))}
 
                   <div className="mt-4 flex justify-end space-x-2">
                     <button

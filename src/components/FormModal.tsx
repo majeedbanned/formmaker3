@@ -88,6 +88,14 @@ export default function FormModal({
                   {formStructure.map((field) => {
                     if (!field.visible) return null;
 
+                    const isDisabled = Boolean(
+                      !field.enabled || (editingId && field.readonly)
+                    );
+                    const registration = register(
+                      field.name,
+                      getValidationRules(field)
+                    );
+
                     return (
                       <div key={field.name} className="space-y-2">
                         <label
@@ -98,13 +106,18 @@ export default function FormModal({
                           {field.required && (
                             <span className="text-red-500">*</span>
                           )}
+                          {isDisabled && (
+                            <span className="text-gray-500 text-xs ml-1">
+                              (Read-only)
+                            </span>
+                          )}
                         </label>
 
                         {field.type === "dropdown" ? (
                           <select
-                            {...register(field.name, getValidationRules(field))}
-                            disabled={!field.enabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            {...registration}
+                            disabled={isDisabled}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
                           >
                             <option value="">Select an option</option>
                             {field.options?.map((option) => (
@@ -118,24 +131,24 @@ export default function FormModal({
                           </select>
                         ) : field.type === "textarea" ? (
                           <textarea
-                            {...register(field.name, getValidationRules(field))}
-                            disabled={!field.enabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            {...registration}
+                            disabled={isDisabled}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
                             rows={4}
                           />
                         ) : field.type === "checkbox" ? (
                           <input
                             type="checkbox"
-                            {...register(field.name, getValidationRules(field))}
-                            disabled={!field.enabled}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            {...registration}
+                            disabled={isDisabled}
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
                           />
                         ) : (
                           <input
                             type={field.type}
-                            {...register(field.name, getValidationRules(field))}
-                            disabled={!field.enabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            {...registration}
+                            disabled={isDisabled}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
                           />
                         )}
 

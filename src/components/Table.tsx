@@ -26,7 +26,7 @@ export default function Table({
 
   const columns = [
     ...formStructure
-      .filter((field) => field.visible)
+      .filter((field) => field.isShowInList)
       .map((field) =>
         columnHelper.accessor((row) => row.data[field.name] as string, {
           id: field.name,

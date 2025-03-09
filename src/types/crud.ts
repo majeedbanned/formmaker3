@@ -21,6 +21,9 @@ export interface FormField {
   validation?: FieldValidation;
   enabled: boolean;
   visible: boolean;
+  readonly: boolean;
+  isShowInList: boolean;
+  isSearchable: boolean;
   options?: { label: string; value: unknown }[];
 }
 
