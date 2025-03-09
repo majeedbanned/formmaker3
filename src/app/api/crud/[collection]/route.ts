@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase, getDynamicModel } from '@/lib/mongodb';
-import mongoose from 'mongoose';
+import mongoose, { FilterQuery } from 'mongoose';
+
+interface MongoQuery {
+  $and?: Array<Record<string, unknown>>;
+  $or?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
 
 export async function POST(
   request: NextRequest,
@@ -18,7 +24,8 @@ export async function POST(
     
     await document.save();
     return NextResponse.json(document, { status: 201 });
-  } catch (error) {
+  } catch (err) {
+    console.error('Create error:', err);
     return NextResponse.json(
       { error: 'Failed to create document' },
       { status: 500 }
@@ -47,36 +54,51 @@ export async function GET(
     const model = getDynamicModel(params.collection);
 
     // Build the MongoDB query
-    const query: any = {};
+    const query: MongoQuery = {};
+    const conditions: Record<string, unknown>[] = [];
 
     // Handle global search
     if (searchQuery) {
-      const searchRegex = new RegExp(searchQuery, 'i');
-      query.$or = [
-        { 'data.$**': searchRegex }
-      ];
+      conditions.push({
+        $or: Object.keys(model.schema.paths)
+          .filter(path => path.startsWith('data.'))
+          .map(path => ({
+            [path]: { $regex: searchQuery, $options: 'i' }
+          }))
+      });
     }
 
     // Handle advanced filters
     if (filters) {
-      const parsedFilters = JSON.parse(filters);
+      const parsedFilters = JSON.parse(filters) as Record<string, unknown>;
       Object.entries(parsedFilters).forEach(([field, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           if (typeof value === 'string') {
             // Case-insensitive search for string values
-            query[`data.${field}`] = new RegExp(value, 'i');
-          } else {
-            // Exact match for other types
-            query[`data.${field}`] = value;
+            conditions.push({ [`data.${field}`]: { $regex: value, $options: 'i' } });
+          } else if (typeof value === 'boolean') {
+            // Exact match for boolean values
+            conditions.push({ [`data.${field}`]: value });
+          } else if (typeof value === 'number') {
+            // Exact match for numeric values
+            conditions.push({ [`data.${field}`]: value });
+          } else if (Array.isArray(value)) {
+            // Array contains for array values
+            conditions.push({ [`data.${field}`]: { $in: value } });
           }
         }
       });
     }
 
-    const documents = await model.find(query).sort({ createdAt: -1 });
+    // Combine all conditions with $and
+    if (conditions.length > 0) {
+      query.$and = conditions;
+    }
+
+    const documents = await model.find(query as FilterQuery<unknown>).sort({ createdAt: -1 });
     return NextResponse.json(documents);
-  } catch (error) {
-    console.error('Search error:', error);
+  } catch (err) {
+    console.error('Search error:', err);
     return NextResponse.json(
       { error: 'Failed to fetch documents' },
       { status: 500 }
@@ -100,7 +122,7 @@ export async function PUT(
         updatedAt: new Date()
       },
       { new: true }
-    );
+    ) as unknown;
     
     if (!document) {
       return NextResponse.json(
@@ -110,7 +132,8 @@ export async function PUT(
     }
     
     return NextResponse.json(document);
-  } catch (error) {
+  } catch (err) {
+    console.error('Update error:', err);
     return NextResponse.json(
       { error: 'Failed to update document' },
       { status: 500 }
@@ -136,7 +159,7 @@ export async function DELETE(
 
     await connectToDatabase(connectionString);
     const model = getDynamicModel(params.collection);
-    const document = await model.findByIdAndDelete(id);
+    const document = await model.findByIdAndDelete(id) as unknown;
     
     if (!document) {
       return NextResponse.json(
@@ -146,7 +169,8 @@ export async function DELETE(
     }
     
     return NextResponse.json({ message: 'Document deleted successfully' });
-  } catch (error) {
+  } catch (err) {
+    console.error('Delete error:', err);
     return NextResponse.json(
       { error: 'Failed to delete document' },
       { status: 500 }
