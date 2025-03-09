@@ -22,8 +22,18 @@ export default function FormModal({
   useEffect(() => {
     if (!isOpen) {
       reset();
+    } else if (!editingId) {
+      // When adding new entry, set default values
+      const defaultValues = formStructure.reduce(
+        (acc, field) => ({
+          ...acc,
+          [field.name]: field.defaultValue,
+        }),
+        {}
+      );
+      reset(defaultValues);
     }
-  }, [isOpen, reset]);
+  }, [isOpen, reset, editingId, formStructure]);
 
   // Set initial values when editing
   useEffect(() => {

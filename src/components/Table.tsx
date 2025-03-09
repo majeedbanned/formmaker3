@@ -33,10 +33,15 @@ export default function Table({
           header: field.title,
           cell: (info) => {
             const value = info.getValue();
+            const field = formStructure.find((f) => f.name === info.column.id);
+            const style = field?.listLabelColor
+              ? { color: field.listLabelColor }
+              : {};
+
             if (typeof value === "boolean") {
-              return value ? "Yes" : "No";
+              return <span style={style}>{value ? "Yes" : "No"}</span>;
             }
-            return String(value ?? "");
+            return <span style={style}>{String(value ?? "")}</span>;
           },
         })
       ),
@@ -68,7 +73,8 @@ export default function Table({
     state: {
       sorting,
     },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) =>
+      setSorting(updater instanceof Function ? updater(sorting) : updater),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

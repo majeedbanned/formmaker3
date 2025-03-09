@@ -17,13 +17,14 @@ export interface FormField {
   title: string;
   type: string;
   required: boolean;
-  defaultValue?: unknown;
+  defaultValue: unknown;
   validation?: FieldValidation;
   enabled: boolean;
   visible: boolean;
   readonly: boolean;
   isShowInList: boolean;
   isSearchable: boolean;
+  listLabelColor?: string;
   options?: { label: string; value: unknown }[];
 }
 

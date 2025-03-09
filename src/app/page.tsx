@@ -12,6 +12,8 @@ const sampleFormStructure = [
     required: true,
     enabled: true,
     visible: true,
+    listLabelColor: "#2563eb",
+    defaultValue: "hasani",
     validation: {
       requiredMessage: "First name is required",
     },
