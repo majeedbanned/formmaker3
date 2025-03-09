@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
@@ -7,7 +7,18 @@ import {
   TrashIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  createColumnHelper,
+  SortingState,
+} from "@tanstack/react-table";
 
 interface FieldValidation {
   regex?: string;
@@ -65,6 +76,7 @@ export default function CRUDComponent({
   const [advancedSearch, setAdvancedSearch] = useState<Record<string, unknown>>(
     {}
   );
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const {
     register,
@@ -79,6 +91,65 @@ export default function CRUDComponent({
     handleSubmit: handleSubmitSearch,
     reset: resetSearch,
   } = useForm();
+
+  const columnHelper = createColumnHelper<Entity>();
+
+  const columns = useMemo(() => {
+    const baseColumns = formStructure
+      .filter((field) => field.visible)
+      .map((field) =>
+        columnHelper.accessor((row) => row.data[field.name] as string, {
+          id: field.name,
+          header: field.title,
+          cell: (info) => {
+            const value = info.getValue();
+            if (typeof value === "boolean") {
+              return value ? "Yes" : "No";
+            }
+            return String(value ?? "");
+          },
+        })
+      );
+
+    return [
+      ...baseColumns,
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: (props) => (
+          <div className="flex space-x-2 justify-end">
+            <button
+              onClick={() => handleEdit(props.row.original)}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => {
+                setDeleteId(props.row.original._id);
+                setIsDeleteModalOpen(true);
+              }}
+              className="text-red-600 hover:text-red-800"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          </div>
+        ),
+      }),
+    ];
+  }, [formStructure]);
+
+  const table = useReactTable({
+    data: entities,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   useEffect(() => {
     fetchEntities();
@@ -289,46 +360,114 @@ export default function CRUDComponent({
         )}
       </div>
 
-      <div className="space-y-4">
-        {entities.map((entity) => (
-          <div
-            key={entity._id}
-            className="border rounded-lg p-4 flex justify-between items-start"
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div
+                        className={`flex items-center space-x-1 ${
+                          header.column.getCanSort()
+                            ? "cursor-pointer select-none"
+                            : ""
+                        }`}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <span>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </span>
+                        {{
+                          asc: <ChevronUpIcon className="h-4 w-4" />,
+                          desc: <ChevronDownIcon className="h-4 w-4" />,
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!loading && table.getRowModel().rows.length === 0 && (
+        <div className="text-center py-8 text-gray-500">No results found</div>
+      )}
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
           >
-            <div className="space-y-2">
-              {Object.entries(entity.data).map(([key, value]) => (
-                <div key={key}>
-                  <span className="font-medium">
-                    {formStructure.find((f) => f.name === key)?.title || key}:{" "}
-                  </span>
-                  <span>{String(value)}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleEdit(entity)}
-                className="text-blue-600 hover:text-blue-800"
-              >
-                <PencilIcon className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => {
-                  setDeleteId(entity._id);
-                  setIsDeleteModalOpen(true);
-                }}
-                className="text-red-600 hover:text-red-800"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        ))}
-
-        {!loading && entities.length === 0 && (
-          <div className="text-center py-8 text-gray-500">No results found</div>
-        )}
+            {"<<"}
+          </button>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            {"<"}
+          </button>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            {">"}
+          </button>
+          <button
+            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            {">>"}
+          </button>
+          <span className="flex items-center gap-1 text-sm">
+            <div>Page</div>
+            <strong>
+              {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </strong>
+          </span>
+        </div>
+        <select
+          value={table.getState().pagination.pageSize}
+          onChange={(e) => {
+            table.setPageSize(Number(e.target.value));
+          }}
+          className="px-3 py-1 border rounded text-sm"
+        >
+          {[10, 20, 30, 40, 50].map((pageSize) => (
+            <option key={pageSize} value={pageSize}>
+              Show {pageSize}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Form Modal */}
