@@ -171,6 +171,8 @@ const sampleFormStructure = [
         ],
       },
     ],
+    orientation: "horizontal",
+    isOpen: false,
   },
 
   {
@@ -181,8 +183,6 @@ const sampleFormStructure = [
     name: "phones",
     title: "Phone Numbers",
     nestedType: "array",
-    arrayMinItems: 1,
-    arrayMaxItems: 3,
     fields: [
       {
         enabled: true,
@@ -209,6 +209,8 @@ const sampleFormStructure = [
         isShowInList: true,
       },
     ],
+    orientation: "horizontal",
+    isOpen: true,
   },
 ];
 

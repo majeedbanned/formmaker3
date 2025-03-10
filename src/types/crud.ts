@@ -34,6 +34,8 @@ export interface FormField {
   nestedType?: 'object' | 'array';  // Type of nesting
   arrayMinItems?: number;  // Minimum items for array type
   arrayMaxItems?: number;  // Maximum items for array type
+  orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
+  isOpen?: boolean;  // Whether nested fields should be open by default
 }
 
 export interface Entity {

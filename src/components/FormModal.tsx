@@ -116,6 +116,11 @@ const NestedFields = ({
   const isExpanded = watch(`${parentPath}${field.name}_expanded`);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
+  useEffect(() => {
+    // Set initial expansion state based on isOpen property
+    setValue(`${parentPath}${field.name}_expanded`, field.isOpen ?? false);
+  }, [field.name, field.isOpen, parentPath, setValue]);
+
   const toggleExpand = () => {
     setValue(`${parentPath}${field.name}_expanded`, !isExpanded);
   };
@@ -134,6 +139,8 @@ const NestedFields = ({
   // Safe check for fields array
   const nestedFields = field.fields || [];
   if (nestedFields.length === 0) return null;
+
+  const isHorizontal = field.orientation === "horizontal";
 
   return (
     <>
@@ -171,11 +178,20 @@ const NestedFields = ({
         </div>
 
         {isExpanded && (
-          <div className="space-y-4">
+          <div
+            className={`${
+              !field.nestedType && isHorizontal
+                ? "space-x-4 flex items-start"
+                : "space-y-4"
+            } ${layout.direction === "rtl" ? "space-x-reverse" : ""}`}
+          >
             {field.nestedType === "array" ? (
               <>
                 {fields.map((item, index) => (
-                  <div key={item.id} className="relative border rounded-md p-4">
+                  <div
+                    key={item.id}
+                    className="relative border rounded-md p-4 mb-4"
+                  >
                     <Button
                       type="button"
                       variant="ghost"
@@ -192,23 +208,29 @@ const NestedFields = ({
                     >
                       <MinusIcon className="h-4 w-4 text-destructive" />
                     </Button>
-                    {nestedFields.map((nestedField) => (
-                      <FormField
-                        key={nestedField.name}
-                        field={{
-                          ...nestedField,
-                          name: `${field.name}.${index}.${nestedField.name}`,
-                          path: `${parentPath}${field.name}.${index}.${nestedField.name}`,
-                        }}
-                        register={register}
-                        setValue={setValue}
-                        watch={watch}
-                        errors={errors}
-                        control={control}
-                        layout={layout}
-                        isDisabled={isDisabled}
-                      />
-                    ))}
+                    <div
+                      className={
+                        isHorizontal ? "flex gap-4 items-start" : "space-y-4"
+                      }
+                    >
+                      {nestedFields.map((nestedField) => (
+                        <FormField
+                          key={nestedField.name}
+                          field={{
+                            ...nestedField,
+                            name: `${field.name}.${index}.${nestedField.name}`,
+                            path: `${parentPath}${field.name}.${index}.${nestedField.name}`,
+                          }}
+                          register={register}
+                          setValue={setValue}
+                          watch={watch}
+                          errors={errors}
+                          control={control}
+                          layout={layout}
+                          isDisabled={isDisabled}
+                        />
+                      ))}
+                    </div>
                   </div>
                 ))}
                 {errors[field.name] && (
@@ -218,23 +240,29 @@ const NestedFields = ({
                 )}
               </>
             ) : (
-              nestedFields.map((nestedField) => (
-                <FormField
-                  key={nestedField.name}
-                  field={{
-                    ...nestedField,
-                    name: `${field.name}.${nestedField.name}`,
-                    path: `${parentPath}${field.name}.${nestedField.name}`,
-                  }}
-                  register={register}
-                  setValue={setValue}
-                  watch={watch}
-                  errors={errors}
-                  control={control}
-                  layout={layout}
-                  isDisabled={isDisabled}
-                />
-              ))
+              <div
+                className={
+                  isHorizontal ? "flex gap-4 items-start" : "space-y-4"
+                }
+              >
+                {nestedFields.map((nestedField) => (
+                  <FormField
+                    key={nestedField.name}
+                    field={{
+                      ...nestedField,
+                      name: `${field.name}.${nestedField.name}`,
+                      path: `${parentPath}${field.name}.${nestedField.name}`,
+                    }}
+                    register={register}
+                    setValue={setValue}
+                    watch={watch}
+                    errors={errors}
+                    control={control}
+                    layout={layout}
+                    isDisabled={isDisabled}
+                  />
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -438,7 +466,7 @@ export default function FormModal({
           } else {
             acc[field.name] = field.defaultValue || {};
           }
-          acc[`${field.name}_expanded`] = true;
+          acc[`${field.name}_expanded`] = field.isOpen ?? false;
         } else {
           acc[field.name] = field.defaultValue;
         }
@@ -455,7 +483,7 @@ export default function FormModal({
       // Set expansion state for nested fields
       formStructure.forEach((field) => {
         if (field.fields) {
-          formData[`${field.name}_expanded`] = true;
+          formData[`${field.name}_expanded`] = field.isOpen ?? false;
         }
       });
       reset(formData);
