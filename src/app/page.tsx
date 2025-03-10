@@ -110,6 +110,49 @@ const sampleFormStructure = [
   },
 ];
 
+const layout = {
+  direction: "rtl", // or 'ltr'
+  width: "100%", // or '800px' or any valid CSS width
+  texts: {
+    // Button texts
+    addButton: "افزودن",
+    editButton: "Edit",
+    deleteButton: "Delete",
+    cancelButton: "Cancel",
+    clearButton: "Clear",
+    searchButton: "Search",
+    advancedSearchButton: "Advanced Search",
+    applyFiltersButton: "Apply Filters",
+
+    // Modal titles
+    addModalTitle: "Add New Entry",
+    editModalTitle: "Edit Entry",
+    deleteModalTitle: "Delete Confirmation",
+    advancedSearchModalTitle: "Advanced Search",
+
+    // Messages
+    deleteConfirmationMessage:
+      "Are you sure you want to delete this item? This action cannot be undone.",
+    noResultsMessage: "No results found",
+    loadingMessage: "Loading...",
+    processingMessage: "Processing...",
+
+    // Table texts
+    actionsColumnTitle: "Actions",
+    showEntriesText: "Show",
+    pageText: "Page",
+    ofText: "of",
+
+    // Search
+    searchPlaceholder: "Search all fields...",
+    selectPlaceholder: "Select an option",
+
+    // Filter indicators
+    filtersAppliedText: "Advanced search filters applied",
+    clearFiltersText: "Clear filters",
+  },
+};
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
@@ -131,9 +174,7 @@ export default function Home() {
             canAdvancedSearch: true,
             canSearchAllFields: true,
           }}
-          layout={{
-            direction: "rtl",
-          }}
+          layout={layout}
         />
       </div>
     </main>

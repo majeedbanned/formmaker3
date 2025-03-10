@@ -21,7 +21,15 @@ export default function Table({
   onDelete,
   sorting,
   setSorting,
-  layout = { direction: "ltr" },
+  layout = {
+    direction: "ltr",
+    texts: {
+      actionsColumnTitle: "Actions",
+      showEntriesText: "Show",
+      pageText: "Page",
+      ofText: "of",
+    },
+  },
 }: TableProps) {
   const columnHelper = createColumnHelper<Entity>();
 
@@ -58,7 +66,7 @@ export default function Table({
       ? [
           columnHelper.display({
             id: "actions",
-            header: "Actions",
+            header: layout.texts?.actionsColumnTitle,
             cell: (props) => (
               <div
                 className={`flex space-x-2 ${
@@ -71,6 +79,7 @@ export default function Table({
                   <button
                     onClick={() => onEdit(props.row.original)}
                     className="text-blue-600 hover:text-blue-800"
+                    title={layout.texts?.editButton}
                   >
                     <PencilIcon className="h-5 w-5" />
                   </button>
@@ -79,6 +88,7 @@ export default function Table({
                   <button
                     onClick={() => onDelete(props.row.original._id)}
                     className="text-red-600 hover:text-red-800"
+                    title={layout.texts?.deleteButton}
                   >
                     <TrashIcon className="h-5 w-5" />
                   </button>
@@ -210,9 +220,9 @@ export default function Table({
               layout.direction === "rtl" ? "flex-row-reverse" : ""
             }`}
           >
-            <div>Page</div>
+            <div>{layout.texts?.pageText}</div>
             <strong>
-              {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getState().pagination.pageIndex + 1} {layout.texts?.ofText}{" "}
               {table.getPageCount()}
             </strong>
           </span>
@@ -227,7 +237,7 @@ export default function Table({
         >
           {[10, 20, 30, 40, 50].map((pageSize) => (
             <option key={pageSize} value={pageSize}>
-              Show {pageSize}
+              {layout.texts?.showEntriesText} {pageSize}
             </option>
           ))}
         </select>

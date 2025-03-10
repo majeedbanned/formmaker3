@@ -10,7 +10,16 @@ export default function FormModal({
   formStructure,
   editingId,
   loading,
-  layout = { direction: "ltr" },
+  layout = {
+    direction: "ltr",
+    texts: {
+      addModalTitle: "Add New Entry",
+      editModalTitle: "Edit Entry",
+      cancelButton: "Cancel",
+      processingMessage: "Processing...",
+      selectPlaceholder: "Select an option",
+    },
+  },
 }: FormModalProps) {
   const {
     register,
@@ -97,7 +106,9 @@ export default function FormModal({
                     layout.direction === "rtl" ? "right" : "left"
                   }`}
                 >
-                  {editingId ? "Edit Entry" : "Add New Entry"}
+                  {editingId
+                    ? layout.texts?.editModalTitle
+                    : layout.texts?.addModalTitle}
                 </Dialog.Title>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -140,7 +151,9 @@ export default function FormModal({
                             }`}
                             dir={layout.direction}
                           >
-                            <option value="">Select an option</option>
+                            <option value="">
+                              {layout.texts?.selectPlaceholder}
+                            </option>
                             {field.options?.map((option) => (
                               <option
                                 key={String(option.value)}
@@ -210,7 +223,7 @@ export default function FormModal({
                       onClick={onClose}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                     >
-                      Cancel
+                      {layout.texts?.cancelButton}
                     </button>
                     <button
                       type="submit"
@@ -218,10 +231,10 @@ export default function FormModal({
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                     >
                       {loading
-                        ? "Processing..."
+                        ? layout.texts?.processingMessage
                         : editingId
-                        ? "Update"
-                        : "Create"}
+                        ? layout.texts?.editButton
+                        : layout.texts?.addButton}
                     </button>
                   </div>
                 </form>

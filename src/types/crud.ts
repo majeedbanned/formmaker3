@@ -46,6 +46,44 @@ export interface Permissions {
 
 export interface LayoutSettings {
   direction: 'rtl' | 'ltr';
+  width?: string;  // Can be px or % (e.g. '800px' or '90%')
+  texts?: {
+    // Button texts
+    addButton?: string;
+    editButton?: string;
+    deleteButton?: string;
+    cancelButton?: string;
+    clearButton?: string;
+    searchButton?: string;
+    advancedSearchButton?: string;
+    applyFiltersButton?: string;
+    
+    // Modal titles
+    addModalTitle?: string;
+    editModalTitle?: string;
+    deleteModalTitle?: string;
+    advancedSearchModalTitle?: string;
+    
+    // Messages
+    deleteConfirmationMessage?: string;
+    noResultsMessage?: string;
+    loadingMessage?: string;
+    processingMessage?: string;
+    
+    // Table texts
+    actionsColumnTitle?: string;
+    showEntriesText?: string;
+    pageText?: string;
+    ofText?: string;
+    
+    // Search
+    searchPlaceholder?: string;
+    selectPlaceholder?: string;
+    
+    // Filter indicators
+    filtersAppliedText?: string;
+    clearFiltersText?: string;
+  };
 }
 
 export interface CRUDComponentProps {

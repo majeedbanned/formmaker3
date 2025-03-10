@@ -5,7 +5,13 @@ export default function SearchBar({
   searchQuery,
   onSearchChange,
   onAdvancedSearchClick,
-  layout = { direction: "ltr" },
+  layout = {
+    direction: "ltr",
+    texts: {
+      searchPlaceholder: "Search all fields...",
+      advancedSearchButton: "Advanced Search",
+    },
+  },
 }: SearchBarProps) {
   return (
     <div
@@ -16,7 +22,7 @@ export default function SearchBar({
       <div className="relative flex-1 max-w-xs">
         <input
           type="text"
-          placeholder="Search all fields..."
+          placeholder={layout.texts?.searchPlaceholder}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className={`${
@@ -37,7 +43,7 @@ export default function SearchBar({
         <FunnelIcon
           className={`h-4 w-4 ${layout.direction === "rtl" ? "ml-2" : "mr-2"}`}
         />
-        Advanced Search
+        {layout.texts?.advancedSearchButton}
       </button>
     </div>
   );

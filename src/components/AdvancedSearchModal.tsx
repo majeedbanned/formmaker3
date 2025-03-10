@@ -10,7 +10,15 @@ export default function AdvancedSearchModal({
   onClear,
   formStructure,
   initialValues,
-  layout = { direction: "ltr" },
+  layout = {
+    direction: "ltr",
+    texts: {
+      advancedSearchModalTitle: "Advanced Search",
+      clearButton: "Clear",
+      applyFiltersButton: "Apply Filters",
+      selectPlaceholder: "All",
+    },
+  },
 }: AdvancedSearchModalProps) {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: initialValues,
@@ -59,7 +67,7 @@ export default function AdvancedSearchModal({
                     layout.direction === "rtl" ? "right" : "left"
                   }`}
                 >
-                  Advanced Search
+                  {layout.texts?.advancedSearchModalTitle}
                 </Dialog.Title>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -84,7 +92,9 @@ export default function AdvancedSearchModal({
                             }`}
                             dir={layout.direction}
                           >
-                            <option value="">All</option>
+                            <option value="">
+                              {layout.texts?.selectPlaceholder}
+                            </option>
                             {field.options?.map((option) => (
                               <option
                                 key={String(option.value)}
@@ -134,13 +144,13 @@ export default function AdvancedSearchModal({
                       }}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                     >
-                      Clear
+                      {layout.texts?.clearButton}
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      Apply Filters
+                      {layout.texts?.applyFiltersButton}
                     </button>
                   </div>
                 </form>

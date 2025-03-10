@@ -22,6 +22,34 @@ export default function CRUDComponent({
   },
   layout = {
     direction: "ltr",
+    width: "100%",
+    texts: {
+      addButton: "Add New",
+      editButton: "Edit",
+      deleteButton: "Delete",
+      cancelButton: "Cancel",
+      clearButton: "Clear",
+      searchButton: "Search",
+      advancedSearchButton: "Advanced Search",
+      applyFiltersButton: "Apply Filters",
+      addModalTitle: "Add New Entry",
+      editModalTitle: "Edit Entry",
+      deleteModalTitle: "Delete Confirmation",
+      advancedSearchModalTitle: "Advanced Search",
+      deleteConfirmationMessage:
+        "Are you sure you want to delete this item? This action cannot be undone.",
+      noResultsMessage: "No results found",
+      loadingMessage: "Loading...",
+      processingMessage: "Processing...",
+      actionsColumnTitle: "Actions",
+      showEntriesText: "Show",
+      pageText: "Page",
+      ofText: "of",
+      searchPlaceholder: "Search all fields...",
+      selectPlaceholder: "Select an option",
+      filtersAppliedText: "Advanced search filters applied",
+      clearFiltersText: "Clear filters",
+    },
   },
 }: CRUDComponentProps) {
   const {
@@ -129,9 +157,8 @@ export default function CRUDComponent({
 
   return (
     <div
-      className={`max-w-4xl mx-auto p-6 ${
-        layout.direction === "rtl" ? "rtl" : "ltr"
-      }`}
+      className={`mx-auto p-6 ${layout.direction === "rtl" ? "rtl" : "ltr"}`}
+      style={{ maxWidth: layout.width }}
       dir={layout.direction}
     >
       {error && (
@@ -161,7 +188,7 @@ export default function CRUDComponent({
               onClick={handleAdd}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
-              Add New
+              {layout.texts?.addButton}
             </button>
           )}
         </div>
@@ -171,7 +198,7 @@ export default function CRUDComponent({
             Object.keys(initialFilter || {}).length && (
             <div className="bg-gray-50 p-3 rounded-md flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                Advanced search filters applied (
+                {layout.texts?.filtersAppliedText} (
                 {Object.keys(advancedSearch).length -
                   Object.keys(initialFilter || {}).length}
                 )
@@ -180,7 +207,7 @@ export default function CRUDComponent({
                 onClick={clearAdvancedSearch}
                 className="text-sm text-red-600 hover:text-red-800"
               >
-                Clear filters
+                {layout.texts?.clearFiltersText}
               </button>
             </div>
           )}
@@ -188,12 +215,17 @@ export default function CRUDComponent({
         {loading && (
           <div className="text-center py-4">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+            <div className="mt-2 text-gray-500">
+              {layout.texts?.loadingMessage}
+            </div>
           </div>
         )}
       </div>
 
       {!loading && entities.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">No results found</div>
+        <div className="text-center py-8 text-gray-500">
+          {layout.texts?.noResultsMessage}
+        </div>
       ) : (
         <Table
           entities={entities}
