@@ -123,6 +123,14 @@ export default function Home() {
           collectionName="users2"
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
           initialFilter={{ role: "guest", firstName: "hasani" }}
+          permissions={{
+            canList: true,
+            canAdd: true, // Users can't add new items
+            canEdit: true,
+            canDelete: true, // Users can't delete items
+            canAdvancedSearch: true,
+            canSearchAllFields: true,
+          }}
         />
       </div>
     </main>

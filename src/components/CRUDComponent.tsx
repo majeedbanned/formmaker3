@@ -12,6 +12,14 @@ export default function CRUDComponent({
   collectionName,
   connectionString,
   initialFilter,
+  permissions = {
+    canList: true,
+    canAdd: true,
+    canEdit: true,
+    canDelete: true,
+    canAdvancedSearch: true,
+    canSearchAllFields: true,
+  },
 }: CRUDComponentProps) {
   const {
     entities,
@@ -34,19 +42,31 @@ export default function CRUDComponent({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Only show content if user has list permission
+  if (!permissions.canList) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 text-center text-gray-500">
+        You don't have permission to view this content.
+      </div>
+    );
+  }
+
   const handleAdd = () => {
+    if (!permissions.canAdd) return;
     setEditingId(null);
     window.__EDITING_ENTITY_DATA__ = undefined;
     setIsModalOpen(true);
   };
 
   const handleEdit = (entity: Entity) => {
+    if (!permissions.canEdit) return;
     setEditingId(entity._id);
     window.__EDITING_ENTITY_DATA__ = entity.data;
     setIsModalOpen(true);
   };
 
   const handleDelete = (id: string) => {
+    if (!permissions.canDelete) return;
     setDeleteId(id);
     setIsDeleteModalOpen(true);
   };
@@ -54,8 +74,10 @@ export default function CRUDComponent({
   const handleSubmit = async (data: Record<string, unknown>) => {
     try {
       if (editingId) {
+        if (!permissions.canEdit) return;
         await updateEntity(editingId, data);
       } else {
+        if (!permissions.canAdd) return;
         await createEntity(data);
       }
       setIsModalOpen(false);
@@ -67,7 +89,7 @@ export default function CRUDComponent({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || !permissions.canDelete) return;
 
     try {
       await deleteEntity(deleteId);
@@ -79,6 +101,7 @@ export default function CRUDComponent({
   };
 
   const handleAdvancedSearch = (data: Record<string, unknown>) => {
+    if (!permissions.canAdvancedSearch) return;
     const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
       if (value !== "" && value !== undefined && value !== null) {
         acc[key] = value;
@@ -91,6 +114,7 @@ export default function CRUDComponent({
   };
 
   const clearAdvancedSearch = () => {
+    if (!permissions.canAdvancedSearch) return;
     setAdvancedSearch(initialFilter || {});
   };
 
@@ -110,36 +134,43 @@ export default function CRUDComponent({
 
       <div className="mb-6 space-y-4">
         <div className="flex justify-between items-center gap-4">
-          <SearchBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onAdvancedSearchClick={() => setIsSearchModalOpen(true)}
-          />
-          <button
-            onClick={handleAdd}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Add New
-          </button>
+          {permissions.canSearchAllFields && (
+            <SearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onAdvancedSearchClick={() =>
+                permissions.canAdvancedSearch && setIsSearchModalOpen(true)
+              }
+            />
+          )}
+          {permissions.canAdd && (
+            <button
+              onClick={handleAdd}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              Add New
+            </button>
+          )}
         </div>
 
-        {Object.keys(advancedSearch).length >
-          Object.keys(initialFilter || {}).length && (
-          <div className="bg-gray-50 p-3 rounded-md flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Advanced search filters applied (
-              {Object.keys(advancedSearch).length -
-                Object.keys(initialFilter || {}).length}
-              )
+        {permissions.canAdvancedSearch &&
+          Object.keys(advancedSearch).length >
+            Object.keys(initialFilter || {}).length && (
+            <div className="bg-gray-50 p-3 rounded-md flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Advanced search filters applied (
+                {Object.keys(advancedSearch).length -
+                  Object.keys(initialFilter || {}).length}
+                )
+              </div>
+              <button
+                onClick={clearAdvancedSearch}
+                className="text-sm text-red-600 hover:text-red-800"
+              >
+                Clear filters
+              </button>
             </div>
-            <button
-              onClick={clearAdvancedSearch}
-              className="text-sm text-red-600 hover:text-red-800"
-            >
-              Clear filters
-            </button>
-          </div>
-        )}
+          )}
 
         {loading && (
           <div className="text-center py-4">
@@ -154,37 +185,43 @@ export default function CRUDComponent({
         <Table
           entities={entities}
           formStructure={formStructure}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={permissions.canEdit ? handleEdit : undefined}
+          onDelete={permissions.canDelete ? handleDelete : undefined}
           sorting={sorting}
           setSorting={setSorting}
         />
       )}
 
-      <FormModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-        formStructure={formStructure}
-        editingId={editingId}
-        loading={loading}
-      />
+      {(permissions.canAdd || permissions.canEdit) && (
+        <FormModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSubmit={handleSubmit}
+          formStructure={formStructure}
+          editingId={editingId}
+          loading={loading}
+        />
+      )}
 
-      <DeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        loading={loading}
-      />
+      {permissions.canDelete && (
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          loading={loading}
+        />
+      )}
 
-      <AdvancedSearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        onSubmit={handleAdvancedSearch}
-        onClear={clearAdvancedSearch}
-        formStructure={formStructure}
-        initialValues={advancedSearch}
-      />
+      {permissions.canAdvancedSearch && (
+        <AdvancedSearchModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+          onSubmit={handleAdvancedSearch}
+          onClear={clearAdvancedSearch}
+          formStructure={formStructure}
+          initialValues={advancedSearch}
+        />
+      )}
     </div>
   );
 }

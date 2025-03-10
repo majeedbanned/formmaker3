@@ -35,11 +35,21 @@ export interface Entity {
   updatedAt: string;
 }
 
+export interface Permissions {
+  canList: boolean;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canAdvancedSearch: boolean;
+  canSearchAllFields: boolean;
+}
+
 export interface CRUDComponentProps {
   formStructure: FormField[];
   collectionName: string;
   connectionString: string;
   initialFilter?: Record<string, unknown>;
+  permissions?: Permissions;  // Optional, defaults to all permissions enabled
 }
 
 export interface ValidationRules {
@@ -53,8 +63,8 @@ export interface ValidationRules {
 export interface TableProps {
   entities: Entity[];
   formStructure: FormField[];
-  onEdit: (entity: Entity) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (entity: Entity) => void;
+  onDelete?: (id: string) => void;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
 }

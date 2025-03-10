@@ -45,26 +45,34 @@ export default function Table({
           },
         })
       ),
-    columnHelper.display({
-      id: "actions",
-      header: "Actions",
-      cell: (props) => (
-        <div className="flex space-x-2 justify-end">
-          <button
-            onClick={() => onEdit(props.row.original)}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => onDelete(props.row.original._id)}
-            className="text-red-600 hover:text-red-800"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
-      ),
-    }),
+    ...(onEdit || onDelete
+      ? [
+          columnHelper.display({
+            id: "actions",
+            header: "Actions",
+            cell: (props) => (
+              <div className="flex space-x-2 justify-end">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(props.row.original)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(props.row.original._id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            ),
+          }),
+        ]
+      : []),
   ];
 
   const table = useReactTable({
