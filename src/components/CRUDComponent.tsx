@@ -20,6 +20,9 @@ export default function CRUDComponent({
     canAdvancedSearch: true,
     canSearchAllFields: true,
   },
+  layout = {
+    direction: "ltr",
+  },
 }: CRUDComponentProps) {
   const {
     entities,
@@ -125,7 +128,12 @@ export default function CRUDComponent({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div
+      className={`max-w-4xl mx-auto p-6 ${
+        layout.direction === "rtl" ? "rtl" : "ltr"
+      }`}
+      dir={layout.direction}
+    >
       {error && (
         <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
           {error}
@@ -133,7 +141,11 @@ export default function CRUDComponent({
       )}
 
       <div className="mb-6 space-y-4">
-        <div className="flex justify-between items-center gap-4">
+        <div
+          className={`flex justify-between items-center gap-4 ${
+            layout.direction === "rtl" ? "flex-row-reverse" : ""
+          }`}
+        >
           {permissions.canSearchAllFields && (
             <SearchBar
               searchQuery={searchQuery}
@@ -141,6 +153,7 @@ export default function CRUDComponent({
               onAdvancedSearchClick={() =>
                 permissions.canAdvancedSearch && setIsSearchModalOpen(true)
               }
+              layout={layout}
             />
           )}
           {permissions.canAdd && (
@@ -189,6 +202,7 @@ export default function CRUDComponent({
           onDelete={permissions.canDelete ? handleDelete : undefined}
           sorting={sorting}
           setSorting={setSorting}
+          layout={layout}
         />
       )}
 
@@ -200,6 +214,7 @@ export default function CRUDComponent({
           formStructure={formStructure}
           editingId={editingId}
           loading={loading}
+          layout={layout}
         />
       )}
 
@@ -209,6 +224,7 @@ export default function CRUDComponent({
           onClose={() => setIsDeleteModalOpen(false)}
           onConfirm={handleConfirmDelete}
           loading={loading}
+          layout={layout}
         />
       )}
 
@@ -220,6 +236,7 @@ export default function CRUDComponent({
           onClear={clearAdvancedSearch}
           formStructure={formStructure}
           initialValues={advancedSearch}
+          layout={layout}
         />
       )}
     </div>

@@ -44,12 +44,17 @@ export interface Permissions {
   canSearchAllFields: boolean;
 }
 
+export interface LayoutSettings {
+  direction: 'rtl' | 'ltr';
+}
+
 export interface CRUDComponentProps {
   formStructure: FormField[];
   collectionName: string;
   connectionString: string;
   initialFilter?: Record<string, unknown>;
-  permissions?: Permissions;  // Optional, defaults to all permissions enabled
+  permissions?: Permissions;
+  layout?: LayoutSettings;  // Optional, defaults to LTR
 }
 
 export interface ValidationRules {
@@ -67,12 +72,14 @@ export interface TableProps {
   onDelete?: (id: string) => void;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
+  layout?: LayoutSettings;
 }
 
 export interface SearchBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAdvancedSearchClick: () => void;
+  layout?: LayoutSettings;
 }
 
 export interface FormModalProps {
@@ -82,6 +89,7 @@ export interface FormModalProps {
   formStructure: FormField[];
   editingId: string | null;
   loading: boolean;
+  layout?: LayoutSettings;
 }
 
 export interface DeleteModalProps {
@@ -89,6 +97,7 @@ export interface DeleteModalProps {
   onClose: () => void;
   onConfirm: () => Promise<void>;
   loading: boolean;
+  layout?: LayoutSettings;
 }
 
 export interface AdvancedSearchModalProps {
@@ -98,4 +107,5 @@ export interface AdvancedSearchModalProps {
   onClear: () => void;
   formStructure: FormField[];
   initialValues?: Record<string, unknown>;
+  layout?: LayoutSettings;
 } 

@@ -10,6 +10,7 @@ export default function FormModal({
   formStructure,
   editingId,
   loading,
+  layout = { direction: "ltr" },
 }: FormModalProps) {
   const {
     register,
@@ -86,10 +87,15 @@ export default function FormModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel
+                className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all"
+                dir={layout.direction}
+              >
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 mb-4"
+                  className={`text-lg font-medium leading-6 text-gray-900 mb-4 text-${
+                    layout.direction === "rtl" ? "right" : "left"
+                  }`}
                 >
                   {editingId ? "Edit Entry" : "Add New Entry"}
                 </Dialog.Title>
@@ -110,7 +116,9 @@ export default function FormModal({
                       <div key={field.name} className="space-y-2">
                         <label
                           htmlFor={field.name}
-                          className="block text-sm font-medium text-gray-700"
+                          className={`block text-sm font-medium text-gray-700 text-${
+                            layout.direction === "rtl" ? "right" : "left"
+                          }`}
                         >
                           {field.title}
                           {field.required && (
@@ -127,7 +135,10 @@ export default function FormModal({
                           <select
                             {...registration}
                             disabled={isDisabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500 text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
+                            dir={layout.direction}
                           >
                             <option value="">Select an option</option>
                             {field.options?.map((option) => (
@@ -143,27 +154,45 @@ export default function FormModal({
                           <textarea
                             {...registration}
                             disabled={isDisabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500 text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
                             rows={4}
+                            dir={layout.direction}
                           />
                         ) : field.type === "checkbox" ? (
-                          <input
-                            type="checkbox"
-                            {...registration}
-                            disabled={isDisabled}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-                          />
+                          <div
+                            className={`flex items-center ${
+                              layout.direction === "rtl"
+                                ? "flex-row-reverse justify-end"
+                                : ""
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              {...registration}
+                              disabled={isDisabled}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            />
+                          </div>
                         ) : (
                           <input
                             type={field.type}
                             {...registration}
                             disabled={isDisabled}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500 text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
+                            dir={layout.direction}
                           />
                         )}
 
                         {errors[field.name] && (
-                          <p className="text-red-500 text-sm">
+                          <p
+                            className={`text-red-500 text-sm text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
+                          >
                             {errors[field.name]?.message as string}
                           </p>
                         )}
@@ -171,7 +200,11 @@ export default function FormModal({
                     );
                   })}
 
-                  <div className="mt-4 flex justify-end space-x-2">
+                  <div
+                    className={`mt-4 flex justify-end space-x-2 ${
+                      layout.direction === "rtl" ? "flex-row-reverse" : ""
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={onClose}

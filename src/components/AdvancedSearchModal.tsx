@@ -10,6 +10,7 @@ export default function AdvancedSearchModal({
   onClear,
   formStructure,
   initialValues,
+  layout = { direction: "ltr" },
 }: AdvancedSearchModalProps) {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: initialValues,
@@ -48,10 +49,15 @@ export default function AdvancedSearchModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel
+                className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all"
+                dir={layout.direction}
+              >
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 mb-4"
+                  className={`text-lg font-medium leading-6 text-gray-900 mb-4 text-${
+                    layout.direction === "rtl" ? "right" : "left"
+                  }`}
                 >
                   Advanced Search
                 </Dialog.Title>
@@ -63,7 +69,9 @@ export default function AdvancedSearchModal({
                       <div key={field.name} className="space-y-2">
                         <label
                           htmlFor={field.name}
-                          className="block text-sm font-medium text-gray-700"
+                          className={`block text-sm font-medium text-gray-700 text-${
+                            layout.direction === "rtl" ? "right" : "left"
+                          }`}
                         >
                           {field.title}
                         </label>
@@ -71,9 +79,12 @@ export default function AdvancedSearchModal({
                         {field.type === "dropdown" ? (
                           <select
                             {...register(field.name)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
+                            dir={layout.direction}
                           >
-                            <option value="">Any</option>
+                            <option value="">All</option>
                             {field.options?.map((option) => (
                               <option
                                 key={String(option.value)}
@@ -84,26 +95,37 @@ export default function AdvancedSearchModal({
                             ))}
                           </select>
                         ) : field.type === "checkbox" ? (
-                          <select
-                            {...register(field.name)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          <div
+                            className={`flex items-center ${
+                              layout.direction === "rtl"
+                                ? "flex-row-reverse justify-end"
+                                : ""
+                            }`}
                           >
-                            <option value="">Any</option>
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                          </select>
+                            <input
+                              type="checkbox"
+                              {...register(field.name)}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </div>
                         ) : (
                           <input
-                            type="text"
+                            type={field.type}
                             {...register(field.name)}
-                            placeholder={`Search ${field.title.toLowerCase()}...`}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-${
+                              layout.direction === "rtl" ? "right" : "left"
+                            }`}
+                            dir={layout.direction}
                           />
                         )}
                       </div>
                     ))}
 
-                  <div className="mt-4 flex justify-end space-x-2">
+                  <div
+                    className={`mt-4 flex justify-end space-x-2 ${
+                      layout.direction === "rtl" ? "flex-row-reverse" : ""
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => {

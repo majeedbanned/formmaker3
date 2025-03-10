@@ -131,6 +131,9 @@ export default function Home() {
             canAdvancedSearch: true,
             canSearchAllFields: true,
           }}
+          layout={{
+            direction: "rtl",
+          }}
         />
       </div>
     </main>

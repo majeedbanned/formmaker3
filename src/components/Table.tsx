@@ -21,6 +21,7 @@ export default function Table({
   onDelete,
   sorting,
   setSorting,
+  layout = { direction: "ltr" },
 }: TableProps) {
   const columnHelper = createColumnHelper<Entity>();
 
@@ -39,9 +40,17 @@ export default function Table({
               : {};
 
             if (typeof value === "boolean") {
-              return <span style={style}>{value ? "Yes" : "No"}</span>;
+              return (
+                <span style={style} dir={layout.direction}>
+                  {value ? "Yes" : "No"}
+                </span>
+              );
             }
-            return <span style={style}>{String(value ?? "")}</span>;
+            return (
+              <span style={style} dir={layout.direction}>
+                {String(value ?? "")}
+              </span>
+            );
           },
         })
       ),
@@ -51,7 +60,13 @@ export default function Table({
             id: "actions",
             header: "Actions",
             cell: (props) => (
-              <div className="flex space-x-2 justify-end">
+              <div
+                className={`flex space-x-2 ${
+                  layout.direction === "rtl"
+                    ? "justify-start flex-row-reverse"
+                    : "justify-end"
+                }`}
+              >
                 {onEdit && (
                   <button
                     onClick={() => onEdit(props.row.original)}
@@ -91,14 +106,19 @@ export default function Table({
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table
+          className="min-w-full divide-y divide-gray-200"
+          dir={layout.direction}
+        >
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className={`px-6 py-3 text-${
+                      layout.direction === "rtl" ? "right" : "left"
+                    } text-xs font-medium text-gray-500 uppercase tracking-wider`}
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -106,6 +126,8 @@ export default function Table({
                           header.column.getCanSort()
                             ? "cursor-pointer select-none"
                             : ""
+                        } ${
+                          layout.direction === "rtl" ? "flex-row-reverse" : ""
                         }`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
@@ -132,7 +154,9 @@ export default function Table({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-${
+                      layout.direction === "rtl" ? "right" : "left"
+                    }`}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
@@ -143,37 +167,49 @@ export default function Table({
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div
+        className={`mt-4 flex items-center justify-between ${
+          layout.direction === "rtl" ? "flex-row-reverse" : ""
+        }`}
+      >
+        <div
+          className={`flex items-center gap-2 ${
+            layout.direction === "rtl" ? "flex-row-reverse" : ""
+          }`}
+        >
           <button
             className="px-3 py-1 border rounded text-sm disabled:opacity-50"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
-            {"<<"}
+            {layout.direction === "rtl" ? ">>" : "<<"}
           </button>
           <button
             className="px-3 py-1 border rounded text-sm disabled:opacity-50"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            {"<"}
+            {layout.direction === "rtl" ? ">" : "<"}
           </button>
           <button
             className="px-3 py-1 border rounded text-sm disabled:opacity-50"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            {">"}
+            {layout.direction === "rtl" ? "<" : ">"}
           </button>
           <button
             className="px-3 py-1 border rounded text-sm disabled:opacity-50"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
-            {">>"}
+            {layout.direction === "rtl" ? "<<" : ">>"}
           </button>
-          <span className="flex items-center gap-1 text-sm">
+          <span
+            className={`flex items-center gap-1 text-sm ${
+              layout.direction === "rtl" ? "flex-row-reverse" : ""
+            }`}
+          >
             <div>Page</div>
             <strong>
               {table.getState().pagination.pageIndex + 1} of{" "}
@@ -187,6 +223,7 @@ export default function Table({
             table.setPageSize(Number(e.target.value));
           }}
           className="px-3 py-1 border rounded text-sm"
+          dir={layout.direction}
         >
           {[10, 20, 30, 40, 50].map((pageSize) => (
             <option key={pageSize} value={pageSize}>
