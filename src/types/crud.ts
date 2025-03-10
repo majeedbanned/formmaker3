@@ -40,6 +40,7 @@ export interface Permissions {
   canAdd: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canGroupDelete: boolean;
   canAdvancedSearch: boolean;
   canSearchAllFields: boolean;
 }
@@ -66,6 +67,7 @@ export interface LayoutSettings {
     
     // Messages
     deleteConfirmationMessage?: string;
+    deleteConfirmationMessagePlural?: string;
     noResultsMessage?: string;
     loadingMessage?: string;
     processingMessage?: string;
@@ -152,10 +154,12 @@ export interface TableProps {
   formStructure: FormField[];
   onEdit?: (entity: Entity) => void;
   onDelete?: (id: string) => void;
+  onGroupDelete?: (ids: string[]) => void;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   rowActions?: RowAction[];
   layout?: LayoutSettings;
+  canGroupDelete?: boolean;
 }
 
 export interface SearchBarProps {
@@ -181,6 +185,7 @@ export interface DeleteModalProps {
   onConfirm: () => Promise<void>;
   loading: boolean;
   layout?: LayoutSettings;
+  itemCount?: number;
 }
 
 export interface AdvancedSearchModalProps {

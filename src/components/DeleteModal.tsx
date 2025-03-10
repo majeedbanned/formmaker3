@@ -14,12 +14,15 @@ export default function DeleteModal({
   onClose,
   onConfirm,
   loading,
+  itemCount = 1,
   layout = {
     direction: "ltr",
     texts: {
       deleteModalTitle: "Delete Confirmation",
       deleteConfirmationMessage:
         "Are you sure you want to delete this item? This action cannot be undone.",
+      deleteConfirmationMessagePlural:
+        "Are you sure you want to delete these items? This action cannot be undone.",
       cancelButton: "Cancel",
       deleteButton: "Delete",
       processingMessage: "Processing...",
@@ -38,7 +41,9 @@ export default function DeleteModal({
           <DialogDescription
             className={layout.direction === "rtl" ? "text-right" : "text-left"}
           >
-            {layout.texts?.deleteConfirmationMessage}
+            {itemCount > 1
+              ? layout.texts?.deleteConfirmationMessagePlural
+              : layout.texts?.deleteConfirmationMessage}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter

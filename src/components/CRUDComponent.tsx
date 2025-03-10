@@ -18,6 +18,7 @@ export default function CRUDComponent({
     canAdd: true,
     canEdit: true,
     canDelete: true,
+    canGroupDelete: true,
     canAdvancedSearch: true,
     canSearchAllFields: true,
   },
@@ -40,6 +41,8 @@ export default function CRUDComponent({
       advancedSearchModalTitle: "Advanced Search",
       deleteConfirmationMessage:
         "Are you sure you want to delete this item? This action cannot be undone.",
+      deleteConfirmationMessagePlural:
+        "Are you sure you want to delete these items? This action cannot be undone.",
       noResultsMessage: "No results found",
       loadingMessage: "Loading...",
       processingMessage: "Processing...",
@@ -73,13 +76,14 @@ export default function CRUDComponent({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Only show content if user has list permission
   if (!permissions.canList) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center text-gray-500">
-        You don't have permission to view this content.
+        You don&apos;t have permission to view this content.
       </div>
     );
   }
@@ -101,6 +105,14 @@ export default function CRUDComponent({
   const handleDelete = (id: string) => {
     if (!permissions.canDelete) return;
     setDeleteId(id);
+    setDeleteIds([]);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleGroupDelete = (ids: string[]) => {
+    if (!permissions.canGroupDelete) return;
+    setDeleteIds(ids);
+    setDeleteId(null);
     setIsDeleteModalOpen(true);
   };
 
@@ -122,12 +134,17 @@ export default function CRUDComponent({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteId || !permissions.canDelete) return;
+    if (!permissions.canDelete && !permissions.canGroupDelete) return;
 
     try {
-      await deleteEntity(deleteId);
+      if (deleteId) {
+        await deleteEntity(deleteId);
+      } else if (deleteIds.length > 0) {
+        await Promise.all(deleteIds.map((id) => deleteEntity(id)));
+      }
       setIsDeleteModalOpen(false);
       setDeleteId(null);
+      setDeleteIds([]);
     } catch {
       // Error is handled by the hook
     }
@@ -230,9 +247,13 @@ export default function CRUDComponent({
           formStructure={formStructure}
           onEdit={permissions.canEdit ? handleEdit : undefined}
           onDelete={permissions.canDelete ? handleDelete : undefined}
+          onGroupDelete={
+            permissions.canGroupDelete ? handleGroupDelete : undefined
+          }
           sorting={sorting}
           setSorting={setSorting}
           rowActions={rowActions}
+          canGroupDelete={permissions.canGroupDelete}
           layout={layout}
         />
       )}
@@ -249,12 +270,17 @@ export default function CRUDComponent({
         />
       )}
 
-      {permissions.canDelete && (
+      {(permissions.canDelete || permissions.canGroupDelete) && (
         <DeleteModal
           isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteId(null);
+            setDeleteIds([]);
+          }}
           onConfirm={handleConfirmDelete}
           loading={loading}
+          itemCount={deleteIds.length || (deleteId ? 1 : 0)}
           layout={layout}
         />
       )}

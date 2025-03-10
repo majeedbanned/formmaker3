@@ -186,12 +186,17 @@ export default function Home() {
           formStructure={sampleFormStructure}
           collectionName="users2"
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
-          initialFilter={{ role: "guest", firstName: "hasani" }}
+          initialFilter={
+            {
+              // role: "guest", firstName: "hasani"
+            }
+          }
           permissions={{
             canList: true,
-            canAdd: true, // Users can't add new items
+            canAdd: true,
             canEdit: true,
-            canDelete: true, // Users can't delete items
+            canDelete: true,
+            canGroupDelete: true,
             canAdvancedSearch: true,
             canSearchAllFields: true,
           }}

@@ -5,6 +5,7 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
+  RowSelectionState,
 } from "@tanstack/react-table";
 import {
   PencilIcon,
@@ -23,6 +24,7 @@ import {
   TableRow,
 } from "./ui/table";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -37,15 +39,18 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function Table({
   entities,
   formStructure,
   onEdit,
   onDelete,
+  onGroupDelete,
   sorting,
   setSorting,
   rowActions,
+  canGroupDelete,
   layout = {
     direction: "ltr",
     texts: {
@@ -56,9 +61,33 @@ export default function Table({
     },
   },
 }: TableProps) {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const columnHelper = createColumnHelper<Entity>();
 
   const columns = [
+    ...(canGroupDelete
+      ? [
+          columnHelper.display({
+            id: "select",
+            header: ({ table }) => (
+              <Checkbox
+                checked={table.getIsAllPageRowsSelected()}
+                onCheckedChange={(value) =>
+                  table.toggleAllPageRowsSelected(!!value)
+                }
+                aria-label="Select all"
+              />
+            ),
+            cell: ({ row }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+              />
+            ),
+          }),
+        ]
+      : []),
     ...formStructure
       .filter((field) => field.isShowInList)
       .map((field) =>
@@ -176,7 +205,10 @@ export default function Table({
     columns,
     state: {
       sorting,
+      rowSelection,
     },
+    enableRowSelection: canGroupDelete,
+    onRowSelectionChange: setRowSelection,
     onSortingChange: (updater) =>
       setSorting(updater instanceof Function ? updater(sorting) : updater),
     getCoreRowModel: getCoreRowModel(),
@@ -184,8 +216,30 @@ export default function Table({
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const selectedRows = Object.keys(rowSelection).length;
+
   return (
     <div>
+      {canGroupDelete && selectedRows > 0 && (
+        <div className="mb-4 flex items-center justify-between bg-muted p-2 rounded-md">
+          <span className="text-sm text-muted-foreground">
+            {selectedRows} {selectedRows === 1 ? "item" : "items"} selected
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              const selectedIds = table
+                .getSelectedRowModel()
+                .rows.map((row) => row.original._id);
+              onGroupDelete?.(selectedIds);
+            }}
+          >
+            Delete Selected
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-md border">
         <ShadcnTable dir={layout.direction}>
           <TableHeader className="bg-muted/50">
@@ -209,16 +263,25 @@ export default function Table({
                         }`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        <span>
-                          {flexRender(
+                        {header.column.id === "select" ? (
+                          flexRender(
                             header.column.columnDef.header,
                             header.getContext()
-                          )}
-                        </span>
-                        {{
-                          asc: <ChevronUpIcon className="h-4 w-4" />,
-                          desc: <ChevronDownIcon className="h-4 w-4" />,
-                        }[header.column.getIsSorted() as string] ?? null}
+                          )
+                        ) : (
+                          <>
+                            <span>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </span>
+                            {{
+                              asc: <ChevronUpIcon className="h-4 w-4" />,
+                              desc: <ChevronDownIcon className="h-4 w-4" />,
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </>
+                        )}
                       </div>
                     )}
                   </TableHead>
