@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CRUDComponentProps, Entity } from "../types/crud";
 import { useCrud } from "../hooks/useCrud";
+import { Button } from "./ui/button";
 import SearchBar from "./SearchBar";
 import Table from "./Table";
 import FormModal from "./FormModal";
@@ -162,7 +163,7 @@ export default function CRUDComponent({
       dir={layout.direction}
     >
       {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
+        <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
           {error}
         </div>
       )}
@@ -184,38 +185,34 @@ export default function CRUDComponent({
             />
           )}
           {permissions.canAdd && (
-            <button
-              onClick={handleAdd}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              {layout.texts?.addButton}
-            </button>
+            <Button onClick={handleAdd}>{layout.texts?.addButton}</Button>
           )}
         </div>
 
         {permissions.canAdvancedSearch &&
           Object.keys(advancedSearch).length >
             Object.keys(initialFilter || {}).length && (
-            <div className="bg-gray-50 p-3 rounded-md flex items-center justify-between">
-              <div className="text-sm text-gray-500">
+            <div className="bg-muted p-3 rounded-md flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
                 {layout.texts?.filtersAppliedText} (
                 {Object.keys(advancedSearch).length -
                   Object.keys(initialFilter || {}).length}
                 )
               </div>
-              <button
+              <Button
                 onClick={clearAdvancedSearch}
-                className="text-sm text-red-600 hover:text-red-800"
+                variant="ghost"
+                className="text-sm text-destructive hover:text-destructive/80"
               >
                 {layout.texts?.clearFiltersText}
-              </button>
+              </Button>
             </div>
           )}
 
         {loading && (
           <div className="text-center py-4">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
-            <div className="mt-2 text-gray-500">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            <div className="mt-2 text-muted-foreground">
               {layout.texts?.loadingMessage}
             </div>
           </div>
@@ -223,7 +220,7 @@ export default function CRUDComponent({
       </div>
 
       {!loading && entities.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           {layout.texts?.noResultsMessage}
         </div>
       ) : (

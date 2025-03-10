@@ -97,6 +97,26 @@ const sampleFormStructure = [
       requiredMessage: "Please select a role",
     },
   },
+
+  {
+    name: "sex",
+    title: "Sex",
+    type: "dropdown",
+    isSearchable: true,
+
+    required: true,
+    isShowInList: true,
+    enabled: true,
+    visible: true,
+    options: [
+      { label: "Man", value: "man" },
+      { label: "Woman", value: "woman" },
+    ],
+    validation: {
+      requiredMessage: "Please select a sex",
+    },
+  },
+
   {
     name: "notes",
     title: "Notes",

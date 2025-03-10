@@ -13,6 +13,22 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { TableProps, Entity } from "../types/crud";
+import {
+  Table as ShadcnTable,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { Button } from "./ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 export default function Table({
   entities,
@@ -69,29 +85,33 @@ export default function Table({
             header: layout.texts?.actionsColumnTitle,
             cell: (props) => (
               <div
-                className={`flex space-x-2 ${
+                className={`flex gap-2 ${
                   layout.direction === "rtl"
                     ? "justify-start flex-row-reverse"
                     : "justify-end"
                 }`}
               >
                 {onEdit && (
-                  <button
+                  <Button
                     onClick={() => onEdit(props.row.original)}
+                    variant="ghost"
+                    size="icon"
                     className="text-blue-600 hover:text-blue-800"
                     title={layout.texts?.editButton}
                   >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
                 )}
                 {onDelete && (
-                  <button
+                  <Button
                     onClick={() => onDelete(props.row.original._id)}
+                    variant="ghost"
+                    size="icon"
                     className="text-red-600 hover:text-red-800"
                     title={layout.texts?.deleteButton}
                   >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
             ),
@@ -114,25 +134,22 @@ export default function Table({
   });
 
   return (
-    <>
-      <div className="overflow-x-auto">
-        <table
-          className="min-w-full divide-y divide-gray-200"
-          dir={layout.direction}
-        >
-          <thead className="bg-gray-50">
+    <div>
+      <div className="rounded-md border">
+        <ShadcnTable dir={layout.direction}>
+          <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
+              <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th
+                  <TableHead
                     key={header.id}
-                    className={`px-6 py-3 text-${
-                      layout.direction === "rtl" ? "right" : "left"
-                    } text-xs font-medium text-gray-500 uppercase tracking-wider`}
+                    className={
+                      layout.direction === "rtl" ? "text-right" : "text-left"
+                    }
                   >
                     {header.isPlaceholder ? null : (
                       <div
-                        className={`flex items-center space-x-1 ${
+                        className={`flex items-center gap-1 ${
                           header.column.getCanSort()
                             ? "cursor-pointer select-none"
                             : ""
@@ -153,28 +170,28 @@ export default function Table({
                         }[header.column.getIsSorted() as string] ?? null}
                       </div>
                     )}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          </TableHeader>
+          <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
+              <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <td
+                  <TableCell
                     key={cell.id}
-                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-${
-                      layout.direction === "rtl" ? "right" : "left"
-                    }`}
+                    className={
+                      layout.direction === "rtl" ? "text-right" : "text-left"
+                    }
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </ShadcnTable>
       </div>
 
       <div
@@ -187,34 +204,38 @@ export default function Table({
             layout.direction === "rtl" ? "flex-row-reverse" : ""
           }`}
         >
-          <button
-            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
             {layout.direction === "rtl" ? ">>" : "<<"}
-          </button>
-          <button
-            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
             {layout.direction === "rtl" ? ">" : "<"}
-          </button>
-          <button
-            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
             {layout.direction === "rtl" ? "<" : ">"}
-          </button>
-          <button
-            className="px-3 py-1 border rounded text-sm disabled:opacity-50"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
             {layout.direction === "rtl" ? "<<" : ">>"}
-          </button>
+          </Button>
           <span
             className={`flex items-center gap-1 text-sm ${
               layout.direction === "rtl" ? "flex-row-reverse" : ""
@@ -227,21 +248,24 @@ export default function Table({
             </strong>
           </span>
         </div>
-        <select
-          value={table.getState().pagination.pageSize}
-          onChange={(e) => {
-            table.setPageSize(Number(e.target.value));
+        <Select
+          value={String(table.getState().pagination.pageSize)}
+          onValueChange={(value) => {
+            table.setPageSize(Number(value));
           }}
-          className="px-3 py-1 border rounded text-sm"
-          dir={layout.direction}
         >
-          {[10, 20, 30, 40, 50].map((pageSize) => (
-            <option key={pageSize} value={pageSize}>
-              {layout.texts?.showEntriesText} {pageSize}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[10, 20, 30, 40, 50].map((pageSize) => (
+              <SelectItem key={pageSize} value={String(pageSize)}>
+                {layout.texts?.showEntriesText} {pageSize}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </>
+    </div>
   );
 }
