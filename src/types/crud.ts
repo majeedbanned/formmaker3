@@ -39,6 +39,7 @@ export interface CRUDComponentProps {
   formStructure: FormField[];
   collectionName: string;
   connectionString: string;
+  initialFilter?: Record<string, unknown>;
 }
 
 export interface ValidationRules {
@@ -86,4 +87,5 @@ export interface AdvancedSearchModalProps {
   onSubmit: (data: Record<string, unknown>) => void;
   onClear: () => void;
   formStructure: FormField[];
+  initialValues?: Record<string, unknown>;
 } 

@@ -5,14 +5,15 @@ import { SortingState } from "@tanstack/react-table";
 interface UseCrudProps {
   collectionName: string;
   connectionString: string;
+  initialFilter?: Record<string, unknown>;
 }
 
-export function useCrud({ collectionName, connectionString }: UseCrudProps) {
+export function useCrud({ collectionName, connectionString, initialFilter }: UseCrudProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [advancedSearch, setAdvancedSearch] = useState<Record<string, unknown>>({});
+  const [advancedSearch, setAdvancedSearch] = useState<Record<string, unknown>>(initialFilter || {});
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const fetchEntities = useCallback(async () => {
@@ -26,8 +27,14 @@ export function useCrud({ collectionName, connectionString }: UseCrudProps) {
         url.searchParams.set("query", searchQuery);
       }
 
-      if (Object.keys(advancedSearch).length > 0) {
-        url.searchParams.set("filters", JSON.stringify(advancedSearch));
+      // Combine initialFilter with advancedSearch
+      const combinedFilters = {
+        ...initialFilter,
+        ...advancedSearch
+      };
+
+      if (Object.keys(combinedFilters).length > 0) {
+        url.searchParams.set("filters", JSON.stringify(combinedFilters));
       }
 
       const response = await fetch(url, {
@@ -45,7 +52,7 @@ export function useCrud({ collectionName, connectionString }: UseCrudProps) {
     } finally {
       setLoading(false);
     }
-  }, [collectionName, connectionString, searchQuery, advancedSearch]);
+  }, [collectionName, connectionString, searchQuery, initialFilter, advancedSearch]);
 
   const createEntity = async (data: Record<string, unknown>) => {
     try {

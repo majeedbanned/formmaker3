@@ -11,6 +11,7 @@ export default function CRUDComponent({
   formStructure,
   collectionName,
   connectionString,
+  initialFilter,
 }: CRUDComponentProps) {
   const {
     entities,
@@ -25,7 +26,7 @@ export default function CRUDComponent({
     createEntity,
     updateEntity,
     deleteEntity,
-  } = useCrud({ collectionName, connectionString });
+  } = useCrud({ collectionName, connectionString, initialFilter });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -85,12 +86,12 @@ export default function CRUDComponent({
       return acc;
     }, {} as Record<string, unknown>);
 
-    setAdvancedSearch(cleanedData);
+    setAdvancedSearch({ ...initialFilter, ...cleanedData });
     setIsSearchModalOpen(false);
   };
 
   const clearAdvancedSearch = () => {
-    setAdvancedSearch({});
+    setAdvancedSearch(initialFilter || {});
   };
 
   const handleCloseModal = () => {
@@ -122,11 +123,14 @@ export default function CRUDComponent({
           </button>
         </div>
 
-        {Object.keys(advancedSearch).length > 0 && (
+        {Object.keys(advancedSearch).length >
+          Object.keys(initialFilter || {}).length && (
           <div className="bg-gray-50 p-3 rounded-md flex items-center justify-between">
             <div className="text-sm text-gray-500">
               Advanced search filters applied (
-              {Object.keys(advancedSearch).length})
+              {Object.keys(advancedSearch).length -
+                Object.keys(initialFilter || {}).length}
+              )
             </div>
             <button
               onClick={clearAdvancedSearch}
@@ -179,6 +183,7 @@ export default function CRUDComponent({
         onSubmit={handleAdvancedSearch}
         onClear={clearAdvancedSearch}
         formStructure={formStructure}
+        initialValues={advancedSearch}
       />
     </div>
   );

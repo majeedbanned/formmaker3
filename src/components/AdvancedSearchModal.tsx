@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { AdvancedSearchModalProps } from "../types/crud";
 
@@ -9,8 +9,18 @@ export default function AdvancedSearchModal({
   onSubmit,
   onClear,
   formStructure,
+  initialValues,
 }: AdvancedSearchModalProps) {
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: initialValues,
+  });
+
+  // Reset form with initial values when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      reset(initialValues);
+    }
+  }, [isOpen, reset, initialValues]);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

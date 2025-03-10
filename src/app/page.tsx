@@ -122,6 +122,7 @@ export default function Home() {
           formStructure={sampleFormStructure}
           collectionName="users2"
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
+          initialFilter={{ role: "guest", firstName: "hasani" }}
         />
       </div>
     </main>
