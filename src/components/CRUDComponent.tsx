@@ -21,6 +21,7 @@ export default function CRUDComponent({
     canAdvancedSearch: true,
     canSearchAllFields: true,
   },
+  rowActions = [],
   layout = {
     direction: "ltr",
     width: "100%",
@@ -231,6 +232,7 @@ export default function CRUDComponent({
           onDelete={permissions.canDelete ? handleDelete : undefined}
           sorting={sorting}
           setSorting={setSorting}
+          rowActions={rowActions}
           layout={layout}
         />
       )}

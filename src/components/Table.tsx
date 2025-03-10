@@ -11,6 +11,7 @@ import {
   TrashIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
 import { TableProps, Entity } from "../types/crud";
 import {
@@ -29,6 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import Link from "next/link";
 
 export default function Table({
   entities,
@@ -37,6 +45,7 @@ export default function Table({
   onDelete,
   sorting,
   setSorting,
+  rowActions,
   layout = {
     direction: "ltr",
     texts: {
@@ -78,7 +87,7 @@ export default function Table({
           },
         })
       ),
-    ...(onEdit || onDelete
+    ...(onEdit || onDelete || rowActions?.length
       ? [
           columnHelper.display({
             id: "actions",
@@ -112,6 +121,48 @@ export default function Table({
                   >
                     <TrashIcon className="h-4 w-4" />
                   </Button>
+                )}
+                {rowActions?.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-600 hover:text-gray-800"
+                      >
+                        <EllipsisVerticalIcon className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {rowActions.map((action, index) => (
+                        <DropdownMenuItem key={index}>
+                          {action.link ? (
+                            <Link
+                              href={`${action.link}?id=${props.row.original._id}`}
+                              className="flex items-center gap-2 w-full"
+                            >
+                              {action.icon && (
+                                <action.icon className="h-4 w-4" />
+                              )}
+                              {action.label}
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                action.action?.(props.row.original._id)
+                              }
+                              className="flex items-center gap-2 w-full"
+                            >
+                              {action.icon && (
+                                <action.icon className="h-4 w-4" />
+                              )}
+                              {action.label}
+                            </button>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             ),

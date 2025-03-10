@@ -1,6 +1,7 @@
 "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
+import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
 
 const sampleFormStructure = [
   {
@@ -195,6 +196,21 @@ export default function Home() {
             canSearchAllFields: true,
           }}
           layout={layout}
+          rowActions={[
+            {
+              label: "View Document",
+              link: "/document", // This will become /document?id=123 when clicked
+              icon: DocumentIcon,
+            },
+            {
+              label: "Share",
+              action: (rowId) => {
+                // Handle share action
+                console.log("Share clicked for row:", rowId);
+              },
+              icon: ShareIcon,
+            },
+          ]}
         />
       </div>
     </main>

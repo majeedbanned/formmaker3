@@ -86,13 +86,57 @@ export interface LayoutSettings {
   };
 }
 
+export interface RowAction {
+  label: string;
+  link?: string;  // If provided, will be used as navigation link with rowId as query param
+  action?: (rowId: string) => void;  // If provided, will be called when menu item is clicked
+  icon?: React.ComponentType<{ className?: string }>;  // Optional icon component
+}
+
 export interface CRUDComponentProps {
   formStructure: FormField[];
   collectionName: string;
   connectionString: string;
   initialFilter?: Record<string, unknown>;
-  permissions?: Permissions;
-  layout?: LayoutSettings;  // Optional, defaults to LTR
+  permissions?: {
+    canList?: boolean;
+    canAdd?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+    canAdvancedSearch?: boolean;
+    canSearchAllFields?: boolean;
+  };
+  rowActions?: RowAction[];  // New property for row actions
+  layout?: {
+    direction?: "ltr" | "rtl";
+    width?: string;
+    texts?: {
+      addButton?: string;
+      editButton?: string;
+      deleteButton?: string;
+      cancelButton?: string;
+      clearButton?: string;
+      searchButton?: string;
+      advancedSearchButton?: string;
+      applyFiltersButton?: string;
+      addModalTitle?: string;
+      editModalTitle?: string;
+      deleteModalTitle?: string;
+      advancedSearchModalTitle?: string;
+      deleteConfirmationMessage?: string;
+      noResultsMessage?: string;
+      loadingMessage?: string;
+      processingMessage?: string;
+      actionsColumnTitle?: string;
+      showEntriesText?: string;
+      pageText?: string;
+      ofText?: string;
+      searchPlaceholder?: string;
+      selectPlaceholder?: string;
+      filtersAppliedText?: string;
+      clearFiltersText?: string;
+    };
+  };
 }
 
 export interface ValidationRules {
@@ -110,6 +154,7 @@ export interface TableProps {
   onDelete?: (id: string) => void;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
+  rowActions?: RowAction[];
   layout?: LayoutSettings;
 }
 
