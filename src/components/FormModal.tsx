@@ -319,6 +319,121 @@ const FormField = ({
 }: FormFieldProps) => {
   const validationRules = getValidationRules(field);
   const fieldValue = watch(field.name);
+  const [dynamicOptions, setDynamicOptions] = useState<
+    { label: string; value: unknown }[]
+  >([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      if (field.type === "dropdown" && field.dataSource) {
+        setIsLoadingOptions(true);
+        try {
+          const params = new URLSearchParams({
+            connectionString: process.env.NEXT_PUBLIC_MONGODB_URI || "",
+            labelField: field.dataSource.labelField,
+            valueField: field.dataSource.valueField,
+            ...(field.dataSource.filterQuery && {
+              filterQuery: JSON.stringify(field.dataSource.filterQuery),
+            }),
+            ...(field.dataSource.sortField && {
+              sortField: field.dataSource.sortField,
+              sortOrder: field.dataSource.sortOrder || "asc",
+            }),
+            ...(field.dataSource.limit && {
+              limit: String(field.dataSource.limit),
+            }),
+            ...(field.dataSource.customLabel && {
+              customLabel: field.dataSource.customLabel,
+            }),
+          });
+
+          const response = await fetch(
+            `/api/dropdown-options/${
+              field.dataSource.collectionName
+            }?${params.toString()}`
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch options");
+          }
+
+          const options = await response.json();
+          setDynamicOptions(options);
+        } catch (error) {
+          console.error("Error fetching dropdown options:", error);
+          setDynamicOptions([]);
+        } finally {
+          setIsLoadingOptions(false);
+        }
+      }
+    };
+
+    fetchOptions();
+
+    // Set up refresh interval if specified
+    if (field.type === "dropdown" && field.dataSource?.refreshInterval) {
+      const interval = setInterval(
+        fetchOptions,
+        field.dataSource.refreshInterval * 1000
+      );
+      return () => clearInterval(interval);
+    }
+  }, [field]);
+
+  // Handle dependent dropdowns
+  useEffect(() => {
+    if (field.type === "dropdown" && field.dataSource?.dependsOn) {
+      const dependentValue = watch(field.dataSource.dependsOn);
+      if (dependentValue) {
+        const fetchDependentOptions = async () => {
+          setIsLoadingOptions(true);
+          try {
+            const params = new URLSearchParams({
+              connectionString: process.env.NEXT_PUBLIC_MONGODB_URI || "",
+              labelField: field.dataSource!.labelField,
+              valueField: field.dataSource!.valueField,
+              filterQuery: JSON.stringify({
+                ...(field.dataSource!.filterQuery || {}),
+                [field.dataSource!.dependsOn!]: dependentValue,
+              }),
+            });
+
+            const response = await fetch(
+              `/api/dropdown-options/${
+                field.dataSource!.collectionName
+              }?${params.toString()}`
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to fetch dependent options");
+            }
+
+            const options = await response.json();
+            setDynamicOptions(options);
+
+            // Clear the field value if it's not in the new options
+            const isValueValid = options.some(
+              (opt: { value: unknown }) => opt.value === fieldValue
+            );
+            if (!isValueValid) {
+              setValue(field.name, "", { shouldValidate: true });
+            }
+          } catch (error) {
+            console.error("Error fetching dependent options:", error);
+            setDynamicOptions([]);
+          } finally {
+            setIsLoadingOptions(false);
+          }
+        };
+
+        fetchDependentOptions();
+      } else {
+        setDynamicOptions([]);
+        setValue(field.name, "", { shouldValidate: true });
+      }
+    }
+  }, [field, watch(field.dataSource?.dependsOn || "")]);
 
   if (field.fields) {
     return (
@@ -359,21 +474,29 @@ const FormField = ({
             onValueChange={(value) =>
               setValue(field.name, value, { shouldValidate: true })
             }
-            disabled={isDisabled}
+            disabled={isDisabled || isLoadingOptions}
             dir={layout.direction}
           >
             <SelectTrigger>
-              <SelectValue placeholder={layout.texts?.selectPlaceholder} />
+              <SelectValue
+                placeholder={
+                  isLoadingOptions
+                    ? "Loading..."
+                    : layout.texts?.selectPlaceholder
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map((option) => (
-                <SelectItem
-                  key={String(option.value)}
-                  value={String(option.value)}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
+              {(field.dataSource ? dynamicOptions : field.options)?.map(
+                (option) => (
+                  <SelectItem
+                    key={String(option.value)}
+                    value={String(option.value)}
+                  >
+                    {option.label}
+                  </SelectItem>
+                )
+              )}
             </SelectContent>
           </Select>
           <input type="hidden" {...register(field.name, validationRules)} />

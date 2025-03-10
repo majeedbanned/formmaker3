@@ -12,6 +12,20 @@ export interface FieldValidation {
   validationMessage?: string;
 }
 
+export interface DropdownDataSource {
+  collectionName: string;  // Name of the collection to fetch options from
+  labelField: string;     // Field to use as label (can be dot notation for nested fields)
+  valueField: string;     // Field to use as value (can be dot notation for nested fields)
+  filterQuery?: Record<string, unknown>;  // MongoDB query to filter options
+  sortField?: string;     // Field to sort by
+  sortOrder?: 'asc' | 'desc';  // Sort direction
+  limit?: number;         // Maximum number of options to fetch
+  dependsOn?: string;     // Field name this dropdown depends on (for cascading dropdowns)
+  customLabel?: string;   // Template for custom label using field values (e.g., "{firstName} {lastName}")
+  cacheOptions?: boolean; // Whether to cache the options (defaults to true)
+  refreshInterval?: number; // Interval in seconds to refresh options (0 means no refresh)
+}
+
 export interface FormField {
   name: string;
   title: string;
@@ -25,7 +39,8 @@ export interface FormField {
   isShowInList: boolean;
   isSearchable: boolean;
   listLabelColor?: string;
-  options?: { label: string; value: unknown }[];
+  options?: { label: string; value: unknown }[];  // Static options
+  dataSource?: DropdownDataSource;  // Dynamic options from database
   fields?: FormField[];  // For nested fields
   isExpanded?: boolean;  // For controlling nested field visibility in forms
   path?: string;  // Full path to the field (e.g., "address.street")

@@ -105,6 +105,15 @@ const sampleFormStructure = [
     type: "dropdown",
     isSearchable: true,
 
+    dataSource: {
+      collectionName: "form_entries22",
+      labelField: "email",
+      valueField: "_id",
+      sortField: "email",
+      sortOrder: "asc",
+      // filterQuery: { isActive: true }
+    },
+
     required: true,
     isShowInList: true,
     enabled: true,
@@ -164,11 +173,14 @@ const sampleFormStructure = [
         name: "country",
         title: "Country",
         type: "dropdown",
-        options: [
-          { label: "Admin", value: "admin" },
-          { label: "User", value: "user" },
-          { label: "Guest", value: "guest" },
-        ],
+        required: true,
+        // dataSource: {
+        //   collectionName: "Student",
+        //   labelField: "email",
+        //   valueField: "_id",
+        //   sortField: "email",
+        //   sortOrder: "asc",
+        // },
       },
     ],
     orientation: "horizontal",
