@@ -14,7 +14,7 @@ import {
   ChevronDownIcon,
   EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
-import { TableProps, Entity } from "../types/crud";
+import { TableProps, Entity, FormField } from "../types/crud";
 import {
   Table as ShadcnTable,
   TableBody,
@@ -38,8 +38,154 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import Link from "next/link";
 import { useState } from "react";
+
+const formatNestedValue = (value: unknown, field: FormField): string => {
+  if (!value) return "";
+
+  if (field.nestedType === "array" && Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (!field.fields) return "";
+        return field.fields
+          .map((nestedField: FormField) => {
+            const nestedValue = item[nestedField.name];
+            if (nestedField.type === "dropdown") {
+              const option = nestedField.options?.find(
+                (opt: { value: unknown; label: string }) =>
+                  opt.value === nestedValue
+              );
+              return option ? option.label : nestedValue;
+            }
+            return nestedValue;
+          })
+          .filter(Boolean)
+          .join(" - ");
+      })
+      .join(" | ");
+  }
+
+  if (typeof value === "object" && value !== null && field.fields) {
+    return field.fields
+      .map((nestedField: FormField) => {
+        const nestedValue = (value as Record<string, unknown>)[
+          nestedField.name
+        ];
+        if (nestedField.type === "dropdown") {
+          const option = nestedField.options?.find(
+            (opt: { value: unknown; label: string }) =>
+              opt.value === nestedValue
+          );
+          return option ? option.label : nestedValue;
+        }
+        return nestedValue;
+      })
+      .filter(Boolean)
+      .join(" - ");
+  }
+
+  return String(value);
+};
+
+const NestedValueDisplay = ({
+  value,
+  field,
+  layout,
+}: {
+  value: unknown;
+  field: FormField;
+  layout: TableProps["layout"];
+}) => {
+  if (!field.fields) {
+    return (
+      <span dir={layout?.direction}>
+        {typeof value === "boolean"
+          ? value
+            ? "Yes"
+            : "No"
+          : String(value ?? "")}
+      </span>
+    );
+  }
+
+  const formattedValue = formatNestedValue(value, field);
+  const truncatedValue =
+    formattedValue.length > 30
+      ? formattedValue.substring(0, 30) + "..."
+      : formattedValue;
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <span
+          className="cursor-help border-b border-dotted border-muted-foreground"
+          dir={layout?.direction}
+        >
+          {truncatedValue}
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80" dir={layout?.direction}>
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">{field.title}</h4>
+          {field.nestedType === "array" && Array.isArray(value) ? (
+            <div className="space-y-2">
+              {value.map((item, index) => (
+                <div key={index} className="text-sm space-y-1">
+                  <div className="font-medium">Item {index + 1}</div>
+                  {field.fields?.map((nestedField) => {
+                    const nestedValue = item[nestedField.name];
+                    const displayValue =
+                      nestedField.type === "dropdown"
+                        ? nestedField.options?.find(
+                            (opt) => opt.value === nestedValue
+                          )?.label
+                        : nestedValue;
+                    return (
+                      <div
+                        key={nestedField.name}
+                        className="pl-2 text-muted-foreground"
+                      >
+                        <span className="font-medium">
+                          {nestedField.title}:
+                        </span>{" "}
+                        {String(displayValue)}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {field.fields?.map((nestedField) => {
+                const nestedValue = (value as Record<string, unknown>)?.[
+                  nestedField.name
+                ];
+                const displayValue =
+                  nestedField.type === "dropdown"
+                    ? nestedField.options?.find(
+                        (opt) => opt.value === nestedValue
+                      )?.label
+                    : nestedValue;
+                return (
+                  <div
+                    key={nestedField.name}
+                    className="text-sm text-muted-foreground"
+                  >
+                    <span className="font-medium">{nestedField.title}:</span>{" "}
+                    {String(displayValue)}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
 
 export default function Table({
   entities,
@@ -49,7 +195,7 @@ export default function Table({
   onGroupDelete,
   sorting,
   setSorting,
-  rowActions,
+  rowActions = [],
   canGroupDelete,
   layout = {
     direction: "ltr",
@@ -91,27 +237,26 @@ export default function Table({
     ...formStructure
       .filter((field) => field.isShowInList)
       .map((field) =>
-        columnHelper.accessor((row) => row.data[field.name] as string, {
+        columnHelper.accessor((row) => row.data[field.name] as unknown, {
           id: field.name,
           header: field.title,
           cell: (info) => {
             const value = info.getValue();
             const field = formStructure.find((f) => f.name === info.column.id);
-            const style = field?.listLabelColor
+            if (!field) return null;
+
+            const style = field.listLabelColor
               ? { color: field.listLabelColor }
               : {};
 
-            if (typeof value === "boolean") {
-              return (
-                <span style={style} dir={layout.direction}>
-                  {value ? "Yes" : "No"}
-                </span>
-              );
-            }
             return (
-              <span style={style} dir={layout.direction}>
-                {String(value ?? "")}
-              </span>
+              <div style={style}>
+                <NestedValueDisplay
+                  value={value}
+                  field={field}
+                  layout={layout}
+                />
+              </div>
             );
           },
         })

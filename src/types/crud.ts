@@ -26,6 +26,14 @@ export interface FormField {
   isSearchable: boolean;
   listLabelColor?: string;
   options?: { label: string; value: unknown }[];
+  fields?: FormField[];  // For nested fields
+  isExpanded?: boolean;  // For controlling nested field visibility in forms
+  path?: string;  // Full path to the field (e.g., "address.street")
+  parentField?: string;  // Name of the parent field
+  isNested?: boolean;  // Whether this field is nested
+  nestedType?: 'object' | 'array';  // Type of nesting
+  arrayMinItems?: number;  // Minimum items for array type
+  arrayMaxItems?: number;  // Maximum items for array type
 }
 
 export interface Entity {
