@@ -183,6 +183,11 @@ export interface CRUDComponentProps {
   };
   rowActions?: RowAction[];
   layout?: LayoutSettings;
+  // Event handlers
+  onAfterAdd?: (newEntity: Entity) => void | Promise<void>;
+  onAfterEdit?: (editedEntity: Entity) => void | Promise<void>;
+  onAfterDelete?: (deletedId: string) => void | Promise<void>;
+  onAfterGroupDelete?: (deletedIds: string[]) => void | Promise<void>;
 }
 
 export interface ValidationRules {

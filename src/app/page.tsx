@@ -156,26 +156,26 @@ const sampleFormStructure: FormField[] = [
     },
   },
 
-  {
-    name: "gender",
-    title: "Gender",
-    type: "radio",
-    isShowInList: true,
-    isSearchable: true,
-    required: true,
-    enabled: true,
-    visible: true,
-    readonly: false,
-    layout: "inline",
-    options: [
-      { label: "Male", value: "male" },
-      { label: "Female", value: "female" },
-      { label: "Other", value: "other" },
-    ],
-    validation: {
-      requiredMessage: "Please select your gender",
-    },
-  },
+  // {
+  //   name: "gender",
+  //   title: "Gender",
+  //   type: "radio",
+  //   isShowInList: true,
+  //   isSearchable: true,
+  //   required: true,
+  //   enabled: true,
+  //   visible: true,
+  //   readonly: false,
+  //   layout: "inline",
+  //   options: [
+  //     { label: "Male", value: "male" },
+  //     { label: "Female", value: "female" },
+  //     { label: "Other", value: "other" },
+  //   ],
+  //   validation: {
+  //     requiredMessage: "Please select your gender",
+  //   },
+  // },
 
   // {
   //   name: "notes",
@@ -483,18 +483,33 @@ export default function Home() {
           rowActions={[
             {
               label: "View Document",
-              link: "/document", // This will become /document?id=123 when clicked
+              link: "/document",
               icon: DocumentIcon,
             },
             {
               label: "Share",
               action: (rowId) => {
-                // Handle share action
                 console.log("Share clicked for row:", rowId);
               },
               icon: ShareIcon,
             },
           ]}
+          onAfterAdd={(entity) => {
+            console.log("Entity added:", entity);
+            // You can perform additional actions here, like showing a notification
+          }}
+          onAfterEdit={(entity) => {
+            console.log("Entity updated:", entity);
+            // You can perform additional actions here, like showing a notification
+          }}
+          onAfterDelete={(id) => {
+            console.log("Entity deleted:", id);
+            // You can perform additional actions here, like showing a notification
+          }}
+          onAfterGroupDelete={(ids) => {
+            console.log("Entities deleted:", ids);
+            // You can perform additional actions here, like showing a notification
+          }}
         />
       </div>
     </main>

@@ -56,6 +56,10 @@ export default function CRUDComponent({
       clearFiltersText: "Clear filters",
     },
   },
+  onAfterAdd,
+  onAfterEdit,
+  onAfterDelete,
+  onAfterGroupDelete,
 }: CRUDComponentProps) {
   const {
     entities,
@@ -118,12 +122,15 @@ export default function CRUDComponent({
 
   const handleSubmit = async (data: Record<string, unknown>) => {
     try {
+      let entity: Entity;
       if (editingId) {
         if (!permissions.canEdit) return;
-        await updateEntity(editingId, data);
+        entity = await updateEntity(editingId, data);
+        onAfterEdit?.(entity);
       } else {
         if (!permissions.canAdd) return;
-        await createEntity(data);
+        entity = await createEntity(data);
+        onAfterAdd?.(entity);
       }
       setIsModalOpen(false);
       setEditingId(null);
@@ -139,8 +146,10 @@ export default function CRUDComponent({
     try {
       if (deleteId) {
         await deleteEntity(deleteId);
+        onAfterDelete?.(deleteId);
       } else if (deleteIds.length > 0) {
         await Promise.all(deleteIds.map((id) => deleteEntity(id)));
+        onAfterGroupDelete?.(deleteIds);
       }
       setIsDeleteModalOpen(false);
       setDeleteId(null);

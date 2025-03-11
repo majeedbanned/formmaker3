@@ -69,7 +69,9 @@ export function useCrud({ collectionName, connectionString, initialFilter }: Use
 
       if (!response.ok) throw new Error("Failed to create entity");
 
+      const entity = await response.json();
       await fetchEntities();
+      return entity;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create entity");
       throw err;
@@ -93,7 +95,9 @@ export function useCrud({ collectionName, connectionString, initialFilter }: Use
 
       if (!response.ok) throw new Error("Failed to update entity");
 
+      const entity = await response.json();
       await fetchEntities();
+      return entity;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update entity");
       throw err;
