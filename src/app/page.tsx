@@ -276,6 +276,57 @@ const sampleFormStructure = [
     orientation: "horizontal",
     isOpen: true,
   },
+
+  {
+    name: "section1",
+    title: "Personal Information",
+    type: "label",
+    labelStyle: {
+      fontSize: "xl",
+      fontWeight: "bold",
+      color: "blue-600",
+      textAlign: "left",
+    },
+  },
+  {
+    name: "darkMode",
+    title: "Dark Mode",
+    type: "switch",
+    isShowInList: true,
+    isSearchable: false,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    defaultValue: false,
+    switchStyle: {
+      size: "default",
+      color: "blue",
+      thumbColor: "white",
+    },
+  },
+  {
+    name: "interests",
+    title: "Interests",
+    type: "togglegroup",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    defaultValue: [],
+    layout: "stacked",
+    options: [
+      { value: "sports", label: "Sports" },
+      { value: "music", label: "Music" },
+      { value: "reading", label: "Reading" },
+      { value: "travel", label: "Travel" },
+    ],
+    validation: {
+      required: "Please select at least one interest",
+    },
+  },
 ] as const;
 
 const layout = {

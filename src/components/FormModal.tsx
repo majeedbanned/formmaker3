@@ -50,6 +50,10 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 type FormFieldProps = {
   field: FormField;
@@ -606,6 +610,84 @@ const FormField = ({
           </p>
         )}
       </div>
+    );
+  } else if (field.type === "switch") {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <Label
+            htmlFor={field.name}
+            className={cn(
+              field.required &&
+                "after:content-['*'] after:ml-0.5 after:text-red-500"
+            )}
+          >
+            {field.title}
+          </Label>
+          <Switch
+            id={field.name}
+            checked={fieldValue}
+            onCheckedChange={(checked) =>
+              setValue(field.name, checked, { shouldValidate: true })
+            }
+            disabled={!field.enabled}
+            size={field.switchStyle?.size || "default"}
+            color={field.switchStyle?.color}
+            thumbColor={field.switchStyle?.thumbColor}
+          />
+        </div>
+        {errors[field.name] && (
+          <span className="text-sm text-red-500">
+            {errors[field.name]?.message as string}
+          </span>
+        )}
+      </div>
+    );
+  } else if (field.type === "togglegroup") {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label
+          className={cn(
+            field.required &&
+              "after:content-['*'] after:ml-0.5 after:text-red-500"
+          )}
+        >
+          {field.title}
+        </Label>
+        <ToggleGroup
+          type="multiple"
+          value={Array.isArray(fieldValue) ? fieldValue : []}
+          onValueChange={(value) =>
+            setValue(field.name, value, { shouldValidate: true })
+          }
+          disabled={!field.enabled}
+          layout={field.layout || "inline"}
+        >
+          {field.options?.map((option) => (
+            <ToggleGroupItem key={option.value} value={option.value}>
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {errors[field.name] && (
+          <span className="text-sm text-red-500">
+            {errors[field.name]?.message as string}
+          </span>
+        )}
+      </div>
+    );
+  } else if (field.type === "label") {
+    return (
+      <Label
+        className={cn(
+          field.labelStyle?.fontSize && `text-${field.labelStyle.fontSize}`,
+          field.labelStyle?.fontWeight && `font-${field.labelStyle.fontWeight}`,
+          field.labelStyle?.color && `text-${field.labelStyle.color}`,
+          field.labelStyle?.textAlign && `text-${field.labelStyle.textAlign}`
+        )}
+      >
+        {field.title}
+      </Label>
     );
   } else {
     return (

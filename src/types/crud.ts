@@ -29,7 +29,7 @@ export interface DropdownDataSource {
 export interface FormField {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -39,7 +39,7 @@ export interface FormField {
   isShowInList: boolean;
   isSearchable: boolean;
   listLabelColor?: string;
-  options?: { label: string; value: unknown }[];  // For radio, checkbox, and dropdown
+  options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, and togglegroup
   dataSource?: DropdownDataSource;  // For dropdown only
   fields?: FormField[];  // For nested fields
   isExpanded?: boolean;  // For controlling nested field visibility in forms
@@ -51,8 +51,20 @@ export interface FormField {
   arrayMaxItems?: number;  // Maximum items for array type
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
-  isMultiple?: boolean;  // For checkbox/select fields that support multiple values
-  layout?: 'inline' | 'stacked';  // Layout for radio/checkbox groups
+  isMultiple?: boolean;  // For checkbox/select/togglegroup fields that support multiple values
+  layout?: 'inline' | 'stacked';  // Layout for radio/checkbox/togglegroup groups
+  labelStyle?: {  // For label type
+    fontSize?: string;
+    fontWeight?: string;
+    color?: string;
+    textAlign?: 'left' | 'center' | 'right';
+    textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  };
+  switchStyle?: {  // For switch type
+    size?: 'sm' | 'md' | 'lg';
+    color?: string;
+    thumbColor?: string;
+  };
 }
 
 export interface Entity {
