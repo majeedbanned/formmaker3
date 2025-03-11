@@ -158,6 +158,27 @@ const sampleFormStructure = [
     },
   },
 
+  {
+    name: "gender",
+    title: "Gender",
+    type: "radio",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    layout: "inline",
+    options: [
+      { label: "Male", value: "male" },
+      { label: "Female", value: "female" },
+      { label: "Other", value: "other" },
+    ],
+    validation: {
+      requiredMessage: "Please select your gender",
+    },
+  },
+
   // {
   //   name: "notes",
   //   title: "Notes",

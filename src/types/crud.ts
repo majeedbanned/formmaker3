@@ -29,18 +29,18 @@ export interface DropdownDataSource {
 export interface FormField {
   name: string;
   title: string;
-  type: string;
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
   enabled: boolean;
   visible: boolean;
-  readonly?: boolean;  // Make readonly optional
+  readonly?: boolean;
   isShowInList: boolean;
   isSearchable: boolean;
   listLabelColor?: string;
-  options?: { label: string; value: unknown }[];  // Static options
-  dataSource?: DropdownDataSource;  // Dynamic options from database
+  options?: { label: string; value: unknown }[];  // For radio, checkbox, and dropdown
+  dataSource?: DropdownDataSource;  // For dropdown only
   fields?: FormField[];  // For nested fields
   isExpanded?: boolean;  // For controlling nested field visibility in forms
   path?: string;  // Full path to the field (e.g., "address.street")
@@ -52,6 +52,7 @@ export interface FormField {
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
   isMultiple?: boolean;  // For checkbox/select fields that support multiple values
+  layout?: 'inline' | 'stacked';  // Layout for radio/checkbox groups
 }
 
 export interface Entity {

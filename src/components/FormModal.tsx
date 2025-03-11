@@ -49,6 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type FormFieldProps = {
   field: FormField;
@@ -548,6 +549,53 @@ const FormField = ({
           dir={layout.direction}
           rows={4}
         />
+        {errors[field.name] && (
+          <p
+            className={`text-destructive text-sm ${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+          >
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  } else if (field.type === "radio" && field.options) {
+    return (
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+        </label>
+        <RadioGroup
+          value={String(fieldValue || field.defaultValue || "")}
+          onValueChange={(value) => {
+            setValue(field.name, value, { shouldValidate: true });
+          }}
+          className={field.layout === "inline" ? "flex gap-4" : "space-y-2"}
+          disabled={isDisabled}
+        >
+          {field.options.map((option) => (
+            <div
+              key={String(option.value)}
+              className={`flex items-center ${
+                layout.direction === "rtl" ? "space-x-reverse" : ""
+              } space-x-2`}
+            >
+              <RadioGroupItem
+                value={String(option.value)}
+                id={`${field.name}-${option.value}`}
+              />
+              <label
+                htmlFor={`${field.name}-${option.value}`}
+                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {option.label}
+              </label>
+            </div>
+          ))}
+        </RadioGroup>
+        <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (
           <p
             className={`text-destructive text-sm ${
