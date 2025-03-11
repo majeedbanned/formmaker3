@@ -29,7 +29,7 @@ export interface DropdownDataSource {
 export interface FormField {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -51,7 +51,7 @@ export interface FormField {
   arrayMaxItems?: number;  // Maximum items for array type
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
-  isMultiple?: boolean;  // For checkbox/select/togglegroup fields that support multiple values
+  isMultiple?: boolean;  // For checkbox/select/togglegroup/datepicker fields that support multiple values
   layout?: 'inline' | 'stacked';  // Layout for radio/checkbox/togglegroup groups
   labelStyle?: {  // For label type
     fontSize?: string;
@@ -64,6 +64,28 @@ export interface FormField {
     size?: 'sm' | 'md' | 'lg';
     color?: string;
     thumbColor?: string;
+  };
+  datepickerStyle?: {  // For datepicker type
+    format?: string;  // Date format (e.g., "YYYY-MM-DD")
+    calendar?: 'gregorian' | 'persian' | 'arabic';  // Calendar type
+    locale?: string;  // Locale for the calendar (e.g., "en", "fa")
+    timePicker?: boolean;  // Whether to show time picker
+    onlyTimePicker?: boolean;  // Whether to show only time picker
+    onlyMonthPicker?: boolean;  // Whether to show only month picker
+    onlyYearPicker?: boolean;  // Whether to show only year picker
+    minDate?: string | Date;  // Minimum selectable date
+    maxDate?: string | Date;  // Maximum selectable date
+    weekStartDayIndex?: number;  // Index of the first day of week (0 for Sunday)
+    disableYearPicker?: boolean;  // Whether to disable year picker
+    disableMonthPicker?: boolean;  // Whether to disable month picker
+    readOnly?: boolean;  // Whether the datepicker is read-only
+    disabled?: boolean;  // Whether the datepicker is disabled
+    hideWeekDays?: boolean;  // Whether to hide week days
+    hideMonth?: boolean;  // Whether to hide month in header
+    hideYear?: boolean;  // Whether to hide year in header
+    className?: string;  // Additional CSS class name
+    containerClassName?: string;  // Additional CSS class name for container
+    calendarPosition?: 'top' | 'bottom' | 'left' | 'right';  // Calendar position relative to input
   };
 }
 

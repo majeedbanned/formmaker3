@@ -54,6 +54,10 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import DatePicker from "react-multi-date-picker";
+import type { Value } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 type FormFieldProps = {
   field: FormField;
@@ -631,9 +635,6 @@ const FormField = ({
               setValue(field.name, checked, { shouldValidate: true })
             }
             disabled={!field.enabled}
-            size={field.switchStyle?.size || "default"}
-            color={field.switchStyle?.color}
-            thumbColor={field.switchStyle?.thumbColor}
           />
         </div>
         {errors[field.name] && (
@@ -661,10 +662,12 @@ const FormField = ({
             setValue(field.name, value, { shouldValidate: true })
           }
           disabled={!field.enabled}
-          layout={field.layout || "inline"}
         >
           {field.options?.map((option) => (
-            <ToggleGroupItem key={option.value} value={option.value}>
+            <ToggleGroupItem
+              key={String(option.value)}
+              value={String(option.value)}
+            >
               {option.label}
             </ToggleGroupItem>
           ))}
@@ -688,6 +691,41 @@ const FormField = ({
       >
         {field.title}
       </Label>
+    );
+  } else if (field.type === "datepicker") {
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+        </label>
+        <DatePicker
+          calendar={persian}
+          locale={persian_fa}
+          value={fieldValue as Value}
+          onChange={(date) => {
+            setValue(field.name, date, { shouldValidate: true });
+          }}
+          disabled={isDisabled}
+          multiple={field.isMultiple}
+          format={field.datepickerStyle?.format || "YYYY-MM-DD"}
+          className={cn(
+            "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            field.datepickerStyle?.className
+          )}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-destructive text-sm">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
     );
   } else {
     return (

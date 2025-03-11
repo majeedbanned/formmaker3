@@ -274,7 +274,7 @@ const sampleFormStructure = [
       },
     ],
     orientation: "horizontal",
-    isOpen: true,
+    isOpen: false,
   },
 
   {
@@ -325,6 +325,50 @@ const sampleFormStructure = [
     ],
     validation: {
       required: "Please select at least one interest",
+    },
+  },
+  {
+    name: "birthDate",
+    title: "تاریخ تولد",
+    type: "datepicker",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    datepickerStyle: {
+      format: "YYYY/MM/DD",
+      className: "custom-datepicker",
+      calendar: "persian",
+      locale: "fa",
+      calendarPosition: "bottom-right",
+      weekStartDayIndex: 6,
+      hideWeekDays: false,
+      hideMonth: false,
+      hideYear: false,
+    },
+    validation: {
+      requiredMessage: "لطفا تاریخ تولد را وارد کنید",
+    },
+  },
+  {
+    name: "availableDates",
+    title: "Available Dates",
+    type: "datepicker",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    isMultiple: true,
+    datepickerStyle: {
+      format: "YYYY-MM-DD",
+      className: "custom-datepicker",
+    },
+    validation: {
+      requiredMessage: "Please select at least one available date",
     },
   },
 ] as const;
