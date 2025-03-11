@@ -29,7 +29,7 @@ export interface DropdownDataSource {
 export interface FormField {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -39,8 +39,8 @@ export interface FormField {
   isShowInList: boolean;
   isSearchable: boolean;
   listLabelColor?: string;
-  options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, and togglegroup
-  dataSource?: DropdownDataSource;  // For dropdown only
+  options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, togglegroup, and autocomplete
+  dataSource?: DropdownDataSource;  // For dropdown and autocomplete
   fields?: FormField[];  // For nested fields
   isExpanded?: boolean;  // For controlling nested field visibility in forms
   path?: string;  // Full path to the field (e.g., "address.street")
@@ -51,8 +51,9 @@ export interface FormField {
   arrayMaxItems?: number;  // Maximum items for array type
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
-  isMultiple?: boolean;  // For checkbox/select/togglegroup/datepicker fields that support multiple values
+  isMultiple?: boolean;  // For checkbox/select/togglegroup/datepicker/autocomplete fields that support multiple values
   layout?: 'inline' | 'stacked';  // Layout for radio/checkbox/togglegroup groups
+  displayFormat?: (value: string | number | Date) => string;  // For custom value formatting
   labelStyle?: {  // For label type
     fontSize?: string;
     fontWeight?: string;
@@ -86,6 +87,16 @@ export interface FormField {
     className?: string;  // Additional CSS class name
     containerClassName?: string;  // Additional CSS class name for container
     calendarPosition?: 'top' | 'bottom' | 'left' | 'right';  // Calendar position relative to input
+  };
+  autocompleteStyle?: {  // For autocomplete type
+    allowNew?: boolean;  // Whether to allow creating new tags
+    allowBackspace?: boolean;  // Whether to allow deleting tags with backspace
+    maxTags?: number;  // Maximum number of tags allowed
+    minLength?: number;  // Minimum length of search text
+    suggestionsFilter?: (suggestion: { label: string; value: unknown }, query: string) => boolean;  // Custom filter function for suggestions
+    className?: string;  // Additional CSS class name for the autocomplete container
+    tagClassName?: string;  // Additional CSS class name for tags
+    suggestionsClassName?: string;  // Additional CSS class name for suggestions list
   };
 }
 
@@ -166,40 +177,12 @@ export interface CRUDComponentProps {
     canAdd?: boolean;
     canEdit?: boolean;
     canDelete?: boolean;
+    canGroupDelete?: boolean;
     canAdvancedSearch?: boolean;
     canSearchAllFields?: boolean;
   };
-  rowActions?: RowAction[];  // New property for row actions
-  layout?: {
-    direction?: "ltr" | "rtl";
-    width?: string;
-    texts?: {
-      addButton?: string;
-      editButton?: string;
-      deleteButton?: string;
-      cancelButton?: string;
-      clearButton?: string;
-      searchButton?: string;
-      advancedSearchButton?: string;
-      applyFiltersButton?: string;
-      addModalTitle?: string;
-      editModalTitle?: string;
-      deleteModalTitle?: string;
-      advancedSearchModalTitle?: string;
-      deleteConfirmationMessage?: string;
-      noResultsMessage?: string;
-      loadingMessage?: string;
-      processingMessage?: string;
-      actionsColumnTitle?: string;
-      showEntriesText?: string;
-      pageText?: string;
-      ofText?: string;
-      searchPlaceholder?: string;
-      selectPlaceholder?: string;
-      filtersAppliedText?: string;
-      clearFiltersText?: string;
-    };
-  };
+  rowActions?: RowAction[];
+  layout?: LayoutSettings;
 }
 
 export interface ValidationRules {

@@ -2,8 +2,9 @@
 
 import CRUDComponent from "@/components/CRUDComponent";
 import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import { FormField, LayoutSettings } from "@/types/crud";
 
-const sampleFormStructure = [
+const sampleFormStructure: FormField[] = [
   {
     name: "firstName",
     title: "First Name",
@@ -135,16 +136,13 @@ const sampleFormStructure = [
     title: "Sex",
     type: "dropdown",
     isSearchable: true,
-
     dataSource: {
       collectionName: "form_entries22",
       labelField: "email",
       valueField: "_id",
       sortField: "email",
       sortOrder: "asc",
-      // filterQuery: { isActive: true }
     },
-
     required: true,
     isShowInList: true,
     enabled: true,
@@ -198,6 +196,8 @@ const sampleFormStructure = [
     isShowInList: true,
     name: "address",
     title: "Address",
+    type: "text",
+    required: false,
     fields: [
       {
         name: "street",
@@ -207,6 +207,7 @@ const sampleFormStructure = [
         visible: true,
         isSearchable: true,
         isShowInList: true,
+        required: false,
       },
       {
         name: "city",
@@ -216,23 +217,17 @@ const sampleFormStructure = [
         visible: true,
         isSearchable: true,
         isShowInList: true,
+        required: false,
       },
       {
+        name: "country",
+        title: "Country",
+        type: "dropdown",
         enabled: true,
         visible: true,
         isSearchable: true,
         isShowInList: true,
-        name: "country",
-        title: "Country",
-        type: "dropdown",
         required: true,
-        // dataSource: {
-        //   collectionName: "Student",
-        //   labelField: "email",
-        //   valueField: "_id",
-        //   sortField: "email",
-        //   sortOrder: "asc",
-        // },
       },
     ],
     orientation: "horizontal",
@@ -246,6 +241,8 @@ const sampleFormStructure = [
     isSearchable: true,
     name: "phones",
     title: "Phone Numbers",
+    type: "text",
+    required: false,
     nestedType: "array",
     fields: [
       {
@@ -271,6 +268,7 @@ const sampleFormStructure = [
         visible: true,
         isSearchable: true,
         isShowInList: true,
+        required: false,
       },
     ],
     orientation: "horizontal",
@@ -281,6 +279,11 @@ const sampleFormStructure = [
     name: "section1",
     title: "Personal Information",
     type: "label",
+    required: false,
+    enabled: true,
+    visible: true,
+    isShowInList: false,
+    isSearchable: false,
     labelStyle: {
       fontSize: "xl",
       fontWeight: "bold",
@@ -300,7 +303,7 @@ const sampleFormStructure = [
     readonly: false,
     defaultValue: false,
     switchStyle: {
-      size: "default",
+      size: "md",
       color: "blue",
       thumbColor: "white",
     },
@@ -324,7 +327,7 @@ const sampleFormStructure = [
       { value: "travel", label: "Travel" },
     ],
     validation: {
-      required: "Please select at least one interest",
+      requiredMessage: "Please select at least one interest",
     },
   },
   {
@@ -337,7 +340,7 @@ const sampleFormStructure = [
     enabled: true,
     visible: true,
     readonly: false,
-    displayFormat: (value) => {
+    displayFormat: (value: string | number | Date) => {
       if (!value) return "";
       const date = new Date(value);
       const formatter = new Intl.DateTimeFormat("fa-IR", {
@@ -352,7 +355,7 @@ const sampleFormStructure = [
       className: "custom-datepicker",
       calendar: "persian",
       locale: "fa",
-      calendarPosition: "bottom-right",
+      calendarPosition: "bottom",
       weekStartDayIndex: 6,
       hideWeekDays: false,
       hideMonth: false,
@@ -362,10 +365,29 @@ const sampleFormStructure = [
       requiredMessage: "لطفا تاریخ تولد را وارد کنید",
     },
   },
+  // {
+  //   name: "availableDates",
+  //   title: "Available Dates",
+  //   type: "datepicker",
+  //   isShowInList: true,
+  //   isSearchable: true,
+  //   required: true,
+  //   enabled: true,
+  //   visible: true,
+  //   readonly: false,
+  //   isMultiple: true,
+  //   datepickerStyle: {
+  //     format: "YYYY-MM-DD",
+  //     className: "custom-datepicker",
+  //   },
+  //   validation: {
+  //     requiredMessage: "Please select at least one available date",
+  //   },
+  // },
   {
-    name: "availableDates",
-    title: "Available Dates",
-    type: "datepicker",
+    name: "skills",
+    title: "Skills",
+    type: "autocomplete",
     isShowInList: true,
     isSearchable: true,
     required: true,
@@ -373,21 +395,36 @@ const sampleFormStructure = [
     visible: true,
     readonly: false,
     isMultiple: true,
-    datepickerStyle: {
-      format: "YYYY-MM-DD",
-      className: "custom-datepicker",
-    },
+    options: [
+      { label: "JavaScript", value: "js" },
+      { label: "TypeScript", value: "ts" },
+      { label: "React", value: "react" },
+      { label: "Node.js", value: "node" },
+      { label: "Python", value: "python" },
+      { label: "Java", value: "java" },
+      { label: "C++", value: "cpp" },
+      { label: "Ruby", value: "ruby" },
+      { label: "Go", value: "go" },
+      { label: "Rust", value: "rust" },
+    ],
     validation: {
-      requiredMessage: "Please select at least one available date",
+      requiredMessage: "Please select at least one skill",
+    },
+    autocompleteStyle: {
+      allowNew: true,
+      allowBackspace: true,
+      maxTags: 10,
+      minLength: 1,
+      className: "min-h-[38px]",
+      tagClassName: "bg-blue-500",
     },
   },
 ] as const;
 
-const layout = {
-  direction: "rtl" as const, // or 'ltr'
-  width: "100%", // or '800px' or any valid CSS width
+const layout: LayoutSettings = {
+  direction: "rtl",
+  width: "100%",
   texts: {
-    // Button texts
     addButton: "افزودن",
     editButton: "Edit",
     deleteButton: "Delete",
@@ -396,35 +433,25 @@ const layout = {
     searchButton: "Search",
     advancedSearchButton: "Advanced Search",
     applyFiltersButton: "Apply Filters",
-
-    // Modal titles
     addModalTitle: "Add New Entry",
     editModalTitle: "Edit Entry",
     deleteModalTitle: "Delete Confirmation",
     advancedSearchModalTitle: "Advanced Search",
-
-    // Messages
     deleteConfirmationMessage:
       "Are you sure you want to delete this item? This action cannot be undone.",
     noResultsMessage: "No results found",
     loadingMessage: "Loading...",
     processingMessage: "Processing...",
-
-    // Table texts
     actionsColumnTitle: "Actions",
     showEntriesText: "Show",
     pageText: "Page",
     ofText: "of",
-
-    // Search
     searchPlaceholder: "Search all fields...",
     selectPlaceholder: "Select an option",
-
-    // Filter indicators
     filtersAppliedText: "Advanced search filters applied",
     clearFiltersText: "Clear filters",
   },
-} as const;
+};
 
 export default function Home() {
   return (

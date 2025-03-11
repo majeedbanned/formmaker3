@@ -58,6 +58,7 @@ import DatePicker from "react-multi-date-picker";
 import type { Value } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
+import { ReactTags } from "react-tag-autocomplete";
 
 type FormFieldProps = {
   field: FormField;
@@ -332,10 +333,16 @@ const FormField = ({
     { label: string; value: unknown }[]
   >([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<
+    { label: string; value: unknown }[]
+  >([]);
 
   useEffect(() => {
     const fetchOptions = async () => {
-      if (field.type === "dropdown" && field.dataSource) {
+      if (
+        (field.type === "dropdown" || field.type === "autocomplete") &&
+        field.dataSource
+      ) {
         setIsLoadingOptions(true);
         try {
           const params = new URLSearchParams({
@@ -370,7 +377,7 @@ const FormField = ({
           const options = await response.json();
           setDynamicOptions(options);
         } catch (error) {
-          console.error("Error fetching dropdown options:", error);
+          console.error("Error fetching options:", error);
           setDynamicOptions([]);
         } finally {
           setIsLoadingOptions(false);
@@ -381,7 +388,10 @@ const FormField = ({
     fetchOptions();
 
     // Set up refresh interval if specified
-    if (field.type === "dropdown" && field.dataSource?.refreshInterval) {
+    if (
+      (field.type === "dropdown" || field.type === "autocomplete") &&
+      field.dataSource?.refreshInterval
+    ) {
       const interval = setInterval(
         fetchOptions,
         field.dataSource.refreshInterval * 1000
@@ -389,6 +399,19 @@ const FormField = ({
       return () => clearInterval(interval);
     }
   }, [field]);
+
+  // Initialize selected tags from field value
+  useEffect(() => {
+    if (field.type === "autocomplete" && fieldValue) {
+      const tags = Array.isArray(fieldValue) ? fieldValue : [fieldValue];
+      const options = field.dataSource ? dynamicOptions : field.options || [];
+      const selectedTags = tags.map((value) => {
+        const option = options.find((opt) => opt.value === value);
+        return option || { label: String(value), value };
+      });
+      setSelectedTags(selectedTags);
+    }
+  }, [field, fieldValue, dynamicOptions]);
 
   // Handle dependent dropdowns
   useEffect(() => {
@@ -709,8 +732,8 @@ const FormField = ({
           locale={persian_fa}
           value={fieldValue as Value}
           onChange={(date) => {
-            console.log("dateeeeeee", date.toString());
-            setValue(field.name, date.toString(), { shouldValidate: true });
+            //console.log("dateeeeeee", date.toString());
+            setValue(field.name, date?.toString(), { shouldValidate: true });
           }}
           disabled={isDisabled}
           multiple={field.isMultiple}
@@ -723,6 +746,91 @@ const FormField = ({
         <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (
           <p className="text-destructive text-sm">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  } else if (field.type === "autocomplete") {
+    const options = field.dataSource ? dynamicOptions : field.options || [];
+    const suggestions = options.filter(
+      (option) => !selectedTags.some((tag) => tag.value === option.value)
+    );
+
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+        <ReactTags
+          selected={selectedTags}
+          suggestions={suggestions}
+          onAdd={(newTag) => {
+            const newTags = [...selectedTags, newTag];
+            setSelectedTags(newTags);
+            setValue(
+              field.name,
+              field.isMultiple ? newTags.map((t) => t.value) : newTag.value,
+              { shouldValidate: true }
+            );
+          }}
+          onDelete={(tagIndex) => {
+            const newTags = selectedTags.filter((_, i) => i !== tagIndex);
+            setSelectedTags(newTags);
+            setValue(
+              field.name,
+              field.isMultiple ? newTags.map((t) => t.value) : undefined,
+              { shouldValidate: true }
+            );
+          }}
+          allowNew={field.autocompleteStyle?.allowNew}
+          allowBackspace={field.autocompleteStyle?.allowBackspace}
+          classNames={{
+            root: cn(
+              "react-tags border-input rounded-md border bg-transparent shadow-xs transition-[color,box-shadow] outline-none",
+              "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
+              field.autocompleteStyle?.className
+            ),
+            rootIsActive: "is-active",
+            rootIsDisabled: "opacity-50 pointer-events-none",
+            rootIsInvalid: "border-destructive",
+            label: "hidden",
+            tagList: "flex flex-wrap gap-1 p-1",
+            tag: cn(
+              "bg-primary text-primary-foreground px-2 py-1 rounded-md text-sm flex items-center gap-1",
+              field.autocompleteStyle?.tagClassName
+            ),
+            tagName: "truncate",
+            comboBox: "p-1",
+            input: "outline-none bg-transparent text-sm min-w-[120px]",
+            listBox: cn(
+              "bg-popover text-popover-foreground absolute z-50 mt-1 max-h-[200px] min-w-[200px] overflow-auto rounded-md border p-1 shadow-md",
+              field.autocompleteStyle?.suggestionsClassName
+            ),
+            option:
+              "text-sm px-2 py-1.5 rounded hover:bg-accent hover:text-accent-foreground cursor-pointer",
+            optionIsActive: "bg-accent text-accent-foreground",
+          }}
+          isDisabled={isDisabled}
+          isInvalid={!!errors[field.name]}
+          maxSuggestionsLength={10}
+          minQueryLength={field.autocompleteStyle?.minLength || 1}
+          suggestionsFilter={field.autocompleteStyle?.suggestionsFilter}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-sm text-destructive mt-1">
             {errors[field.name]?.message as string}
           </p>
         )}
