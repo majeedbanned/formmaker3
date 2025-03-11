@@ -13,6 +13,7 @@ const sampleFormStructure = [
     required: true,
     enabled: true,
     visible: true,
+    readonly: false,
     listLabelColor: "#2563eb",
     defaultValue: "hasani",
     validation: {
@@ -80,15 +81,45 @@ const sampleFormStructure = [
   //   },
   // },
   {
+    name: "isActive",
+    title: "Active Status",
+    type: "checkbox",
+    isShowInList: true,
+    isSearchable: true,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    defaultValue: true,
+  },
+  {
+    name: "notifications",
+    title: "Notification Settings",
+    type: "checkbox",
+    isShowInList: true,
+    isSearchable: true,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    defaultValue: [],
+    isMultiple: true,
+    options: [
+      { label: "Email", value: "email" },
+      { label: "SMS", value: "sms" },
+      { label: "Push", value: "push" },
+    ],
+  },
+  {
     name: "role",
     title: "Role",
     type: "dropdown",
     isSearchable: true,
-
     required: true,
     isShowInList: true,
     enabled: true,
     visible: true,
+    readonly: false,
     options: [
       { label: "Admin", value: "admin" },
       { label: "User", value: "user" },
@@ -224,10 +255,10 @@ const sampleFormStructure = [
     orientation: "horizontal",
     isOpen: true,
   },
-];
+] as const;
 
 const layout = {
-  direction: "rtl", // or 'ltr'
+  direction: "rtl" as const, // or 'ltr'
   width: "100%", // or '800px' or any valid CSS width
   texts: {
     // Button texts
@@ -267,7 +298,7 @@ const layout = {
     filtersAppliedText: "Advanced search filters applied",
     clearFiltersText: "Clear filters",
   },
-};
+} as const;
 
 export default function Home() {
   return (

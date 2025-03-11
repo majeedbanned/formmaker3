@@ -450,58 +450,95 @@ const FormField = ({
     );
   }
 
-  return (
-    <div className="space-y-2">
-      <label
-        htmlFor={field.name}
-        className={`block text-sm font-medium text-${
-          layout.direction === "rtl" ? "right" : "left"
-        }`}
-      >
-        {field.title}
-        {field.required && <span className="text-destructive">*</span>}
-        {isDisabled && (
-          <span className="text-muted-foreground text-xs ml-1">
-            (Read-only)
-          </span>
-        )}
-      </label>
-
-      {field.type === "dropdown" ? (
-        <>
-          <Select
-            value={String(fieldValue || "")}
-            onValueChange={(value) =>
-              setValue(field.name, value, { shouldValidate: true })
-            }
-            disabled={isDisabled || isLoadingOptions}
-            dir={layout.direction}
+  if (field.type === "checkbox") {
+    if (field.options && field.isMultiple) {
+      // Multiple checkboxes
+      return (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">
+            {field.title}
+            {field.required && <span className="text-destructive">*</span>}
+          </label>
+          <div className="space-y-2">
+            {field.options.map((option) => (
+              <div
+                key={String(option.value)}
+                className="flex items-center space-x-2"
+              >
+                <Checkbox
+                  id={`${field.name}.${option.value}`}
+                  checked={
+                    Array.isArray(fieldValue) &&
+                    fieldValue.includes(option.value)
+                  }
+                  onCheckedChange={(checked) => {
+                    const currentValue = Array.isArray(fieldValue)
+                      ? fieldValue
+                      : [];
+                    if (checked) {
+                      setValue(field.name, [...currentValue, option.value], {
+                        shouldValidate: true,
+                      });
+                    } else {
+                      setValue(
+                        field.name,
+                        currentValue.filter((v) => v !== option.value),
+                        { shouldValidate: true }
+                      );
+                    }
+                  }}
+                  disabled={isDisabled}
+                />
+                <label
+                  htmlFor={`${field.name}.${option.value}`}
+                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {option.label}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } else {
+      // Single checkbox
+      return (
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={field.name}
+            checked={Boolean(fieldValue)}
+            onCheckedChange={(checked) => {
+              setValue(field.name, checked, { shouldValidate: true });
+            }}
+            disabled={isDisabled}
+          />
+          <label
+            htmlFor={field.name}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingOptions
-                    ? "Loading..."
-                    : layout.texts?.selectPlaceholder
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {(field.dataSource ? dynamicOptions : field.options)?.map(
-                (option) => (
-                  <SelectItem
-                    key={String(option.value)}
-                    value={String(option.value)}
-                  >
-                    {option.label}
-                  </SelectItem>
-                )
-              )}
-            </SelectContent>
-          </Select>
-          <input type="hidden" {...register(field.name, validationRules)} />
-        </>
-      ) : field.type === "textarea" ? (
+            {field.title}
+            {field.required && <span className="text-destructive">*</span>}
+          </label>
+        </div>
+      );
+    }
+  } else if (field.type === "textarea") {
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
         <Textarea
           {...register(field.name, validationRules)}
           disabled={isDisabled}
@@ -511,41 +548,93 @@ const FormField = ({
           dir={layout.direction}
           rows={4}
         />
-      ) : field.type === "checkbox" ? (
-        <div
-          className={`flex items-center ${
-            layout.direction === "rtl" ? "flex-row-reverse justify-end" : ""
+        {errors[field.name] && (
+          <p
+            className={`text-destructive text-sm ${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+          >
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  } else {
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
           }`}
         >
-          <Checkbox
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+
+        {field.type === "dropdown" ? (
+          <>
+            <Select
+              value={String(fieldValue || "")}
+              onValueChange={(value) =>
+                setValue(field.name, value, { shouldValidate: true })
+              }
+              disabled={isDisabled || isLoadingOptions}
+              dir={layout.direction}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingOptions
+                      ? "Loading..."
+                      : layout.texts?.selectPlaceholder
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.dataSource ? dynamicOptions : field.options)?.map(
+                  (option) => (
+                    <SelectItem
+                      key={String(option.value)}
+                      value={String(option.value)}
+                    >
+                      {option.label}
+                    </SelectItem>
+                  )
+                )}
+              </SelectContent>
+            </Select>
+            <input type="hidden" {...register(field.name, validationRules)} />
+          </>
+        ) : (
+          <Input
+            type={field.type}
             {...register(field.name, validationRules)}
             disabled={isDisabled}
-            id={field.name}
+            className={`${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+            dir={layout.direction}
           />
-        </div>
-      ) : (
-        <Input
-          type={field.type}
-          {...register(field.name, validationRules)}
-          disabled={isDisabled}
-          className={`${
-            layout.direction === "rtl" ? "text-right" : "text-left"
-          }`}
-          dir={layout.direction}
-        />
-      )}
+        )}
 
-      {errors[field.name] && (
-        <p
-          className={`text-destructive text-sm ${
-            layout.direction === "rtl" ? "text-right" : "text-left"
-          }`}
-        >
-          {errors[field.name]?.message as string}
-        </p>
-      )}
-    </div>
-  );
+        {errors[field.name] && (
+          <p
+            className={`text-destructive text-sm ${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+          >
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  }
 };
 
 export default function FormModal({

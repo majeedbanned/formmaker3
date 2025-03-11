@@ -31,11 +31,11 @@ export interface FormField {
   title: string;
   type: string;
   required: boolean;
-  defaultValue: unknown;
+  defaultValue?: unknown;
   validation?: FieldValidation;
   enabled: boolean;
   visible: boolean;
-  readonly: boolean;
+  readonly?: boolean;  // Make readonly optional
   isShowInList: boolean;
   isSearchable: boolean;
   listLabelColor?: string;
@@ -51,6 +51,7 @@ export interface FormField {
   arrayMaxItems?: number;  // Maximum items for array type
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
+  isMultiple?: boolean;  // For checkbox/select fields that support multiple values
 }
 
 export interface Entity {
