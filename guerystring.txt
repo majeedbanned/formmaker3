@@ -1,0 +1,8 @@
+const customFilter = {
+  role: "manager",
+  "address.country": "Canada",
+  skills: { $in: ["python", "java"] }
+};
+
+const url = generateFilterUrl(window.location.href, customFilter);
+router.push(url);

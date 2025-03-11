@@ -6,6 +6,7 @@ import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
+import { filterExamples } from "@/utils/filterHelpers";
 
 const sampleFormStructure: FormField[] = [
   {
@@ -492,12 +493,66 @@ export default function Home({
     console.log("Share clicked for row:", rowId);
   };
 
+  // Function to apply filter and navigate
+  const applyFilter = (filterUrl: string) => {
+    router.push(filterUrl);
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
           Dynamic Form CRUD Example
         </h1>
+
+        {/* Filter Examples Section */}
+        {/* <div className="mb-8 p-4 bg-white rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Filter Examples</h2>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => applyFilter(filterExamples.adminUsers())}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Show Admins
+            </button>
+            <button
+              onClick={() => applyFilter(filterExamples.activeUsers())}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Show Active Users
+            </button>
+            <button
+              onClick={() => applyFilter(filterExamples.activeAdmins())}
+              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+            >
+              Show Active Admins
+            </button>
+            <button
+              onClick={() =>
+                applyFilter(filterExamples.usersInCity("New York"))
+              }
+              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+            >
+              Users in New York
+            </button>
+            <button
+              onClick={() =>
+                applyFilter(
+                  filterExamples.usersWithSkills(["react", "typescript"])
+                )
+              }
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              React/TS Developers
+            </button>
+            <button
+              onClick={() => applyFilter(filterExamples.advancedFilter())}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Advanced Filter
+            </button>
+          </div>
+        </div> */}
 
         <CRUDComponent
           formStructure={sampleFormStructure}
