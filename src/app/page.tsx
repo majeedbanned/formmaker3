@@ -337,6 +337,16 @@ const sampleFormStructure = [
     enabled: true,
     visible: true,
     readonly: false,
+    displayFormat: (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      const formatter = new Intl.DateTimeFormat("fa-IR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      return formatter.format(date);
+    },
     datepickerStyle: {
       format: "YYYY/MM/DD",
       className: "custom-datepicker",

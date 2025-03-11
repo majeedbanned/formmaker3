@@ -709,7 +709,8 @@ const FormField = ({
           locale={persian_fa}
           value={fieldValue as Value}
           onChange={(date) => {
-            setValue(field.name, date, { shouldValidate: true });
+            console.log("dateeeeeee", date.toString());
+            setValue(field.name, date.toString(), { shouldValidate: true });
           }}
           disabled={isDisabled}
           multiple={field.isMultiple}
