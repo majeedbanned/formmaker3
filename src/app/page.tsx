@@ -3,6 +3,9 @@
 import CRUDComponent from "@/components/CRUDComponent";
 import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
+import { useInitialFilter } from "@/hooks/useInitialFilter";
+import { encryptFilter } from "@/utils/encryption";
+import { useRouter } from "next/navigation";
 
 const sampleFormStructure: FormField[] = [
   {
@@ -453,7 +456,42 @@ const layout: LayoutSettings = {
   },
 };
 
-export default function Home() {
+// Define hardcoded filter
+const hardcodedFilter = {
+  // isActive: true, // Example: Only show active users by default
+  //role: "admin", // Example: Only show regular users by default
+} as const;
+
+export default function Home({
+  postedFilter,
+}: {
+  postedFilter?: Record<string, unknown>;
+}) {
+  const router = useRouter();
+  const initialFilter = useInitialFilter({
+    postedFilter,
+    hardcodedFilter,
+  });
+
+  // Function to update URL with encrypted filter
+  const updateFilterInURL = (filter: Record<string, unknown>) => {
+    const encryptedFilter = encryptFilter(filter);
+    const newURL = new URL(window.location.href);
+    newURL.searchParams.set("filter", encryptedFilter);
+    router.push(newURL.toString());
+  };
+
+  // Function to share with combined filters
+  const shareWithFilters = (rowId: string) => {
+    // Create a filter combining hardcoded filters with the specific row
+    const combinedFilter = {
+      ...hardcodedFilter,
+      _id: rowId,
+    };
+    updateFilterInURL(combinedFilter);
+    console.log("Share clicked for row:", rowId);
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -465,11 +503,7 @@ export default function Home() {
           formStructure={sampleFormStructure}
           collectionName="users2"
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
-          initialFilter={
-            {
-              // role: "guest", firstName: "hasani"
-            }
-          }
+          initialFilter={initialFilter}
           permissions={{
             canList: true,
             canAdd: true,
@@ -488,27 +522,21 @@ export default function Home() {
             },
             {
               label: "Share",
-              action: (rowId) => {
-                console.log("Share clicked for row:", rowId);
-              },
+              action: shareWithFilters,
               icon: ShareIcon,
             },
           ]}
           onAfterAdd={(entity) => {
             console.log("Entity added:", entity);
-            // You can perform additional actions here, like showing a notification
           }}
           onAfterEdit={(entity) => {
             console.log("Entity updated:", entity);
-            // You can perform additional actions here, like showing a notification
           }}
           onAfterDelete={(id) => {
             console.log("Entity deleted:", id);
-            // You can perform additional actions here, like showing a notification
           }}
           onAfterGroupDelete={(ids) => {
             console.log("Entities deleted:", ids);
-            // You can perform additional actions here, like showing a notification
           }}
         />
       </div>
