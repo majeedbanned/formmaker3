@@ -201,39 +201,83 @@ const renderCellContent = (
       if (field.isMultiple) {
         const files = value as UploadedFile[];
         return (
-          <div className="flex flex-col gap-1">
-            {files.map((file) => (
-              <a
-                key={file.filename}
-                href={file.path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-primary hover:underline"
+          <HoverCard>
+            <HoverCardTrigger>
+              <button
+                type="button"
+                className="flex items-center gap-2 cursor-help"
               >
-                <span>{getFileIcon(file.type)}</span>
-                <span className="truncate max-w-xs">{file.originalName}</span>
+                <span>{files.length} files</span>
                 <span className="text-xs text-gray-500">
-                  ({formatFileSize(file.size)})
+                  (Click to view details)
                 </span>
-              </a>
-            ))}
-          </div>
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                <div className="flex flex-col gap-2">
+                  {files.map((file) => (
+                    <a
+                      key={file.filename}
+                      href={file.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-primary hover:underline p-1 rounded-sm hover:bg-accent"
+                    >
+                      <span>{getFileIcon(file.type)}</span>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="truncate text-sm">
+                          {file.originalName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatFileSize(file.size)} •{" "}
+                          {new Date(file.uploadedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
         );
       } else {
         const file = value as UploadedFile;
         return (
-          <a
-            href={file.path}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-primary hover:underline"
-          >
-            <span>{getFileIcon(file.type)}</span>
-            <span className="truncate max-w-xs">{file.originalName}</span>
-            <span className="text-xs text-gray-500">
-              ({formatFileSize(file.size)})
-            </span>
-          </a>
+          <HoverCard>
+            <HoverCardTrigger>
+              <button
+                type="button"
+                className="flex items-center gap-2 cursor-help"
+              >
+                <span>{getFileIcon(file.type)}</span>
+                <span className="truncate max-w-xs">{file.originalName}</span>
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">File Details</h4>
+                <a
+                  href={file.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-primary hover:underline p-1 rounded-sm hover:bg-accent"
+                >
+                  <span>{getFileIcon(file.type)}</span>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="truncate text-sm">
+                      {file.originalName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)} •{" "}
+                      {new Date(file.uploadedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </a>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
         );
       }
 
