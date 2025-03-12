@@ -61,6 +61,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { ReactTags } from "react-tag-autocomplete";
 import { validateFile } from "@/utils/fileUpload";
+import { Progress } from "./ui/progress";
 
 // Add type definitions for window.__EDITING_ENTITY_DATA__
 declare global {
@@ -865,6 +866,19 @@ const FormField = ({
             hover:file:bg-primary/90"
           disabled={!field.enabled || field.readonly}
         />
+        {/* Show progress bars for this field */}
+        {uploadProgress[field.name] &&
+          Object.entries(uploadProgress[field.name]).map(
+            ([fileId, { progress, fileName }]) => (
+              <div key={fileId} className="mt-2">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span className="truncate">{fileName}</span>
+                  <span>{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )
+          )}
         {errors[field.name] && (
           <span className="text-red-500 text-sm">
             {field.validation?.requiredMessage || "This field is required"}
@@ -956,6 +970,16 @@ type FileData = {
   [key: string]: UploadedFile | UploadedFile[];
 };
 
+// Update the UploadProgress type to better handle multiple fields
+type UploadProgress = {
+  [fieldName: string]: {
+    [fileId: string]: {
+      progress: number;
+      fileName: string;
+    };
+  };
+};
+
 export default function FormModal({
   isOpen,
   onClose,
@@ -989,6 +1013,7 @@ export default function FormModal({
   const [uploadedFiles, setUploadedFiles] = useState<
     Record<string, UploadedFile | UploadedFile[]>
   >({});
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
 
   useEffect(() => {
     if (isOpen && window.__EDITING_ENTITY_DATA__) {
@@ -1044,6 +1069,12 @@ export default function FormModal({
       const uploadedFilesArray: UploadedFile[] = [];
       const config = field.fileConfig || {};
 
+      // Reset progress for this field only
+      setUploadProgress((prev) => ({
+        ...prev,
+        [field.name]: {},
+      }));
+
       // Get current file info for deletion
       const currentFileData = window.__EDITING_ENTITY_DATA__ as
         | FileData
@@ -1056,12 +1087,31 @@ export default function FormModal({
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const fileId = `${Date.now()}-${i}`;
+
+        // Initialize progress for this file
+        setUploadProgress((prev) => ({
+          ...prev,
+          [field.name]: {
+            ...(prev[field.name] || {}),
+            [fileId]: {
+              progress: 0,
+              fileName: file.name,
+            },
+          },
+        }));
 
         // Validate file
         const error = validateFile(file, config);
         if (error) {
+          // Remove progress for failed validation
+          setUploadProgress((prev) => {
+            const fieldProgress = { ...prev[field.name] };
+            delete fieldProgress[fileId];
+            return { ...prev, [field.name]: fieldProgress };
+          });
           alert(error);
-          return;
+          continue;
         }
 
         // Create form data with additional info
@@ -1082,18 +1132,80 @@ export default function FormModal({
           formData.append("fieldName", field.name);
         }
 
-        // Upload file
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        try {
+          // Upload file with progress tracking
+          const xhr = new XMLHttpRequest();
 
-        if (!response.ok) {
-          throw new Error("Upload failed");
+          // Create a promise to handle the upload
+          const uploadPromise = new Promise<UploadedFile>((resolve, reject) => {
+            xhr.upload.addEventListener("progress", (event) => {
+              if (event.lengthComputable) {
+                const progress = Math.round((event.loaded * 100) / event.total);
+                setUploadProgress((prev) => ({
+                  ...prev,
+                  [field.name]: {
+                    ...(prev[field.name] || {}),
+                    [fileId]: {
+                      ...(prev[field.name]?.[fileId] || {}),
+                      progress,
+                    },
+                  },
+                }));
+              }
+            });
+
+            xhr.addEventListener("load", () => {
+              if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+              } else {
+                reject(new Error("Upload failed"));
+              }
+            });
+
+            xhr.addEventListener("error", () => {
+              reject(new Error("Upload failed"));
+            });
+          });
+
+          // Start the upload
+          xhr.open("POST", "/api/upload");
+          xhr.send(formData);
+
+          // Wait for the upload to complete
+          const uploadedFile = await uploadPromise;
+          uploadedFilesArray.push(uploadedFile);
+
+          // Set progress to 100% when complete
+          setUploadProgress((prev) => ({
+            ...prev,
+            [field.name]: {
+              ...(prev[field.name] || {}),
+              [fileId]: {
+                ...(prev[field.name]?.[fileId] || {}),
+                progress: 100,
+              },
+            },
+          }));
+
+          // Remove progress bar after a delay
+          setTimeout(() => {
+            setUploadProgress((prev) => {
+              const fieldProgress = { ...prev[field.name] };
+              delete fieldProgress[fileId];
+              return { ...prev, [field.name]: fieldProgress };
+            });
+          }, 1000);
+        } catch (error) {
+          console.error(`Error uploading file ${file.name}:`, error);
+          // Remove progress for failed upload
+          setUploadProgress((prev) => {
+            const fieldProgress = { ...prev[field.name] };
+            delete fieldProgress[fileId];
+            return { ...prev, [field.name]: fieldProgress };
+          });
+          alert(`Failed to upload ${file.name}`);
         }
-
-        const uploadedFile = await response.json();
-        uploadedFilesArray.push(uploadedFile);
       }
 
       // Update uploadedFiles state
@@ -1109,7 +1221,7 @@ export default function FormModal({
       setValue(field.name, newFiles, { shouldValidate: true });
     } catch (error) {
       console.error("File upload error:", error);
-      alert("Failed to upload file");
+      alert("Failed to upload files");
     }
   };
 
@@ -1165,6 +1277,19 @@ export default function FormModal({
                       hover:file:bg-primary/90"
                     disabled={!field.enabled || field.readonly}
                   />
+                  {/* Show progress bars for this field */}
+                  {uploadProgress[field.name] &&
+                    Object.entries(uploadProgress[field.name]).map(
+                      ([fileId, { progress, fileName }]) => (
+                        <div key={fileId} className="mt-2">
+                          <div className="flex justify-between text-sm text-gray-600 mb-1">
+                            <span className="truncate">{fileName}</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <Progress value={progress} className="h-2" />
+                        </div>
+                      )
+                    )}
                   {errors[field.name] && (
                     <span className="text-red-500 text-sm">
                       {field.validation?.requiredMessage ||
