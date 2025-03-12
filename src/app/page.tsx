@@ -26,65 +26,65 @@ const sampleFormStructure: FormField[] = [
     },
   },
 
-  // {
-  //   name: "fa",
-  //   title: "fa Name",
-  //   type: "text",
-  //   isShowInList: true,
-  //   isSearchable: true,
+  {
+    name: "fa",
+    title: "fa Name",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
 
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   validation: {
-  //     requiredMessage: "First name is required",
-  //   },
-  // },
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "First name is required",
+    },
+  },
 
-  // {
-  //   name: "maaa",
-  //   title: "maa Name",
-  //   type: "text",
-  //   isShowInList: true,
-  //   isSearchable: true,
+  {
+    name: "maaa",
+    title: "maa Name",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
 
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   validation: {
-  //     requiredMessage: "First name is required",
-  //   },
-  // },
-  // {
-  //   name: "lastName",
-  //   title: "Last Name",
-  //   type: "text",
-  //   isShowInList: true,
-  //   isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "First name is required",
+    },
+  },
+  {
+    name: "lastName",
+    title: "Last Name",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
 
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   validation: {
-  //     requiredMessage: "Last name is required",
-  //   },
-  // },
-  // {
-  //   name: "email",
-  //   isShowInList: true,
-  //   isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "Last name is required",
+    },
+  },
+  {
+    name: "email",
+    isShowInList: true,
+    isSearchable: true,
 
-  //   title: "Email",
-  //   type: "email",
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   validation: {
-  //     regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-  //     requiredMessage: "Email is required",
-  //     validationMessage: "Please enter a valid email address",
-  //   },
-  // },
+    title: "Email",
+    type: "email",
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      requiredMessage: "Email is required",
+      validationMessage: "Please enter a valid email address",
+    },
+  },
   {
     name: "isActive",
     title: "Active Status",
@@ -160,38 +160,38 @@ const sampleFormStructure: FormField[] = [
     },
   },
 
-  // {
-  //   name: "gender",
-  //   title: "Gender",
-  //   type: "radio",
-  //   isShowInList: true,
-  //   isSearchable: true,
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   readonly: false,
-  //   layout: "inline",
-  //   options: [
-  //     { label: "Male", value: "male" },
-  //     { label: "Female", value: "female" },
-  //     { label: "Other", value: "other" },
-  //   ],
-  //   validation: {
-  //     requiredMessage: "Please select your gender",
-  //   },
-  // },
+  {
+    name: "gender",
+    title: "Gender",
+    type: "radio",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    layout: "inline",
+    options: [
+      { label: "Male", value: "male" },
+      { label: "Female", value: "female" },
+      { label: "Other", value: "other" },
+    ],
+    validation: {
+      requiredMessage: "Please select your gender",
+    },
+  },
 
-  // {
-  //   name: "notes",
-  //   title: "Notes",
-  //   type: "textarea",
-  //   isShowInList: true,
-  //   isSearchable: true,
+  {
+    name: "notes",
+    title: "Notes",
+    type: "textarea",
+    isShowInList: true,
+    isSearchable: true,
 
-  //   required: false,
-  //   enabled: true,
-  //   visible: true,
-  // },
+    required: false,
+    enabled: true,
+    visible: true,
+  },
 
   {
     enabled: true,
@@ -369,25 +369,25 @@ const sampleFormStructure: FormField[] = [
       requiredMessage: "لطفا تاریخ تولد را وارد کنید",
     },
   },
-  // {
-  //   name: "availableDates",
-  //   title: "Available Dates",
-  //   type: "datepicker",
-  //   isShowInList: true,
-  //   isSearchable: true,
-  //   required: true,
-  //   enabled: true,
-  //   visible: true,
-  //   readonly: false,
-  //   isMultiple: true,
-  //   datepickerStyle: {
-  //     format: "YYYY-MM-DD",
-  //     className: "custom-datepicker",
-  //   },
-  //   validation: {
-  //     requiredMessage: "Please select at least one available date",
-  //   },
-  // },
+  {
+    name: "availableDates",
+    title: "Available Dates",
+    type: "datepicker",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    isMultiple: true,
+    datepickerStyle: {
+      format: "YYYY-MM-DD",
+      className: "custom-datepicker",
+    },
+    validation: {
+      requiredMessage: "Please select at least one available date",
+    },
+  },
   {
     name: "skills",
     title: "Skills",
