@@ -1154,15 +1154,16 @@ export default function FormModal({
         [field.name]: {},
       }));
 
-      // Get current file info for deletion
+      // Get current file info
       const currentFileData = window.__EDITING_ENTITY_DATA__ as
         | FileData
         | undefined;
-      const oldFilePath = currentFileData?.[field.name]
-        ? Array.isArray(currentFileData[field.name])
-          ? (currentFileData[field.name] as UploadedFile[]).map((f) => f.path)
-          : (currentFileData[field.name] as UploadedFile).path
-        : undefined;
+      const existingFiles =
+        field.isMultiple && currentFileData?.[field.name]
+          ? Array.isArray(currentFileData[field.name])
+            ? (currentFileData[field.name] as UploadedFile[])
+            : [currentFileData[field.name] as UploadedFile]
+          : [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -1198,12 +1199,6 @@ export default function FormModal({
         formData.append("file", file);
         if (config.directory) {
           formData.append("directory", config.directory);
-        }
-        if (oldFilePath) {
-          formData.append(
-            "oldFilePath",
-            Array.isArray(oldFilePath) ? oldFilePath[i] : oldFilePath
-          );
         }
         if (editingId) {
           formData.append("documentId", editingId);
@@ -1287,17 +1282,25 @@ export default function FormModal({
         }
       }
 
-      // Update uploadedFiles state
+      // Combine new files with existing files if multiple is true
       const newFiles = field.isMultiple
-        ? uploadedFilesArray
+        ? [...existingFiles, ...uploadedFilesArray]
         : uploadedFilesArray[0];
+
+      // Update uploadedFiles state
       setUploadedFiles((prev) => ({
         ...prev,
         [field.name]: newFiles,
       }));
 
-      // Set form value
+      // Update form value and window.__EDITING_ENTITY_DATA__
       setValue(field.name, newFiles, { shouldValidate: true });
+      if (window.__EDITING_ENTITY_DATA__) {
+        window.__EDITING_ENTITY_DATA__ = {
+          ...window.__EDITING_ENTITY_DATA__,
+          [field.name]: newFiles,
+        };
+      }
     } catch (error) {
       console.error("File upload error:", error);
       alert("Failed to upload files");
