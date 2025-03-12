@@ -1320,7 +1320,10 @@ export default function FormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent dir={layout.direction}>
+      <DialogContent
+        dir={layout.direction}
+        className="max-h-[100vh] h-[calc(100vh-64px)] flex flex-col gap-4 p-6"
+      >
         <DialogHeader>
           <DialogTitle
             className={layout.direction === "rtl" ? "text-right" : "text-left"}
@@ -1331,76 +1334,85 @@ export default function FormModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmitWithFiles)} className="space-y-4">
-          {formStructure.map((field) => {
-            if (!field.visible) return null;
+        <form
+          onSubmit={handleSubmit(onSubmitWithFiles)}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          <div className="flex-1 overflow-y-auto pr-6 -mr-6 pb-6 space-y-4">
+            {formStructure.map((field) => {
+              if (!field.visible) return null;
 
-            const isDisabled = Boolean(
-              !field.enabled || (editingId && field.readonly)
-            );
-
-            if (field.type === "file") {
-              return (
-                <div key={field.name} className="mb-4">
-                  <label className="block text-sm font-medium mb-1">
-                    {field.title}
-                    {field.required && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="file"
-                    onChange={(e) => handleFileChange(e, field)}
-                    multiple={field.isMultiple}
-                    accept={field.fileConfig?.allowedTypes?.join(",")}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-primary file:text-white
-                      hover:file:bg-primary/90"
-                    disabled={!field.enabled || field.readonly}
-                  />
-                  {/* Show progress bars for this field */}
-                  {uploadProgress[field.name] &&
-                    Object.entries(uploadProgress[field.name]).map(
-                      ([fileId, { progress, fileName }]) => (
-                        <div key={fileId} className="mt-2">
-                          <div className="flex justify-between text-sm text-gray-600 mb-1">
-                            <span className="truncate">{fileName}</span>
-                            <span>{progress}%</span>
-                          </div>
-                          <Progress value={progress} className="h-2" />
-                        </div>
-                      )
-                    )}
-                  {errors[field.name] && (
-                    <span className="text-red-500 text-sm">
-                      {field.validation?.requiredMessage ||
-                        "This field is required"}
-                    </span>
-                  )}
-                  {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
-                </div>
+              const isDisabled = Boolean(
+                !field.enabled || (editingId && field.readonly)
               );
-            }
 
-            return (
-              <FormField
-                key={field.name}
-                field={field}
-                register={register}
-                setValue={setValue}
-                watch={watch}
-                errors={errors}
-                control={control}
-                layout={layout}
-                isDisabled={isDisabled}
-              />
-            );
-          })}
+              if (field.type === "file") {
+                return (
+                  <div key={field.name} className="mb-4">
+                    <label className="block text-sm font-medium mb-1">
+                      {field.title}
+                      {field.required && (
+                        <span className="text-red-500">*</span>
+                      )}
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => handleFileChange(e, field)}
+                      multiple={field.isMultiple}
+                      accept={field.fileConfig?.allowedTypes?.join(",")}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-primary file:text-white
+                        hover:file:bg-primary/90"
+                      disabled={!field.enabled || field.readonly}
+                    />
+                    {/* Show progress bars for this field */}
+                    {uploadProgress[field.name] &&
+                      Object.entries(uploadProgress[field.name]).map(
+                        ([fileId, { progress, fileName }]) => (
+                          <div key={fileId} className="mt-2">
+                            <div className="flex justify-between text-sm text-gray-600 mb-1">
+                              <span className="truncate">{fileName}</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <Progress value={progress} className="h-2" />
+                          </div>
+                        )
+                      )}
+                    {errors[field.name] && (
+                      <span className="text-red-500 text-sm">
+                        {field.validation?.requiredMessage ||
+                          "This field is required"}
+                      </span>
+                    )}
+                    {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
+                  </div>
+                );
+              }
+
+              return (
+                <FormField
+                  key={field.name}
+                  field={field}
+                  register={register}
+                  setValue={setValue}
+                  watch={watch}
+                  errors={errors}
+                  control={control}
+                  layout={layout}
+                  isDisabled={isDisabled}
+                />
+              );
+            })}
+          </div>
 
           <DialogFooter
             className={
-              layout.direction === "rtl" ? "sm:justify-start" : "sm:justify-end"
+              layout.direction === "rtl"
+                ? "sm:justify-start mt-4"
+                : "sm:justify-end mt-4"
             }
           >
             <div
