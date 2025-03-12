@@ -1035,24 +1035,103 @@ export default function FormModal({
     }
   }, [isOpen, reset, formStructure]);
 
-  // Update the file display section to handle types properly
+  // Update the file display section to handle types properly and add delete functionality
   const renderCurrentFiles = (fieldName: string, isMultiple: boolean) => {
     const fileData = window.__EDITING_ENTITY_DATA__?.[fieldName];
     if (!fileData) return null;
+
+    const handleDeleteFile = (file: UploadedFile) => {
+      // Get current files
+      const currentFiles = window.__EDITING_ENTITY_DATA__?.[fieldName];
+
+      // Remove the file from the list
+      const updatedFiles = isMultiple
+        ? (currentFiles as UploadedFile[]).filter(
+            (f) => f.filename !== file.filename
+          )
+        : undefined; // Use undefined instead of null for single file deletion
+
+      // Update the form data
+      window.__EDITING_ENTITY_DATA__ = {
+        ...window.__EDITING_ENTITY_DATA__,
+        [fieldName]: updatedFiles,
+      };
+
+      // Update uploadedFiles state
+      setUploadedFiles((prev) => {
+        const newState = { ...prev };
+        if (updatedFiles === undefined) {
+          delete newState[fieldName]; // Remove the field entirely if no files
+        } else {
+          newState[fieldName] = updatedFiles;
+        }
+        return newState;
+      });
+
+      // Update form value
+      setValue(fieldName, updatedFiles, { shouldValidate: true });
+    };
 
     return (
       <div className="mt-2">
         <p className="text-sm text-gray-500">Current file(s):</p>
         {isMultiple ? (
-          <ul className="list-disc list-inside">
+          <ul className="list-none space-y-2">
             {(fileData as UploadedFile[]).map((file: UploadedFile) => (
-              <li key={file.filename} className="text-sm">
-                {file.originalName}
+              <li
+                key={file.filename}
+                className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded"
+              >
+                <span className="truncate flex-1">{file.originalName}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleDeleteFile(file)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </Button>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm">{(fileData as UploadedFile).originalName}</p>
+          <div className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
+            <span className="truncate flex-1">
+              {(fileData as UploadedFile).originalName}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={() => handleDeleteFile(fileData as UploadedFile)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </Button>
+          </div>
         )}
       </div>
     );
