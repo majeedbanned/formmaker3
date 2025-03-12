@@ -1427,8 +1427,8 @@ export default function FormModal({
                 {loading
                   ? layout.texts?.processingMessage
                   : editingId
-                  ? layout.texts?.editButton
-                  : layout.texts?.addButton}
+                    ? layout.texts?.editButton
+                    : layout.texts?.addButton}
               </Button>
             </div>
           </DialogFooter>
