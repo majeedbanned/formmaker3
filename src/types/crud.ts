@@ -26,10 +26,26 @@ export interface DropdownDataSource {
   refreshInterval?: number; // Interval in seconds to refresh options (0 means no refresh)
 }
 
+export interface FileUploadConfig {
+  allowedTypes?: string[];
+  maxSize?: number;
+  directory?: string;
+  multiple?: boolean;
+}
+
+export interface UploadedFile {
+  filename: string;
+  originalName: string;
+  path: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
+
 export interface FormField {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -54,6 +70,7 @@ export interface FormField {
   isMultiple?: boolean;  // For checkbox/select/togglegroup/datepicker/autocomplete fields that support multiple values
   layout?: 'inline' | 'stacked';  // Layout for radio/checkbox/togglegroup groups
   displayFormat?: (value: string | number | Date) => string;  // For custom value formatting
+  fileConfig?: FileUploadConfig;  // New field for file upload configuration
   labelStyle?: {  // For label type
     fontSize?: string;
     fontWeight?: string;

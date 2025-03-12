@@ -32,6 +32,7 @@ import type {
   FormField,
   ValidationRules,
   LayoutSettings,
+  UploadedFile,
 } from "../types/crud";
 import {
   PlusIcon,
@@ -59,6 +60,14 @@ import type { Value } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { ReactTags } from "react-tag-autocomplete";
+import { validateFile } from "@/utils/fileUpload";
+
+// Add type definitions for window.__EDITING_ENTITY_DATA__
+declare global {
+  interface Window {
+    __EDITING_ENTITY_DATA__?: Record<string, unknown>;
+  }
+}
 
 type FormFieldProps = {
   field: FormField;
@@ -836,6 +845,34 @@ const FormField = ({
         )}
       </div>
     );
+  } else if (field.type === "file") {
+    return (
+      <div key={field.name} className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {field.title}
+          {field.required && <span className="text-red-500">*</span>}
+        </label>
+        <input
+          type="file"
+          onChange={(e) => handleFileChange(e, field)}
+          multiple={field.isMultiple}
+          accept={field.fileConfig?.allowedTypes?.join(",")}
+          className="block w-full text-sm text-gray-500
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-md file:border-0
+            file:text-sm file:font-semibold
+            file:bg-primary file:text-white
+            hover:file:bg-primary/90"
+          disabled={!field.enabled || field.readonly}
+        />
+        {errors[field.name] && (
+          <span className="text-red-500 text-sm">
+            {field.validation?.requiredMessage || "This field is required"}
+          </span>
+        )}
+        {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
+      </div>
+    );
   } else {
     return (
       <div className="space-y-2">
@@ -914,6 +951,11 @@ const FormField = ({
   }
 };
 
+// Add this type at the top of the file
+type FileData = {
+  [key: string]: UploadedFile | UploadedFile[];
+};
+
 export default function FormModal({
   isOpen,
   onClose,
@@ -931,7 +973,8 @@ export default function FormModal({
       selectPlaceholder: "Select an option",
     },
   },
-}: FormModalProps) {
+  collectionName,
+}: FormModalProps & { collectionName: string }) {
   const {
     register,
     handleSubmit,
@@ -942,42 +985,144 @@ export default function FormModal({
     formState: { errors },
   } = useForm();
 
-  // Reset form when modal opens/closes or when editingId changes
-  useEffect(() => {
-    if (!isOpen) {
-      reset();
-    } else if (!editingId) {
-      // When adding new entry, set default values
-      const defaultValues = formStructure.reduce((acc, field) => {
-        if (field.fields) {
-          if (field.nestedType === "array") {
-            acc[field.name] = field.defaultValue || [];
-          } else {
-            acc[field.name] = field.defaultValue || {};
-          }
-          acc[`${field.name}_expanded`] = field.isOpen ?? false;
-        } else {
-          acc[field.name] = field.defaultValue;
-        }
-        return acc;
-      }, {} as Record<string, unknown>);
-      reset(defaultValues);
-    }
-  }, [isOpen, reset, editingId, formStructure]);
+  // Track uploaded files in state
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Record<string, UploadedFile | UploadedFile[]>
+  >({});
 
-  // Set initial values when editing
   useEffect(() => {
-    if (editingId && isOpen && window.__EDITING_ENTITY_DATA__) {
-      const formData = { ...window.__EDITING_ENTITY_DATA__ };
-      // Set expansion state for nested fields
-      formStructure.forEach((field) => {
-        if (field.fields) {
-          formData[`${field.name}_expanded`] = field.isOpen ?? false;
+    if (isOpen && window.__EDITING_ENTITY_DATA__) {
+      reset(window.__EDITING_ENTITY_DATA__ as Record<string, unknown>);
+      // Initialize uploadedFiles state with existing file data
+      const fileFields = formStructure.filter((field) => field.type === "file");
+      const existingFiles: Record<string, UploadedFile | UploadedFile[]> = {};
+      fileFields.forEach((field) => {
+        if (window.__EDITING_ENTITY_DATA__?.[field.name]) {
+          existingFiles[field.name] = window.__EDITING_ENTITY_DATA__[
+            field.name
+          ] as UploadedFile | UploadedFile[];
         }
       });
-      reset(formData);
+      setUploadedFiles(existingFiles);
+    } else {
+      reset({});
+      setUploadedFiles({});
     }
-  }, [editingId, isOpen, reset, formStructure]);
+  }, [isOpen, reset, formStructure]);
+
+  // Update the file display section to handle types properly
+  const renderCurrentFiles = (fieldName: string, isMultiple: boolean) => {
+    const fileData = window.__EDITING_ENTITY_DATA__?.[fieldName];
+    if (!fileData) return null;
+
+    return (
+      <div className="mt-2">
+        <p className="text-sm text-gray-500">Current file(s):</p>
+        {isMultiple ? (
+          <ul className="list-disc list-inside">
+            {(fileData as UploadedFile[]).map((file: UploadedFile) => (
+              <li key={file.filename} className="text-sm">
+                {file.originalName}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm">{(fileData as UploadedFile).originalName}</p>
+        )}
+      </div>
+    );
+  };
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    field: FormField
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const uploadedFilesArray: UploadedFile[] = [];
+      const config = field.fileConfig || {};
+
+      // Get current file info for deletion
+      const currentFileData = window.__EDITING_ENTITY_DATA__ as
+        | FileData
+        | undefined;
+      const oldFilePath = currentFileData?.[field.name]
+        ? Array.isArray(currentFileData[field.name])
+          ? (currentFileData[field.name] as UploadedFile[]).map((f) => f.path)
+          : (currentFileData[field.name] as UploadedFile).path
+        : undefined;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file
+        const error = validateFile(file, config);
+        if (error) {
+          alert(error);
+          return;
+        }
+
+        // Create form data with additional info
+        const formData = new FormData();
+        formData.append("file", file);
+        if (config.directory) {
+          formData.append("directory", config.directory);
+        }
+        if (oldFilePath) {
+          formData.append(
+            "oldFilePath",
+            Array.isArray(oldFilePath) ? oldFilePath[i] : oldFilePath
+          );
+        }
+        if (editingId) {
+          formData.append("documentId", editingId);
+          formData.append("collectionName", collectionName);
+          formData.append("fieldName", field.name);
+        }
+
+        // Upload file
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const uploadedFile = await response.json();
+        uploadedFilesArray.push(uploadedFile);
+      }
+
+      // Update uploadedFiles state
+      const newFiles = field.isMultiple
+        ? uploadedFilesArray
+        : uploadedFilesArray[0];
+      setUploadedFiles((prev) => ({
+        ...prev,
+        [field.name]: newFiles,
+      }));
+
+      // Set form value
+      setValue(field.name, newFiles, { shouldValidate: true });
+    } catch (error) {
+      console.error("File upload error:", error);
+      alert("Failed to upload file");
+    }
+  };
+
+  const onSubmitWithFiles = async (data: Record<string, unknown>) => {
+    // Merge form data with uploaded files data
+    const formData = {
+      ...data,
+      ...uploadedFiles,
+    };
+
+    // Call the original onSubmit with the merged data
+    await onSubmit(formData);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -992,13 +1137,44 @@ export default function FormModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitWithFiles)} className="space-y-4">
           {formStructure.map((field) => {
             if (!field.visible) return null;
 
             const isDisabled = Boolean(
               !field.enabled || (editingId && field.readonly)
             );
+
+            if (field.type === "file") {
+              return (
+                <div key={field.name} className="mb-4">
+                  <label className="block text-sm font-medium mb-1">
+                    {field.title}
+                    {field.required && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => handleFileChange(e, field)}
+                    multiple={field.isMultiple}
+                    accept={field.fileConfig?.allowedTypes?.join(",")}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-primary file:text-white
+                      hover:file:bg-primary/90"
+                    disabled={!field.enabled || field.readonly}
+                  />
+                  {errors[field.name] && (
+                    <span className="text-red-500 text-sm">
+                      {field.validation?.requiredMessage ||
+                        "This field is required"}
+                    </span>
+                  )}
+                  {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
+                </div>
+              );
+            }
 
             return (
               <FormField

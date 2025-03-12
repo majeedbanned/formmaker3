@@ -14,7 +14,7 @@ import {
   ChevronDownIcon,
   EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
-import { TableProps, Entity, FormField } from "../types/crud";
+import { TableProps, Entity, FormField, UploadedFile } from "../types/crud";
 import {
   Table as ShadcnTable,
   TableBody,
@@ -41,6 +41,7 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import Link from "next/link";
 import { useState } from "react";
+import { getFileIcon, formatFileSize } from "@/utils/fileUpload";
 
 const formatNestedValue = (value: unknown, field: FormField): string => {
   if (!value) return "";
@@ -185,6 +186,111 @@ const NestedValueDisplay = ({
       </HoverCardContent>
     </HoverCard>
   );
+};
+
+const renderCellContent = (
+  field: FormField | undefined,
+  value: unknown,
+  layout: TableProps["layout"]
+) => {
+  if (!value) return "-";
+  if (!field) return String(value);
+
+  switch (field.type) {
+    case "file":
+      if (field.isMultiple) {
+        const files = value as UploadedFile[];
+        return (
+          <div className="flex flex-col gap-1">
+            {files.map((file) => (
+              <a
+                key={file.filename}
+                href={file.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-primary hover:underline"
+              >
+                <span>{getFileIcon(file.type)}</span>
+                <span className="truncate max-w-xs">{file.originalName}</span>
+                <span className="text-xs text-gray-500">
+                  ({formatFileSize(file.size)})
+                </span>
+              </a>
+            ))}
+          </div>
+        );
+      } else {
+        const file = value as UploadedFile;
+        return (
+          <a
+            href={file.path}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-primary hover:underline"
+          >
+            <span>{getFileIcon(file.type)}</span>
+            <span className="truncate max-w-xs">{file.originalName}</span>
+            <span className="text-xs text-gray-500">
+              ({formatFileSize(file.size)})
+            </span>
+          </a>
+        );
+      }
+
+    case "checkbox":
+      if (field.isMultiple && Array.isArray(value)) {
+        return value
+          .map((v) => {
+            const option = field.options?.find((opt) => opt.value === v);
+            return option?.label || v;
+          })
+          .join(", ");
+      }
+      return value === true ? "Yes" : "No";
+
+    case "dropdown":
+    case "radio":
+    case "togglegroup":
+      if (field.isMultiple && Array.isArray(value)) {
+        return value
+          .map((v) => {
+            const option = field.options?.find((opt) => opt.value === v);
+            return option?.label || v;
+          })
+          .join(", ");
+      }
+      const option = field.options?.find((opt) => opt.value === value);
+      return option?.label || value;
+
+    case "datepicker":
+      if (field.displayFormat) {
+        return field.displayFormat(value as string | number | Date);
+      }
+      return String(value);
+
+    case "switch":
+      return value === true ? "Yes" : "No";
+
+    case "autocomplete":
+      if (field.isMultiple && Array.isArray(value)) {
+        return value
+          .map((v) => {
+            const option = field.options?.find((opt) => opt.value === v);
+            return option?.label || v;
+          })
+          .join(", ");
+      }
+      const autoOption = field.options?.find((opt) => opt.value === value);
+      return autoOption?.label || value;
+
+    default:
+      if (field.fields) {
+        return (
+          <NestedValueDisplay value={value} field={field} layout={layout} />
+        );
+      }
+      return String(value);
+  }
 };
 
 export default function Table({
@@ -437,16 +543,56 @@ export default function Table({
           <TableBody>
             {table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={
-                      layout.direction === "rtl" ? "text-right" : "text-left"
-                    }
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const field = formStructure.find(
+                    (f) => f.name === cell.column.id
+                  );
+                  const value = cell.getValue();
+
+                  if (
+                    cell.column.id === "select" ||
+                    cell.column.id === "actions"
+                  ) {
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={
+                          layout.direction === "rtl"
+                            ? "text-right"
+                            : "text-left"
+                        }
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  }
+
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      className={
+                        layout.direction === "rtl" ? "text-right" : "text-left"
+                      }
+                    >
+                      {field ? (
+                        field.type === "file" || field.fields ? (
+                          renderCellContent(field, value, layout)
+                        ) : (
+                          <NestedValueDisplay
+                            value={value}
+                            field={field}
+                            layout={layout}
+                          />
+                        )
+                      ) : (
+                        String(value ?? "")
+                      )}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>

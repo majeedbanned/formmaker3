@@ -423,6 +423,51 @@ const sampleFormStructure: FormField[] = [
       tagClassName: "bg-blue-500",
     },
   },
+  {
+    name: "avatar",
+    title: "Profile Picture",
+    type: "file",
+    isShowInList: true,
+    isSearchable: false,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    fileConfig: {
+      allowedTypes: ["image/*"],
+      maxSize: 5 * 1024 * 1024, // 5MB
+      directory: "avatars",
+      multiple: false,
+    },
+    validation: {
+      requiredMessage: "Please upload a profile picture",
+    },
+  },
+  {
+    name: "documents",
+    title: "Documents",
+    type: "file",
+    isShowInList: true,
+    isSearchable: false,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    isMultiple: true,
+    fileConfig: {
+      allowedTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ],
+      maxSize: 10 * 1024 * 1024, // 10MB
+      directory: "documents",
+      multiple: true,
+    },
+    validation: {
+      requiredMessage: "Please upload at least one document",
+    },
+  },
 ] as const;
 
 const layout: LayoutSettings = {
