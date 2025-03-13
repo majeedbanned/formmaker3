@@ -59,7 +59,7 @@ const data = {
       items: [
         {
           title: "اطلاعات مدرسه/آموزشکاه",
-          url: "#",
+          url: "/schools",
         },
         {
           title: "Starred",

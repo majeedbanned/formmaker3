@@ -1,3 +1,4 @@
+import React from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -98,8 +99,29 @@ const NestedValueDisplay = ({
   value: unknown;
   field: FormField;
   layout: TableProps["layout"];
-}) => {
+}): React.ReactElement => {
   if (!field.fields) {
+    // Handle dropdown fields
+    if (field.type === "dropdown") {
+      if (field.isMultiple && Array.isArray(value)) {
+        return (
+          <span dir={layout?.direction}>
+            {value
+              .map((v) => {
+                const option = field.options?.find((opt) => opt.value === v);
+                return option?.label || String(v);
+              })
+              .join(", ")}
+          </span>
+        );
+      }
+      const option = field.options?.find((opt) => opt.value === value);
+      return (
+        <span dir={layout?.direction}>{option?.label || String(value)}</span>
+      );
+    }
+
+    // Handle other field types
     return (
       <span dir={layout?.direction}>
         {typeof value === "boolean"
@@ -293,8 +315,6 @@ const renderCellContent = (
       return value === true ? "Yes" : "No";
 
     case "dropdown":
-    case "radio":
-    case "togglegroup":
       if (field.isMultiple && Array.isArray(value)) {
         return value
           .map((v) => {
@@ -305,6 +325,19 @@ const renderCellContent = (
       }
       const option = field.options?.find((opt) => opt.value === value);
       return option?.label || value;
+
+    case "radio":
+    case "togglegroup":
+      if (field.isMultiple && Array.isArray(value)) {
+        return value
+          .map((v) => {
+            const option = field.options?.find((opt) => opt.value === v);
+            return option?.label || v;
+          })
+          .join(", ");
+      }
+      const radioOption = field.options?.find((opt) => opt.value === value);
+      return radioOption?.label || value;
 
     case "datepicker":
       if (field.displayFormat) {
@@ -367,6 +400,7 @@ export default function Table({
             id: "select",
             header: ({ table }) => (
               <Checkbox
+                className="mr-4"
                 checked={table.getIsAllPageRowsSelected()}
                 onCheckedChange={(value) =>
                   table.toggleAllPageRowsSelected(!!value)
@@ -376,6 +410,7 @@ export default function Table({
             ),
             cell: ({ row }) => (
               <Checkbox
+                className="mr-4"
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
                 aria-label="Select row"
@@ -554,7 +589,9 @@ export default function Table({
                             ? "cursor-pointer select-none"
                             : ""
                         } ${
-                          layout.direction === "rtl" ? "flex-row-reverse" : ""
+                          layout.direction === "rtl"
+                            ? "flex-row"
+                            : "flex-row-reverse"
                         }`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
