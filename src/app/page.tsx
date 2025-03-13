@@ -8,6 +8,60 @@ import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { filterExamples } from "@/utils/filterHelpers";
 
+// Font Variants Demo Component
+const FontVariantsDemo = () => (
+  <div className="p-8 bg-white rounded-lg shadow-lg mb-8">
+    <h2 className="text-2xl font-bold mb-6">نمونه‌های فونت وزیرمتن</h2>
+
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-medium mb-2">وزن معمولی (400)</h3>
+        <p className="text-base">
+          این یک متن نمونه با وزن معمولی است. لورم ایپسوم متن ساختگی با تولید
+          سادگی نامفهوم از صنعت چاپ و با استفاده از طراحان گرافیک است.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-2">وزن متوسط (500)</h3>
+        <p className="text-base font-medium">
+          این یک متن نمونه با وزن متوسط است. لورم ایپسوم متن ساختگی با تولید
+          سادگی نامفهوم از صنعت چاپ و با استفاده از طراحان گرافیک است.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-2">وزن ضخیم (700)</h3>
+        <p className="text-base font-bold">
+          این یک متن نمونه با وزن ضخیم است. لورم ایپسوم متن ساختگی با تولید
+          سادگی نامفهوم از صنعت چاپ و با استفاده از طراحان گرافیک است.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-2">نمونه‌های سایزهای مختلف</h3>
+        <div className="space-y-2">
+          <p className="text-xs">سایز خیلی کوچک (xs)</p>
+          <p className="text-sm">سایز کوچک (sm)</p>
+          <p className="text-base">سایز معمولی (base)</p>
+          <p className="text-lg">سایز بزرگ (lg)</p>
+          <p className="text-xl">سایز خیلی بزرگ (xl)</p>
+          <p className="text-2xl">سایز فوق بزرگ (2xl)</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-2">نمونه‌های ترکیبی</h3>
+        <div className="space-y-2">
+          <p className="text-lg font-medium">عنوان با وزن متوسط</p>
+          <p className="text-base">متن معمولی با توضیحات بیشتر</p>
+          <p className="text-sm font-bold">نکته مهم با وزن ضخیم</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const sampleFormStructure: FormField[] = [
   {
     name: "firstName",
@@ -475,30 +529,30 @@ const layout: LayoutSettings = {
   width: "100%",
   texts: {
     addButton: "افزودن",
-    editButton: "Edit",
-    deleteButton: "Delete",
-    cancelButton: "Cancel",
-    clearButton: "Clear",
-    searchButton: "Search",
-    advancedSearchButton: "Advanced Search",
-    applyFiltersButton: "Apply Filters",
-    addModalTitle: "Add New Entry",
-    editModalTitle: "Edit Entry",
-    deleteModalTitle: "Delete Confirmation",
-    advancedSearchModalTitle: "Advanced Search",
+    editButton: "ویرایش",
+    deleteButton: "حذف",
+    cancelButton: "انصراف",
+    clearButton: "پاک کردن",
+    searchButton: "جستجو",
+    advancedSearchButton: "جستجوی پیشرفته",
+    applyFiltersButton: "اعمال فیلترها",
+    addModalTitle: "افزودن مورد جدید",
+    editModalTitle: "ویرایش مورد",
+    deleteModalTitle: "تایید حذف",
+    advancedSearchModalTitle: "جستجوی پیشرفته",
     deleteConfirmationMessage:
-      "Are you sure you want to delete this item? This action cannot be undone.",
-    noResultsMessage: "No results found",
-    loadingMessage: "Loading...",
-    processingMessage: "Processing...",
-    actionsColumnTitle: "Actions",
-    showEntriesText: "Show",
-    pageText: "Page",
-    ofText: "of",
-    searchPlaceholder: "Search all fields...",
-    selectPlaceholder: "Select an option",
-    filtersAppliedText: "Advanced search filters applied",
-    clearFiltersText: "Clear filters",
+      "آیا از حذف این مورد اطمینان دارید؟ این عملیات قابل بازگشت نیست.",
+    noResultsMessage: "نتیجه‌ای یافت نشد",
+    loadingMessage: "در حال بارگذاری...",
+    processingMessage: "در حال پردازش...",
+    actionsColumnTitle: "عملیات",
+    showEntriesText: "نمایش",
+    pageText: "صفحه",
+    ofText: "از",
+    searchPlaceholder: "جستجو در تمام فیلدها...",
+    selectPlaceholder: "انتخاب کنید",
+    filtersAppliedText: "فیلترهای جستجوی پیشرفته اعمال شده",
+    clearFiltersText: "پاک کردن فیلترها",
   },
 };
 
@@ -547,57 +601,10 @@ export default function Home({
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Dynamic Form CRUD Example
+          نمونه فرم پویا
         </h1>
 
-        {/* Filter Examples Section */}
-        {/* <div className="mb-8 p-4 bg-white rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Filter Examples</h2>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => applyFilter(filterExamples.adminUsers())}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Show Admins
-            </button>
-            <button
-              onClick={() => applyFilter(filterExamples.activeUsers())}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Show Active Users
-            </button>
-            <button
-              onClick={() => applyFilter(filterExamples.activeAdmins())}
-              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            >
-              Show Active Admins
-            </button>
-            <button
-              onClick={() =>
-                applyFilter(filterExamples.usersInCity("New York"))
-              }
-              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-            >
-              Users in New York
-            </button>
-            <button
-              onClick={() =>
-                applyFilter(
-                  filterExamples.usersWithSkills(["react", "typescript"])
-                )
-              }
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              React/TS Developers
-            </button>
-            <button
-              onClick={() => applyFilter(filterExamples.advancedFilter())}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Advanced Filter
-            </button>
-          </div>
-        </div> */}
+        {/* <FontVariantsDemo /> */}
 
         <CRUDComponent
           formStructure={sampleFormStructure}
@@ -616,12 +623,12 @@ export default function Home({
           layout={layout}
           rowActions={[
             {
-              label: "View Document",
+              label: "مشاهده سند",
               link: "/document",
               icon: DocumentIcon,
             },
             {
-              label: "Share",
+              label: "اشتراک",
               action: shareWithFilters,
               icon: ShareIcon,
             },

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fontsource/vazirmatn": "^5.2.5",
     "@hassanmojab/react-modern-calendar-datepicker": "^3.1.7",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
