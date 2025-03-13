@@ -149,15 +149,15 @@ const sampleFormStructure: FormField[] = [
       {
         name: "access",
         title: "دسترسی",
-        type: "togglegroup",
+        type: "checkbox",
         isShowInList: true,
         isSearchable: true,
-        required: true,
+        required: false,
         enabled: true,
         visible: true,
         readonly: false,
         defaultValue: [],
-        layout: "stacked",
+        isMultiple: true,
         options: [
           { value: "show", label: "نمایش" },
           { value: "list", label: "لیست" },
@@ -180,6 +180,7 @@ const sampleFormStructure: FormField[] = [
 const layout: LayoutSettings = {
   direction: "rtl",
   width: "100%",
+
   texts: {
     addButton: "افزودن",
     editButton: "ویرایش",

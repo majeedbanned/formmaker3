@@ -210,7 +210,7 @@ const NestedFields = ({
                 {fields.map((item, index) => (
                   <div
                     key={item.id}
-                    className="relative border rounded-md p-4 mb-4"
+                    className="relative border-2 overflow-scroll rounded-md p-4 mb-4"
                   >
                     <Button
                       type="button"
@@ -1029,7 +1029,7 @@ export default function FormModal({
         }
       });
       setUploadedFiles(existingFiles);
-          } else {
+    } else {
       reset({});
       setUploadedFiles({});
     }
@@ -1322,7 +1322,7 @@ export default function FormModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         dir={layout.direction}
-        className="max-h-[100vh] h-[calc(100vh-64px)] flex flex-col gap-4 p-6"
+        className="max-h-[100vh]  h-[calc(100vh-64px)]   flex flex-col gap-4 p-6"
       >
         <DialogHeader>
           <DialogTitle
@@ -1339,12 +1339,12 @@ export default function FormModal({
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="flex-1 overflow-y-auto pr-6 -mr-6 pb-6 space-y-4">
-          {formStructure.map((field) => {
-            if (!field.visible) return null;
+            {formStructure.map((field) => {
+              if (!field.visible) return null;
 
-            const isDisabled = Boolean(
-              !field.enabled || (editingId && field.readonly)
-            );
+              const isDisabled = Boolean(
+                !field.enabled || (editingId && field.readonly)
+              );
 
               if (field.type === "file") {
                 return (
@@ -1392,20 +1392,20 @@ export default function FormModal({
                 );
               }
 
-            return (
-              <FormField
-                key={field.name}
-                field={field}
-                register={register}
-                setValue={setValue}
-                watch={watch}
-                errors={errors}
-                control={control}
-                layout={layout}
-                isDisabled={isDisabled}
-              />
-            );
-          })}
+              return (
+                <FormField
+                  key={field.name}
+                  field={field}
+                  register={register}
+                  setValue={setValue}
+                  watch={watch}
+                  errors={errors}
+                  control={control}
+                  layout={layout}
+                  isDisabled={isDisabled}
+                />
+              );
+            })}
           </div>
 
           <DialogFooter
