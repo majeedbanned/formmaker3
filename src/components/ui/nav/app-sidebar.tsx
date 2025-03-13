@@ -62,12 +62,12 @@ const data = {
           url: "/schools",
         },
         {
-          title: "Starred",
-          url: "#",
+          title: "دانش آموزان",
+          url: "/students",
         },
         {
-          title: "Settings",
-          url: "#",
+          title: "معلمان",
+          url: "/teachers",
         },
       ],
     },

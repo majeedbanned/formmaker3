@@ -336,7 +336,7 @@ export default function AdvancedSearchModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="max-h-[100vh] h-[calc(100vh-64px)] flex flex-col gap-0 p-6"
+        className="max-h-[100vh]  h-[calc(100vh-64px)] flex flex-col gap-0 p-6"
         dir={layout.direction}
       >
         <DialogHeader className="flex-none">
