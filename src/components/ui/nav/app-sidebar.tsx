@@ -52,13 +52,13 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "اطلاعات اولیه",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "History",
+          title: "اطلاعات مدرسه/آموزشکاه",
           url: "#",
         },
         {

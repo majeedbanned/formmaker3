@@ -1029,7 +1029,7 @@ export default function FormModal({
         }
       });
       setUploadedFiles(existingFiles);
-    } else {
+          } else {
       reset({});
       setUploadedFiles({});
     }
@@ -1339,12 +1339,12 @@ export default function FormModal({
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="flex-1 overflow-y-auto pr-6 -mr-6 pb-6 space-y-4">
-            {formStructure.map((field) => {
-              if (!field.visible) return null;
+          {formStructure.map((field) => {
+            if (!field.visible) return null;
 
-              const isDisabled = Boolean(
-                !field.enabled || (editingId && field.readonly)
-              );
+            const isDisabled = Boolean(
+              !field.enabled || (editingId && field.readonly)
+            );
 
               if (field.type === "file") {
                 return (
@@ -1392,20 +1392,20 @@ export default function FormModal({
                 );
               }
 
-              return (
-                <FormField
-                  key={field.name}
-                  field={field}
-                  register={register}
-                  setValue={setValue}
-                  watch={watch}
-                  errors={errors}
-                  control={control}
-                  layout={layout}
-                  isDisabled={isDisabled}
-                />
-              );
-            })}
+            return (
+              <FormField
+                key={field.name}
+                field={field}
+                register={register}
+                setValue={setValue}
+                watch={watch}
+                errors={errors}
+                control={control}
+                layout={layout}
+                isDisabled={isDisabled}
+              />
+            );
+          })}
           </div>
 
           <DialogFooter
@@ -1427,8 +1427,8 @@ export default function FormModal({
                 {loading
                   ? layout.texts?.processingMessage
                   : editingId
-                    ? layout.texts?.editButton
-                    : layout.texts?.addButton}
+                  ? layout.texts?.editButton
+                  : layout.texts?.addButton}
               </Button>
             </div>
           </DialogFooter>
