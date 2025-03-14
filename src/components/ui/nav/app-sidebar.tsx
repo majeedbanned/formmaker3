@@ -59,15 +59,15 @@ const data = {
       items: [
         {
           title: "اطلاعات مدرسه/آموزشکاه",
-          url: "/schools",
+          url: "/admin/schools",
         },
         {
           title: "دانش آموزان",
-          url: "/students",
+          url: "/admin/students",
         },
         {
           title: "معلمان",
-          url: "/teachers",
+          url: "/admin/teachers",
         },
       ],
     },
