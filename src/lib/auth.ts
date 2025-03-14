@@ -25,6 +25,7 @@ interface TeacherData {
   username: string;
   password: string;
   schoolCode: string;
+  teacherCode: string;
   isActive: boolean;
   permissions: Array<{
     systems: string;
@@ -40,6 +41,8 @@ interface StudentData {
   name: string;
   username: string;
   password: string;
+  studentCode: string;
+
   schoolCode: string;
   isActive: boolean;
   permissions: Array<{
@@ -95,10 +98,15 @@ export async function authenticateUser(
   let user;
   if (userType === "school") {
     user = users.find(u => (u as School).data.get('schoolCode') === schoolCode);
-  } else {
+  } else if (userType === "teacher") {
     user = users.find(u => 
-      (u as Teacher | Student).data.get('schoolCode') === schoolCode &&
-      (u as Teacher | Student).data.get('username') === username
+      (u as Teacher).data.get('schoolCode') === schoolCode &&
+      (u as Teacher).data.get('teacherCode') === username
+    );
+  } else if (userType === "student") {
+    user = users.find(u => 
+      (u as Student).data.get('schoolCode') === schoolCode &&
+      (u as Student).data.get('studentCode') === username
     );
   }
   
