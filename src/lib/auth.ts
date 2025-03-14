@@ -20,6 +20,38 @@ interface School extends Document {
   data: Map<keyof SchoolData, SchoolData[keyof SchoolData]>;
 }
 
+interface TeacherData {
+  name: string;
+  username: string;
+  password: string;
+  schoolCode: string;
+  isActive: boolean;
+  permissions: Array<{
+    systems: string;
+    access: string[];
+  }>;
+}
+
+interface Teacher extends Document {
+  data: Map<keyof TeacherData, TeacherData[keyof TeacherData]>;
+}
+
+interface StudentData {
+  name: string;
+  username: string;
+  password: string;
+  schoolCode: string;
+  isActive: boolean;
+  permissions: Array<{
+    systems: string;
+    access: string[];
+  }>;
+}
+
+interface Student extends Document {
+  data: Map<keyof StudentData, StudentData[keyof StudentData]>;
+}
+
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "your-secret-key"
 );
@@ -44,63 +76,70 @@ export async function verifyAuth(token: string) {
   }
 }
 
-export async function authenticateUser(schoolCode: string, password: string) {
-  // Get the schools model
-  console.log('schoolCode',schoolCode)
-  const SchoolModel = getDynamicModel("schools") as Model<School>;
+export async function authenticateUser(
+  userType: "school" | "teacher" | "student",
+  schoolCode: string,
+  username: string,
+  password: string
+) {
+  // Get the appropriate model based on user type
+  const model = getDynamicModel(userType === "school" ? "schools" : userType === "teacher" ? "teachers" : "students") as Model<School | Teacher | Student>;
 
-  console.log('Searching for school with code:', schoolCode);
+  console.log('Searching for user:', { userType, schoolCode, username });
   
-  // Find all schools and filter in memory
-  const schools = await SchoolModel.find({});
-  console.log('Found schools:', schools);
+  // Find all users and filter in memory
+  const users = await model.find({});
+  console.log('Found users:', users);
   
-  const school = schools.find(s => s.data.get('schoolCode') === schoolCode);
-  console.log('Found matching school:', school);
+  // Find the matching user based on user type
+  let user;
+  if (userType === "school") {
+    user = users.find(u => (u as School).data.get('schoolCode') === schoolCode);
+  } else {
+    user = users.find(u => 
+      (u as Teacher | Student).data.get('schoolCode') === schoolCode &&
+      (u as Teacher | Student).data.get('username') === username
+    );
+  }
+  
+  console.log('Found matching user:', user);
 
-  if (!school) {
-    console.log('No school found with code:', schoolCode);
-    throw new Error("کد مدرسه یا رمز عبور اشتباه است");
+  if (!user) {
+    console.log('No user found with provided credentials');
+    throw new Error("اطلاعات وارد شده اشتباه است");
   }
 
-  // Get school data from the Map
-  const schoolData = school.data;
-  console.log('School data:', Object.fromEntries(schoolData));
+  // Get user data from the Map
+  const userData = user.data;
+  console.log('User data:', Object.fromEntries(userData));
   
-  const isActive = schoolData.get('isActive');
-  const schoolPassword = schoolData.get('password');
-  const schoolName = schoolData.get('schoolName');
-  const permissions = schoolData.get('premisions') || [];
+  const isActive = userData.get('isActive');
+  const userPassword = userData.get('password');
 
-  console.log('Extracted data:', {
-    isActive,
-    schoolPassword,
-    schoolName,
-    permissions
-  });
-
-  // Check if school is active
+  // Check if user is active
   if (!isActive) {
-    console.log('School is not active');
-    throw new Error("این مدرسه غیرفعال است");
+    console.log('User is not active');
+    throw new Error("این حساب کاربری غیرفعال است");
   }
 
   // Verify password
-  if (schoolPassword !== password) {
+  if (userPassword !== password) {
     console.log('Password mismatch:', {
       provided: password,
-      stored: schoolPassword
+      stored: userPassword
     });
-    throw new Error("کد مدرسه یا رمز عبور اشتباه است");
+    throw new Error("اطلاعات وارد شده اشتباه است");
   }
 
-  // Generate token with school info
+  // Generate token with user info
   const token = await new SignJWT({
-    schoolId: school._id,
-    schoolCode: schoolCode,
-    schoolName: schoolName,
-    role: "school",
-    permissions: permissions,
+    userId: user._id,
+    userType,
+    schoolCode,
+    username,
+    name: userData.get('name'),
+    role: userType,
+    permissions: userData.get('premisions') || userData.get('permissions') || [],
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -110,11 +149,13 @@ export async function authenticateUser(schoolCode: string, password: string) {
   return { 
     token, 
     user: {
-      id: school._id,
-      schoolCode: schoolCode,
-      schoolName: schoolName,
-      role: "school",
-      permissions: permissions,
+      id: user._id,
+      userType,
+      schoolCode,
+      username,
+      name: userData.get('name'),
+      role: userType,
+      permissions: userData.get('premisions') || userData.get('permissions') || [],
     }
   };
 } 

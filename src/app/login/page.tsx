@@ -22,40 +22,23 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { FormField as FormFieldType } from "@/types/crud";
-
-const formStructure: FormFieldType[] = [
-  {
-    name: "schoolCode",
-    title: "کد مدرسه",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-    required: true,
-    enabled: true,
-    visible: true,
-    validation: {
-      requiredMessage: "کد مدرسه الزامی است",
-    },
-  },
-  {
-    name: "password",
-    title: "رمز عبور",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-    required: true,
-    enabled: true,
-    visible: true,
-    validation: {
-      requiredMessage: "رمز عبور الزامی است",
-    },
-  },
-];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
+  userType: z.enum(["school", "teacher", "student"], {
+    required_error: "نوع کاربر را انتخاب کنید",
+  }),
   schoolCode: z.string().min(1, {
     message: "کد مدرسه الزامی است",
+  }),
+  username: z.string().min(1, {
+    message: "نام کاربری الزامی است",
   }),
   password: z.string().min(1, {
     message: "رمز عبور الزامی است",
@@ -71,7 +54,9 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      userType: "school",
       schoolCode: "",
+      username: "",
       password: "",
     },
   });
@@ -120,27 +105,86 @@ export default function LoginPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {formStructure.map((field) => (
-                <FormField
-                  key={field.name}
-                  control={form.control}
-                  name={field.name as keyof z.infer<typeof formSchema>}
-                  render={({ field: formField }) => (
-                    <FormItem>
-                      <FormLabel>{field.title}</FormLabel>
+              <FormField
+                control={form.control}
+                name="userType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>نوع کاربر</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
-                        <Input
-                          dir="ltr"
-                          type={field.name === "password" ? "password" : "text"}
-                          placeholder={`${field.title} خود را وارد کنید`}
-                          {...formField}
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="نوع کاربر را انتخاب کنید" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ))}
+                      <SelectContent>
+                        <SelectItem value="school">مدرسه</SelectItem>
+                        <SelectItem value="teacher">معلم</SelectItem>
+                        <SelectItem value="student">دانش آموز</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="schoolCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>کد مدرسه</FormLabel>
+                    <FormControl>
+                      <Input
+                        dir="ltr"
+                        placeholder="کد مدرسه خود را وارد کنید"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>نام کاربری</FormLabel>
+                    <FormControl>
+                      <Input
+                        dir="ltr"
+                        placeholder="نام کاربری خود را وارد کنید"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>رمز عبور</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="رمز عبور خود را وارد کنید"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {error && (
                 <div className="text-sm text-red-500 text-center">{error}</div>
               )}

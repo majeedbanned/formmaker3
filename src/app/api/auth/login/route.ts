@@ -5,9 +5,9 @@ import { authenticateUser } from "@/lib/auth";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { schoolCode, password } = body;
+    const { userType, schoolCode, username, password } = body;
 
-    const { token, user } = await authenticateUser(schoolCode, password);
+    const { token, user } = await authenticateUser(userType, schoolCode, username, password);
 
     // Set cookie
     const cookieStore = await cookies();
@@ -23,8 +23,10 @@ export async function POST(request: Request) {
         message: "ورود موفقیت‌آمیز",
         user: {
           id: user.id,
+          userType: user.userType,
           schoolCode: user.schoolCode,
-          schoolName: user.schoolName,
+          username: user.username,
+          name: user.name,
           role: user.role,
           permissions: user.permissions,
         }

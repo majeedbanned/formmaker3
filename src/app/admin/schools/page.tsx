@@ -40,7 +40,20 @@ const sampleFormStructure: FormField[] = [
       requiredMessage: "کد مدرسه الزامی است",
     },
   },
+  {
+    name: "username",
+    title: "نام کاربری",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
 
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "نام کاربری الزامی است",
+    },
+  },
   {
     name: "password",
     title: "رمز عبور",
