@@ -18,15 +18,24 @@ export async function middleware(request: NextRequest) {
 
     try {
       const payload = await verifyAuth(token) as unknown as {
-        userId: number;
-        username: string;
+        schoolId: string;
+        schoolCode: string;
+        schoolName: string;
         role: string;
+        permissions: Array<{
+          systems: string;
+          access: string[];
+        }>;
       };
       
       // Add user info to headers for downstream use
       const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-user-id", payload.userId.toString());
+      requestHeaders.set("x-school-id", payload.schoolId);
+      requestHeaders.set("x-school-code", payload.schoolCode);
+      // Encode Farsi text before setting in header
+      requestHeaders.set("x-school-name", encodeURIComponent(payload.schoolName));
       requestHeaders.set("x-user-role", payload.role);
+      requestHeaders.set("x-permissions", JSON.stringify(payload.permissions));
       
       return NextResponse.next({
         request: {

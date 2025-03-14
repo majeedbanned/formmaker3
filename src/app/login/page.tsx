@@ -22,13 +22,43 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { FormField as FormFieldType } from "@/types/crud";
+
+const formStructure: FormFieldType[] = [
+  {
+    name: "schoolCode",
+    title: "کد مدرسه",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "کد مدرسه الزامی است",
+    },
+  },
+  {
+    name: "password",
+    title: "رمز عبور",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "رمز عبور الزامی است",
+    },
+  },
+];
 
 const formSchema = z.object({
-  username: z.string().min(3, {
-    message: "نام کاربری باید حداقل 3 کاراکتر باشد",
+  schoolCode: z.string().min(1, {
+    message: "کد مدرسه الزامی است",
   }),
-  password: z.string().min(6, {
-    message: "رمز عبور باید حداقل 6 کاراکتر باشد",
+  password: z.string().min(1, {
+    message: "رمز عبور الزامی است",
   }),
 });
 
@@ -41,7 +71,7 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      schoolCode: "",
       password: "",
     },
   });
@@ -65,8 +95,8 @@ export default function LoginPage() {
         throw new Error(data.message || "خطا در ورود به سیستم");
       }
 
-      // Redirect to the original requested URL or default to admin
-      const from = searchParams.get("from") || "/admin";
+      // Redirect to the original requested URL or default to dashboard
+      const from = searchParams.get("from") || "/admin/dashboard";
       router.push(from);
       router.refresh(); // Refresh the page to update the auth state
     } catch (err) {
@@ -90,41 +120,27 @@ export default function LoginPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>نام کاربری</FormLabel>
-                    <FormControl>
-                      <Input
-                        dir="ltr"
-                        placeholder="نام کاربری خود را وارد کنید"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>رمز عبور</FormLabel>
-                    <FormControl>
-                      <Input
-                        dir="ltr"
-                        type="password"
-                        placeholder="رمز عبور خود را وارد کنید"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {formStructure.map((field) => (
+                <FormField
+                  key={field.name}
+                  control={form.control}
+                  name={field.name as keyof z.infer<typeof formSchema>}
+                  render={({ field: formField }) => (
+                    <FormItem>
+                      <FormLabel>{field.title}</FormLabel>
+                      <FormControl>
+                        <Input
+                          dir="ltr"
+                          type={field.name === "password" ? "password" : "text"}
+                          placeholder={`${field.title} خود را وارد کنید`}
+                          {...formField}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
               {error && (
                 <div className="text-sm text-red-500 text-center">{error}</div>
               )}
