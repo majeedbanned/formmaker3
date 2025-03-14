@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
 
   // Check if this is an admin route
-  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/s");
 
   if (isAdminRoute) {
     if (!token) {
@@ -55,5 +55,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/s/:path*"],
 }; 
