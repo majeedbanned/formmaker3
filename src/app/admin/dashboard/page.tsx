@@ -16,10 +16,18 @@ export default function Dashboard() {
   if (!isAuthenticated || !user) {
     return <div>Please log in</div>;
   }
-  // Check permissions based on user type
-  const canViewSchools = hasPermission(user.userType, "show");
-  const canEditSchools = hasPermission(user.userType, "list");
 
+  // Check permissions based on system name
+  const canViewSchools = hasPermission("attendance", "view");
+  const canEditSchools = hasPermission("attendance", "edit");
+  const canDeleteSchools = hasPermission("attendance", "delete");
+  const canCreateSchools = hasPermission("attendance", "list");
+
+  // Check permissions for other systems based on user type
+  const canManageTeachers = hasPermission("attendance", "groupDelete");
+  const canManageStudents = hasPermission("attendance", "show");
+  const canManageClasses = hasPermission("attendance", "search");
+  console.log(user);
   return (
     <div className="p-6">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -38,14 +46,107 @@ export default function Dashboard() {
           <p>
             <span className="font-semibold">Role:</span> {user.role}
           </p>
+        </div>
+      </div>
 
-          {canViewSchools && <div>Schools content...</div>}
-          {canEditSchools && <div>Edit School</div>}
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4">Schools Access Level</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div
+            className={`p-4 rounded-lg border ${
+              canViewSchools
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">View Schools</p>
+            <p className="text-sm mt-1">
+              {canViewSchools ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+          <div
+            className={`p-4 rounded-lg border ${
+              canEditSchools
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Edit Schools</p>
+            <p className="text-sm mt-1">
+              {canEditSchools ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+          <div
+            className={`p-4 rounded-lg border ${
+              canDeleteSchools
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Delete Schools</p>
+            <p className="text-sm mt-1">
+              {canDeleteSchools ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+          <div
+            className={`p-4 rounded-lg border ${
+              canCreateSchools
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Create Schools</p>
+            <p className="text-sm mt-1">
+              {canCreateSchools ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4">Other Access Levels</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            className={`p-4 rounded-lg border ${
+              canManageTeachers
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Manage Teachers</p>
+            <p className="text-sm mt-1">
+              {canManageTeachers ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+          <div
+            className={`p-4 rounded-lg border ${
+              canManageStudents
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Manage Students</p>
+            <p className="text-sm mt-1">
+              {canManageStudents ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
+          <div
+            className={`p-4 rounded-lg border ${
+              canManageClasses
+                ? "border-green-500 bg-green-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+          >
+            <p className="font-semibold">Manage Classes</p>
+            <p className="text-sm mt-1">
+              {canManageClasses ? "✅ Allowed" : "❌ Not Allowed"}
+            </p>
+          </div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-bold mb-4">Permissions</h2>
+        <h2 className="text-xl font-bold mb-4">All Permissions</h2>
         {user.permissions && user.permissions.length > 0 ? (
           <div className="space-y-4">
             {user.permissions.map((permission, index) => (
