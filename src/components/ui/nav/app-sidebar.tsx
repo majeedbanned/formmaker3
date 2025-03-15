@@ -75,6 +75,39 @@ const data = {
         },
       ],
     },
+
+    {
+      title: "اطلاعات پایه",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: "تعریف دروس",
+          url: "/admin/subjects",
+          system: "subject",
+          requiredPermission: "show",
+        },
+        {
+          title: "تعریف کلاس ها",
+          url: "/admin/classes",
+          system: "classes",
+          requiredPermission: "show",
+        },
+        {
+          title: "ثبت دانش آموزان",
+          url: "/admin/importstudents",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "برنامه هفتگی",
+          url: "/admin/weeklyschedule",
+          system: "weeklyschedule",
+          requiredPermission: "show",
+        },
+      ],
+    },
   ],
   projects: [
     {

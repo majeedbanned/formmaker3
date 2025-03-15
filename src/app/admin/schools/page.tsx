@@ -158,6 +158,11 @@ const sampleFormStructure: FormField[] = [
           { label: "اطلاعات دانش آموزان", value: "student" },
           { label: "اطلاعات استادان", value: "teacher" },
           { label: "اطلاعات مدرسه", value: "school" },
+
+          { label: "تعریف کلاس ها", value: "classes" },
+          { label: "تعریف دروس", value: "subject" },
+          { label: "ثبت دانش آموزان", value: "importstudents" },
+          { label: "برنامه هفتگی", value: "weeklyschedule" },
         ],
       },
       {
