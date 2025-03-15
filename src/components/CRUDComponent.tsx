@@ -7,6 +7,7 @@ import Table from "./Table";
 import FormModal from "./FormModal";
 import DeleteModal from "./DeleteModal";
 import AdvancedSearchModal from "./AdvancedSearchModal";
+import { toast } from "sonner";
 
 export default function CRUDComponent({
   formStructure,
@@ -140,8 +141,36 @@ export default function CRUDComponent({
       setIsModalOpen(false);
       setEditingId(null);
       window.__EDITING_ENTITY_DATA__ = undefined;
-    } catch {
-      // Error is handled by the hook
+    } catch (error: Error | unknown) {
+      try {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorData = JSON.parse(errorMessage);
+        if (errorData.duplicateFields) {
+          Object.entries(errorData.duplicateFields).forEach(
+            ([field, message]) => {
+              const fieldTitle =
+                formStructure.find((f) => f.name === field)?.title || field;
+              toast.error(fieldTitle, {
+                description: message as string,
+                duration: 5000,
+              });
+            }
+          );
+        } else {
+          toast.error("خطا", {
+            description: errorMessage,
+            duration: 5000,
+          });
+        }
+      } catch {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        toast.error("خطا", {
+          description: errorMessage,
+          duration: 5000,
+        });
+      }
     }
   };
 
@@ -194,11 +223,11 @@ export default function CRUDComponent({
       style={{ maxWidth: layout.width }}
       dir={layout.direction}
     >
-      {error && (
+      {/* {error && (
         <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
           {error}
         </div>
-      )}
+      )} */}
 
       <div className="mb-6 space-y-4">
         <div
@@ -281,6 +310,7 @@ export default function CRUDComponent({
           editingId={editingId}
           loading={loading}
           layout={layout}
+          collectionName={collectionName}
         />
       )}
 
