@@ -10,6 +10,7 @@ export interface FieldValidation {
   regex?: string;
   requiredMessage?: string;
   validationMessage?: string;
+  uniqueMessage?: string;
 }
 
 export interface DropdownDataSource {
@@ -54,6 +55,7 @@ export interface FormField {
   readonly?: boolean;
   isShowInList: boolean;
   isSearchable: boolean;
+  isUnique?: boolean;
   listLabelColor?: string;
   options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, togglegroup, and autocomplete
   dataSource?: DropdownDataSource;  // For dropdown and autocomplete

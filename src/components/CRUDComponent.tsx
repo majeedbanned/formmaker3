@@ -74,7 +74,12 @@ export default function CRUDComponent({
     createEntity,
     updateEntity,
     deleteEntity,
-  } = useCrud({ collectionName, connectionString, initialFilter });
+  } = useCrud({
+    collectionName,
+    connectionString,
+    initialFilter,
+    formStructure,
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

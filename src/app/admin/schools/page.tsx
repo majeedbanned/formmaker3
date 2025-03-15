@@ -31,12 +31,13 @@ const sampleFormStructure: FormField[] = [
     type: "text",
     isShowInList: true,
     isSearchable: true,
-
+    isUnique: true,
     required: true,
     enabled: true,
     visible: true,
     validation: {
       requiredMessage: "کد مدرسه الزامی است",
+      uniqueMessage: "این کد مدرسه قبلاً ثبت شده است",
     },
   },
   {
@@ -45,12 +46,13 @@ const sampleFormStructure: FormField[] = [
     type: "text",
     isShowInList: true,
     isSearchable: true,
-
+    isUnique: true,
     required: true,
     enabled: true,
     visible: true,
     validation: {
       requiredMessage: "نام کاربری الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
     },
   },
   {

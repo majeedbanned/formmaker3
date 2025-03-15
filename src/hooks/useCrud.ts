@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { Entity } from "../types/crud";
+import { Entity, FormField } from "../types/crud";
 import { SortingState } from "@tanstack/react-table";
 
 interface UseCrudProps {
   collectionName: string;
   connectionString: string;
   initialFilter?: Record<string, unknown>;
+  formStructure: FormField[];
 }
 
-export function useCrud({ collectionName, connectionString, initialFilter }: UseCrudProps) {
+export function useCrud({ collectionName, connectionString, initialFilter, formStructure }: UseCrudProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +65,13 @@ export function useCrud({ collectionName, connectionString, initialFilter }: Use
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ connectionString, data }),
+        body: JSON.stringify({ connectionString, data, formStructure }),
       });
 
-      if (!response.ok) throw new Error("Failed to create entity");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create entity");
+      }
 
       const entity = await response.json();
       await fetchEntities();
@@ -90,10 +94,13 @@ export function useCrud({ collectionName, connectionString, initialFilter }: Use
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ connectionString, id, data }),
+        body: JSON.stringify({ connectionString, id, data, formStructure }),
       });
 
-      if (!response.ok) throw new Error("Failed to update entity");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update entity");
+      }
 
       const entity = await response.json();
       await fetchEntities();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase, getDynamicModel } from '@/lib/mongodb';
-import mongoose, { FilterQuery } from 'mongoose';
+import mongoose, { FilterQuery, Model } from 'mongoose';
+import { FormField } from '@/types/crud';
 
 interface MongoQuery {
   $and?: Array<Record<string, unknown>>;
@@ -13,10 +14,37 @@ export async function POST(
   { params }: { params: { collection: string } }
 ) {
   try {
-    const { connectionString, data } = await request.json();
+    const { connectionString, data, formStructure } = await request.json() as {
+      connectionString: string;
+      data: Record<string, unknown>;
+      formStructure: FormField[];
+    };
     await connectToDatabase(connectionString);
     
-    const model = getDynamicModel(params.collection);
+    const model = getDynamicModel(params.collection) as Model<any>;
+
+    // Check for uniqueness constraints
+    const uniqueFields = Object.entries(data).filter(([field]) => {
+      return formStructure?.find((f: FormField) => f.name === field && f.isUnique);
+    });
+
+    for (const [field, value] of uniqueFields) {
+      const query = { [`data.${field}`]: value } as FilterQuery<any>;
+      const existingDoc = await model.findOne(query).exec();
+
+      if (existingDoc) {
+        const formField = formStructure?.find((f: FormField) => f.name === field);
+        return NextResponse.json(
+          { 
+            error: 'Validation failed',
+            field,
+            message: formField?.validation?.uniqueMessage || `${field} must be unique`
+          },
+          { status: 400 }
+        );
+      }
+    }
+    
     const document = new model({
       _id: new mongoose.Types.ObjectId(),
       data: new Map(Object.entries(data))
@@ -111,10 +139,41 @@ export async function PUT(
   { params }: { params: { collection: string } }
 ) {
   try {
-    const { connectionString, id, data } = await request.json();
+    const { connectionString, id, data, formStructure } = await request.json() as {
+      connectionString: string;
+      id: string;
+      data: Record<string, unknown>;
+      formStructure: FormField[];
+    };
     await connectToDatabase(connectionString);
     
-    const model = getDynamicModel(params.collection);
+    const model = getDynamicModel(params.collection) as Model<any>;
+
+    // Check for uniqueness constraints
+    const uniqueFields = Object.entries(data).filter(([field]) => {
+      return formStructure?.find((f: FormField) => f.name === field && f.isUnique);
+    });
+
+    for (const [field, value] of uniqueFields) {
+      const query = { 
+        _id: { $ne: id }, // Exclude current document
+        [`data.${field}`]: value 
+      } as FilterQuery<any>;
+      const existingDoc = await model.findOne(query).exec();
+
+      if (existingDoc) {
+        const formField = formStructure?.find((f: FormField) => f.name === field);
+        return NextResponse.json(
+          { 
+            error: 'Validation failed',
+            field,
+            message: formField?.validation?.uniqueMessage || `${field} must be unique`
+          },
+          { status: 400 }
+        );
+      }
+    }
+    
     const document = await model.findByIdAndUpdate(
       id,
       { 
@@ -122,7 +181,7 @@ export async function PUT(
         updatedAt: new Date()
       },
       { new: true }
-    ) as unknown;
+    ).exec();
     
     if (!document) {
       return NextResponse.json(
