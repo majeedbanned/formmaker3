@@ -3,14 +3,11 @@
 import * as React from "react";
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
   Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
-  Settings2,
   SquareTerminal,
 } from "lucide-react";
 
@@ -25,13 +22,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+  defaultUser: {
+    name: "کاربر مهمان",
+    email: "guest@example.com",
+    avatar: "/avatars/default.jpg",
   },
   teams: [
     {
@@ -60,79 +58,20 @@ const data = {
         {
           title: "اطلاعات مدرسه/آموزشکاه",
           url: "/admin/schools",
+          system: "school",
+          requiredPermission: "show",
         },
         {
           title: "دانش آموزان",
           url: "/admin/students",
+          system: "student",
+          requiredPermission: "show",
         },
         {
           title: "معلمان",
           url: "/admin/teachers",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
+          system: "teacher",
+          requiredPermission: "show",
         },
       ],
     },
@@ -157,17 +96,44 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, hasPermission } = useAuth();
+
+  // Filter navigation items based on permissions
+  const filteredNavMain = React.useMemo(() => {
+    if (!user) return [];
+    console.log("uu", user);
+    return data.navMain
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          hasPermission(item.system, item.requiredPermission)
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [user, hasPermission]);
+
+  // Convert auth user to NavUser format
+  const navUser = React.useMemo(() => {
+    if (!user) return data.defaultUser;
+
+    return {
+      name: user.name,
+      email: user.username + "@school.com", // Using username as email since we don't have email
+      avatar: "/avatars/default.jpg", // Using default avatar since we don't have avatars
+    };
+  }, [user]);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={filteredNavMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

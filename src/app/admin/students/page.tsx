@@ -105,9 +105,9 @@ const sampleFormStructure: FormField[] = [
         title: "سیستم",
         type: "dropdown",
         options: [
-          { label: "نمرات", value: "grades" },
-          { label: "کارنامه", value: "reportCard" },
-          { label: "حضور و غیاب", value: "attendance" },
+          { label: "اطلاعات دانش آموزان", value: "student" },
+          { label: "اطلاعات استادان", value: "teacher" },
+          { label: "اطلاعات مدرسه", value: "school" },
         ],
       },
       {

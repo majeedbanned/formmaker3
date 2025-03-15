@@ -156,7 +156,7 @@ const sampleFormStructure: FormField[] = [
         options: [
           { label: "اطلاعات دانش آموزان", value: "student" },
           { label: "اطلاعات استادان", value: "teacher" },
-          { label: "اطلاعات مدیران", value: "admin" },
+          { label: "اطلاعات مدرسه", value: "school" },
         ],
       },
       {

@@ -105,11 +105,9 @@ const sampleFormStructure: FormField[] = [
         title: "سیستم",
         type: "dropdown",
         options: [
-          { label: "نمرات", value: "grades" },
-          { label: "آموزش", value: "education" },
-          { label: "حضور و غیاب", value: "attendance" },
-          { label: "ترمیم و تعمیرات", value: "maintenance" },
-          { label: "مالی", value: "finance" },
+          { label: "اطلاعات دانش آموزان", value: "student" },
+          { label: "اطلاعات استادان", value: "teacher" },
+          { label: "اطلاعات مدرسه", value: "school" },
         ],
       },
       {
