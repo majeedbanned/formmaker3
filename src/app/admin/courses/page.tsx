@@ -147,7 +147,6 @@ export default function Home({
       ],
       validation: {
         requiredMessage: "لطفا یک پایه تحصیلی را انتخاب کنید",
-        groupUniqueMessage: "این کد درس قبلاً ثبت شده است",
       },
     },
 
@@ -167,7 +166,6 @@ export default function Home({
       visible: true,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
-        groupUniqueMessage: "این کد درس قبلاً ثبت شده است",
       },
     },
   ] as const;

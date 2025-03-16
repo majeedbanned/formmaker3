@@ -36,7 +36,9 @@ export async function POST(
 
       if (existingDoc) {
         const formField = formStructure?.find((f: FormField) => f.name === field);
-        duplicateFields[field] = formField?.validation?.uniqueMessage || `${field} must be unique`;
+        if (formField?.validation?.uniqueMessage) {
+          duplicateFields[field] = formField.validation.uniqueMessage;
+        }
       }
     }
 
@@ -67,8 +69,9 @@ export async function POST(
           
           fields.forEach(field => {
             const formField = formStructure.find(f => f.name === field);
-            duplicateFields[field] = formField?.validation?.groupUniqueMessage || 
-              `ترکیب فیلدهای ${titles.join(' و ')} تکراری است`;
+            if (formField?.validation?.groupUniqueMessage) {
+              duplicateFields[field] = formField.validation.groupUniqueMessage;
+            }
           });
         }
       }
@@ -204,7 +207,9 @@ export async function PUT(
 
       if (existingDoc) {
         const formField = formStructure?.find((f: FormField) => f.name === field);
-        duplicateFields[field] = formField?.validation?.uniqueMessage || `${field} must be unique`;
+        if (formField?.validation?.uniqueMessage) {
+          duplicateFields[field] = formField.validation.uniqueMessage;
+        }
       }
     }
 
@@ -228,15 +233,12 @@ export async function PUT(
         const existingDoc = await model.findOne(groupQuery).exec();
         if (existingDoc) {
           const fields = groupUniqueFields.filter(field => data[field] !== undefined && data[field] !== null);
-          const titles = fields.map(field => {
-            const formField = formStructure.find(f => f.name === field);
-            return formField?.title || field;
-          });
           
           fields.forEach(field => {
             const formField = formStructure.find(f => f.name === field);
-            duplicateFields[field] = formField?.validation?.groupUniqueMessage || 
-              `ترکیب فیلدهای ${titles.join(' و ')} تکراری است`;
+            if (formField?.validation?.groupUniqueMessage) {
+              duplicateFields[field] = formField.validation.groupUniqueMessage;
+            }
           });
         }
       }
