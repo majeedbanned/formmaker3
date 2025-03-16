@@ -889,7 +889,10 @@ const FormField = ({
     );
   } else {
     return (
-      <div className="space-y-2">
+      <div
+        className="space-y-2"
+        style={{ display: field.visible ? "block" : "none" }}
+      >
         <label
           htmlFor={field.name}
           className={`block text-sm font-medium text-${
@@ -941,9 +944,11 @@ const FormField = ({
           </>
         ) : (
           <Input
+            defaultValue={field.defaultValue}
+            readOnly={field.readonly}
             type={field.type}
             {...register(field.name, validationRules)}
-            disabled={isDisabled}
+            disabled={isDisabled || field.readonly}
             className={`${
               layout.direction === "rtl" ? "text-right" : "text-left"
             }`}
@@ -1340,7 +1345,7 @@ export default function FormModal({
         >
           <div className="flex-1 overflow-y-auto pr-6 -mr-6 pb-6 space-y-4">
             {formStructure.map((field) => {
-              if (!field.visible) return null;
+              // if (!field.visible) return null;
 
               const isDisabled = Boolean(
                 !field.enabled || (editingId && field.readonly)

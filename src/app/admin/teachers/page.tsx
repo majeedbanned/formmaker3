@@ -7,139 +7,7 @@ import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { filterExamples } from "@/utils/filterHelpers";
-
-const sampleFormStructure: FormField[] = [
-  {
-    name: "teacherName",
-    title: "نام معلم",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-    required: true,
-    enabled: true,
-    visible: true,
-    readonly: false,
-    listLabelColor: "#2563eb",
-    defaultValue: "",
-    validation: {
-      requiredMessage: "نام معلم الزامی است",
-    },
-  },
-
-  {
-    name: "teacherCode",
-    title: "کد معلم",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-
-    required: true,
-    enabled: true,
-    visible: true,
-    validation: {
-      requiredMessage: "کد معلم الزامی است",
-    },
-  },
-
-  {
-    name: "schoolCode",
-    title: "کد مدرسه",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-
-    required: true,
-    enabled: true,
-    visible: true,
-    validation: {
-      requiredMessage: "کد مدرسه الزامی است",
-    },
-  },
-
-  {
-    name: "password",
-    title: "رمز عبور",
-    type: "text",
-    isShowInList: true,
-    isSearchable: true,
-
-    required: true,
-    enabled: true,
-    visible: true,
-    validation: {
-      requiredMessage: "رمز عبور الزامی است",
-    },
-  },
-
-  {
-    name: "isActive",
-    title: "فعال/غیرفعال",
-    type: "checkbox",
-    isShowInList: true,
-    isSearchable: true,
-    required: false,
-    enabled: true,
-    visible: true,
-    readonly: false,
-    defaultValue: true,
-  },
-
-  {
-    enabled: true,
-    visible: true,
-    isShowInList: true,
-    isSearchable: true,
-    name: "premisions",
-    title: "مجوزها",
-    type: "text",
-    required: false,
-    nestedType: "array",
-    fields: [
-      {
-        enabled: true,
-        visible: true,
-        isSearchable: true,
-        required: true,
-        isShowInList: true,
-        name: "systems",
-        title: "سیستم",
-        type: "dropdown",
-        options: [
-          { label: "اطلاعات دانش آموزان", value: "student" },
-          { label: "اطلاعات استادان", value: "teacher" },
-          { label: "اطلاعات مدرسه", value: "school" },
-        ],
-      },
-      {
-        name: "access",
-        title: "دسترسی",
-        type: "checkbox",
-        isShowInList: true,
-        isSearchable: true,
-        required: false,
-        enabled: true,
-        visible: true,
-        readonly: false,
-        defaultValue: [],
-        isMultiple: true,
-        options: [
-          { value: "show", label: "نمایش" },
-          { value: "list", label: "لیست" },
-          { value: "create", label: "ایجاد" },
-          { value: "edit", label: "ویرایش" },
-          { value: "delete", label: "حذف" },
-          { value: "groupDelete", label: "حذف گروهی" },
-          { value: "search", label: "جستجو" },
-        ],
-        validation: {
-          requiredMessage: "Please select at least one interest",
-        },
-      },
-    ],
-    orientation: "horizontal",
-    isOpen: false,
-  },
-] as const;
+import { useAuth } from "@/hooks/useAuth";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -173,43 +41,6 @@ const layout: LayoutSettings = {
     clearFiltersText: "پاک کردن فیلترها",
   },
 };
-// const layout: LayoutSettings = {
-//   direction: "rtl",
-//   width: "100%",
-//   texts: {
-//     addButton: "افزودن",
-//     editButton: "Edit",
-//     deleteButton: "Delete",
-//     cancelButton: "Cancel",
-//     clearButton: "Clear",
-//     searchButton: "Search",
-//     advancedSearchButton: "Advanced Search",
-//     applyFiltersButton: "Apply Filters",
-//     addModalTitle: "Add New Entry",
-//     editModalTitle: "Edit Entry",
-//     deleteModalTitle: "Delete Confirmation",
-//     advancedSearchModalTitle: "Advanced Search",
-//     deleteConfirmationMessage:
-//       "Are you sure you want to delete this item? This action cannot be undone.",
-//     noResultsMessage: "No results found",
-//     loadingMessage: "Loading...",
-//     processingMessage: "Processing...",
-//     actionsColumnTitle: "Actions",
-//     showEntriesText: "Show",
-//     pageText: "Page",
-//     ofText: "of",
-//     searchPlaceholder: "Search all fields...",
-//     selectPlaceholder: "Select an option",
-//     filtersAppliedText: "Advanced search filters applied",
-//     clearFiltersText: "Clear filters",
-//   },
-// };
-
-// Define hardcoded filter
-const hardcodedFilter = {
-  // isActive: true, // Example: Only show active users by default
-  //role: "admin", // Example: Only show regular users by default
-} as const;
 
 export default function Home({
   postedFilter,
@@ -217,10 +48,7 @@ export default function Home({
   postedFilter?: Record<string, unknown>;
 }) {
   const router = useRouter();
-  const initialFilter = useInitialFilter({
-    postedFilter,
-    hardcodedFilter,
-  });
+  const { hasPermission, isLoading, user } = useAuth();
 
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
@@ -245,6 +73,155 @@ export default function Home({
   const applyFilter = (filterUrl: string) => {
     router.push(filterUrl);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hardcodedFilter = {
+    schoolCode: user?.schoolCode,
+  } as const;
+  const sampleFormStructure: FormField[] = [
+    {
+      name: "teacherName",
+      title: "نام معلم",
+      type: "text",
+      isShowInList: true,
+      isSearchable: true,
+      required: true,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      listLabelColor: "#2563eb",
+      defaultValue: "",
+      validation: {
+        requiredMessage: "نام معلم الزامی است",
+      },
+    },
+
+    {
+      name: "teacherCode",
+      title: "کد معلم",
+      type: "text",
+      isShowInList: true,
+      isSearchable: true,
+      isUnique: true,
+      required: true,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "کد معلم الزامی است",
+      },
+    },
+
+    {
+      name: "schoolCode",
+      title: "کد مدرسه",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+      defaultValue: user?.schoolCode,
+      readonly: true,
+
+      required: true,
+      enabled: true,
+      visible: false,
+      validation: {
+        requiredMessage: "کد مدرسه الزامی است",
+      },
+    },
+
+    {
+      name: "password",
+      title: "رمز عبور",
+      type: "text",
+      isShowInList: true,
+      isSearchable: true,
+
+      required: true,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "رمز عبور الزامی است",
+      },
+    },
+
+    {
+      name: "isActive",
+      title: "فعال/غیرفعال",
+      type: "checkbox",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      defaultValue: true,
+    },
+
+    {
+      enabled: true,
+      visible: true,
+      isShowInList: true,
+      isSearchable: true,
+      name: "premisions",
+      title: "مجوزها",
+      type: "text",
+      required: false,
+      nestedType: "array",
+      fields: [
+        {
+          enabled: true,
+          visible: true,
+          isSearchable: true,
+          required: true,
+          isShowInList: true,
+          name: "systems",
+          title: "سیستم",
+          type: "dropdown",
+          options: [
+            { label: "اطلاعات دانش آموزان", value: "student" },
+            { label: "اطلاعات استادان", value: "teacher" },
+            { label: "اطلاعات مدرسه", value: "school" },
+          ],
+        },
+        {
+          name: "access",
+          title: "دسترسی",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: [],
+          isMultiple: true,
+          options: [
+            { value: "show", label: "نمایش" },
+            { value: "list", label: "لیست" },
+            { value: "create", label: "ایجاد" },
+            { value: "edit", label: "ویرایش" },
+            { value: "delete", label: "حذف" },
+            { value: "groupDelete", label: "حذف گروهی" },
+            { value: "search", label: "جستجو" },
+          ],
+          validation: {
+            requiredMessage: "Please select at least one interest",
+          },
+        },
+      ],
+      orientation: "horizontal",
+      isOpen: false,
+    },
+  ] as const;
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">
@@ -306,7 +283,7 @@ export default function Home({
           formStructure={sampleFormStructure}
           collectionName="teachers"
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
-          initialFilter={initialFilter}
+          initialFilter={hardcodedFilter}
           permissions={{
             canList: true,
             canAdd: true,
