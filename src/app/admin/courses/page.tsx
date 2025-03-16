@@ -154,7 +154,7 @@ export default function Home({
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       groupUniqueness: true,
 
@@ -163,7 +163,7 @@ export default function Home({
 
       required: true,
       enabled: true,
-      visible: true,
+      visible: false,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },

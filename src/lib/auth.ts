@@ -9,6 +9,7 @@ interface SchoolData {
   isActive: boolean;
   password: string;
   maghta: string;
+  name: string;
   premisions: Array<{
     systems: string;
     access: string[];
@@ -17,7 +18,8 @@ interface SchoolData {
 }
 
 interface School extends Document {
-  data: Map<keyof SchoolData, SchoolData[keyof SchoolData]>;
+  data: Map<string, unknown>;
+  _id: string;
 }
 
 interface TeacherData {
@@ -34,7 +36,8 @@ interface TeacherData {
 }
 
 interface Teacher extends Document {
-  data: Map<keyof TeacherData, TeacherData[keyof TeacherData]>;
+  data: Map<string, unknown>;
+  _id: string;
 }
 
 interface StudentData {
@@ -42,7 +45,6 @@ interface StudentData {
   username: string;
   password: string;
   studentCode: string;
-
   schoolCode: string;
   isActive: boolean;
   permissions: Array<{
@@ -52,7 +54,8 @@ interface StudentData {
 }
 
 interface Student extends Document {
-  data: Map<keyof StudentData, StudentData[keyof StudentData]>;
+  data: Map<string, unknown>;
+  _id: string;
 }
 
 const JWT_SECRET = new TextEncoder().encode(
@@ -148,6 +151,10 @@ export async function authenticateUser(
     name: userData.get('name'),
     role: userType,
     permissions: userData.get('premisions') || userData.get('permissions') || [],
+    ...(userType === 'school' ? {
+      maghta: userData.get('maghta'),
+      grade: userData.get('Grade')
+    } : {})
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -164,6 +171,10 @@ export async function authenticateUser(
       name: userData.get('name'),
       role: userType,
       permissions: userData.get('premisions') || userData.get('permissions') || [],
+      ...(userType === 'school' ? {
+        maghta: userData.get('maghta'),
+        grade: userData.get('Grade')
+      } : {})
     }
   };
 } 

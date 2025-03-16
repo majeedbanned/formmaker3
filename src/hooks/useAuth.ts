@@ -14,6 +14,8 @@ interface User {
   name: string;
   role: string;
   permissions: Permission[];
+  maghta?: string;  // Optional since it's only for school users
+  grade?: string;   // Optional since it's only for school users
 }
 
 interface AuthState {
@@ -111,5 +113,7 @@ export function useAuth() {
     hasAllPermissions,
     logout,
     isAuthenticated: !!state.user,
+    getMaghta: () => state.user?.userType === 'school' ? state.user.maghta : undefined,
+    getGrade: () => state.user?.userType === 'school' ? state.user.grade : undefined,
   };
 } 
