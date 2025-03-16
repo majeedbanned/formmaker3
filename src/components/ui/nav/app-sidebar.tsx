@@ -84,8 +84,8 @@ const data = {
       items: [
         {
           title: "تعریف دروس",
-          url: "/admin/subjects",
-          system: "subject",
+          url: "/admin/courses",
+          system: "courses",
           requiredPermission: "show",
         },
         {
