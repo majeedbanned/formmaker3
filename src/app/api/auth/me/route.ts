@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAuth } from "@/lib/auth";
 import { JWTPayload } from "jose";
+import { getDynamicModel } from "@/lib/mongodb";
+import type { Model } from "mongoose";
 
 interface Permission {
   systems: string;
@@ -32,6 +34,11 @@ interface AuthPayload extends JWTPayload {
   grade?: string;
 }
 
+interface School {
+  data: Map<string, unknown>;
+  _id: string;
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -60,6 +67,15 @@ export async function GET() {
     if (payload.userType === 'school') {
       user.maghta = payload.maghta;
       user.grade = payload.grade;
+    } 
+    // For teachers and students, fetch maghta from their school
+    else if (payload.userType === 'teacher' || payload.userType === 'student') {
+      const SchoolModel = getDynamicModel('schools') as Model<School>;
+      const school = await SchoolModel.findOne({ 'data.schoolCode': payload.schoolCode });
+      
+      if (school) {
+        user.maghta = school.data.get('maghta') as string;
+      }
     }
     
     return NextResponse.json({ user });
