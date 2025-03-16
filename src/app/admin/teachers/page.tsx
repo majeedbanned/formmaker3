@@ -111,13 +111,16 @@ export default function Home({
       title: "کد معلم",
       type: "text",
       isShowInList: true,
+      groupUniqueness: true,
+
       isSearchable: true,
-      isUnique: true,
+      // isUnique: true,
       required: true,
       enabled: true,
       visible: true,
       validation: {
         requiredMessage: "کد معلم الزامی است",
+        groupUniqueMessage: "این کد معلم قبلاً ثبت شده است",
       },
     },
 
@@ -127,6 +130,8 @@ export default function Home({
       type: "text",
       isShowInList: false,
       isSearchable: true,
+      groupUniqueness: true,
+
       defaultValue: user?.schoolCode,
       readonly: true,
 

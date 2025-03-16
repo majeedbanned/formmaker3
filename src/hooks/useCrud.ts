@@ -70,7 +70,7 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create entity");
+        throw new Error(JSON.stringify(errorData));
       }
 
       const entity = await response.json();
@@ -99,7 +99,7 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update entity");
+        throw new Error(JSON.stringify(errorData));
       }
 
       const entity = await response.json();

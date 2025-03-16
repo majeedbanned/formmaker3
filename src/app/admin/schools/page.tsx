@@ -33,6 +33,7 @@ const sampleFormStructure: FormField[] = [
     isSearchable: true,
     isUnique: true,
     required: true,
+
     enabled: true,
     visible: true,
     validation: {
@@ -93,6 +94,7 @@ const sampleFormStructure: FormField[] = [
     enabled: true,
     visible: true,
     readonly: false,
+    groupUniqueness: true,
     options: [
       { label: "ابتدایی", value: "1" },
       { label: "متوسطه اول", value: "2" },
@@ -102,6 +104,7 @@ const sampleFormStructure: FormField[] = [
     ],
     validation: {
       requiredMessage: "لطفا یک مقطع تحصیلی را انتخاب کنید",
+      groupUniqueMessage: "این ترکیب مقطع و پایه تحصیلی قبلاً ثبت شده است",
     },
   },
 
@@ -115,6 +118,7 @@ const sampleFormStructure: FormField[] = [
     enabled: true,
     visible: true,
     readonly: false,
+    groupUniqueness: true,
     options: [
       { label: "اول ابتدایی", value: "1" },
       { label: "دوم ابتدایی", value: "2" },
@@ -131,6 +135,7 @@ const sampleFormStructure: FormField[] = [
     ],
     validation: {
       requiredMessage: "لطفا یک پایه تحصیلی را انتخاب کنید",
+      groupUniqueMessage: "این ترکیب مقطع و پایه تحصیلی قبلاً ثبت شده است",
     },
   },
 

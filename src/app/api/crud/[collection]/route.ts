@@ -23,10 +23,12 @@ export async function POST(
     
     const model = getDynamicModel(params.collection) as Model<any>;
 
-    // Check for uniqueness constraints
+    // Check for individual uniqueness constraints
     const uniqueFields = Object.entries(data).filter(([field]) => {
       return formStructure?.find((f: FormField) => f.name === field && f.isUnique);
     });
+
+    const duplicateFields: Record<string, string> = {};
 
     for (const [field, value] of uniqueFields) {
       const query = { [`data.${field}`]: value } as FilterQuery<any>;
@@ -34,15 +36,52 @@ export async function POST(
 
       if (existingDoc) {
         const formField = formStructure?.find((f: FormField) => f.name === field);
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            field,
-            message: formField?.validation?.uniqueMessage || `${field} must be unique`
-          },
-          { status: 400 }
-        );
+        duplicateFields[field] = formField?.validation?.uniqueMessage || `${field} must be unique`;
       }
+    }
+
+    // Check for group uniqueness constraints
+    const groupUniqueFields = formStructure
+      .filter(f => f.groupUniqueness)
+      .map(f => f.name);
+
+    if (groupUniqueFields.length > 0) {
+      const groupQuery = {} as FilterQuery<any>;
+      let hasGroupValues = false;
+
+      groupUniqueFields.forEach(field => {
+        if (data[field] !== undefined && data[field] !== null) {
+          groupQuery[`data.${field}`] = data[field];
+          hasGroupValues = true;
+        }
+      });
+
+      if (hasGroupValues) {
+        const existingDoc = await model.findOne(groupQuery).exec();
+        if (existingDoc) {
+          const fields = groupUniqueFields.filter(field => data[field] !== undefined && data[field] !== null);
+          const titles = fields.map(field => {
+            const formField = formStructure.find(f => f.name === field);
+            return formField?.title || field;
+          });
+          
+          fields.forEach(field => {
+            const formField = formStructure.find(f => f.name === field);
+            duplicateFields[field] = formField?.validation?.groupUniqueMessage || 
+              `ترکیب فیلدهای ${titles.join(' و ')} تکراری است`;
+          });
+        }
+      }
+    }
+
+    if (Object.keys(duplicateFields).length > 0) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          duplicateFields
+        },
+        { status: 400 }
+      );
     }
     
     const document = new model({
@@ -149,10 +188,12 @@ export async function PUT(
     
     const model = getDynamicModel(params.collection) as Model<any>;
 
-    // Check for uniqueness constraints
+    // Check for individual uniqueness constraints
     const uniqueFields = Object.entries(data).filter(([field]) => {
       return formStructure?.find((f: FormField) => f.name === field && f.isUnique);
     });
+
+    const duplicateFields: Record<string, string> = {};
 
     for (const [field, value] of uniqueFields) {
       const query = { 
@@ -163,15 +204,52 @@ export async function PUT(
 
       if (existingDoc) {
         const formField = formStructure?.find((f: FormField) => f.name === field);
-        return NextResponse.json(
-          { 
-            error: 'Validation failed',
-            field,
-            message: formField?.validation?.uniqueMessage || `${field} must be unique`
-          },
-          { status: 400 }
-        );
+        duplicateFields[field] = formField?.validation?.uniqueMessage || `${field} must be unique`;
       }
+    }
+
+    // Check for group uniqueness constraints
+    const groupUniqueFields = formStructure
+      .filter(f => f.groupUniqueness)
+      .map(f => f.name);
+
+    if (groupUniqueFields.length > 0) {
+      const groupQuery = { _id: { $ne: id } } as FilterQuery<any>;
+      let hasGroupValues = false;
+
+      groupUniqueFields.forEach(field => {
+        if (data[field] !== undefined && data[field] !== null) {
+          groupQuery[`data.${field}`] = data[field];
+          hasGroupValues = true;
+        }
+      });
+
+      if (hasGroupValues) {
+        const existingDoc = await model.findOne(groupQuery).exec();
+        if (existingDoc) {
+          const fields = groupUniqueFields.filter(field => data[field] !== undefined && data[field] !== null);
+          const titles = fields.map(field => {
+            const formField = formStructure.find(f => f.name === field);
+            return formField?.title || field;
+          });
+          
+          fields.forEach(field => {
+            const formField = formStructure.find(f => f.name === field);
+            duplicateFields[field] = formField?.validation?.groupUniqueMessage || 
+              `ترکیب فیلدهای ${titles.join(' و ')} تکراری است`;
+          });
+        }
+      }
+    }
+
+    if (Object.keys(duplicateFields).length > 0) {
+      return NextResponse.json(
+        { 
+          error: 'Validation failed',
+          duplicateFields
+        },
+        { status: 400 }
+      );
     }
     
     const document = await model.findByIdAndUpdate(
