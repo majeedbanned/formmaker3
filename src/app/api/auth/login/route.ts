@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { authenticateUser } from "@/lib/auth";
 
+// Set runtime to nodejs
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

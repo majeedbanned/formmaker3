@@ -1,38 +1,10 @@
-import { SignJWT, jwtVerify } from "jose";
 import { getDynamicModel } from "@/lib/mongodb";
 import type { Document, Model } from "mongoose";
-
-interface SchoolData {
-  schoolName: string;
-  schoolCode: string;
-  Grade: string;
-  isActive: boolean;
-  password: string;
-  maghta: string;
-  name: string;
-  premisions: Array<{
-    systems: string;
-    access: string[];
-  }>;
-  premisions_expanded: boolean;
-}
+import { signJWT } from "./jwt";
 
 interface School extends Document {
   data: Map<string, unknown>;
   _id: string;
-}
-
-interface TeacherData {
-  name: string;
-  username: string;
-  password: string;
-  schoolCode: string;
-  teacherCode: string;
-  isActive: boolean;
-  permissions: Array<{
-    systems: string;
-    access: string[];
-  }>;
 }
 
 interface Teacher extends Document {
@@ -40,27 +12,10 @@ interface Teacher extends Document {
   _id: string;
 }
 
-interface StudentData {
-  name: string;
-  username: string;
-  password: string;
-  studentCode: string;
-  schoolCode: string;
-  isActive: boolean;
-  permissions: Array<{
-    systems: string;
-    access: string[];
-  }>;
-}
-
 interface Student extends Document {
   data: Map<string, unknown>;
   _id: string;
 }
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "your-secret-key"
-);
 
 // Mock user database - in a real app, this would be your database
 export const users = [
@@ -71,16 +26,6 @@ export const users = [
     role: "admin",
   },
 ];
-
-export async function verifyAuth(token: string) {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload;
-  } catch (error) {
-    console.error("Token verification failed:", error);
-    throw new Error("Invalid token");
-  }
-}
 
 export async function authenticateUser(
   userType: "school" | "teacher" | "student",
@@ -143,7 +88,7 @@ export async function authenticateUser(
   }
 
   // Generate token with user info
-  const token = await new SignJWT({
+  const token = await signJWT({
     userId: user._id,
     userType,
     schoolCode,
@@ -155,11 +100,7 @@ export async function authenticateUser(
       maghta: userData.get('maghta'),
       grade: userData.get('Grade')
     } : {})
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("1d")
-    .sign(JWT_SECRET);
+  });
 
   return { 
     token, 

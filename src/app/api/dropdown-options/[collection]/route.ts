@@ -3,6 +3,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getDynamicModel } from "@/lib/mongodb";
 import { Document, Model } from "mongoose";
 
+// Set runtime to nodejs
+export const runtime = 'nodejs';
+
 interface MongoDocument extends Document {
   data: Map<string, unknown>;
   _id: string;

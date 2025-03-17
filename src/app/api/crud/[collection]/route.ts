@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase, getDynamicModel } from '@/lib/mongodb';
 import mongoose, { FilterQuery, Model } from 'mongoose';
 import { FormField } from '@/types/crud';
+import { getServerSession } from "next-auth";
+
+// Set runtime to nodejs
+export const runtime = 'nodejs';
 
 interface MongoQuery {
   $and?: Array<Record<string, unknown>>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
 import { ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings, Entity } from "@/types/crud";
@@ -204,7 +205,6 @@ const sampleFormStructure: FormField[] = [
 const layout: LayoutSettings = {
   direction: "rtl",
   width: "100%",
-
   texts: {
     addButton: "افزودن",
     editButton: "ویرایش",
@@ -233,51 +233,10 @@ const layout: LayoutSettings = {
     clearFiltersText: "پاک کردن فیلترها",
   },
 };
-// const layout: LayoutSettings = {
-//   direction: "rtl",
-//   width: "100%",
-//   texts: {
-//     addButton: "افزودن",
-//     editButton: "Edit",
-//     deleteButton: "Delete",
-//     cancelButton: "Cancel",
-//     clearButton: "Clear",
-//     searchButton: "Search",
-//     advancedSearchButton: "Advanced Search",
-//     applyFiltersButton: "Apply Filters",
-//     addModalTitle: "Add New Entry",
-//     editModalTitle: "Edit Entry",
-//     deleteModalTitle: "Delete Confirmation",
-//     advancedSearchModalTitle: "Advanced Search",
-//     deleteConfirmationMessage:
-//       "Are you sure you want to delete this item? This action cannot be undone.",
-//     noResultsMessage: "No results found",
-//     loadingMessage: "Loading...",
-//     processingMessage: "Processing...",
-//     actionsColumnTitle: "Actions",
-//     showEntriesText: "Show",
-//     pageText: "Page",
-//     ofText: "of",
-//     searchPlaceholder: "Search all fields...",
-//     selectPlaceholder: "Select an option",
-//     filtersAppliedText: "Advanced search filters applied",
-//     clearFiltersText: "Clear filters",
-//   },
-// };
 
-// Define hardcoded filter
-const hardcodedFilter = {
-  // isActive: true, // Example: Only show active users by default
-  //role: "admin", // Example: Only show regular users by default
-} as const;
-
-export default function Home({
-  postedFilter,
-}: {
-  postedFilter?: Record<string, unknown>;
-}) {
+function SchoolsPageContent() {
+  const { initialFilter } = useInitialFilter();
   const { hasPermission, isLoading } = useAuth();
-  const { initialFilter } = useInitialFilter(postedFilter);
 
   // Get user permissions for the schools system
   const permissions = {
@@ -316,9 +275,7 @@ export default function Home({
   }
 
   const shareWithFilters = (rowId: string) => {
-    const filter = {
-      id: rowId,
-    };
+    const filter = { _id: rowId };
     const encryptedFilter = encryptFilter(filter);
     const url = `${window.location.origin}/admin/schools?filter=${encryptedFilter}`;
     navigator.clipboard.writeText(url);
@@ -341,34 +298,46 @@ export default function Home({
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <CRUDComponent
-        formStructure={sampleFormStructure}
-        collectionName="schools"
-        connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
-        layout={layout}
-        initialFilter={initialFilter as Record<string, unknown>}
-        permissions={{
-          canList: permissions.canList,
-          canAdd: permissions.canCreate,
-          canEdit: permissions.canEdit,
-          canDelete: permissions.canDelete,
-          canGroupDelete: permissions.canGroupDelete,
-          canAdvancedSearch: permissions.canSearch,
-          canSearchAllFields: permissions.canSearch,
-        }}
-        rowActions={[
-          {
-            label: "اشتراک گذاری",
-            action: shareWithFilters,
-            icon: ShareIcon,
-          },
-        ]}
-        onAfterAdd={handleAfterAdd}
-        onAfterEdit={handleAfterEdit}
-        onAfterDelete={handleAfterDelete}
-        onAfterGroupDelete={handleAfterGroupDelete}
-      />
-    </div>
+    <main className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">مدیریت مدارس</h1>
+
+        <CRUDComponent
+          formStructure={sampleFormStructure}
+          collectionName="schools"
+          connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
+          initialFilter={initialFilter as Record<string, unknown>}
+          layout={layout}
+          permissions={{
+            canList: permissions.canList,
+            canAdd: permissions.canCreate,
+            canEdit: permissions.canEdit,
+            canDelete: permissions.canDelete,
+            canGroupDelete: permissions.canGroupDelete,
+            canAdvancedSearch: permissions.canSearch,
+            canSearchAllFields: permissions.canSearch,
+          }}
+          rowActions={[
+            {
+              label: "اشتراک",
+              action: shareWithFilters,
+              icon: ShareIcon,
+            },
+          ]}
+          onAfterAdd={handleAfterAdd}
+          onAfterEdit={handleAfterEdit}
+          onAfterDelete={handleAfterDelete}
+          onAfterGroupDelete={handleAfterGroupDelete}
+        />
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SchoolsPageContent />
+    </Suspense>
   );
 }

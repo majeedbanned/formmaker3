@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyJWT } from "@/lib/jwt";
+
+// Set runtime to experimental-edge since we're not using Mongoose here
+export const runtime = 'experimental-edge';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
@@ -17,25 +20,37 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const payload = await verifyAuth(token) as unknown as {
-        schoolId: string;
+      const payload = await verifyJWT(token) as {
+        userId: string;
+        userType: string;
         schoolCode: string;
-        schoolName: string;
+        username: string;
+        name: string;
         role: string;
         permissions: Array<{
           systems: string;
           access: string[];
         }>;
+        maghta?: string;
+        grade?: string;
       };
       
       // Add user info to headers for downstream use
       const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-school-id", payload.schoolId);
+      requestHeaders.set("x-user-id", payload.userId);
+      requestHeaders.set("x-user-type", payload.userType);
       requestHeaders.set("x-school-code", payload.schoolCode);
-      // Encode Farsi text before setting in header
-      requestHeaders.set("x-school-name", encodeURIComponent(payload.schoolName));
+      requestHeaders.set("x-username", payload.username);
+      // Encode text before setting in header
+      requestHeaders.set("x-name", encodeURIComponent(payload.name));
       requestHeaders.set("x-user-role", payload.role);
       requestHeaders.set("x-permissions", JSON.stringify(payload.permissions));
+      if (payload.maghta) {
+        requestHeaders.set("x-maghta", payload.maghta);
+      }
+      if (payload.grade) {
+        requestHeaders.set("x-grade", payload.grade);
+      }
       
       return NextResponse.next({
         request: {

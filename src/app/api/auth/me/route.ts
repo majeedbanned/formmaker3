@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyAuth } from "@/lib/auth";
+import { verifyJWT } from "@/lib/jwt";
 import { JWTPayload } from "jose";
 import { getDynamicModel } from "@/lib/mongodb";
 import type { Model } from "mongoose";
+
+// Set runtime to nodejs
+export const runtime = 'nodejs';
 
 interface Permission {
   systems: string;
@@ -51,7 +54,7 @@ export async function GET() {
       );
     }
 
-    const payload = await verifyAuth(token) as AuthPayload;
+    const payload = await verifyJWT(token) as AuthPayload;
     
     const user: User = {
       id: payload.userId,
