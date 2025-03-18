@@ -39,7 +39,7 @@ A comprehensive form management system built with Next.js, featuring dynamic CRU
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_MONGODB_URI`: MongoDB connection string
+- `NEXT_PUBLIC_MONGODB_URI`: MongoDB connection string.
 - `JWT_SECRET`: Secret key for JWT token generation
 
 ## License
