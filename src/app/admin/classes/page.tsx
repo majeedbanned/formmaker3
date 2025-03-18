@@ -60,7 +60,7 @@ export default function Home({
 
   // Function to share with combined filters
   const shareWithFilters = (rowId: string) => {
-    // Create a filter combining hardcoded filters with the specific row
+    // Create a filter combining hardcoded    filters with the specific row
     const combinedFilter = {
       ...hardcodedFilter,
       _id: rowId,
