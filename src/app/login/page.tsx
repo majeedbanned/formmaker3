@@ -96,7 +96,7 @@ function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            ورود به پنل مدیریت
+            123 ورود به پنل مدیریت
           </CardTitle>
           <CardDescription className="text-center">
             لطفا اطلاعات حساب کاربری خود را وارد کنید
