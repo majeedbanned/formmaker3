@@ -8,4 +8,4 @@ const url = generateFilterUrl(window.location.href, customFilter);
 router.push(url);
 
 
-windowewe
+windowewewerwe
