@@ -1,4 +1,4 @@
-import { getDynamicModel } from "@/lib/mongodb";
+import { getDynamicModel, connectToDatabase } from "@/lib/mongodb";
 import type { Document, Model } from "mongoose";
 import { signJWT } from "./jwt";
 
@@ -33,32 +33,40 @@ export async function authenticateUser(
   username: string,
   password: string
 ) {
+  // Ensure MongoDB connection is established
+  const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
+  if (!connectionString) {
+    throw new Error("MongoDB connection string is not configured");
+  }
+  
+  await connectToDatabase(connectionString);
+
   // Get the appropriate model based on user type
   const model = getDynamicModel(userType === "school" ? "schools" : userType === "teacher" ? "teachers" : "students") as Model<School | Teacher | Student>;
 
   console.log('Searching for user:', { userType, schoolCode, username });
   
-  // Find all users and filter in memory
-  const users = await model.find({});
-  console.log('Found users:', users);
-  
-  // Find the matching user based on user type
-  let user;
+  // Build query based on user type
+  let query: Record<string, string> = {};
   if (userType === "school") {
-    user = users.find(u => (u as School).data.get('schoolCode') === schoolCode);
+    query = { 'data.schoolCode': schoolCode };
   } else if (userType === "teacher") {
-    user = users.find(u => 
-      (u as Teacher).data.get('schoolCode') === schoolCode &&
-      (u as Teacher).data.get('teacherCode') === username
-    );
+    query = {
+      'data.schoolCode': schoolCode,
+      'data.teacherCode': username
+    };
   } else if (userType === "student") {
-    user = users.find(u => 
-      (u as Student).data.get('schoolCode') === schoolCode &&
-      (u as Student).data.get('studentCode') === username
-    );
+    query = {
+      'data.schoolCode': schoolCode,
+      'data.studentCode': username
+    };
   }
+
+  console.log('MongoDB query:', JSON.stringify(query, null, 2));
   
-  console.log('Found matching user:', user);
+  // Find the matching user using the query
+  const user = await model.findOne(query);
+  console.log('Found matching user:', user ? 'Yes' : 'No');
 
   if (!user) {
     console.log('No user found with provided credentials');
