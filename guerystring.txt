@@ -6,3 +6,6 @@ const customFilter = {
 
 const url = generateFilterUrl(window.location.href, customFilter);
 router.push(url);
+
+
+windowewe
