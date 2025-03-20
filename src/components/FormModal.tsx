@@ -351,7 +351,8 @@ const FormField = ({
     const fetchOptions = async () => {
       if (
         (field.type === "dropdown" || field.type === "autocomplete") &&
-        field.dataSource
+        field.dataSource &&
+        !field.dataSource?.dependsOn
       ) {
         setIsLoadingOptions(true);
         try {
@@ -426,34 +427,92 @@ const FormField = ({
   // Handle dependent dropdowns
   useEffect(() => {
     if (field.type === "dropdown" && field.dataSource?.dependsOn) {
-      const dependentValue = watch(field.dataSource.dependsOn);
+      // Handle both single string and array of strings for dependsOn
+      const dependentFields = Array.isArray(field.dataSource.dependsOn)
+        ? field.dataSource.dependsOn
+        : [field.dataSource.dependsOn];
 
-      // Only fetch if the dependent value has changed and is not empty
-      if (dependentValue) {
-        const fetchDependentOptions = async () => {
-          setIsLoadingOptions(true);
-          try {
+      // Watch all dependent fields
+      const dependentValues = dependentFields.map((fieldName) =>
+        watch(fieldName)
+      );
+
+      // console.log(`[Dropdown ${field.name}] Dependencies:`, {
+      //   fields: dependentFields,
+      //   values: dependentValues,
+      // });
+
+      const fetchDependentOptions = async () => {
+        setIsLoadingOptions(true);
+        try {
+          // Build filter query with all dependent fields
+          const filterQuery: Record<string, unknown> = {
+            ...(field.dataSource!.filterQuery || {}),
+          };
+
+          // Add each dependent field to the filter query
+          let hasValidDependencies = true;
+          dependentFields.forEach((fieldName, index) => {
+            const value = dependentValues[index];
+            // Only add non-empty values to the filter
+            if (value !== undefined && value !== null && value !== "") {
+              filterQuery[fieldName] = value;
+            } else {
+              hasValidDependencies = false;
+            }
+          });
+
+          // console.log(`[Dropdown ${field.name}] Filter Query:`, filterQuery);
+          // console.log(
+          //   `[Dropdown ${field.name}] Has Valid Dependencies:`,
+          //   hasValidDependencies
+          // );
+
+          // Only proceed with the API call if we have valid dependencies
+          if (hasValidDependencies) {
             const params = new URLSearchParams({
               connectionString: process.env.NEXT_PUBLIC_MONGODB_URI || "",
               labelField: field.dataSource!.labelField,
               valueField: field.dataSource!.valueField,
-              filterQuery: JSON.stringify({
-                ...(field.dataSource!.filterQuery || {}),
-                [field.dataSource!.dependsOn!]: dependentValue,
+              filterQuery: JSON.stringify(filterQuery),
+              ...(field.dataSource!.sortField && {
+                sortField: field.dataSource!.sortField,
+                sortOrder: field.dataSource!.sortOrder || "asc",
+              }),
+              ...(field.dataSource!.limit && {
+                limit: String(field.dataSource!.limit),
+              }),
+              ...(field.dataSource!.customLabel && {
+                customLabel: field.dataSource!.customLabel,
               }),
             });
 
-            const response = await fetch(
-              `/api/dropdown-options/${
-                field.dataSource!.collectionName
-              }?${params.toString()}`
-            );
+            const url = `/api/dropdown-options/${
+              field.dataSource!.collectionName
+            }?${params.toString()}`;
+
+            // console.log(`[Dropdown ${field.name}] Making API call to:`, url);
+            // console.log(`[Dropdown ${field.name}] Request parameters:`, {
+            //   collectionName: field.dataSource!.collectionName,
+            //   labelField: field.dataSource!.labelField,
+            //   valueField: field.dataSource!.valueField,
+            //   filterQuery,
+            //   sortField: field.dataSource!.sortField,
+            //   sortOrder: field.dataSource!.sortOrder,
+            //   limit: field.dataSource!.limit,
+            //   customLabel: field.dataSource!.customLabel,
+            // });
+
+            const response = await fetch(url);
 
             if (!response.ok) {
-              throw new Error("Failed to fetch dependent options");
+              throw new Error(
+                `Failed to fetch dependent options: ${response.status} ${response.statusText}`
+              );
             }
 
             const options = await response.json();
+            // console.log(`[Dropdown ${field.name}] Received options:`, options);
             setDynamicOptions(options);
 
             // Clear the field value if it's not in the new options
@@ -462,25 +521,40 @@ const FormField = ({
                 (opt: { value: unknown }) => opt.value === fieldValue
               );
               if (!isValueValid) {
+                // console.log(
+                //   `[Dropdown ${field.name}] Clearing invalid value:`,
+                //   fieldValue
+                // );
                 setValue(field.name, "", { shouldValidate: true });
               }
             }
-          } catch (error) {
-            console.error("Error fetching dependent options:", error);
+          } else {
+            // console.log(
+            //   `[Dropdown ${field.name}] Missing required dependencies, clearing options`
+            // );
+            // Clear options and value when dependencies are invalid
             setDynamicOptions([]);
-          } finally {
-            setIsLoadingOptions(false);
+            setValue(field.name, "", { shouldValidate: true });
           }
-        };
+        } catch (error) {
+          console.error(
+            `[Dropdown ${field.name}] Error fetching options:`,
+            error
+          );
+          setDynamicOptions([]);
+        } finally {
+          setIsLoadingOptions(false);
+        }
+      };
 
-        fetchDependentOptions();
-      } else {
-        // Clear options and value when dependent value is empty
-        setDynamicOptions([]);
-        setValue(field.name, "", { shouldValidate: true });
-      }
+      fetchDependentOptions();
     }
-  }, [field, watch(field.dataSource?.dependsOn || "")]);
+  }, [
+    field,
+    ...(Array.isArray(field.dataSource?.dependsOn)
+      ? field.dataSource.dependsOn.map((fieldName) => watch(fieldName))
+      : [watch(field.dataSource?.dependsOn || "")]),
+  ]);
 
   if (field.fields) {
     return (

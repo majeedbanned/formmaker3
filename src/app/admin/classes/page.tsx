@@ -119,7 +119,27 @@ export default function Home({
         requiredMessage: "نام کلاس الزامی است",
       },
     },
-
+    {
+      name: "major",
+      title: "رشته",
+      type: "dropdown",
+      isSearchable: true,
+      required: true,
+      isShowInList: true,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      options: [
+        { label: "پیشفرض", value: "0" },
+        { label: "ریاضی فیزیک", value: "15000" },
+        { label: "علوم تجربی", value: "16000" },
+        { label: "ادبيات و علوم انساني", value: "17000" },
+        { label: "علوم و معارف اسلامي", value: "18000" },
+      ],
+      validation: {
+        requiredMessage: "لطفا یک رشته را انتخاب کنید",
+      },
+    },
     {
       name: "Grade",
       title: "پایه تحصیلی",
@@ -195,7 +215,7 @@ export default function Home({
             valueField: "teacherCode",
             sortField: "teacherCode",
             sortOrder: "asc",
-            filterQuery: { schoolCode: "2295566177" },
+            filterQuery: { schoolCode: user?.schoolCode },
           },
           options: [
             { label: "محمد حسین حسینی", value: "admin" },
@@ -219,7 +239,7 @@ export default function Home({
             sortField: "courseCode",
             sortOrder: "asc",
             filterQuery: { schoolCode: user?.schoolCode },
-            dependsOn: "Grade",
+            dependsOn: ["Grade", "major"],
           },
           options: [
             { label: "درس 1", value: "1" },

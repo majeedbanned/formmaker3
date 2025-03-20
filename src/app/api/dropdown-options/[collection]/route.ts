@@ -49,12 +49,12 @@ export async function GET(
 
     // Wait for collection parameter
     const collection = await Promise.resolve(params.collection);
-    console.log("Fetching options from collection:", collection);
+    //console.log("Fetching options from collection:", collection);
 
     let model: Model<MongoDocument>;
     try {
       model = getDynamicModel(collection) as Model<MongoDocument>;
-      console.log("Model schema:", model.schema.paths);
+     // console.log("Model schema:", model.schema.paths);
     } catch (modelError) {
       console.error("Failed to get model for collection:", collection, modelError);
       return NextResponse.json(
@@ -86,7 +86,7 @@ export async function GET(
     const sort: Record<string, 1 | -1> = {};
     if (sortField) {
       sort[`data.${sortField}`] = sortOrder === "desc" ? -1 : 1;
-      console.log("Applied sort:", sort);
+     // console.log("Applied sort:", sort);
     }
 
     // Build the projection to include only needed fields
@@ -113,11 +113,11 @@ export async function GET(
         projection[`data.${field}`] = 1;
       }
     });
-    console.log("Applied projection:", projection);
+//    console.log("Applied projection:", projection);
 
     // Parse limit as number or undefined
     const limitNum = limit ? parseInt(limit) : undefined;
-    console.log("Applied limit:", limitNum);
+   // console.log("Applied limit:", limitNum);
 
     // Fetch data from MongoDB
     let documents;
@@ -128,8 +128,8 @@ export async function GET(
         .sort(sort)
         .limit(limitNum || 0)
         //.lean();
-      console.log("Found documents count:", documents.length);
-      console.log("Sample document:", documents[0]);
+      console.log("Found documents count:", documents.length ,"query:",query);
+     // console.log("Sample document:", documents[0]);
     } catch (queryError) {
       console.error("Database query failed:", queryError);
       return NextResponse.json(
@@ -175,7 +175,7 @@ export async function GET(
         return { label, value };
       });
       console.log("Transformed options count:", options.length);
-      console.log("Sample option:", options[0]);
+      //console.log("Sample option:", options[0]);
     } catch (transformError) {
       console.error("Failed to transform documents to options:", transformError);
       return NextResponse.json(
