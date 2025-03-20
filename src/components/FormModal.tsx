@@ -427,6 +427,8 @@ const FormField = ({
   useEffect(() => {
     if (field.type === "dropdown" && field.dataSource?.dependsOn) {
       const dependentValue = watch(field.dataSource.dependsOn);
+
+      // Only fetch if the dependent value has changed and is not empty
       if (dependentValue) {
         const fetchDependentOptions = async () => {
           setIsLoadingOptions(true);
@@ -455,11 +457,13 @@ const FormField = ({
             setDynamicOptions(options);
 
             // Clear the field value if it's not in the new options
-            const isValueValid = options.some(
-              (opt: { value: unknown }) => opt.value === fieldValue
-            );
-            if (!isValueValid) {
-              setValue(field.name, "", { shouldValidate: true });
+            if (fieldValue) {
+              const isValueValid = options.some(
+                (opt: { value: unknown }) => opt.value === fieldValue
+              );
+              if (!isValueValid) {
+                setValue(field.name, "", { shouldValidate: true });
+              }
             }
           } catch (error) {
             console.error("Error fetching dependent options:", error);
@@ -471,6 +475,7 @@ const FormField = ({
 
         fetchDependentOptions();
       } else {
+        // Clear options and value when dependent value is empty
         setDynamicOptions([]);
         setValue(field.name, "", { shouldValidate: true });
       }

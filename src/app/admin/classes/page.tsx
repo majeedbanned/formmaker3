@@ -189,14 +189,14 @@ export default function Home({
           name: "teacherCode",
           title: "کد معلم",
           type: "dropdown",
-          // dataSource: {
-          //   collectionName: "teachers",
-          //   labelField: "teacherName",
-          //   valueField: "teacherCode",
-          //   sortField: "teacherCode",
-          //   sortOrder: "asc",
-          //   filterQuery: { schoolCode: "2295566177" },
-          // },
+          dataSource: {
+            collectionName: "teachers",
+            labelField: "teacherName",
+            valueField: "teacherCode",
+            sortField: "teacherCode",
+            sortOrder: "asc",
+            filterQuery: { schoolCode: "2295566177" },
+          },
           options: [
             { label: "محمد حسین حسینی", value: "admin" },
             { label: "علی حسینی", value: "user" },
