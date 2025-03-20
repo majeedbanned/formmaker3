@@ -3,11 +3,11 @@
 import CRUDComponent from "@/components/CRUDComponent";
 import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
-import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
-import { filterExamples } from "@/utils/filterHelpers";
 import { useAuth } from "@/hooks/useAuth";
+import { addPredefinedCoursesAction } from "@/app/actions/courses";
+import { useEffect } from "react";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -42,13 +42,30 @@ const layout: LayoutSettings = {
   },
 };
 
-export default function Home({
-  postedFilter,
-}: {
-  postedFilter?: Record<string, unknown>;
-}) {
+export default function Home() {
   const router = useRouter();
-  const { hasPermission, isLoading, user } = useAuth();
+  const { isLoading, user } = useAuth();
+
+  // Load predefined courses when the page loads
+  useEffect(() => {
+    const loadPredefinedCourses = async () => {
+      if (user?.schoolCode && user?.maghta) {
+        try {
+          const result = await addPredefinedCoursesAction(
+            user.schoolCode,
+            user.maghta
+          );
+          if (!result.success) {
+            console.error("Failed to load predefined courses:", result.error);
+          }
+        } catch (error) {
+          console.error("Error loading predefined courses:", error);
+        }
+      }
+    };
+
+    loadPredefinedCourses();
+  }, [user?.schoolCode, user?.maghta]);
 
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
@@ -67,11 +84,6 @@ export default function Home({
     };
     updateFilterInURL(combinedFilter);
     console.log("Share clicked for row:", rowId);
-  };
-
-  // Function to apply filter and navigate
-  const applyFilter = (filterUrl: string) => {
-    router.push(filterUrl);
   };
 
   if (isLoading) {
@@ -176,14 +188,10 @@ export default function Home({
             groupUniqueness: true,
             options: [
               { label: "پیشفرض", value: "0" },
-              { label: "ریاضی", value: "1" },
-              { label: "زبان", value: "2" },
-              { label: "تاریخ", value: "3" },
-              { label: "فیزیک", value: "4" },
-              { label: "شیمی", value: "5" },
-              { label: "زیست", value: "6" },
-              { label: "دین", value: "7" },
-              { label: "علوم اجتماعی", value: "8" },
+              { label: "ریاضی فیزیک", value: "15000" },
+              { label: "علوم تجربی", value: "16000" },
+              { label: "ادبيات و علوم انساني", value: "17000" },
+              { label: "علوم و معارف اسلامي", value: "18000" },
             ],
             validation: {
               requiredMessage: "لطفا یک رشته را انتخاب کنید",
@@ -213,7 +221,7 @@ export default function Home({
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: false,
+      isShowInList: true,
       isSearchable: true,
       groupUniqueness: true,
 
@@ -222,7 +230,7 @@ export default function Home({
 
       required: true,
       enabled: true,
-      visible: false,
+      visible: true,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },
