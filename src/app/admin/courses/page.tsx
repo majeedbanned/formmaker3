@@ -85,9 +85,37 @@ export default function Home({
     );
   }
 
+  const maghta = user?.maghta;
+  console.log("maghta", maghta);
+
+  const gradeOptions =
+    maghta === "1"
+      ? [
+          { label: "اول ابتدایی", value: "1" },
+          { label: "دوم ابتدایی", value: "2" },
+          { label: "سوم ابتدایی", value: "3" },
+          { label: "چهارم ابتدایی", value: "4" },
+          { label: "پنجم ابتدایی", value: "5" },
+          { label: "ششم ابتدایی", value: "6" },
+        ]
+      : maghta === "2"
+      ? [
+          { label: "هفتم متوسطه", value: "7" },
+          { label: "هشتم متوسطه", value: "8" },
+          { label: "نهم متوسطه", value: "9" },
+        ]
+      : maghta === "3"
+      ? [
+          { label: "دهم متوسطه", value: "10" },
+          { label: "یازدهم متوسطه", value: "11" },
+          { label: "دوازدهم متوسطه", value: "12" },
+        ]
+      : [{ label: "پیش فرض", value: "0" }];
+
   const hardcodedFilter = {
     schoolCode: user?.schoolCode,
   } as const;
+
   const sampleFormStructure: FormField[] = [
     {
       name: "courseCode",
@@ -120,6 +148,50 @@ export default function Home({
       },
     },
 
+    ...(maghta === "3"
+      ? [
+          {
+            name: "vahed",
+            title: "واحد",
+            type: "number",
+            isShowInList: true,
+            isSearchable: true,
+            required: true,
+            enabled: true,
+            visible: true,
+            validation: {
+              requiredMessage: "واحد الزامی است",
+            },
+          },
+          {
+            name: "major",
+            title: "رشته",
+            type: "dropdown",
+            isSearchable: true,
+            required: true,
+            isShowInList: true,
+            enabled: true,
+            visible: true,
+            readonly: false,
+            groupUniqueness: true,
+            options: [
+              { label: "پیشفرض", value: "0" },
+              { label: "ریاضی", value: "1" },
+              { label: "زبان", value: "2" },
+              { label: "تاریخ", value: "3" },
+              { label: "فیزیک", value: "4" },
+              { label: "شیمی", value: "5" },
+              { label: "زیست", value: "6" },
+              { label: "دین", value: "7" },
+              { label: "علوم اجتماعی", value: "8" },
+            ],
+            validation: {
+              requiredMessage: "لطفا یک رشته را انتخاب کنید",
+            },
+          },
+        ]
+      : []),
+
     {
       name: "Grade",
       title: "پایه تحصیلی",
@@ -131,20 +203,7 @@ export default function Home({
       visible: true,
       readonly: false,
       groupUniqueness: true,
-      options: [
-        { label: "اول ابتدایی", value: "1" },
-        { label: "دوم ابتدایی", value: "2" },
-        { label: "سوم ابتدایی", value: "3" },
-        { label: "چهارم ابتدایی", value: "4" },
-        { label: "پنجم ابتدایی", value: "5" },
-        { label: "ششم ابتدایی", value: "6" },
-        { label: "هفتم متوسطه", value: "7" },
-        { label: "هشتم متوسطه", value: "8" },
-        { label: "نهم متوسطه", value: "9" },
-        { label: "دهم متوسطه", value: "10" },
-        { label: "یازدهم متوسطه", value: "11" },
-        { label: "دوازدهم متوسطه", value: "12" },
-      ],
+      options: gradeOptions,
       validation: {
         requiredMessage: "لطفا یک پایه تحصیلی را انتخاب کنید",
       },

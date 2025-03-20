@@ -164,7 +164,7 @@ const NestedFields = ({
 
   return (
     <>
-      <div className="space-y-4 pl-4 border-l-2 border-gray-200">
+      <div className="space-y-4 pl-0 border-l-0 border-gray-200">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -210,7 +210,7 @@ const NestedFields = ({
                 {fields.map((item, index) => (
                   <div
                     key={item.id}
-                    className="relative border-2 overflow-scroll rounded-md p-4 mb-4"
+                    className="relative border-1 overflow-scroll rounded-md p-1 mb-1"
                   >
                     <Button
                       type="button"
