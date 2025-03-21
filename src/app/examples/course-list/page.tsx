@@ -61,7 +61,8 @@ export default function CourseListExample() {
           </CardHeader>
           <CardContent>
             <CourseList
-              schoolCode={schoolCode}
+              schoolCode={"2295566177"}
+              teacherCode="102"
               value={selectedCourse}
               onChange={(value) => setSelectedCourse(value)}
               label="Select Course"

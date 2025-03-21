@@ -15,10 +15,13 @@ type CourseOption = {
   label: string;
   value: string;
   code: string;
+  grade: string;
+  teacherCourses: string[];
 };
 
 interface CourseListProps {
   schoolCode: string;
+  teacherCode?: string;
   onChange?: (value: string, course?: CourseOption) => void;
   value?: string;
   label?: string;
@@ -30,6 +33,7 @@ interface CourseListProps {
 
 export default function CourseList({
   schoolCode,
+  teacherCode,
   onChange,
   value,
   label = "Course",
@@ -53,7 +57,7 @@ export default function CourseList({
       setError(null);
 
       try {
-        const result = await fetchCoursesBySchoolCode(schoolCode);
+        const result = await fetchCoursesBySchoolCode(schoolCode, teacherCode);
 
         if ("error" in result) {
           setError(result.error);
@@ -71,7 +75,7 @@ export default function CourseList({
     }
 
     loadCourses();
-  }, [schoolCode]);
+  }, [schoolCode, teacherCode]);
 
   const handleChange = (selectedValue: string) => {
     const selectedCourse = courses.find(
@@ -104,7 +108,12 @@ export default function CourseList({
         <SelectContent>
           {courses.map((course) => (
             <SelectItem key={course.value} value={course.value}>
-              {course.label} {course.code ? `(${course.code})` : ""}
+              {course.label}
+              {teacherCode && course.teacherCourses.length > 0 && (
+                <span className="text-muted-foreground ml-2">
+                  {/* (Courses: {course.teacherCourses.join(", ")}) */}
+                </span>
+              )}
             </SelectItem>
           ))}
           {courses.length === 0 && !loading && !error && (
