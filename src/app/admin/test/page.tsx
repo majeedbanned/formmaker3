@@ -164,6 +164,7 @@ const sampleFormStructure: FormField[] = [
     readonly: false,
     defaultValue: [],
     isMultiple: true,
+
     options: [
       { label: "Email", value: "email" },
       { label: "SMS", value: "sms" },

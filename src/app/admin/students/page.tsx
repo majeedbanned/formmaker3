@@ -24,6 +24,22 @@ const sampleFormStructure: FormField[] = [
       requiredMessage: "نام دانش آموز الزامی است",
     },
   },
+  {
+    name: "studentFamily",
+    title: "نام خانوادگی دانش آموز",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    required: true,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    listLabelColor: "#2563eb",
+    defaultValue: "",
+    validation: {
+      requiredMessage: "نام خانوادگی دانش آموز الزامی است",
+    },
+  },
 
   {
     name: "studentCode",
@@ -38,6 +54,34 @@ const sampleFormStructure: FormField[] = [
     validation: {
       requiredMessage: "کد دانش آموز الزامی است",
     },
+  },
+
+  {
+    name: "classCode",
+    title: "کلاس",
+    type: "dropdown",
+    isShowInList: true,
+    isSearchable: true,
+    required: false,
+    enabled: true,
+    visible: true,
+    readonly: false,
+    defaultValue: [],
+    isMultiple: true,
+    dataSource: {
+      collectionName: "classes",
+      labelField: "className",
+      valueField: "classCode",
+      sortField: "classCode",
+      sortOrder: "asc",
+      filterQuery: { schoolCode: "2295566177" },
+    },
+
+    // options: [
+    //   { label: "Email", value: "email" },
+    //   { label: "SMS", value: "sms" },
+    //   { label: "Push", value: "push" },
+    // ],
   },
 
   {

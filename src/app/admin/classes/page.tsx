@@ -190,6 +190,26 @@ export default function Home({
     },
 
     {
+      name: "classCode",
+      title: "کلاس",
+      type: "checkbox",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      defaultValue: [],
+      isMultiple: true,
+
+      options: [
+        { label: "Email", value: "email" },
+        { label: "SMS", value: "sms" },
+        { label: "Push", value: "push" },
+      ],
+    },
+
+    {
       enabled: true,
       visible: true,
       isShowInList: true,
