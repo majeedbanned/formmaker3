@@ -62,6 +62,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import { ReactTags } from "react-tag-autocomplete";
 import { validateFile } from "@/utils/fileUpload";
 import { Progress } from "./ui/progress";
+import { MultiSelect } from "./ui/multi-select";
 
 // Add type definitions for window.__EDITING_ENTITY_DATA__
 declare global {
@@ -350,7 +351,10 @@ const FormField = ({
   useEffect(() => {
     const fetchOptions = async () => {
       if (
-        (field.type === "dropdown" || field.type === "autocomplete") &&
+        (field.type === "dropdown" ||
+          field.type === "autocomplete" ||
+          field.type === "checkbox" ||
+          field.type === "shadcnmultiselect") &&
         field.dataSource &&
         !field.dataSource?.dependsOn
       ) {
@@ -400,7 +404,10 @@ const FormField = ({
 
     // Set up refresh interval if specified
     if (
-      (field.type === "dropdown" || field.type === "autocomplete") &&
+      (field.type === "dropdown" ||
+        field.type === "autocomplete" ||
+        field.type === "checkbox" ||
+        field.type === "shadcnmultiselect") &&
       field.dataSource?.refreshInterval
     ) {
       const interval = setInterval(
@@ -424,9 +431,14 @@ const FormField = ({
     }
   }, [field, fieldValue, dynamicOptions]);
 
-  // Handle dependent dropdowns
+  // Handle dependent dropdowns and checkboxes
   useEffect(() => {
-    if (field.type === "dropdown" && field.dataSource?.dependsOn) {
+    if (
+      (field.type === "dropdown" ||
+        field.type === "checkbox" ||
+        field.type === "shadcnmultiselect") &&
+      field.dataSource?.dependsOn
+    ) {
       // Handle both single string and array of strings for dependsOn
       const dependentFields = Array.isArray(field.dataSource.dependsOn)
         ? field.dataSource.dependsOn
@@ -436,11 +448,6 @@ const FormField = ({
       const dependentValues = dependentFields.map((fieldName) =>
         watch(fieldName)
       );
-
-      // console.log(`[Dropdown ${field.name}] Dependencies:`, {
-      //   fields: dependentFields,
-      //   values: dependentValues,
-      // });
 
       const fetchDependentOptions = async () => {
         setIsLoadingOptions(true);
@@ -461,12 +468,6 @@ const FormField = ({
               hasValidDependencies = false;
             }
           });
-
-          // console.log(`[Dropdown ${field.name}] Filter Query:`, filterQuery);
-          // console.log(
-          //   `[Dropdown ${field.name}] Has Valid Dependencies:`,
-          //   hasValidDependencies
-          // );
 
           // Only proceed with the API call if we have valid dependencies
           if (hasValidDependencies) {
@@ -491,18 +492,6 @@ const FormField = ({
               field.dataSource!.collectionName
             }?${params.toString()}`;
 
-            // console.log(`[Dropdown ${field.name}] Making API call to:`, url);
-            // console.log(`[Dropdown ${field.name}] Request parameters:`, {
-            //   collectionName: field.dataSource!.collectionName,
-            //   labelField: field.dataSource!.labelField,
-            //   valueField: field.dataSource!.valueField,
-            //   filterQuery,
-            //   sortField: field.dataSource!.sortField,
-            //   sortOrder: field.dataSource!.sortOrder,
-            //   limit: field.dataSource!.limit,
-            //   customLabel: field.dataSource!.customLabel,
-            // });
-
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -512,35 +501,46 @@ const FormField = ({
             }
 
             const options = await response.json();
-            // console.log(`[Dropdown ${field.name}] Received options:`, options);
             setDynamicOptions(options);
 
             // Clear the field value if it's not in the new options
             if (fieldValue) {
-              const isValueValid = options.some(
-                (opt: { value: unknown }) => opt.value === fieldValue
-              );
-              if (!isValueValid) {
-                // console.log(
-                //   `[Dropdown ${field.name}] Clearing invalid value:`,
-                //   fieldValue
-                // );
-                setValue(field.name, "", { shouldValidate: true });
+              // Handle array values for checkbox or shadcnmultiselect with isMultiple
+              if (
+                (field.type === "checkbox" ||
+                  field.type === "shadcnmultiselect") &&
+                field.isMultiple &&
+                Array.isArray(fieldValue)
+              ) {
+                const validValues = fieldValue.filter((value) =>
+                  options.some((opt: { value: unknown }) => opt.value === value)
+                );
+                setValue(field.name, validValues, { shouldValidate: true });
+              } else {
+                // For single values (dropdown or single checkbox)
+                const isValueValid = options.some(
+                  (opt: { value: unknown }) => opt.value === fieldValue
+                );
+                if (!isValueValid) {
+                  setValue(field.name, "", { shouldValidate: true });
+                }
               }
             }
           } else {
-            // console.log(
-            //   `[Dropdown ${field.name}] Missing required dependencies, clearing options`
-            // );
             // Clear options and value when dependencies are invalid
             setDynamicOptions([]);
-            setValue(field.name, "", { shouldValidate: true });
+            setValue(
+              field.name,
+              (field.type === "checkbox" ||
+                field.type === "shadcnmultiselect") &&
+                field.isMultiple
+                ? []
+                : "",
+              { shouldValidate: true }
+            );
           }
         } catch (error) {
-          console.error(
-            `[Dropdown ${field.name}] Error fetching options:`,
-            error
-          );
+          console.error(`Error fetching options for ${field.name}:`, error);
           setDynamicOptions([]);
         } finally {
           setIsLoadingOptions(false);
@@ -572,7 +572,10 @@ const FormField = ({
   }
 
   if (field.type === "checkbox") {
-    if (field.options && field.isMultiple) {
+    // Get options from either datasource or static options
+    const options = field.dataSource ? dynamicOptions : field.options || [];
+
+    if (options.length > 0 && field.isMultiple) {
       // Multiple checkboxes
       return (
         <div className="space-y-2">
@@ -580,45 +583,56 @@ const FormField = ({
             {field.title}
             {field.required && <span className="text-destructive">*</span>}
           </label>
-          <div className="space-y-2">
-            {field.options.map((option) => (
-              <div
-                key={String(option.value)}
-                className="flex items-center space-x-2"
-              >
-                <Checkbox
-                  id={`${field.name}.${option.value}`}
-                  checked={
-                    Array.isArray(fieldValue) &&
-                    fieldValue.includes(option.value)
-                  }
-                  onCheckedChange={(checked) => {
-                    const currentValue = Array.isArray(fieldValue)
-                      ? fieldValue
-                      : [];
-                    if (checked) {
-                      setValue(field.name, [...currentValue, option.value], {
-                        shouldValidate: true,
-                      });
-                    } else {
-                      setValue(
-                        field.name,
-                        currentValue.filter((v) => v !== option.value),
-                        { shouldValidate: true }
-                      );
-                    }
-                  }}
-                  disabled={isDisabled}
-                />
-                <label
-                  htmlFor={`${field.name}.${option.value}`}
-                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          {isLoadingOptions ? (
+            <div className="text-sm text-muted-foreground">
+              {layout.texts?.loadingMessage || "Loading options..."}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {options.map((option) => (
+                <div
+                  key={String(option.value)}
+                  className="flex items-center space-x-2"
                 >
-                  {option.label}
-                </label>
-              </div>
-            ))}
-          </div>
+                  <Checkbox
+                    id={`${field.name}.${option.value}`}
+                    checked={
+                      Array.isArray(fieldValue) &&
+                      fieldValue.includes(option.value)
+                    }
+                    onCheckedChange={(checked) => {
+                      const currentValue = Array.isArray(fieldValue)
+                        ? fieldValue
+                        : [];
+                      if (checked) {
+                        setValue(field.name, [...currentValue, option.value], {
+                          shouldValidate: true,
+                        });
+                      } else {
+                        setValue(
+                          field.name,
+                          currentValue.filter((v) => v !== option.value),
+                          { shouldValidate: true }
+                        );
+                      }
+                    }}
+                    disabled={isDisabled}
+                  />
+                  <label
+                    htmlFor={`${field.name}.${option.value}`}
+                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+          {errors[field.name] && (
+            <p className="text-destructive text-sm">
+              {errors[field.name]?.message as string}
+            </p>
+          )}
         </div>
       );
     } else {
@@ -640,6 +654,11 @@ const FormField = ({
             {field.title}
             {field.required && <span className="text-destructive">*</span>}
           </label>
+          {errors[field.name] && (
+            <p className="text-destructive text-sm">
+              {errors[field.name]?.message as string}
+            </p>
+          )}
         </div>
       );
     }
@@ -916,6 +935,54 @@ const FormField = ({
           maxSuggestionsLength={10}
           minQueryLength={field.autocompleteStyle?.minLength || 1}
           suggestionsFilter={field.autocompleteStyle?.suggestionsFilter}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-sm text-destructive mt-1">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  } else if (field.type === "shadcnmultiselect") {
+    const options = field.dataSource ? dynamicOptions : field.options || [];
+
+    // Always handle as multiple selection for shadcnmultiselect
+    // Convert single values to arrays if needed
+    const currentValue = Array.isArray(fieldValue)
+      ? fieldValue
+      : fieldValue
+      ? [fieldValue]
+      : [];
+
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+        <MultiSelect
+          options={options}
+          selected={currentValue}
+          onChange={(values) => {
+            setValue(field.name, values, { shouldValidate: true });
+          }}
+          placeholder={layout.texts?.selectPlaceholder || "Select options..."}
+          disabled={isDisabled}
+          emptyMessage={isLoadingOptions ? "" : "No options available"}
+          loading={isLoadingOptions}
+          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
+          className={layout.direction === "rtl" ? "text-right" : "text-left"}
         />
         <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (

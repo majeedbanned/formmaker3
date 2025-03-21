@@ -360,6 +360,9 @@ const renderCellContent = (
       const autoOption = field.options?.find((opt) => opt.value === value);
       return autoOption?.label || value;
 
+    case "shadcnmultiselect":
+      return renderMultiValue(value);
+
     default:
       if (field.fields) {
         return (
@@ -368,6 +371,31 @@ const renderCellContent = (
       }
       return String(value);
   }
+};
+
+const renderMultiValue = (value: unknown) => {
+  if (!value) return "-";
+
+  // Handle array values
+  if (Array.isArray(value)) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {value.map((item, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground"
+          >
+            {typeof item === "object" && item !== null && "label" in item
+              ? String(item.label)
+              : String(item)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  // Handle single value
+  return <span>{String(value)}</span>;
 };
 
 export default function Table({

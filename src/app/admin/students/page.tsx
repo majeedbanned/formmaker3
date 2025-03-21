@@ -59,15 +59,20 @@ const sampleFormStructure: FormField[] = [
   {
     name: "classCode",
     title: "کلاس",
-    type: "dropdown",
+    type: "shadcnmultiselect",
     isShowInList: true,
     isSearchable: true,
     required: false,
     enabled: true,
     visible: true,
-    readonly: false,
-    defaultValue: [],
     isMultiple: true,
+    // options: [
+    //   { label: "علی محمدی", value: "student1" },
+    //   { label: "رضا احمدی", value: "student2" },
+    //   { label: "فاطمه حسینی", value: "student3" },
+    //   { label: "زهرا کریمی", value: "student4" },
+    //   { label: "محمد رضایی", value: "student5" },
+    // ],
     dataSource: {
       collectionName: "classes",
       labelField: "className",
@@ -75,13 +80,8 @@ const sampleFormStructure: FormField[] = [
       sortField: "classCode",
       sortOrder: "asc",
       filterQuery: { schoolCode: "2295566177" },
+      // dependsOn: ["Grade", "major"],
     },
-
-    // options: [
-    //   { label: "Email", value: "email" },
-    //   { label: "SMS", value: "sms" },
-    //   { label: "Push", value: "push" },
-    // ],
   },
 
   {

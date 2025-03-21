@@ -22,7 +22,7 @@ export interface DropdownDataSource {
   sortField?: string;     // Field to sort by
   sortOrder?: 'asc' | 'desc';  // Sort direction
   limit?: number;         // Maximum number of options to fetch
-  dependsOn?: string;     // Field name this dropdown depends on (for cascading dropdowns)
+  dependsOn?: string | string[];     // Field name(s) this dropdown depends on (for cascading dropdowns)
   customLabel?: string;   // Template for custom label using field values (e.g., "{firstName} {lastName}")
   cacheOptions?: boolean; // Whether to cache the options (defaults to true)
   refreshInterval?: number; // Interval in seconds to refresh options (0 means no refresh)
@@ -47,7 +47,7 @@ export interface UploadedFile {
 export interface FormField {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -59,8 +59,8 @@ export interface FormField {
   isUnique?: boolean;
   groupUniqueness?: boolean;
   listLabelColor?: string;
-  options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, togglegroup, and autocomplete
-  dataSource?: DropdownDataSource;  // For dropdown and autocomplete
+  options?: { label: string; value: unknown }[];  // For radio, checkbox, dropdown, togglegroup, autocomplete, and shadcnmultiselect
+  dataSource?: DropdownDataSource;  // For dropdown, checkbox, autocomplete, and shadcnmultiselect
   fields?: FormField[];  // For nested fields
   isExpanded?: boolean;  // For controlling nested field visibility in forms
   path?: string;  // Full path to the field (e.g., "address.street")
