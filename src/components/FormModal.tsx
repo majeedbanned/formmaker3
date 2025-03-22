@@ -63,6 +63,7 @@ import { ReactTags } from "react-tag-autocomplete";
 import { validateFile } from "@/utils/fileUpload";
 import { Progress } from "./ui/progress";
 import { MultiSelect } from "./ui/multi-select";
+import { AutocompleteTags } from "@/components/ui/autocomplete-tags";
 
 // Add type definitions for window.__EDITING_ENTITY_DATA__
 declare global {
@@ -351,11 +352,11 @@ const FormField = ({
   useEffect(() => {
     const fetchOptions = async () => {
       if (
-        (field.type === "dropdown" ||
-          field.type === "autocomplete" ||
-          field.type === "checkbox" ||
-          field.type === "shadcnmultiselect") &&
         field.dataSource &&
+        (field.type === "dropdown" ||
+          field.type === "checkbox" ||
+          field.type === "autocomplete" ||
+          field.type === "shadcnmultiselect") &&
         !field.dataSource?.dependsOn
       ) {
         setIsLoadingOptions(true);
@@ -434,10 +435,11 @@ const FormField = ({
   // Handle dependent dropdowns and checkboxes
   useEffect(() => {
     if (
+      field.dataSource?.dependsOn &&
       (field.type === "dropdown" ||
         field.type === "checkbox" ||
-        field.type === "shadcnmultiselect") &&
-      field.dataSource?.dependsOn
+        field.type === "autocomplete" ||
+        field.type === "shadcnmultiselect")
     ) {
       // Handle both single string and array of strings for dependsOn
       const dependentFields = Array.isArray(field.dataSource.dependsOn)
@@ -865,6 +867,28 @@ const FormField = ({
       (option) => !selectedTags.some((tag) => tag.value === option.value)
     );
 
+    // Prepare a map of values to labels for selected items
+    const selectedLabelsMap: Record<string, string> = {};
+    if (Array.isArray(fieldValue)) {
+      fieldValue.forEach((item) => {
+        if (
+          typeof item === "object" &&
+          item !== null &&
+          "value" in item &&
+          "label" in item
+        ) {
+          selectedLabelsMap[String(item.value)] = String(item.label);
+        }
+      });
+    } else if (
+      fieldValue &&
+      typeof fieldValue === "object" &&
+      "value" in fieldValue &&
+      "label" in fieldValue
+    ) {
+      selectedLabelsMap[String(fieldValue.value)] = String(fieldValue.label);
+    }
+
     return (
       <div className="space-y-2">
         <label
@@ -881,60 +905,105 @@ const FormField = ({
             </span>
           )}
         </label>
-        <ReactTags
-          selected={selectedTags}
-          suggestions={suggestions}
-          onAdd={(newTag) => {
-            const newTags = [...selectedTags, newTag];
-            setSelectedTags(newTags);
+        <AutocompleteTags
+          options={options}
+          selected={
+            Array.isArray(fieldValue)
+              ? fieldValue.map((v) => {
+                  if (typeof v === "object" && v !== null && "value" in v) {
+                    return String(v.value);
+                  }
+                  return String(v);
+                })
+              : fieldValue && typeof fieldValue === "object" && fieldValue.value
+              ? [String(fieldValue.value)]
+              : fieldValue && typeof fieldValue === "string"
+              ? [fieldValue]
+              : []
+          }
+          selectedLabels={selectedLabelsMap}
+          onChange={(values, newOptionLabel) => {
+            // Convert string values to objects with both label and value
+            const fullObjects = values.map((value) => {
+              // First check if this is the newly added value and we have label info
+              if (newOptionLabel && newOptionLabel.value === value) {
+                return {
+                  label: newOptionLabel.label,
+                  value: newOptionLabel.value,
+                };
+              }
+
+              // Then check if this value is in the existing field values (for preserving labels on unselect)
+              if (Array.isArray(fieldValue)) {
+                const existingItem = fieldValue.find(
+                  (item) =>
+                    typeof item === "object" &&
+                    item !== null &&
+                    "value" in item &&
+                    String(item.value) === value
+                );
+
+                if (
+                  existingItem &&
+                  typeof existingItem === "object" &&
+                  "label" in existingItem
+                ) {
+                  return {
+                    label: String(existingItem.label),
+                    value: value,
+                  };
+                }
+              } else if (
+                fieldValue &&
+                typeof fieldValue === "object" &&
+                "value" in fieldValue &&
+                "label" in fieldValue &&
+                String(fieldValue.value) === value
+              ) {
+                return {
+                  label: String(fieldValue.label),
+                  value: value,
+                };
+              }
+
+              // Then check if it's a custom value (not in options)
+              const existingOption = options.find((opt) => opt.value === value);
+              if (existingOption) {
+                // Use the option with both label and value
+                return {
+                  label: existingOption.label,
+                  value: existingOption.value,
+                };
+              } else {
+                // For custom values, use the value as the label too
+                return {
+                  label: value,
+                  value: value,
+                };
+              }
+            });
+
+            // Save the full objects to the database
             setValue(
               field.name,
-              field.isMultiple ? newTags.map((t) => t.value) : newTag.value,
+              field.isMultiple
+                ? fullObjects
+                : fullObjects.length > 0
+                ? fullObjects[0]
+                : "",
               { shouldValidate: true }
             );
           }}
-          onDelete={(tagIndex) => {
-            const newTags = selectedTags.filter((_, i) => i !== tagIndex);
-            setSelectedTags(newTags);
-            setValue(
-              field.name,
-              field.isMultiple ? newTags.map((t) => t.value) : undefined,
-              { shouldValidate: true }
-            );
-          }}
-          allowNew={field.autocompleteStyle?.allowNew}
-          allowBackspace={field.autocompleteStyle?.allowBackspace}
-          classNames={{
-            root: cn(
-              "react-tags border-input rounded-md border bg-transparent shadow-xs transition-[color,box-shadow] outline-none",
-              "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
-              field.autocompleteStyle?.className
-            ),
-            rootIsActive: "is-active",
-            rootIsDisabled: "opacity-50 pointer-events-none",
-            rootIsInvalid: "border-destructive",
-            label: "hidden",
-            tagList: "flex flex-wrap gap-1 p-1",
-            tag: cn(
-              "bg-primary text-primary-foreground px-2 py-1 rounded-md text-sm flex items-center gap-1",
-              field.autocompleteStyle?.tagClassName
-            ),
-            tagName: "truncate",
-            comboBox: "p-1",
-            input: "outline-none bg-transparent text-sm min-w-[120px]",
-            listBox: cn(
-              "bg-popover text-popover-foreground absolute z-50 mt-1 max-h-[200px] min-w-[200px] overflow-auto rounded-md border p-1 shadow-md",
-              field.autocompleteStyle?.suggestionsClassName
-            ),
-            option:
-              "text-sm px-2 py-1.5 rounded hover:bg-accent hover:text-accent-foreground cursor-pointer",
-            optionIsActive: "bg-accent text-accent-foreground",
-          }}
-          isDisabled={isDisabled}
-          isInvalid={!!errors[field.name]}
-          maxSuggestionsLength={10}
-          minQueryLength={field.autocompleteStyle?.minLength || 1}
-          suggestionsFilter={field.autocompleteStyle?.suggestionsFilter}
+          placeholder={layout.texts?.selectPlaceholder || "Select or type..."}
+          inputPlaceholder={layout.texts?.searchPlaceholder || "Search..."}
+          emptyMessage={layout.texts?.noResultsMessage || "No results found"}
+          disabled={isDisabled}
+          allowCustomValues={field.autoCompleteStyle?.allowNew || false}
+          loading={isLoadingOptions}
+          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
+          className={layout.direction === "rtl" ? "text-right" : "text-left"}
+          onSearch={handleAutoCompleteSearch}
+          minSearchLength={field.autoCompleteStyle?.minLength || 2}
         />
         <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (
@@ -1031,6 +1100,295 @@ const FormField = ({
           </span>
         )}
         {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
+      </div>
+    );
+  } else if (field.type === "autoCompleteText") {
+    // Ensure options are properly formatted with string values
+    const options = field.dataSource
+      ? dynamicOptions.map((opt) => ({
+          label: String(opt.label || ""),
+          value:
+            typeof opt.value === "string" ? opt.value : String(opt.value || ""),
+        }))
+      : (field.options || []).map((opt) => ({
+          label: String(opt.label || ""),
+          value:
+            typeof opt.value === "string" ? opt.value : String(opt.value || ""),
+        }));
+
+    // Prepare a map of values to labels for selected items
+    const selectedLabelsMap: Record<string, string> = {};
+    if (Array.isArray(fieldValue)) {
+      fieldValue.forEach((item) => {
+        if (
+          typeof item === "object" &&
+          item !== null &&
+          "value" in item &&
+          "label" in item
+        ) {
+          selectedLabelsMap[String(item.value)] = String(item.label);
+        }
+      });
+    } else if (
+      fieldValue &&
+      typeof fieldValue === "object" &&
+      "value" in fieldValue &&
+      "label" in fieldValue
+    ) {
+      selectedLabelsMap[String(fieldValue.value)] = String(fieldValue.label);
+    }
+
+    // Log options to help debug
+    console.log(`autoCompleteText options for ${field.name}:`, options);
+    console.log(
+      `autoCompleteText selected labels for ${field.name}:`,
+      selectedLabelsMap
+    );
+
+    // Local search handler for this specific field
+    const handleAutoCompleteSearch = async (query: string) => {
+      console.log(`Searching for ${query} in ${field.name}`);
+      if (
+        field.dataSource &&
+        query.length >= (field.autoCompleteStyle?.minLength || 2)
+      ) {
+        setIsLoadingOptions(true);
+        try {
+          // Always use the dropdown-options endpoint for proper database collections
+          const apiUrl = `/api/dropdown-options/${field.dataSource.collectionName}`;
+
+          // Build query parameters
+          const params = new URLSearchParams();
+          params.append("query", query);
+
+          // Add common parameters for dropdown options endpoint
+          params.append(
+            "connectionString",
+            process.env.NEXT_PUBLIC_MONGODB_URI || ""
+          );
+          params.append("labelField", field.dataSource.labelField);
+          params.append("valueField", field.dataSource.valueField);
+
+          // Add dependent field values if any
+          if (field.dataSource.dependsOn) {
+            const dependsOnFields = Array.isArray(field.dataSource.dependsOn)
+              ? field.dataSource.dependsOn
+              : [field.dataSource.dependsOn];
+
+            const filterQuery: Record<string, unknown> = {
+              ...(field.dataSource.filterQuery || {}),
+            };
+
+            let hasValidDependencies = true;
+
+            dependsOnFields.forEach((dependFieldName) => {
+              const dependValue = watch(dependFieldName);
+              if (dependValue) {
+                // Include in the filterQuery
+                filterQuery[dependFieldName] = dependValue;
+              } else {
+                hasValidDependencies = false;
+              }
+            });
+
+            // Add filterQuery
+            if (Object.keys(filterQuery).length > 0) {
+              params.append("filterQuery", JSON.stringify(filterQuery));
+            }
+
+            // Only proceed if dependencies are valid
+            if (!hasValidDependencies && field.dataSource.dependsOn) {
+              setDynamicOptions([]);
+              setIsLoadingOptions(false);
+              return;
+            }
+          } else if (field.dataSource.filterQuery) {
+            // Add filterQuery for non-dependent fields
+            params.append(
+              "filterQuery",
+              JSON.stringify(field.dataSource.filterQuery)
+            );
+          }
+
+          // Add sort parameters
+          if (field.dataSource.sortField) {
+            params.append("sortField", field.dataSource.sortField);
+            params.append("sortOrder", field.dataSource.sortOrder || "asc");
+          }
+
+          console.log(`Fetching options from: ${apiUrl}?${params.toString()}`);
+
+          // Make the API request
+          const response = await fetch(`${apiUrl}?${params.toString()}`);
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch options: ${response.status} ${response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          console.log("Received API response:", data);
+
+          // Format options - the dropdown API returns array directly, not in an "options" property
+          let formattedOptions;
+          if (Array.isArray(data)) {
+            formattedOptions = data.map((opt) => ({
+              label: String(opt.label || ""),
+              value:
+                typeof opt.value === "string"
+                  ? opt.value
+                  : String(opt.value || ""),
+            }));
+          } else if (data.options && Array.isArray(data.options)) {
+            // Handle case where API returns {options: [...]}
+            formattedOptions = data.options.map((opt) => ({
+              label: String(opt.label || ""),
+              value:
+                typeof opt.value === "string"
+                  ? opt.value
+                  : String(opt.value || ""),
+            }));
+          } else {
+            formattedOptions = [];
+          }
+
+          console.log("Formatted options:", formattedOptions);
+          setDynamicOptions(formattedOptions);
+        } catch (error) {
+          console.error("Error fetching autocomplete options:", error);
+          setDynamicOptions([]);
+        } finally {
+          setIsLoadingOptions(false);
+        }
+      } else if (query.length < (field.autoCompleteStyle?.minLength || 2)) {
+        // Clear options when query is too short
+        setDynamicOptions([]);
+        setIsLoadingOptions(false);
+      }
+    };
+
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+        <AutocompleteTags
+          options={options}
+          selected={
+            Array.isArray(fieldValue)
+              ? fieldValue.map((v) => {
+                  if (typeof v === "object" && v !== null && "value" in v) {
+                    return String(v.value);
+                  }
+                  return String(v);
+                })
+              : fieldValue && typeof fieldValue === "object" && fieldValue.value
+              ? [String(fieldValue.value)]
+              : fieldValue && typeof fieldValue === "string"
+              ? [fieldValue]
+              : []
+          }
+          selectedLabels={selectedLabelsMap}
+          onChange={(values, newOptionLabel) => {
+            // Convert string values to objects with both label and value
+            const fullObjects = values.map((value) => {
+              // First check if this is the newly added value and we have label info
+              if (newOptionLabel && newOptionLabel.value === value) {
+                return {
+                  label: newOptionLabel.label,
+                  value: newOptionLabel.value,
+                };
+              }
+
+              // Then check if this value is in the existing field values (for preserving labels on unselect)
+              if (Array.isArray(fieldValue)) {
+                const existingItem = fieldValue.find(
+                  (item) =>
+                    typeof item === "object" &&
+                    item !== null &&
+                    "value" in item &&
+                    String(item.value) === value
+                );
+
+                if (
+                  existingItem &&
+                  typeof existingItem === "object" &&
+                  "label" in existingItem
+                ) {
+                  return {
+                    label: String(existingItem.label),
+                    value: value,
+                  };
+                }
+              } else if (
+                fieldValue &&
+                typeof fieldValue === "object" &&
+                "value" in fieldValue &&
+                "label" in fieldValue &&
+                String(fieldValue.value) === value
+              ) {
+                return {
+                  label: String(fieldValue.label),
+                  value: value,
+                };
+              }
+
+              // Then check if it's a custom value (not in options)
+              const existingOption = options.find((opt) => opt.value === value);
+              if (existingOption) {
+                // Use the option with both label and value
+                return {
+                  label: existingOption.label,
+                  value: existingOption.value,
+                };
+              } else {
+                // For custom values, use the value as the label too
+                return {
+                  label: value,
+                  value: value,
+                };
+              }
+            });
+
+            // Save the full objects to the database
+            setValue(
+              field.name,
+              field.isMultiple
+                ? fullObjects
+                : fullObjects.length > 0
+                ? fullObjects[0]
+                : "",
+              { shouldValidate: true }
+            );
+          }}
+          placeholder={layout.texts?.selectPlaceholder || "Select or type..."}
+          inputPlaceholder={layout.texts?.searchPlaceholder || "Search..."}
+          emptyMessage={layout.texts?.noResultsMessage || "No results found"}
+          disabled={isDisabled}
+          allowCustomValues={field.autoCompleteStyle?.allowNew || false}
+          loading={isLoadingOptions}
+          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
+          className={layout.direction === "rtl" ? "text-right" : "text-left"}
+          onSearch={handleAutoCompleteSearch}
+          minSearchLength={field.autoCompleteStyle?.minLength || 2}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-sm text-destructive mt-1">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
       </div>
     );
   } else {

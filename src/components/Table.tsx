@@ -363,6 +363,9 @@ const renderCellContent = (
     case "shadcnmultiselect":
       return renderMultiValue(value);
 
+    case "autoCompleteText":
+      return renderMultiValue(value);
+
     default:
       if (field.fields) {
         return (

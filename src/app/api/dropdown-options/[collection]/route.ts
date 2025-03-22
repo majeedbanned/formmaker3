@@ -29,6 +29,7 @@ export async function GET(
     const sortOrder = searchParams.get("sortOrder");
     const limit = searchParams.get("limit");
     const customLabel = searchParams.get("customLabel");
+    const searchQuery = searchParams.get("query");
 
     if (!connectionString) {
       return NextResponse.json(
@@ -80,6 +81,14 @@ export async function GET(
           { status: 400 }
         );
       }
+    }
+
+    // Add text search condition if query parameter is provided
+    if (searchQuery && searchQuery.trim() !== '') {
+      // Create a case-insensitive regex search on the labelField
+      const searchRegex = new RegExp(searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
+      query[`data.${labelField}`] = searchRegex;
+      console.log(`Added text search for "${searchQuery}" on field data.${labelField}`);
     }
 
     // Build the sort object to work with the data Map

@@ -44,10 +44,10 @@ export interface UploadedFile {
   uploadedAt: string;
 }
 
-export interface FormField {
+export interface FormFieldMinimal {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect", "autoCompleteText"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -71,7 +71,6 @@ export interface FormField {
   arrayMaxItems?: number;  // Maximum items for array type
   orientation?: 'vertical' | 'horizontal';  // Layout orientation for nested fields
   isOpen?: boolean;  // Whether nested fields should be open by default
-  isMultiple?: boolean;  // For checkbox/select/togglegroup/datepicker/autocomplete fields that support multiple values
   layout?: 'inline' | 'stacked';  // Layout for radio/checkbox/togglegroup groups
   displayFormat?: (value: string | number | Date) => string;  // For custom value formatting
   fileConfig?: FileUploadConfig;  // New field for file upload configuration
@@ -119,6 +118,61 @@ export interface FormField {
     tagClassName?: string;  // Additional CSS class name for tags
     suggestionsClassName?: string;  // Additional CSS class name for suggestions list
   };
+  
+  // For autoCompleteText type
+  autoCompleteStyle?: {
+    allowNew?: boolean;  // Whether to allow creating new/custom values
+    maxTags?: number;   // Maximum number of tags allowed
+    minLength?: number; // Minimum length of search text before showing options
+    className?: string; // Additional CSS class name
+  };
+}
+
+export interface FormField extends FormFieldMinimal {
+  required?: boolean;
+  disabled?: boolean;
+  controlSize?: "sm" | "md" | "lg";
+  // Add any additional field props here
+  options?: Array<{ label: string; value: string | number }>;
+  isMultiple?: boolean;
+  dataRange?: {
+    min?: number;
+    max?: number;
+  };
+  dataStep?: number;
+  dataSource?: {
+    collectionName: string;
+    labelField: string;
+    valueField: string;
+    filterQuery?: Record<string, unknown>;
+    dependsOn?: string | string[];
+    sortField?: string;
+    sortOrder?: "asc" | "desc";
+    limit?: number;
+    refreshInterval?: number;
+    customLabel?: string;
+  };
+  icon?: any;
+  placeholder?: string;
+  autoCompleteStyle?: {
+    className?: string;
+    tagClassName?: string;
+    suggestionsClassName?: string;
+    allowNew?: boolean;
+    allowBackspace?: boolean;
+    minLength?: number;
+    maxTags?: number;
+    suggestionsFilter?: (
+      suggestion: { label: string; value: string },
+      query: string
+    ) => boolean;
+  };
+  // Default value for the field
+  defaultValue?: any;
+  // Validator function
+  validator?: (value: any) => string | null;
+  // Mask function
+  mask?: (value: any) => string;
 }
 
 export interface Entity {
