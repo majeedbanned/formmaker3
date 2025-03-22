@@ -101,6 +101,30 @@ const NestedValueDisplay = ({
   layout: TableProps["layout"];
 }): React.ReactElement => {
   if (!field.fields) {
+    // Handle autoCompleteText fields specifically - display with slash separator
+    if (field.type === "autoCompleteText") {
+      if (Array.isArray(value)) {
+        return (
+          <span dir={layout?.direction}>
+            {value
+              .map((item) =>
+                typeof item === "object" && item !== null && "label" in item
+                  ? String(item.label)
+                  : String(item)
+              )
+              .join(" / ")}
+          </span>
+        );
+      } else if (
+        typeof value === "object" &&
+        value !== null &&
+        "label" in value
+      ) {
+        return <span dir={layout?.direction}>{String(value.label)}</span>;
+      }
+      return <span dir={layout?.direction}>{String(value)}</span>;
+    }
+
     // Handle dropdown fields
     if (field.type === "dropdown") {
       if (field.isMultiple && Array.isArray(value)) {
@@ -214,10 +238,11 @@ const renderCellContent = (
   field: FormField | undefined,
   value: unknown,
   layout: TableProps["layout"]
-) => {
-  if (!value) return "-";
-  if (!field) return String(value);
+): React.ReactNode => {
+  if (!value) return <span>-</span>;
+  if (!field) return <span>{String(value)}</span>;
 
+  // Handle special field types
   switch (field.type) {
     case "file":
       if (field.isMultiple) {
@@ -248,55 +273,15 @@ const renderCellContent = (
                       className="flex items-center gap-2 text-primary hover:underline p-1 rounded-sm hover:bg-accent"
                     >
                       <span>{getFileIcon(file.type)}</span>
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="truncate text-sm">
-                          {file.originalName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatFileSize(file.size)} •{" "}
-                          {new Date(file.uploadedAt).toLocaleDateString()}
-                        </span>
-                      </div>
+                      <span className="flex-1 truncate">
+                        {file.originalName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </span>
                     </a>
                   ))}
                 </div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        );
-      } else {
-        const file = value as UploadedFile;
-        return (
-          <HoverCard>
-            <HoverCardTrigger>
-              <button
-                type="button"
-                className="flex items-center gap-2 cursor-help"
-              >
-                <span>{getFileIcon(file.type)}</span>
-                <span className="truncate max-w-xs">{file.originalName}</span>
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80">
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">File Details</h4>
-                <a
-                  href={file.path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-primary hover:underline p-1 rounded-sm hover:bg-accent"
-                >
-                  <span>{getFileIcon(file.type)}</span>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="truncate text-sm">
-                      {file.originalName}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)} •{" "}
-                      {new Date(file.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </a>
               </div>
             </HoverCardContent>
           </HoverCard>
@@ -305,66 +290,105 @@ const renderCellContent = (
 
     case "checkbox":
       if (field.isMultiple && Array.isArray(value)) {
-        return value
-          .map((v) => {
-            const option = field.options?.find((opt) => opt.value === v);
-            return option?.label || v;
-          })
-          .join(", ");
+        return (
+          <span>
+            {value
+              .map((v) => {
+                const option = field.options?.find((opt) => opt.value === v);
+                return option?.label || v;
+              })
+              .join(", ")}
+          </span>
+        );
       }
-      return value === true ? "Yes" : "No";
+      return <span>{value === true ? "Yes" : "No"}</span>;
 
     case "dropdown":
       if (field.isMultiple && Array.isArray(value)) {
-        return value
-          .map((v) => {
-            const option = field.options?.find((opt) => opt.value === v);
-            return option?.label || v;
-          })
-          .join(", ");
+        return (
+          <span>
+            {value
+              .map((v) => {
+                const option = field.options?.find((opt) => opt.value === v);
+                return option?.label || v;
+              })
+              .join(", ")}
+          </span>
+        );
       }
       const option = field.options?.find((opt) => opt.value === value);
-      return option?.label || value;
+      return <span>{option?.label || value}</span>;
 
     case "radio":
     case "togglegroup":
       if (field.isMultiple && Array.isArray(value)) {
-        return value
-          .map((v) => {
-            const option = field.options?.find((opt) => opt.value === v);
-            return option?.label || v;
-          })
-          .join(", ");
+        return (
+          <span>
+            {value
+              .map((v) => {
+                const option = field.options?.find((opt) => opt.value === v);
+                return option?.label || v;
+              })
+              .join(", ")}
+          </span>
+        );
       }
       const radioOption = field.options?.find((opt) => opt.value === value);
-      return radioOption?.label || value;
+      return <span>{radioOption?.label || value}</span>;
 
     case "datepicker":
       if (field.displayFormat) {
-        return field.displayFormat(value as string | number | Date);
+        return (
+          <span>{field.displayFormat(value as string | number | Date)}</span>
+        );
       }
-      return String(value);
+      return <span>{String(value)}</span>;
 
     case "switch":
-      return value === true ? "Yes" : "No";
+      return <span>{value === true ? "Yes" : "No"}</span>;
 
     case "autocomplete":
       if (field.isMultiple && Array.isArray(value)) {
-        return value
-          .map((v) => {
-            const option = field.options?.find((opt) => opt.value === v);
-            return option?.label || v;
-          })
-          .join(", ");
+        return (
+          <span>
+            {value
+              .map((v) => {
+                const option = field.options?.find((opt) => opt.value === v);
+                return option?.label || v;
+              })
+              .join(", ")}
+          </span>
+        );
       }
       const autoOption = field.options?.find((opt) => opt.value === value);
-      return autoOption?.label || value;
+      return <span>{autoOption?.label || value}</span>;
 
     case "shadcnmultiselect":
       return renderMultiValue(value);
 
     case "autoCompleteText":
-      return renderMultiValue(value);
+      // Format autoCompleteText fields with labels separated by slashes
+      if (Array.isArray(value)) {
+        // For array values, extract and join labels with slash separator
+        const formattedLabels = value
+          .map((item) => {
+            if (typeof item === "object" && item !== null && "label" in item) {
+              return String(item.label);
+            }
+            return String(item);
+          })
+          .join(" / ");
+        return formattedLabels;
+      } else if (
+        typeof value === "object" &&
+        value !== null &&
+        "label" in value
+      ) {
+        // For single object values with label property
+        return String(value.label);
+      }
+      // Fallback for other value types
+      return String(value);
 
     default:
       if (field.fields) {
@@ -372,11 +396,11 @@ const renderCellContent = (
           <NestedValueDisplay value={value} field={field} layout={layout} />
         );
       }
-      return String(value);
+      return <span>{String(value)}</span>;
   }
 };
 
-const renderMultiValue = (value: unknown) => {
+const renderMultiValue = (value: unknown): React.ReactNode => {
   if (!value) return "-";
 
   // Handle array values
@@ -398,6 +422,9 @@ const renderMultiValue = (value: unknown) => {
   }
 
   // Handle single value
+  if (typeof value === "object" && value !== null && "label" in value) {
+    return <span>{String(value.label)}</span>;
+  }
   return <span>{String(value)}</span>;
 };
 
