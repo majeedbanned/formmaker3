@@ -3,6 +3,10 @@
 "use client";
 // components/ClassSheet.jsx
 import React, { useState, useEffect } from "react";
+import DatePicker from "react-multi-date-picker";
+import type { Value } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 // Helper function: Convert Gregorian to Jalali
 function gregorian_to_jalali(gy: number, gm: number, gd: number) {
@@ -163,7 +167,13 @@ const ClassSheet = ({
         },
         {
           studentCode: 2295566177,
-          studentName: "مجیدیبلی",
+          studentName: "نیما",
+          studentlname: "قاسمی",
+          phone: "9177204118",
+        },
+        {
+          studentCode: 2295566173,
+          studentName: "قاسم",
           studentlname: "قاسمی",
           phone: "9177204118",
         },
@@ -182,12 +192,8 @@ const ClassSheet = ({
   const [selectedOption, setSelectedOption] = useState<
     CourseOption | undefined
   >(undefined);
-  const [startDate, setStartDate] = useState<string>(
-    defaultStart.toISOString().slice(0, 10)
-  );
-  const [endDate, setEndDate] = useState<string>(
-    defaultEnd.toISOString().slice(0, 10)
-  );
+  const [startDate, setStartDate] = useState<Value>(defaultStart);
+  const [endDate, setEndDate] = useState<Value>(defaultEnd);
 
   // Build teacher–course options (filter by teacherCode if provided).
   const teacherCourses = teacherCode
@@ -242,16 +248,18 @@ const ClassSheet = ({
 
   // Function to navigate dates forward or backward by two weeks
   const navigateTwoWeeks = (direction: "forward" | "backward") => {
-    const startDt = new Date(startDate);
-    const endDt = new Date(endDate);
+    const startDt =
+      startDate instanceof Date ? startDate : new Date(startDate as string);
+    const endDt =
+      endDate instanceof Date ? endDate : new Date(endDate as string);
 
     const daysToAdjust = direction === "forward" ? 14 : -14;
 
     startDt.setDate(startDt.getDate() + daysToAdjust);
     endDt.setDate(endDt.getDate() + daysToAdjust);
 
-    setStartDate(startDt.toISOString().slice(0, 10));
-    setEndDate(endDt.toISOString().slice(0, 10));
+    setStartDate(startDt);
+    setEndDate(endDt);
   };
 
   // Helper: Map JavaScript's getDay() to Persian day names (week starting from "شنبه").
@@ -273,8 +281,9 @@ const ClassSheet = ({
   // Compute dynamic columns based on the date range.
   const columns: Column[] = [];
   if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start =
+      startDate instanceof Date ? startDate : new Date(startDate as string);
+    const end = endDate instanceof Date ? endDate : new Date(endDate as string);
     // Iterate through each day in the range (inclusive).
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const currentDate = new Date(d);
@@ -332,8 +341,15 @@ const ClassSheet = ({
           </button>
 
           <div className="text-center text-lg font-medium">
-            {formatJalaliDate(new Date(startDate))} تا{" "}
-            {formatJalaliDate(new Date(endDate))}
+            {formatJalaliDate(
+              startDate instanceof Date
+                ? startDate
+                : new Date(startDate as string)
+            )}{" "}
+            تا{" "}
+            {formatJalaliDate(
+              endDate instanceof Date ? endDate : new Date(endDate as string)
+            )}
           </div>
 
           <button
@@ -352,12 +368,16 @@ const ClassSheet = ({
             >
               تاریخ شروع:
             </label>
-            <input
-              id="start-date"
-              type="date"
+            <DatePicker
+              calendar={persian}
+              locale={persian_fa}
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(date) => {
+                setStartDate(date);
+              }}
+              format="YYYY/MM/DD"
+              className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              calendarPosition="bottom-right"
             />
           </div>
           <div>
@@ -367,12 +387,16 @@ const ClassSheet = ({
             >
               تاریخ پایان:
             </label>
-            <input
-              id="end-date"
-              type="date"
+            <DatePicker
+              calendar={persian}
+              locale={persian_fa}
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(date) => {
+                setEndDate(date);
+              }}
+              format="YYYY/MM/DD"
+              className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              calendarPosition="bottom-right"
             />
           </div>
         </div>
@@ -380,23 +404,23 @@ const ClassSheet = ({
 
       {/* Dynamic Schedule Sheet */}
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 shadow rounded-lg">
+        <table className="min-w-full bg-white border border-gray-200 shadow rounded-lg table-fixed">
           <thead className="bg-blue-500 text-white">
             <tr>
-              <th className="px-4 py-2 border border-gray-300">
+              <th className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-blue-600">
                 نام دانش‌آموز
               </th>
               {columns.length > 0 ? (
                 columns.map((col, index) => (
                   <th
                     key={index}
-                    className="px-4 py-2 border border-gray-300 text-sm"
+                    className="px-4 py-3 w-[150px] min-w-[150px] h-36 border border-gray-300 text-sm whitespace-normal"
                   >
                     {`${col.day}-زنگ ${col.timeSlot} (${col.formattedDate})`}
                   </th>
                 ))
               ) : (
-                <th className="px-4 py-2 border border-gray-300">
+                <th className="px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300">
                   لطفاً تاریخ شروع و پایان را وارد کنید
                 </th>
               )}
@@ -407,13 +431,13 @@ const ClassSheet = ({
               const fullName = `${student.studentName} ${student.studentlname}`;
               return (
                 <tr key={student.studentCode} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border border-gray-300">
+                  <td className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white">
                     {fullName}
                   </td>
                   {columns.map((_, index) => (
                     <td
                       key={`cell-${student.studentCode}-${index}`}
-                      className="px-4 py-2 text-center border border-gray-300 cursor-pointer hover:bg-gray-200"
+                      className="px-4 py-3 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200"
                     >
                       *
                     </td>
