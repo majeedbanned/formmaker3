@@ -135,9 +135,10 @@ export interface FormFieldMinimal {
     isOpen?: boolean;    // Whether the component is initially expanded or not
     nameBinding?: Array<{
       name: string;       // Field name for mapping
+      label?: string;     // Display label for the field
       type?: 'text' | 'number' | 'date' | 'boolean'; // Type of the field (default: 'text')
       isUnique?: boolean; // Whether to enforce uniqueness for this field
-      defaultValue?: any; // Default value to apply when importing
+      defaultValue?: string | number; // Default value to apply when importing
     }>;
   };
 }
@@ -277,6 +278,7 @@ export interface CRUDComponentProps {
     title?: string;
     nameBinding: Array<{
       name: string;
+      label?: string;
       type?: "text" | "number" | "date" | "boolean";
       isUnique?: boolean;
       defaultValue?: string | number;

@@ -244,11 +244,32 @@ function StudentsPageContent() {
             active: true,
             title: "وارد کردن اطلاعات دانش‌آموزان",
             nameBinding: [
-              { name: "studentCode", type: "number", isUnique: true },
-              { name: "studentName", type: "text", isUnique: false },
-              { name: "studentFamily", type: "text", isUnique: false },
-
               {
+                label: "کد دانش آموز",
+                name: "studentCode",
+                type: "number",
+                isUnique: true,
+              },
+              {
+                label: "نام دانش آموز",
+                name: "studentName",
+                type: "text",
+                isUnique: false,
+              },
+              {
+                label: "نام خانوادگی",
+                name: "studentFamily",
+                type: "text",
+                isUnique: false,
+              },
+              {
+                label: "شماره تلفن",
+                name: "phone",
+                type: "text",
+                isUnique: false,
+              },
+              {
+                label: "کد مدرسه",
                 name: "schoolCode",
                 type: "number",
                 defaultValue: "2295566177",

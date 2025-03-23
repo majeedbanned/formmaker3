@@ -16,6 +16,7 @@ export interface ImportFunctionConfig {
   title?: string;
   nameBinding: Array<{
     name: string;
+    label?: string;
     type?: "text" | "number" | "date" | "boolean";
     isUnique?: boolean;
     defaultValue?: string | number;
@@ -59,37 +60,38 @@ export default function ImportModal({
     const rows = text.trim().split("\n");
     const nameBinding = config.nameBinding || [];
 
+    // Separate the fields that should be imported from Excel vs. those with default values
+    const importFields = nameBinding.filter(
+      (binding) => binding.defaultValue === undefined
+    );
+    const defaultFields = nameBinding.filter(
+      (binding) => binding.defaultValue !== undefined
+    );
+
     // Process rows into objects according to binding schema
     const processedObjects = rows.map((row) => {
       const columns = row.split("\t");
       const obj: Record<string, string | number> = {};
 
-      // First apply all default values from the binding configuration
-      nameBinding.forEach((binding) => {
-        if (binding.defaultValue !== undefined) {
-          if (binding.type === "number") {
-            // Ensure numeric default value
-            obj[binding.name] =
-              typeof binding.defaultValue === "number"
-                ? binding.defaultValue
-                : Number(binding.defaultValue) || 0;
-          } else {
-            obj[binding.name] = String(binding.defaultValue);
-          }
+      // First apply all default values
+      defaultFields.forEach((binding) => {
+        if (binding.type === "number") {
+          // Ensure numeric default value
+          obj[binding.name] =
+            typeof binding.defaultValue === "number"
+              ? binding.defaultValue
+              : Number(binding.defaultValue) || 0;
+        } else {
+          obj[binding.name] = String(binding.defaultValue);
         }
       });
 
-      // Then process column values (which will override defaults if provided)
-      nameBinding.forEach((binding, index) => {
+      // Then process column values for non-default fields
+      importFields.forEach((binding, index) => {
         if (index >= columns.length) return;
 
         // Get the column value and trim it
         let value = columns[index]?.trim() || "";
-
-        // Skip empty values if we already have a default
-        if (!value && binding.defaultValue !== undefined) {
-          return; // Keep the default value
-        }
 
         // Handle field type
         if (binding.type === "number") {
@@ -191,33 +193,50 @@ export default function ImportModal({
             </p>
             <p className="mb-2">ترتیب ستون‌ها:</p>
             <div className="flex flex-wrap gap-2 mb-2">
-              {config.nameBinding.map((binding) => (
-                <span
-                  key={binding.name}
-                  className="bg-muted px-2 py-1 rounded-sm"
-                >
-                  {binding.name}
-                  {binding.isUnique && (
-                    <small className="text-blue-500 ml-1">(منحصر به فرد)</small>
-                  )}
-                  {binding.type === "number" && (
-                    <small className="text-green-500 ml-1">(عدد)</small>
-                  )}
-                  {binding.defaultValue !== undefined && (
-                    <small className="text-amber-600 ml-1">
-                      (پیش‌فرض: {binding.defaultValue})
-                    </small>
-                  )}
-                </span>
-              ))}
+              {config.nameBinding
+                .filter((binding) => binding.defaultValue === undefined)
+                .map((binding) => (
+                  <span
+                    key={binding.name}
+                    className="bg-muted px-2 py-1 rounded-sm"
+                  >
+                    {binding.label || binding.name}
+                    {binding.isUnique && (
+                      <small className="text-blue-500 ml-1">
+                        (منحصر به فرد)
+                      </small>
+                    )}
+                    {binding.type === "number" && (
+                      <small className="text-green-500 ml-1">(عدد)</small>
+                    )}
+                  </span>
+                ))}
             </div>
+
+            {/* Automatic fields with default values */}
             {config.nameBinding.some(
               (binding) => binding.defaultValue !== undefined
             ) && (
-              <p className="text-xs text-amber-600 border-t border-amber-200 pt-2 mt-2">
-                مقادیر پیش‌فرض به صورت خودکار به هر سطر از داده‌های وارد شده
-                اضافه می‌شوند.
-              </p>
+              <div className="mt-4">
+                <p className="text-xs text-amber-600 mb-2">
+                  فیلدهای زیر به صورت خودکار اضافه می‌شوند:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {config.nameBinding
+                    .filter((binding) => binding.defaultValue !== undefined)
+                    .map((binding) => (
+                      <span
+                        key={binding.name}
+                        className="bg-amber-100 text-amber-800 px-2 py-1 rounded-sm"
+                      >
+                        {binding.label || binding.name}
+                        <small className="ml-1">
+                          (مقدار: {binding.defaultValue})
+                        </small>
+                      </span>
+                    ))}
+                </div>
+              </div>
             )}
           </div>
 
