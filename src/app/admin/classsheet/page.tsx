@@ -495,7 +495,8 @@ const ClassSheet = ({
     }
   };
 
-  // Calculate average grade
+  // Calculate average grade - kept for potential future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const calculateAverageGrade = (grades: GradeEntry[]): number | null => {
     if (!grades || grades.length === 0) return null;
     const sum = grades.reduce((total, grade) => total + grade.value, 0);
@@ -721,43 +722,61 @@ const ClassSheet = ({
                     let displayContent: React.ReactNode = "*";
 
                     if (cellData) {
-                      // Calculate average if there are grades
-                      const avgGrade = calculateAverageGrade(cellData.grades);
-
                       // Prepare the cell content
                       displayContent = (
                         <div className="flex flex-col items-center gap-1 h-full w-full">
                           {/* Presence Status Badge */}
-                          {cellData.presenceStatus === "absent" && (
-                            <Badge className="bg-red-500 text-white mb-1">
-                              غایب
-                            </Badge>
-                          )}
-                          {cellData.presenceStatus === "late" && (
-                            <Badge className="bg-amber-500 text-white mb-1">
-                              تاخیر
-                            </Badge>
-                          )}
+                          <div className="w-full text-center">
+                            {cellData.presenceStatus === "present" && (
+                              <Badge className="bg-green-500 text-white">
+                                حاضر
+                              </Badge>
+                            )}
+                            {cellData.presenceStatus === "absent" && (
+                              <Badge className="bg-red-500 text-white">
+                                غایب
+                              </Badge>
+                            )}
+                            {cellData.presenceStatus === "late" && (
+                              <Badge className="bg-amber-500 text-white">
+                                تاخیر
+                              </Badge>
+                            )}
+                          </div>
 
                           {/* Grades Section */}
                           {cellData.grades && cellData.grades.length > 0 && (
-                            <div className="w-full">
-                              {/* Average Grade - Highlight it */}
-                              {avgGrade !== null && (
-                                <div className="font-bold text-sm mb-1">
-                                  {avgGrade}{" "}
-                                  <span className="text-xs font-normal text-gray-500">
-                                    (میانگین)
-                                  </span>
-                                </div>
-                              )}
-
+                            <div className="w-full mt-1">
                               {/* Individual Grades */}
                               <div className="flex flex-wrap gap-1 justify-center">
                                 {cellData.grades.map((grade, idx) => (
-                                  <Badge key={idx} className="bg-blue-600">
-                                    {grade.value}
-                                  </Badge>
+                                  <div
+                                    key={idx}
+                                    className="relative group"
+                                    title={
+                                      grade.description ||
+                                      `نمره: ${grade.value}`
+                                    }
+                                  >
+                                    <Badge
+                                      className={`
+                                        ${
+                                          grade.value >= 16
+                                            ? "bg-green-600"
+                                            : grade.value >= 12
+                                            ? "bg-amber-500"
+                                            : "bg-red-600"
+                                        }
+                                      `}
+                                    >
+                                      {grade.value}
+                                    </Badge>
+                                    {grade.description && (
+                                      <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                        {grade.description}
+                                      </div>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             </div>
