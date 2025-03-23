@@ -284,20 +284,18 @@ const ClassSheet = ({
 
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
-    return `${classDocument.data.classCode}_${studentCode}_${
-      selectedOption?.teacherCode
-    }_${
-      selectedOption?.courseCode
-    }_${schoolCode}_${column.date.toISOString()}_${column.timeSlot}`;
+    // Format the date as YYYY-MM-DD to ensure consistency
+    const dateStr = column.date.toISOString().split("T")[0];
+
+    return `${classDocument.data.classCode}_${studentCode}_${selectedOption?.teacherCode}_${selectedOption?.courseCode}_${schoolCode}_${dateStr}_${column.timeSlot}`;
   };
 
   // Format a cell key from database record
   const formatCellKeyFromDB = (cell: CellData) => {
-    // Convert the date string to match the same format as getCellKey
-    const dateObj = new Date(cell.date);
-    return `${cell.classCode}_${cell.studentCode}_${cell.teacherCode}_${
-      cell.courseCode
-    }_${cell.schoolCode}_${dateObj.toISOString()}_${cell.timeSlot}`;
+    // Convert the date string to YYYY-MM-DD format
+    const dateStr = new Date(cell.date).toISOString().split("T")[0];
+
+    return `${cell.classCode}_${cell.studentCode}_${cell.teacherCode}_${cell.courseCode}_${cell.schoolCode}_${dateStr}_${cell.timeSlot}`;
   };
 
   // Load saved cell data when component mounts or when selected option changes
@@ -462,7 +460,7 @@ const ClassSheet = ({
         teacherCode: selectedOption.teacherCode,
         courseCode: selectedOption.courseCode,
         schoolCode: schoolCode,
-        date: column.date.toISOString(),
+        date: column.date.toISOString().split("T")[0], // Use YYYY-MM-DD format
         timeSlot: column.timeSlot,
         note: noteText,
         grades: grades,

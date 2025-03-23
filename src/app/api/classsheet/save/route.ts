@@ -6,7 +6,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode, grades, presenceStatus } = body;
 
-    console.log("Saving cell data:", { classCode, studentCode, teacherCode, courseCode, schoolCode, date, timeSlot, presenceStatus });
+    // Create a unique identifier for debugging
+    const cellIdentifier = `${classCode}_${studentCode}_${teacherCode}_${courseCode}_${schoolCode}_${date}_${timeSlot}`;
+    console.log("Saving cell data with identifier:", cellIdentifier);
+    console.log("Data includes:", { 
+      presenceStatus, 
+      gradeCount: grades?.length || 0,
+      hasNote: note ? 'Yes' : 'No' 
+    });
 
     // Validate required fields
     if (!classCode || !studentCode || !teacherCode || !courseCode || !date || !timeSlot || !schoolCode) {
@@ -22,6 +29,19 @@ export async function POST(request: Request) {
     
     const db = client.db();
     const collection = db.collection("classsheet");
+    
+    // Query to find if this cell data already exists (for debugging)
+    const existingRecord = await collection.findOne({
+      classCode,
+      studentCode,
+      teacherCode,
+      courseCode,
+      schoolCode,
+      date,
+      timeSlot,
+    });
+
+    console.log("Existing record found:", existingRecord ? "Yes" : "No");
     
     // Create or update the cell data
     const result = await collection.updateOne(
@@ -49,6 +69,7 @@ export async function POST(request: Request) {
     );
 
     console.log("Save result:", {
+      cellIdentifier,
       upserted: result.upsertedCount > 0,
       modified: result.modifiedCount > 0
     });
