@@ -238,7 +238,7 @@ const sampleFormStructure: FormField[] = [
       sortField: "email",
       sortOrder: "asc",
     },
-    required: true,
+    required: false,
     isShowInList: true,
     enabled: true,
     visible: true,

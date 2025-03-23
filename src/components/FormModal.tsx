@@ -914,6 +914,166 @@ const FormField = ({
         )}
       </div>
     );
+  } else if (field.type === "switch") {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <Label
+            htmlFor={field.name}
+            className={cn(
+              field.required &&
+                "after:content-['*'] after:ml-0.5 after:text-red-500"
+            )}
+          >
+            {field.title}
+          </Label>
+          <Switch
+            id={field.name}
+            checked={fieldValue}
+            onCheckedChange={(checked) =>
+              setValue(field.name, checked, { shouldValidate: true })
+            }
+            disabled={!field.enabled}
+          />
+        </div>
+        {errors[field.name] && (
+          <span className="text-sm text-red-500">
+            {errors[field.name]?.message as string}
+          </span>
+        )}
+      </div>
+    );
+  } else if (field.type === "togglegroup") {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label
+          className={cn(
+            field.required &&
+              "after:content-['*'] after:ml-0.5 after:text-red-500"
+          )}
+        >
+          {field.title}
+        </Label>
+        <ToggleGroup
+          type="multiple"
+          value={Array.isArray(fieldValue) ? fieldValue : []}
+          onValueChange={(value) =>
+            setValue(field.name, value, { shouldValidate: true })
+          }
+          disabled={!field.enabled}
+        >
+          {field.options?.map((option) => (
+            <ToggleGroupItem
+              key={String(option.value)}
+              value={String(option.value)}
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {errors[field.name] && (
+          <span className="text-sm text-red-500">
+            {errors[field.name]?.message as string}
+          </span>
+        )}
+      </div>
+    );
+  } else if (field.type === "radio" && field.options) {
+    return (
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+        </label>
+        <RadioGroup
+          value={String(fieldValue || field.defaultValue || "")}
+          onValueChange={(value) => {
+            setValue(field.name, value, { shouldValidate: true });
+          }}
+          className={field.layout === "inline" ? "flex gap-4" : "space-y-2"}
+          disabled={isDisabled}
+        >
+          {field.options.map((option) => (
+            <div
+              key={String(option.value)}
+              className={`flex items-center ${
+                layout.direction === "rtl" ? "space-x-reverse" : ""
+              } space-x-2`}
+            >
+              <RadioGroupItem
+                value={String(option.value)}
+                id={`${field.name}-${option.value}`}
+              />
+              <label
+                htmlFor={`${field.name}-${option.value}`}
+                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {option.label}
+              </label>
+            </div>
+          ))}
+        </RadioGroup>
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p
+            className={`text-destructive text-sm ${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+          >
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  } else if (field.type === "label") {
+    return (
+      <Label
+        className={cn(
+          field.labelStyle?.fontSize && `text-${field.labelStyle.fontSize}`,
+          field.labelStyle?.fontWeight && `font-${field.labelStyle.fontWeight}`,
+          field.labelStyle?.color && `text-${field.labelStyle.color}`,
+          field.labelStyle?.textAlign && `text-${field.labelStyle.textAlign}`
+        )}
+      >
+        {field.title}
+      </Label>
+    );
+  } else if (field.type === "datepicker") {
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+        </label>
+        <DatePicker
+          calendar={persian}
+          locale={persian_fa}
+          value={fieldValue as Value}
+          onChange={(date) => {
+            //console.log("dateeeeeee", date.toString());
+            setValue(field.name, date?.toString(), { shouldValidate: true });
+          }}
+          disabled={isDisabled}
+          multiple={field.isMultiple}
+          format={field.datepickerStyle?.format || "YYYY-MM-DD"}
+          className={cn(
+            "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            field.datepickerStyle?.className
+          )}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-destructive text-sm">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
   } else if (field.type === "file") {
     return (
       <div key={field.name} className="mb-4">
