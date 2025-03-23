@@ -170,7 +170,23 @@ const ASSESSMENT_TITLES = [
   "مسئولیت پذیری",
 ];
 
-const ASSESSMENT_VALUES = ["عالی", "خوب", "متوسط", "ضعیف", "بسیار ضعیف"];
+// Assessment values with weights
+const ASSESSMENT_VALUES = [
+  { value: "عالی", weight: 2 },
+  { value: "خوب", weight: 1 },
+  { value: "متوسط", weight: 0 },
+  { value: "ضعیف", weight: -1 },
+  { value: "بسیار ضعیف", weight: -2 },
+];
+
+// Value-only array for backward compatibility and UI
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ASSESSMENT_VALUE_STRINGS = ASSESSMENT_VALUES.map((item) => item.value);
+
+type AssessmentValueWeight = {
+  value: string;
+  weight: number;
+};
 
 type AssessmentOption = {
   _id: string;
@@ -178,6 +194,7 @@ type AssessmentOption = {
   teacherCode?: string;
   type: "title" | "value";
   value: string;
+  weight?: number;
   isGlobal: boolean;
   createdAt: string;
 };
@@ -374,11 +391,13 @@ const ClassSheet = ({
   const [assessmentTitles, setAssessmentTitles] =
     useState<string[]>(ASSESSMENT_TITLES);
   const [assessmentValues, setAssessmentValues] =
-    useState<string[]>(ASSESSMENT_VALUES);
+    useState<AssessmentValueWeight[]>(ASSESSMENT_VALUES);
   const [customAssessmentTitle, setCustomAssessmentTitle] =
     useState<string>("");
   const [customAssessmentValue, setCustomAssessmentValue] =
     useState<string>("");
+  const [customAssessmentWeight, setCustomAssessmentWeight] =
+    useState<number>(0);
   const [isAddingTitle, setIsAddingTitle] = useState<boolean>(false);
   const [isAddingValue, setIsAddingValue] = useState<boolean>(false);
 
@@ -473,13 +492,25 @@ const ClassSheet = ({
         const titles = data
           .filter((item: AssessmentOption) => item.type === "title")
           .map((item: AssessmentOption) => item.value);
+
         const values = data
           .filter((item: AssessmentOption) => item.type === "value")
-          .map((item: AssessmentOption) => item.value);
+          .map((item: AssessmentOption) => ({
+            value: item.value,
+            weight: item.weight || 0,
+          }));
 
         // Merge with default options (avoiding duplicates)
         const mergedTitles = [...new Set([...ASSESSMENT_TITLES, ...titles])];
-        const mergedValues = [...new Set([...ASSESSMENT_VALUES, ...values])];
+
+        // Merge values while preserving weights
+        const mergedValues: AssessmentValueWeight[] = [...ASSESSMENT_VALUES];
+        values.forEach((customValue: AssessmentValueWeight) => {
+          // Only add if it doesn't exist
+          if (!mergedValues.some((v) => v.value === customValue.value)) {
+            mergedValues.push(customValue);
+          }
+        });
 
         setAssessmentTitles(mergedTitles);
         setAssessmentValues(mergedValues);
@@ -912,6 +943,12 @@ const ClassSheet = ({
     }
   };
 
+  // Find assessment weight based on value
+  const getAssessmentWeight = (value: string): number => {
+    const assessment = assessmentValues.find((av) => av.value === value);
+    return assessment?.weight || 0;
+  };
+
   // Handle adding custom assessment value
   const handleAddCustomValue = async () => {
     if (!customAssessmentValue.trim()) {
@@ -930,6 +967,7 @@ const ClassSheet = ({
           teacherCode,
           type: "value",
           value: customAssessmentValue.trim(),
+          weight: customAssessmentWeight,
         }),
       });
 
@@ -939,8 +977,12 @@ const ClassSheet = ({
       }
 
       // Update local state
-      setAssessmentValues([...assessmentValues, customAssessmentValue.trim()]);
+      setAssessmentValues([
+        ...assessmentValues,
+        { value: customAssessmentValue.trim(), weight: customAssessmentWeight },
+      ]);
       setCustomAssessmentValue("");
+      setCustomAssessmentWeight(0);
       setIsAddingValue(false);
       toast.success("مقدار ارزیابی با موفقیت افزوده شد");
     } catch (error) {
@@ -1116,8 +1158,10 @@ const ClassSheet = ({
                       const hasGrades = allGrades.length > 0;
                       let monthlyGrade = "-";
                       let gradeColor = "bg-gray-300";
+                      let assessmentAdjustment = 0;
 
                       if (hasGrades) {
+                        // Calculate total value and points for grades
                         const totalValue = allGrades.reduce(
                           (sum, grade) => sum + grade.value,
                           0
@@ -1126,14 +1170,35 @@ const ClassSheet = ({
                           (sum, grade) => sum + (grade.totalPoints || 20),
                           0
                         );
-                        const calculatedGrade = (
-                          (totalValue / totalPoints) *
-                          20
-                        ).toFixed(2);
-                        monthlyGrade = calculatedGrade;
+
+                        // Calculate assessment point adjustments
+                        const monthAssessments = monthCells.flatMap(
+                          (cell) => cell.assessments || []
+                        );
+
+                        assessmentAdjustment = monthAssessments.reduce(
+                          (sum, assessment) => {
+                            const weight = getAssessmentWeight(
+                              assessment.value
+                            );
+                            return sum + weight;
+                          },
+                          0
+                        );
+
+                        // Calculate the base grade
+                        const baseGrade = (totalValue / totalPoints) * 20;
+
+                        // Apply assessment adjustment (but keep grade within 0-20 range)
+                        const finalGrade = Math.max(
+                          0,
+                          Math.min(20, baseGrade + assessmentAdjustment)
+                        );
+
+                        monthlyGrade = finalGrade.toFixed(2);
 
                         // Color based on grade value
-                        const gradeValue = parseFloat(calculatedGrade);
+                        const gradeValue = parseFloat(monthlyGrade);
                         if (gradeValue >= 16)
                           gradeColor = "bg-green-600 text-white";
                         else if (gradeValue >= 12)
@@ -1158,6 +1223,13 @@ const ClassSheet = ({
                             <div className="text-xs mt-1 text-gray-500">
                               تعداد نمرات: {allGrades.length}
                             </div>
+                            {assessmentAdjustment !== 0 && (
+                              <div className="text-xs mt-1 text-gray-500">
+                                تعدیل ارزیابی‌ها:{" "}
+                                {assessmentAdjustment > 0 ? "+" : ""}
+                                {assessmentAdjustment}
+                              </div>
+                            )}
                           </div>
                         </td>
                       );
@@ -1470,6 +1542,9 @@ const ClassSheet = ({
               {assessments.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {assessments.map((assessment, index) => {
+                    // Get assessment weight
+                    const weight = getAssessmentWeight(assessment.value);
+
                     // Determine badge color based on assessment value
                     let badgeColor = "bg-gray-100";
                     if (assessment.value === "عالی")
@@ -1490,6 +1565,12 @@ const ClassSheet = ({
                       >
                         <span className="font-bold">{assessment.title}:</span>
                         <span>{assessment.value}</span>
+                        {weight !== 0 && (
+                          <span className="text-xs text-gray-600">
+                            ({weight > 0 ? "+" : ""}
+                            {weight})
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1567,9 +1648,18 @@ const ClassSheet = ({
                           <SelectValue placeholder="انتخاب مقدار" />
                         </SelectTrigger>
                         <SelectContent>
-                          {assessmentValues.map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {value}
+                          {assessmentValues.map((valueObj) => (
+                            <SelectItem
+                              key={valueObj.value}
+                              value={valueObj.value}
+                            >
+                              {valueObj.value}{" "}
+                              {valueObj.weight !== 0 && (
+                                <span className="text-xs text-gray-600">
+                                  ({valueObj.weight > 0 ? "+" : ""}
+                                  {valueObj.weight})
+                                </span>
+                              )}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1637,7 +1727,7 @@ const ClassSheet = ({
 
                 {/* Add Custom Assessment Value UI */}
                 {isAddingValue && (
-                  <div className="flex items-end gap-2 bg-gray-50 p-2 rounded">
+                  <div className="flex flex-col gap-2 bg-gray-50 p-2 rounded">
                     <div className="flex-1">
                       <Label htmlFor="custom-value" className="text-xs">
                         مقدار ارزیابی جدید:
@@ -1652,25 +1742,52 @@ const ClassSheet = ({
                         className="mt-1"
                       />
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleAddCustomValue}
-                      className="mr-1"
-                    >
-                      افزودن
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setIsAddingValue(false);
-                        setCustomAssessmentValue("");
-                      }}
-                    >
-                      انصراف
-                    </Button>
+                    <div className="flex-1">
+                      <Label htmlFor="custom-weight" className="text-xs">
+                        تاثیر در نمره ماهانه:
+                      </Label>
+                      <Input
+                        id="custom-weight"
+                        type="number"
+                        min="-5"
+                        max="5"
+                        step="0.5"
+                        value={customAssessmentWeight}
+                        onChange={(e) =>
+                          setCustomAssessmentWeight(
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        placeholder="میزان تاثیر را وارد کنید..."
+                        className="mt-1"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        مقدار مثبت باعث افزایش و مقدار منفی باعث کاهش نمره
+                        می‌شود.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomValue}
+                        className="mr-1"
+                      >
+                        افزودن
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddingValue(false);
+                          setCustomAssessmentValue("");
+                          setCustomAssessmentWeight(0);
+                        }}
+                      >
+                        انصراف
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

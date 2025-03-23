@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { schoolCode, teacherCode, type, value, isGlobal = false } = body;
+    const { schoolCode, teacherCode, type, value, weight = 0, isGlobal = false } = body;
     
     // Validate required fields
     if (!schoolCode || !type || !value) {
@@ -90,14 +90,18 @@ export async function POST(request: Request) {
     }
     
     // Insert the new assessment option
-    const result = await collection.insertOne({
+    // Include weight only for value type assessments
+    const assessmentData = {
       schoolCode,
       ...(teacherCode ? { teacherCode } : {}),
       type, // 'title' or 'value'
       value,
+      ...(type === 'value' ? { weight: Number(weight) } : {}), // Store weight only for values
       isGlobal,
       createdAt: new Date()
-    });
+    };
+    
+    const result = await collection.insertOne(assessmentData);
 
     await client.close();
     
