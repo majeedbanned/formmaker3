@@ -695,6 +695,54 @@ const FormField = ({
         )}
       </div>
     );
+  } else if (field.type === "shadcnmultiselect") {
+    const options = field.dataSource ? dynamicOptions : field.options || [];
+
+    // Always handle as multiple selection for shadcnmultiselect
+    // Convert single values to arrays if needed
+    const currentValue = Array.isArray(fieldValue)
+      ? fieldValue
+      : fieldValue
+      ? [fieldValue]
+      : [];
+
+    return (
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+        <MultiSelect
+          options={options}
+          selected={currentValue}
+          onChange={(values) => {
+            setValue(field.name, values, { shouldValidate: true });
+          }}
+          placeholder={layout.texts?.selectPlaceholder || "Select options..."}
+          disabled={isDisabled}
+          emptyMessage={isLoadingOptions ? "" : "No options available"}
+          loading={isLoadingOptions}
+          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
+          className={layout.direction === "rtl" ? "text-right" : "text-left"}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p className="text-sm text-destructive mt-1">
+            {errors[field.name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
   } else if (field.type === "importTextBox") {
     // Parse import text to structured data
     const parseImportText = (text: string): object[] => {

@@ -7,7 +7,9 @@ import Table from "./Table";
 import FormModal from "./FormModal";
 import DeleteModal from "./DeleteModal";
 import AdvancedSearchModal from "./AdvancedSearchModal";
+import ImportModal from "./ImportModal";
 import { toast } from "sonner";
+// import { FileUpIcon } from "@heroicons/react/24/outline";
 
 export default function CRUDComponent({
   formStructure,
@@ -23,6 +25,7 @@ export default function CRUDComponent({
     canAdvancedSearch: true,
     canSearchAllFields: true,
   },
+  importFunction,
   rowActions = [],
   layout = {
     direction: "ltr",
@@ -36,10 +39,12 @@ export default function CRUDComponent({
       searchButton: "Search",
       advancedSearchButton: "Advanced Search",
       applyFiltersButton: "Apply Filters",
+      importButton: "Import Data",
       addModalTitle: "Add New Entry",
       editModalTitle: "Edit Entry",
       deleteModalTitle: "Delete Confirmation",
       advancedSearchModalTitle: "Advanced Search",
+      importTitle: "Import Data",
       deleteConfirmationMessage:
         "Are you sure you want to delete this item? This action cannot be undone.",
       deleteConfirmationMessagePlural:
@@ -85,6 +90,7 @@ export default function CRUDComponent({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -103,6 +109,36 @@ export default function CRUDComponent({
     setEditingId(null);
     window.__EDITING_ENTITY_DATA__ = undefined;
     setIsModalOpen(true);
+  };
+
+  const handleImport = () => {
+    if (!permissions.canAdd || !importFunction?.active) return;
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportSubmit = async (data: Record<string, unknown>[]) => {
+    if (!permissions.canAdd || !importFunction?.active || data.length === 0)
+      return;
+
+    try {
+      // Create entities for each imported item
+      const createdEntities = await Promise.all(
+        data.map(async (item) => {
+          return await createEntity(item);
+        })
+      );
+
+      // Call onAfterAdd for each entity if provided
+      if (onAfterAdd) {
+        createdEntities.forEach((entity) => {
+          onAfterAdd(entity);
+        });
+      }
+
+      setIsImportModalOpen(false);
+    } catch (error) {
+      throw error; // Let the ImportModal handle the error
+    }
   };
 
   const handleEdit = (entity: Entity) => {
@@ -245,9 +281,21 @@ export default function CRUDComponent({
               layout={layout}
             />
           )}
-          {permissions.canAdd && (
-            <Button onClick={handleAdd}>{layout.texts?.addButton}</Button>
-          )}
+          <div className="flex gap-2">
+            {importFunction?.active && permissions.canAdd && (
+              <Button
+                onClick={handleImport}
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                {/* <FileUpIcon className="h-4 w-4" /> */}
+                {layout.texts?.importButton || "Import"}
+              </Button>
+            )}
+            {permissions.canAdd && (
+              <Button onClick={handleAdd}>{layout.texts?.addButton}</Button>
+            )}
+          </div>
         </div>
 
         {permissions.canAdvancedSearch &&
@@ -337,6 +385,17 @@ export default function CRUDComponent({
           onClear={clearAdvancedSearch}
           formStructure={formStructure}
           initialValues={advancedSearch}
+          layout={layout}
+        />
+      )}
+
+      {importFunction?.active && permissions.canAdd && (
+        <ImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={handleImportSubmit}
+          config={importFunction}
+          loading={loading}
           layout={layout}
         />
       )}

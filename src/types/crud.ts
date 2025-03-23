@@ -137,6 +137,7 @@ export interface FormFieldMinimal {
       name: string;       // Field name for mapping
       type?: 'text' | 'number' | 'date' | 'boolean'; // Type of the field (default: 'text')
       isUnique?: boolean; // Whether to enforce uniqueness for this field
+      defaultValue?: any; // Default value to apply when importing
     }>;
   };
 }
@@ -218,12 +219,14 @@ export interface LayoutSettings {
     searchButton?: string;
     advancedSearchButton?: string;
     applyFiltersButton?: string;
+    importButton?: string;
     
     // Modal titles
     addModalTitle?: string;
     editModalTitle?: string;
     deleteModalTitle?: string;
     advancedSearchModalTitle?: string;
+    importTitle?: string;
     
     // Messages
     deleteConfirmationMessage?: string;
@@ -268,6 +271,16 @@ export interface CRUDComponentProps {
     canGroupDelete?: boolean;
     canAdvancedSearch?: boolean;
     canSearchAllFields?: boolean;
+  };
+  importFunction?: {
+    active: boolean;
+    title?: string;
+    nameBinding: Array<{
+      name: string;
+      type?: "text" | "number" | "date" | "boolean";
+      isUnique?: boolean;
+      defaultValue?: string | number;
+    }>;
   };
   rowActions?: RowAction[];
   layout?: LayoutSettings;

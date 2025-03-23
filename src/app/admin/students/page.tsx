@@ -240,6 +240,21 @@ function StudentsPageContent() {
           connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
+          importFunction={{
+            active: true,
+            title: "وارد کردن اطلاعات دانش‌آموزان",
+            nameBinding: [
+              { name: "studentCode", type: "number", isUnique: true },
+              { name: "studentName", type: "text", isUnique: false },
+              { name: "studentFamily", type: "text", isUnique: false },
+
+              {
+                name: "schoolCode",
+                type: "number",
+                defaultValue: "2295566177",
+              },
+            ],
+          }}
           rowActions={[
             {
               label: "مشاهده سند",
