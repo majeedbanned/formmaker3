@@ -17,7 +17,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  XMarkIcon,
+  PlusCircleIcon,
+} from "@heroicons/react/24/outline";
 import {
   Select,
   SelectContent,
@@ -168,6 +172,16 @@ const ASSESSMENT_TITLES = [
 
 const ASSESSMENT_VALUES = ["عالی", "خوب", "متوسط", "ضعیف", "بسیار ضعیف"];
 
+type AssessmentOption = {
+  _id: string;
+  schoolCode: string;
+  teacherCode?: string;
+  type: "title" | "value";
+  value: string;
+  isGlobal: boolean;
+  createdAt: string;
+};
+
 const ClassSheet = ({
   schoolCode = "2295566177",
   teacherCode = "102",
@@ -312,6 +326,18 @@ const ClassSheet = ({
   const [cellsData, setCellsData] = useState<Record<string, CellData>>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  // State for assessments management
+  const [assessmentTitles, setAssessmentTitles] =
+    useState<string[]>(ASSESSMENT_TITLES);
+  const [assessmentValues, setAssessmentValues] =
+    useState<string[]>(ASSESSMENT_VALUES);
+  const [customAssessmentTitle, setCustomAssessmentTitle] =
+    useState<string>("");
+  const [customAssessmentValue, setCustomAssessmentValue] =
+    useState<string>("");
+  const [isAddingTitle, setIsAddingTitle] = useState<boolean>(false);
+  const [isAddingValue, setIsAddingValue] = useState<boolean>(false);
+
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
@@ -382,6 +408,46 @@ const ClassSheet = ({
 
     loadCellData();
   }, [selectedOption, classDocument.data.classCode, schoolCode]);
+
+  // Load custom assessment options
+  useEffect(() => {
+    const loadAssessmentOptions = async () => {
+      try {
+        const response = await fetch(
+          `/api/assessments?schoolCode=${schoolCode}${
+            teacherCode ? `&teacherCode=${teacherCode}` : ""
+          }`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch assessment options");
+        }
+
+        const { data } = await response.json();
+
+        // Process the data
+        const titles = data
+          .filter((item: AssessmentOption) => item.type === "title")
+          .map((item: AssessmentOption) => item.value);
+        const values = data
+          .filter((item: AssessmentOption) => item.type === "value")
+          .map((item: AssessmentOption) => item.value);
+
+        // Merge with default options (avoiding duplicates)
+        const mergedTitles = [...new Set([...ASSESSMENT_TITLES, ...titles])];
+        const mergedValues = [...new Set([...ASSESSMENT_VALUES, ...values])];
+
+        setAssessmentTitles(mergedTitles);
+        setAssessmentValues(mergedValues);
+      } catch (error) {
+        console.error("Error loading assessment options:", error);
+      }
+    };
+
+    if (schoolCode) {
+      loadAssessmentOptions();
+    }
+  }, [schoolCode, teacherCode]);
 
   // Handle cell click and display
   const getCellContent = (
@@ -669,6 +735,84 @@ const ClassSheet = ({
   }
 
   const { students } = classDocument.data;
+
+  // Handle adding custom assessment title
+  const handleAddCustomTitle = async () => {
+    if (!customAssessmentTitle.trim()) {
+      toast.error("عنوان ارزیابی نمی‌تواند خالی باشد");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/assessments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          schoolCode,
+          teacherCode,
+          type: "title",
+          value: customAssessmentTitle.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add assessment title");
+      }
+
+      // Update local state
+      setAssessmentTitles([...assessmentTitles, customAssessmentTitle.trim()]);
+      setCustomAssessmentTitle("");
+      setIsAddingTitle(false);
+      toast.success("عنوان ارزیابی با موفقیت افزوده شد");
+    } catch (error) {
+      console.error("Error adding assessment title:", error);
+      toast.error(
+        error instanceof Error ? error.message : "خطا در افزودن عنوان ارزیابی"
+      );
+    }
+  };
+
+  // Handle adding custom assessment value
+  const handleAddCustomValue = async () => {
+    if (!customAssessmentValue.trim()) {
+      toast.error("مقدار ارزیابی نمی‌تواند خالی باشد");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/assessments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          schoolCode,
+          teacherCode,
+          type: "value",
+          value: customAssessmentValue.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add assessment value");
+      }
+
+      // Update local state
+      setAssessmentValues([...assessmentValues, customAssessmentValue.trim()]);
+      setCustomAssessmentValue("");
+      setIsAddingValue(false);
+      toast.success("مقدار ارزیابی با موفقیت افزوده شد");
+    } catch (error) {
+      console.error("Error adding assessment value:", error);
+      toast.error(
+        error instanceof Error ? error.message : "خطا در افزودن مقدار ارزیابی"
+      );
+    }
+  };
 
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
@@ -1146,60 +1290,168 @@ const ClassSheet = ({
               )}
 
               {/* Add New Assessment */}
-              <div className="flex items-end gap-2">
-                <div className="flex-grow-0">
-                  <Label htmlFor="assessment-title" className="text-xs">
-                    عنوان ارزیابی:
-                  </Label>
-                  <Select
-                    value={newAssessment.title}
-                    onValueChange={(value) =>
-                      setNewAssessment({ ...newAssessment, title: value })
-                    }
+              <div className="flex flex-col gap-4">
+                <div className="flex items-end gap-2">
+                  <div className="flex-grow-0">
+                    <Label htmlFor="assessment-title" className="text-xs">
+                      عنوان ارزیابی:
+                    </Label>
+                    <div className="flex items-center">
+                      <Select
+                        value={newAssessment.title}
+                        onValueChange={(value) =>
+                          setNewAssessment({ ...newAssessment, title: value })
+                        }
+                      >
+                        <SelectTrigger
+                          id="assessment-title"
+                          className="w-[180px]"
+                        >
+                          <SelectValue placeholder="انتخاب عنوان" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {assessmentTitles.map((title) => (
+                            <SelectItem key={title} value={title}>
+                              {title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setIsAddingTitle(true)}
+                        className="ml-1"
+                      >
+                        <PlusCircleIcon className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex-grow-0">
+                    <Label htmlFor="assessment-value" className="text-xs">
+                      مقدار ارزیابی:
+                    </Label>
+                    <div className="flex items-center">
+                      <Select
+                        value={newAssessment.value}
+                        onValueChange={(value) =>
+                          setNewAssessment({ ...newAssessment, value: value })
+                        }
+                      >
+                        <SelectTrigger
+                          id="assessment-value"
+                          className="w-[180px]"
+                        >
+                          <SelectValue placeholder="انتخاب مقدار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {assessmentValues.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setIsAddingValue(true)}
+                        className="ml-1"
+                      >
+                        <PlusCircleIcon className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddAssessment}
+                    className="mb-0.5"
                   >
-                    <SelectTrigger id="assessment-title" className="w-[180px]">
-                      <SelectValue placeholder="انتخاب عنوان" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSESSMENT_TITLES.map((title) => (
-                        <SelectItem key={title} value={title}>
-                          {title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    افزودن
+                  </Button>
                 </div>
-                <div className="flex-grow-0">
-                  <Label htmlFor="assessment-value" className="text-xs">
-                    مقدار ارزیابی:
-                  </Label>
-                  <Select
-                    value={newAssessment.value}
-                    onValueChange={(value) =>
-                      setNewAssessment({ ...newAssessment, value: value })
-                    }
-                  >
-                    <SelectTrigger id="assessment-value" className="w-[180px]">
-                      <SelectValue placeholder="انتخاب مقدار" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSESSMENT_VALUES.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAddAssessment}
-                  className="mb-0.5"
-                >
-                  <PlusIcon className="h-4 w-4 mr-1" />
-                  افزودن
-                </Button>
+
+                {/* Add Custom Assessment Title UI */}
+                {isAddingTitle && (
+                  <div className="flex items-end gap-2 bg-gray-50 p-2 rounded">
+                    <div className="flex-1">
+                      <Label htmlFor="custom-title" className="text-xs">
+                        عنوان ارزیابی جدید:
+                      </Label>
+                      <Input
+                        id="custom-title"
+                        value={customAssessmentTitle}
+                        onChange={(e) =>
+                          setCustomAssessmentTitle(e.target.value)
+                        }
+                        placeholder="عنوان ارزیابی را وارد کنید..."
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddCustomTitle}
+                      className="mr-1"
+                    >
+                      افزودن
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddingTitle(false);
+                        setCustomAssessmentTitle("");
+                      }}
+                    >
+                      انصراف
+                    </Button>
+                  </div>
+                )}
+
+                {/* Add Custom Assessment Value UI */}
+                {isAddingValue && (
+                  <div className="flex items-end gap-2 bg-gray-50 p-2 rounded">
+                    <div className="flex-1">
+                      <Label htmlFor="custom-value" className="text-xs">
+                        مقدار ارزیابی جدید:
+                      </Label>
+                      <Input
+                        id="custom-value"
+                        value={customAssessmentValue}
+                        onChange={(e) =>
+                          setCustomAssessmentValue(e.target.value)
+                        }
+                        placeholder="مقدار ارزیابی را وارد کنید..."
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddCustomValue}
+                      className="mr-1"
+                    >
+                      افزودن
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddingValue(false);
+                        setCustomAssessmentValue("");
+                      }}
+                    >
+                      انصراف
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
