@@ -1,0 +1,69 @@
+import { NextResponse } from "next/server";
+import { MongoClient } from "mongodb";
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode } = body;
+
+    console.log("Saving note:", { classCode, studentCode, teacherCode, courseCode, schoolCode, date, timeSlot });
+
+    // Validate required fields
+    if (!classCode || !studentCode || !teacherCode || !courseCode || !date || !timeSlot || !schoolCode) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Connect to MongoDB
+    const client = new MongoClient(process.env.MONGODB_URI || "");
+    await client.connect();
+    
+    const db = client.db();
+    const collection = db.collection("classsheet");
+    
+    // Create or update the note
+    const result = await collection.updateOne(
+      {
+        classCode,
+        studentCode,
+        teacherCode,
+        courseCode,
+        schoolCode,
+        date,
+        timeSlot,
+      },
+      {
+        $set: {
+          note,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    console.log("Save result:", {
+      upserted: result.upsertedCount > 0,
+      modified: result.modifiedCount > 0
+    });
+
+    await client.close();
+    
+    return NextResponse.json({
+      success: true,
+      message: "Note saved successfully",
+      upserted: result.upsertedCount > 0,
+      modified: result.modifiedCount > 0,
+    });
+  } catch (error) {
+    console.error("Error saving classsheet note:", error);
+    return NextResponse.json(
+      { error: "Failed to save note" },
+      { status: 500 }
+    );
+  }
+} 

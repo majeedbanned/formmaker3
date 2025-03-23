@@ -7,6 +7,16 @@ import DatePicker from "react-multi-date-picker";
 import type { Value } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // Helper function: Convert Gregorian to Jalali
 function gregorian_to_jalali(gy: number, gm: number, gd: number) {
@@ -102,6 +112,17 @@ type Column = {
   day: string;
   timeSlot: string;
   formattedDate: string;
+};
+
+type CellData = {
+  classCode: string;
+  studentCode: number;
+  teacherCode: string;
+  courseCode: string;
+  schoolCode: string;
+  date: string;
+  timeSlot: string;
+  note: string;
 };
 
 const ClassSheet = ({
@@ -221,6 +242,191 @@ const ClassSheet = ({
       setSelectedOption(initialSelected);
     }
   }, [initialSelected, selectedOption]);
+
+  // State for the modal and cell data
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCell, setSelectedCell] = useState<{
+    studentCode: number;
+    columnIndex: number;
+  } | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [cellsData, setCellsData] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Create a unique key for each cell
+  const getCellKey = (studentCode: number, column: Column) => {
+    return `${classDocument.data.classCode}_${studentCode}_${
+      selectedOption?.teacherCode
+    }_${
+      selectedOption?.courseCode
+    }_${schoolCode}_${column.date.toISOString()}_${column.timeSlot}`;
+  };
+
+  // Format a cell key from database record
+  const formatCellKeyFromDB = (cell: CellData) => {
+    // Convert the date string to match the same format as getCellKey
+    const dateObj = new Date(cell.date);
+    return `${cell.classCode}_${cell.studentCode}_${cell.teacherCode}_${
+      cell.courseCode
+    }_${cell.schoolCode}_${dateObj.toISOString()}_${cell.timeSlot}`;
+  };
+
+  // Load saved cell data when component mounts or when selected option changes
+  useEffect(() => {
+    const loadCellData = async () => {
+      if (!selectedOption) return;
+
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: classDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch cell data");
+        }
+
+        const data = await response.json();
+        console.log("Loaded data:", data);
+
+        // Convert array of cell data to a dictionary for easier access
+        const cellsDataMap: Record<string, string> = {};
+        data.forEach((cell: CellData) => {
+          const key = formatCellKeyFromDB(cell);
+          cellsDataMap[key] = cell.note;
+        });
+
+        console.log("Cell data map:", cellsDataMap);
+        setCellsData(cellsDataMap);
+      } catch (error) {
+        console.error("Error loading cell data:", error);
+        toast.error("Failed to load saved data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCellData();
+  }, [selectedOption, classDocument.data.classCode, schoolCode]);
+
+  // Handle cell click and display
+  const getCellContent = (studentCode: number, column: Column): string => {
+    const cellKey = getCellKey(studentCode, column);
+
+    // Debug: Log the cell key we're trying to find
+    if (process.env.NODE_ENV === "development") {
+      const simpleDateStr = column.date.toISOString().split("T")[0];
+      console.log(
+        `Looking for cell: ${studentCode}-${simpleDateStr}-${column.timeSlot}`,
+        `Key: ${cellKey}`,
+        `Has data: ${cellsData[cellKey] ? "Yes" : "No"}`
+      );
+    }
+
+    // Try to find the note in our cellsData
+    if (cellsData[cellKey]) {
+      return cellsData[cellKey];
+    }
+
+    // Try alternative key formats in case of date format issues
+    // Create a simpler key without time part
+    const dateStr = column.date.toISOString();
+    const simpleDateKey = `${classDocument.data.classCode}_${studentCode}_${
+      selectedOption?.teacherCode
+    }_${selectedOption?.courseCode}_${schoolCode}_${
+      dateStr.split("T")[0]
+    }T00:00:00.000Z_${column.timeSlot}`;
+
+    if (cellsData[simpleDateKey]) {
+      return cellsData[simpleDateKey];
+    }
+
+    // If still not found, try to find by iterating through all keys
+    const prefix = `${classDocument.data.classCode}_${studentCode}_${selectedOption?.teacherCode}_${selectedOption?.courseCode}_${schoolCode}_`;
+    const datePart = column.date.toISOString().split("T")[0]; // Just the YYYY-MM-DD part
+
+    for (const key of Object.keys(cellsData)) {
+      if (
+        key.startsWith(prefix) &&
+        key.includes(datePart) &&
+        key.endsWith(`_${column.timeSlot}`)
+      ) {
+        return cellsData[key];
+      }
+    }
+
+    return "*";
+  };
+
+  // Handle cell click
+  const handleCellClick = (
+    studentCode: number,
+    columnIndex: number,
+    column: Column
+  ) => {
+    setSelectedCell({ studentCode, columnIndex });
+
+    // Get the existing note for this cell, if any
+    const cellContent = getCellContent(studentCode, column);
+    setNoteText(cellContent === "*" ? "" : cellContent);
+
+    setIsModalOpen(true);
+  };
+
+  // Save the note
+  const handleSaveNote = async () => {
+    if (!selectedCell || !selectedOption) return;
+
+    const column = columns[selectedCell.columnIndex];
+    const cellKey = getCellKey(selectedCell.studentCode, column);
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/classsheet/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          classCode: classDocument.data.classCode,
+          studentCode: selectedCell.studentCode,
+          teacherCode: selectedOption.teacherCode,
+          courseCode: selectedOption.courseCode,
+          schoolCode: schoolCode,
+          date: column.date.toISOString(),
+          timeSlot: column.timeSlot,
+          note: noteText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save note");
+      }
+
+      // Update local state
+      setCellsData((prev) => ({
+        ...prev,
+        [cellKey]: noteText,
+      }));
+
+      toast.success("Note saved successfully");
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error saving note:", error);
+      toast.error("Failed to save note");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Return early if no matching school code
   if (classDocument.data.schoolCode !== schoolCode) {
@@ -414,7 +620,7 @@ const ClassSheet = ({
                 columns.map((col, index) => (
                   <th
                     key={index}
-                    className="px-4 py-3 w-[150px] min-w-[150px] h-36 border border-gray-300 text-sm whitespace-normal"
+                    className="px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 text-sm whitespace-normal"
                   >
                     {`${col.day}-زنگ ${col.timeSlot} (${col.formattedDate})`}
                   </th>
@@ -434,20 +640,68 @@ const ClassSheet = ({
                   <td className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white">
                     {fullName}
                   </td>
-                  {columns.map((_, index) => (
-                    <td
-                      key={`cell-${student.studentCode}-${index}`}
-                      className="px-4 py-3 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200"
-                    >
-                      *
-                    </td>
-                  ))}
+                  {columns.map((col, index) => {
+                    const cellContent = getCellContent(
+                      student.studentCode,
+                      col
+                    );
+
+                    return (
+                      <td
+                        key={`cell-${student.studentCode}-${index}`}
+                        className="px-4 py-3 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200 overflow-hidden text-ellipsis"
+                        onClick={() =>
+                          handleCellClick(student.studentCode, index, col)
+                        }
+                      >
+                        {cellContent}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Note Input Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              یادداشت برای{" "}
+              {selectedCell &&
+                students.find((s) => s.studentCode === selectedCell.studentCode)
+                  ?.studentName}{" "}
+              {selectedCell &&
+                students.find((s) => s.studentCode === selectedCell.studentCode)
+                  ?.studentlname}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="یادداشت خود را وارد کنید..."
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isLoading}
+            >
+              انصراف
+            </Button>
+            <Button type="button" onClick={handleSaveNote} disabled={isLoading}>
+              {isLoading ? "در حال ذخیره..." : "ذخیره"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
