@@ -190,8 +190,9 @@ export default function Home() {
       enabled: true,
       visible: true,
       importTextBoxStyle: {
-        rows: 100,
+        rows: 10,
         placeholder: "اطلاعات دانش آموزان را از اکسل کپی و اینجا پیست کنید...",
+        isOpen: false,
         nameBinding: [
           { name: "studentCode", type: "number", isUnique: true },
           { name: "studentName", type: "text", isUnique: false },

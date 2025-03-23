@@ -797,45 +797,73 @@ const FormField = ({
       setValue(field.name, parsedData, { shouldValidate: true });
     };
 
+    // Track expanded state
+    const [isExpanded, setIsExpanded] = useState<boolean>(
+      field.importTextBoxStyle?.isOpen ?? false
+    );
+
     // Initialize textarea with formatted data if in edit mode
     const initialValue = useMemo(() => {
       const fieldValue = watch(field.name);
       return Array.isArray(fieldValue) ? formatImportData(fieldValue) : "";
-    }, [field.name, watch]);
+    }, [field.name, watch, formatImportData]);
 
     return (
-      <div className="form-field">
-        <div className="mb-1 text-sm font-medium text-gray-700">
-          {field.title}
-          {field.required && <span className="text-red-500 ml-1">*</span>}
+      <div className="form-field space-y-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            {isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4" />
+            )}
+          </button>
+          <div className="mb-1 text-sm font-medium text-gray-700 flex-1">
+            {field.title}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </div>
         </div>
-        <Textarea
-          rows={field.importTextBoxStyle?.rows || 5}
-          placeholder={
-            field.importTextBoxStyle?.placeholder ||
-            "Paste tabular data here..."
-          }
-          className={field.importTextBoxStyle?.className || "w-full"}
-          onChange={handleImportTextChange}
-          defaultValue={initialValue}
-        />
-        <div className="text-xs text-gray-500 mt-1">
-          ستون‌ها باید از اکسل با Tab جداشده باشند. ترتیب ستون‌ها:
-          {field.importTextBoxStyle?.nameBinding?.map((binding, i) => (
-            <span key={binding.name} className="mx-1">
-              {binding.name}
-              {binding.isUnique && (
-                <small className="text-blue-500"> (منحصر به فرد)</small>
-              )}
-              {binding.type === "number" && (
-                <small className="text-green-500"> (عدد)</small>
-              )}
-              {i < (field.importTextBoxStyle?.nameBinding?.length || 0) - 1
-                ? " - "
-                : ""}
-            </span>
-          ))}
-        </div>
+
+        {isExpanded && (
+          <>
+            <Textarea
+              rows={field.importTextBoxStyle?.rows || 5}
+              placeholder={
+                field.importTextBoxStyle?.placeholder ||
+                "Paste tabular data here..."
+              }
+              className={field.importTextBoxStyle?.className || "w-full"}
+              onChange={handleImportTextChange}
+              defaultValue={initialValue}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              ستون‌ها باید از اکسل با Tab جداشده باشند. ترتیب ستون‌ها:
+              {field.importTextBoxStyle?.nameBinding?.map((binding, i) => (
+                <span key={binding.name} className="mx-1">
+                  {binding.name}
+                  {binding.isUnique && (
+                    <small className="text-blue-500"> (منحصر به فرد)</small>
+                  )}
+                  {binding.type === "number" && (
+                    <small className="text-green-500"> (عدد)</small>
+                  )}
+                  {i < (field.importTextBoxStyle?.nameBinding?.length || 0) - 1
+                    ? " - "
+                    : ""}
+                </span>
+              ))}
+            </div>
+            {!Array.isArray(fieldValue) || fieldValue.length === 0 ? null : (
+              <div className="text-xs text-gray-500">
+                {fieldValue.length} مورد داده وارد شده است
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   } else if (field.type === "file") {

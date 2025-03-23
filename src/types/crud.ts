@@ -132,6 +132,7 @@ export interface FormFieldMinimal {
     rows?: number;       // Number of rows for the textarea (default: 10)
     className?: string;  // Additional CSS class name
     placeholder?: string; // Placeholder text
+    isOpen?: boolean;    // Whether the component is initially expanded or not
     nameBinding?: Array<{
       name: string;       // Field name for mapping
       type?: 'text' | 'number' | 'date' | 'boolean'; // Type of the field (default: 'text')
