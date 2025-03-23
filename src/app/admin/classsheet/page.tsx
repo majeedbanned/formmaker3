@@ -17,6 +17,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 // Helper function: Convert Gregorian to Jalali
 function gregorian_to_jalali(gy: number, gm: number, gd: number) {
@@ -84,6 +95,27 @@ type Student = {
   phone: string;
 };
 
+type GradeEntry = {
+  value: number;
+  description: string;
+  date: string;
+};
+
+type PresenceStatus = "present" | "absent" | "late";
+
+type CellData = {
+  classCode: string;
+  studentCode: number;
+  teacherCode: string;
+  courseCode: string;
+  schoolCode: string;
+  date: string;
+  timeSlot: string;
+  note: string;
+  grades: GradeEntry[];
+  presenceStatus: PresenceStatus;
+};
+
 type ClassData = {
   classCode: string;
   className: string;
@@ -112,17 +144,6 @@ type Column = {
   day: string;
   timeSlot: string;
   formattedDate: string;
-};
-
-type CellData = {
-  classCode: string;
-  studentCode: number;
-  teacherCode: string;
-  courseCode: string;
-  schoolCode: string;
-  date: string;
-  timeSlot: string;
-  note: string;
 };
 
 const ClassSheet = ({
@@ -250,7 +271,15 @@ const ClassSheet = ({
     columnIndex: number;
   } | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [cellsData, setCellsData] = useState<Record<string, string>>({});
+  const [presenceStatus, setPresenceStatus] =
+    useState<PresenceStatus>("present");
+  const [grades, setGrades] = useState<GradeEntry[]>([]);
+  const [newGrade, setNewGrade] = useState<GradeEntry>({
+    value: 0,
+    description: "",
+    date: new Date().toISOString(),
+  });
+  const [cellsData, setCellsData] = useState<Record<string, CellData>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   // Create a unique key for each cell
@@ -299,10 +328,16 @@ const ClassSheet = ({
         console.log("Loaded data:", data);
 
         // Convert array of cell data to a dictionary for easier access
-        const cellsDataMap: Record<string, string> = {};
+        const cellsDataMap: Record<string, CellData> = {};
         data.forEach((cell: CellData) => {
           const key = formatCellKeyFromDB(cell);
-          cellsDataMap[key] = cell.note;
+          cellsDataMap[key] = {
+            ...cell,
+            // Ensure these properties exist with defaults if they don't
+            grades: cell.grades || [],
+            presenceStatus: cell.presenceStatus || "present",
+            note: cell.note || "",
+          };
         });
 
         console.log("Cell data map:", cellsDataMap);
@@ -319,7 +354,10 @@ const ClassSheet = ({
   }, [selectedOption, classDocument.data.classCode, schoolCode]);
 
   // Handle cell click and display
-  const getCellContent = (studentCode: number, column: Column): string => {
+  const getCellContent = (
+    studentCode: number,
+    column: Column
+  ): CellData | null => {
     const cellKey = getCellKey(studentCode, column);
 
     // Debug: Log the cell key we're trying to find
@@ -364,7 +402,7 @@ const ClassSheet = ({
       }
     }
 
-    return "*";
+    return null;
   };
 
   // Handle cell click
@@ -375,11 +413,38 @@ const ClassSheet = ({
   ) => {
     setSelectedCell({ studentCode, columnIndex });
 
-    // Get the existing note for this cell, if any
-    const cellContent = getCellContent(studentCode, column);
-    setNoteText(cellContent === "*" ? "" : cellContent);
+    // Get the existing data for this cell, if any
+    const cellData = getCellContent(studentCode, column);
+
+    if (cellData) {
+      setNoteText(cellData.note || "");
+      setPresenceStatus(cellData.presenceStatus || "present");
+      setGrades(cellData.grades || []);
+    } else {
+      setNoteText("");
+      setPresenceStatus("present");
+      setGrades([]);
+    }
 
     setIsModalOpen(true);
+  };
+
+  // Add a new grade
+  const handleAddGrade = () => {
+    if (newGrade.value <= 0) {
+      toast.error("Grade value must be greater than 0");
+      return;
+    }
+
+    setGrades([...grades, { ...newGrade, date: new Date().toISOString() }]);
+    setNewGrade({ value: 0, description: "", date: new Date().toISOString() });
+  };
+
+  // Remove a grade
+  const handleRemoveGrade = (index: number) => {
+    const newGrades = [...grades];
+    newGrades.splice(index, 1);
+    setGrades(newGrades);
   };
 
   // Save the note
@@ -391,21 +456,25 @@ const ClassSheet = ({
 
     setIsLoading(true);
     try {
+      const cellData = {
+        classCode: classDocument.data.classCode,
+        studentCode: selectedCell.studentCode,
+        teacherCode: selectedOption.teacherCode,
+        courseCode: selectedOption.courseCode,
+        schoolCode: schoolCode,
+        date: column.date.toISOString(),
+        timeSlot: column.timeSlot,
+        note: noteText,
+        grades: grades,
+        presenceStatus: presenceStatus,
+      };
+
       const response = await fetch("/api/classsheet/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          classCode: classDocument.data.classCode,
-          studentCode: selectedCell.studentCode,
-          teacherCode: selectedOption.teacherCode,
-          courseCode: selectedOption.courseCode,
-          schoolCode: schoolCode,
-          date: column.date.toISOString(),
-          timeSlot: column.timeSlot,
-          note: noteText,
-        }),
+        body: JSON.stringify(cellData),
       });
 
       if (!response.ok) {
@@ -415,17 +484,24 @@ const ClassSheet = ({
       // Update local state
       setCellsData((prev) => ({
         ...prev,
-        [cellKey]: noteText,
+        [cellKey]: cellData,
       }));
 
-      toast.success("Note saved successfully");
+      toast.success("Cell data saved successfully");
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving note:", error);
-      toast.error("Failed to save note");
+      console.error("Error saving cell data:", error);
+      toast.error("Failed to save cell data");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Calculate average grade
+  const calculateAverageGrade = (grades: GradeEntry[]): number | null => {
+    if (!grades || grades.length === 0) return null;
+    const sum = grades.reduce((total, grade) => total + grade.value, 0);
+    return parseFloat((sum / grades.length).toFixed(2));
   };
 
   // Return early if no matching school code
@@ -641,20 +717,75 @@ const ClassSheet = ({
                     {fullName}
                   </td>
                   {columns.map((col, index) => {
-                    const cellContent = getCellContent(
-                      student.studentCode,
-                      col
-                    );
+                    const cellData = getCellContent(student.studentCode, col);
+
+                    // Prepare cell display content
+                    let displayContent: React.ReactNode = "*";
+
+                    if (cellData) {
+                      // Calculate average if there are grades
+                      const avgGrade = calculateAverageGrade(cellData.grades);
+
+                      // Prepare the cell content
+                      displayContent = (
+                        <div className="flex flex-col items-center gap-1 h-full w-full">
+                          {/* Presence Status Badge */}
+                          {cellData.presenceStatus === "absent" && (
+                            <Badge className="bg-red-500 text-white mb-1">
+                              غایب
+                            </Badge>
+                          )}
+                          {cellData.presenceStatus === "late" && (
+                            <Badge className="bg-amber-500 text-white mb-1">
+                              تاخیر
+                            </Badge>
+                          )}
+
+                          {/* Grades Section */}
+                          {cellData.grades && cellData.grades.length > 0 && (
+                            <div className="w-full">
+                              {/* Average Grade - Highlight it */}
+                              {avgGrade !== null && (
+                                <div className="font-bold text-sm mb-1">
+                                  {avgGrade}{" "}
+                                  <span className="text-xs font-normal text-gray-500">
+                                    (میانگین)
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Individual Grades */}
+                              <div className="flex flex-wrap gap-1 justify-center">
+                                {cellData.grades.map((grade, idx) => (
+                                  <Badge key={idx} className="bg-blue-600">
+                                    {grade.value}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Note Text (if any) */}
+                          {cellData.note && cellData.note.trim() !== "" && (
+                            <div className="text-xs truncate mt-1 text-gray-700 max-w-full">
+                              {cellData.note.length > 30
+                                ? `${cellData.note.substring(0, 30)}...`
+                                : cellData.note}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
                       <td
                         key={`cell-${student.studentCode}-${index}`}
-                        className="px-4 py-3 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200 overflow-hidden text-ellipsis"
+                        className="px-2 py-2 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200 overflow-hidden"
                         onClick={() =>
                           handleCellClick(student.studentCode, index, col)
                         }
                       >
-                        {cellContent}
+                        {displayContent}
                       </td>
                     );
                   })}
@@ -670,7 +801,7 @@ const ClassSheet = ({
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>
-              یادداشت برای{" "}
+              اطلاعات{" "}
               {selectedCell &&
                 students.find((s) => s.studentCode === selectedCell.studentCode)
                   ?.studentName}{" "}
@@ -679,14 +810,124 @@ const ClassSheet = ({
                   ?.studentlname}
             </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
-            <Textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="یادداشت خود را وارد کنید..."
-              className="min-h-[100px]"
-            />
+            {/* Presence Status */}
+            <div className="space-y-2">
+              <Label htmlFor="presence-status">وضعیت حضور:</Label>
+              <Select
+                value={presenceStatus}
+                onValueChange={(value) =>
+                  setPresenceStatus(value as PresenceStatus)
+                }
+              >
+                <SelectTrigger id="presence-status">
+                  <SelectValue placeholder="انتخاب وضعیت حضور" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">حاضر</SelectItem>
+                  <SelectItem value="absent">غایب</SelectItem>
+                  <SelectItem value="late">با تاخیر</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Grades Section */}
+            <div className="space-y-2 border p-2 rounded-md">
+              <Label>نمرات:</Label>
+
+              {/* Existing Grades */}
+              {grades.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {grades.map((grade, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-1 bg-gray-100 p-1 rounded"
+                    >
+                      <span className="font-bold">{grade.value}</span>
+                      {grade.description && (
+                        <span className="text-xs">({grade.description})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveGrade(index);
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-500 text-sm mb-2">
+                  هیچ نمره‌ای ثبت نشده است
+                </div>
+              )}
+
+              {/* Add New Grade */}
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="grade-value" className="text-xs">
+                    نمره:
+                  </Label>
+                  <Input
+                    id="grade-value"
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.25"
+                    value={newGrade.value || ""}
+                    onChange={(e) =>
+                      setNewGrade({
+                        ...newGrade,
+                        value: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="grade-desc" className="text-xs">
+                    توضیحات:
+                  </Label>
+                  <Input
+                    id="grade-desc"
+                    type="text"
+                    value={newGrade.description}
+                    onChange={(e) =>
+                      setNewGrade({ ...newGrade, description: e.target.value })
+                    }
+                    className="mt-1"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddGrade}
+                  className="mb-0.5"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  افزودن
+                </Button>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div className="space-y-2">
+              <Label htmlFor="note-text">یادداشت:</Label>
+              <Textarea
+                id="note-text"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="یادداشت خود را وارد کنید..."
+                className="min-h-[100px]"
+              />
+            </div>
           </div>
+
           <DialogFooter className="sm:justify-start">
             <Button
               type="button"

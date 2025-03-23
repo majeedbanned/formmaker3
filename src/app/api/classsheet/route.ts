@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { classCode, teacherCode, courseCode, schoolCode } = body;
 
-    console.log("Fetching notes for:", { classCode, teacherCode, courseCode, schoolCode });
+    console.log("Fetching cell data for:", { classCode, teacherCode, courseCode, schoolCode });
 
     if (!classCode || !teacherCode || !courseCode || !schoolCode) {
       return NextResponse.json(
@@ -22,8 +22,8 @@ export async function POST(request: Request) {
     const db = client.db();
     const collection = db.collection("classsheet");
 
-    // Find all notes for this class, teacher, and course
-    const notes = await collection
+    // Find all cell data for this class, teacher, and course
+    const cellData = await collection
       .find({
         classCode,
         teacherCode,
@@ -32,11 +32,11 @@ export async function POST(request: Request) {
       })
       .toArray();
 
-    console.log("Found notes:", notes.length);
+    console.log("Found cell data entries:", cellData.length);
     
     await client.close();
     
-    return NextResponse.json(notes);
+    return NextResponse.json(cellData);
   } catch (error) {
     console.error("Error fetching classsheet data:", error);
     return NextResponse.json(

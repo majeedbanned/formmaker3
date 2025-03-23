@@ -4,9 +4,9 @@ import { MongoClient } from "mongodb";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode } = body;
+    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode, grades, presenceStatus } = body;
 
-    console.log("Saving note:", { classCode, studentCode, teacherCode, courseCode, schoolCode, date, timeSlot });
+    console.log("Saving cell data:", { classCode, studentCode, teacherCode, courseCode, schoolCode, date, timeSlot, presenceStatus });
 
     // Validate required fields
     if (!classCode || !studentCode || !teacherCode || !courseCode || !date || !timeSlot || !schoolCode) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const db = client.db();
     const collection = db.collection("classsheet");
     
-    // Create or update the note
+    // Create or update the cell data
     const result = await collection.updateOne(
       {
         classCode,
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
       {
         $set: {
           note,
+          grades: grades || [],
+          presenceStatus: presenceStatus || "present",
           updatedAt: new Date(),
         },
         $setOnInsert: {
@@ -55,14 +57,14 @@ export async function POST(request: Request) {
     
     return NextResponse.json({
       success: true,
-      message: "Note saved successfully",
+      message: "Cell data saved successfully",
       upserted: result.upsertedCount > 0,
       modified: result.modifiedCount > 0,
     });
   } catch (error) {
-    console.error("Error saving classsheet note:", error);
+    console.error("Error saving classsheet data:", error);
     return NextResponse.json(
-      { error: "Failed to save note" },
+      { error: "Failed to save classsheet data" },
       { status: 500 }
     );
   }
