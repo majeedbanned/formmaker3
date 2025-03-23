@@ -401,6 +401,24 @@ const ClassSheet = ({
   const [isAddingTitle, setIsAddingTitle] = useState<boolean>(false);
   const [isAddingValue, setIsAddingValue] = useState<boolean>(false);
 
+  // Add new state for monthly report modal
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+  const [monthlyReportData, setMonthlyReportData] = useState<{
+    student: Student | null;
+    month: string;
+    cells: CellData[];
+    baseGrade: number;
+    finalGrade: number;
+    assessmentAdjustment: number;
+    allGrades: GradeEntry[];
+    attendanceSummary: {
+      present: number;
+      absent: number;
+      late: number;
+    };
+    assessmentsSummary: Record<string, string[]>;
+  } | null>(null);
+
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
@@ -993,6 +1011,88 @@ const ClassSheet = ({
     }
   };
 
+  // Handler for monthly cell click
+  const handleMonthlyCellClick = (
+    student: Student,
+    monthName: string,
+    monthCells: CellData[]
+  ) => {
+    // Calculate attendance statistics
+    const attendanceSummary = {
+      present: 0,
+      absent: 0,
+      late: 0,
+    };
+
+    monthCells.forEach((cell) => {
+      if (cell.presenceStatus === "present") attendanceSummary.present++;
+      else if (cell.presenceStatus === "absent") attendanceSummary.absent++;
+      else if (cell.presenceStatus === "late") attendanceSummary.late++;
+    });
+
+    // Get all grades for the month
+    const allGrades = monthCells.flatMap((cell) => cell.grades || []);
+
+    // Calculate the base grade (without assessment adjustments)
+    let baseGrade = 0;
+    let finalGrade = 0;
+    let assessmentAdjustment = 0;
+
+    if (allGrades.length > 0) {
+      // Calculate total value and points for grades
+      const totalValue = allGrades.reduce((sum, grade) => sum + grade.value, 0);
+      const totalPoints = allGrades.reduce(
+        (sum, grade) => sum + (grade.totalPoints || 20),
+        0
+      );
+
+      // Calculate the base grade
+      baseGrade = (totalValue / totalPoints) * 20;
+
+      // Calculate assessment point adjustments
+      const monthAssessments = monthCells.flatMap(
+        (cell) => cell.assessments || []
+      );
+
+      assessmentAdjustment = monthAssessments.reduce((sum, assessment) => {
+        const weight = getAssessmentWeight(assessment.value);
+        return sum + weight;
+      }, 0);
+
+      // Apply adjustment (but keep grade within 0-20 range)
+      finalGrade = Math.max(0, Math.min(20, baseGrade + assessmentAdjustment));
+    }
+
+    // Organize assessments by title
+    const assessmentsSummary: Record<string, string[]> = {};
+    monthCells.forEach((cell) => {
+      if (cell.assessments && cell.assessments.length > 0) {
+        cell.assessments.forEach((assessment) => {
+          if (!assessmentsSummary[assessment.title]) {
+            assessmentsSummary[assessment.title] = [];
+          }
+          assessmentsSummary[assessment.title].push(assessment.value);
+        });
+      }
+    });
+
+    // Set the monthly report data
+    setMonthlyReportData({
+      student,
+      month: monthName,
+      cells: monthCells,
+      baseGrade,
+      finalGrade,
+      assessmentAdjustment,
+      allGrades,
+      attendanceSummary,
+      assessmentsSummary,
+    });
+
+    // Open the modal
+    setIsMonthlyReportOpen(true);
+  };
+
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection */}
@@ -1209,7 +1309,14 @@ const ClassSheet = ({
                       return (
                         <td
                           key={`monthly-grade-${student.studentCode}-${index}`}
-                          className="px-2 py-2 w-[150px] min-w-[150px] text-center border border-gray-300 bg-purple-50"
+                          className="px-2 py-2 w-[150px] min-w-[150px] text-center border border-gray-300 bg-purple-50 cursor-pointer hover:bg-purple-100"
+                          onClick={() =>
+                            handleMonthlyCellClick(
+                              student,
+                              col.formattedDate,
+                              monthCells
+                            )
+                          }
                         >
                           <div className="flex flex-col items-center">
                             <div className="text-sm font-bold mb-1">
@@ -1817,6 +1924,207 @@ const ClassSheet = ({
             </Button>
             <Button type="button" onClick={handleSaveNote} disabled={isLoading}>
               {isLoading ? "در حال ذخیره..." : "ذخیره"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Monthly Report Modal */}
+      <Dialog open={isMonthlyReportOpen} onOpenChange={setIsMonthlyReportOpen}>
+        <DialogContent
+          className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl"
+          dir="rtl"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              گزارش ماهانه {monthlyReportData?.month} -{" "}
+              {monthlyReportData?.student?.studentName}{" "}
+              {monthlyReportData?.student?.studentlname}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {monthlyReportData && (
+              <>
+                {/* Grade Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                  <h3 className="text-lg font-bold mb-3">خلاصه نمرات</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">نمره پایه</div>
+                      <div className="text-2xl font-bold">
+                        {monthlyReportData.baseGrade.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        بدون تعدیل ارزیابی‌ها
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">
+                        تعدیل ارزیابی‌ها
+                      </div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {monthlyReportData.assessmentAdjustment > 0 ? "+" : ""}
+                        {monthlyReportData.assessmentAdjustment.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        تاثیر ارزیابی‌ها در نمره
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">نمره نهایی</div>
+                      <div
+                        className={`text-2xl font-bold ${
+                          monthlyReportData.finalGrade >= 16
+                            ? "text-green-600"
+                            : monthlyReportData.finalGrade >= 12
+                            ? "text-amber-500"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {monthlyReportData.finalGrade.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">از ۲۰</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Attendance Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                  <h3 className="text-lg font-bold mb-3">خلاصه حضور و غیاب</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">حضور</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {monthlyReportData.attendanceSummary.present}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">جلسه</div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">غیبت</div>
+                      <div className="text-2xl font-bold text-red-600">
+                        {monthlyReportData.attendanceSummary.absent}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">جلسه</div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-sm font-medium mb-2">تاخیر</div>
+                      <div className="text-2xl font-bold text-amber-500">
+                        {monthlyReportData.attendanceSummary.late}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">جلسه</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Grades */}
+                {monthlyReportData.allGrades.length > 0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                    <h3 className="text-lg font-bold mb-3">نمرات جزئی</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-200">
+                            <th className="p-2 text-right">تاریخ</th>
+                            <th className="p-2 text-right">نمره</th>
+                            <th className="p-2 text-right">از</th>
+                            <th className="p-2 text-right">توضیحات</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyReportData.allGrades.map((grade, idx) => {
+                            // Format the date from ISO string
+                            const gradeDate = new Date(grade.date);
+                            const formattedDate = gradeDate
+                              ? formatJalaliDate(gradeDate)
+                              : "-";
+
+                            return (
+                              <tr
+                                key={idx}
+                                className="border-b border-gray-200 hover:bg-gray-100"
+                              >
+                                <td className="p-2">{formattedDate}</td>
+                                <td className="p-2 font-bold">{grade.value}</td>
+                                <td className="p-2">
+                                  {grade.totalPoints || 20}
+                                </td>
+                                <td className="p-2">
+                                  {grade.description || "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Assessments Summary */}
+                {Object.keys(monthlyReportData.assessmentsSummary).length >
+                  0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                    <h3 className="text-lg font-bold mb-3">خلاصه ارزیابی‌ها</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(monthlyReportData.assessmentsSummary).map(
+                        ([title, values]) => (
+                          <div
+                            key={title}
+                            className="p-3 bg-white rounded-lg shadow-sm"
+                          >
+                            <h4 className="font-bold text-md mb-2">{title}</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {values.map((value, idx) => {
+                                // Get weight for this assessment value
+                                const weight = getAssessmentWeight(value);
+
+                                // Choose color based on value
+                                let bgColor = "bg-gray-100";
+                                if (value === "عالی")
+                                  bgColor = "bg-green-100 text-green-800";
+                                else if (value === "خوب")
+                                  bgColor = "bg-blue-100 text-blue-800";
+                                else if (value === "متوسط")
+                                  bgColor = "bg-yellow-100 text-yellow-800";
+                                else if (value === "ضعیف")
+                                  bgColor = "bg-orange-100 text-orange-800";
+                                else if (value === "بسیار ضعیف")
+                                  bgColor = "bg-red-100 text-red-800";
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`px-2 py-1 rounded-full ${bgColor} text-sm flex items-center`}
+                                  >
+                                    {value}
+                                    {weight !== 0 && (
+                                      <span className="text-xs text-gray-600 ml-1">
+                                        ({weight > 0 ? "+" : ""}
+                                        {weight})
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" onClick={() => setIsMonthlyReportOpen(false)}>
+              بستن
             </Button>
           </DialogFooter>
         </DialogContent>
