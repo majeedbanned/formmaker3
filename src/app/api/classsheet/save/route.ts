@@ -4,7 +4,20 @@ import { MongoClient } from "mongodb";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode, grades, presenceStatus, descriptiveStatus } = body;
+    const { 
+      classCode, 
+      studentCode, 
+      teacherCode, 
+      courseCode, 
+      date, 
+      timeSlot, 
+      note, 
+      schoolCode, 
+      grades, 
+      presenceStatus, 
+      descriptiveStatus, 
+      assessments 
+    } = body;
 
     // Create a unique identifier for debugging
     const cellIdentifier = `${classCode}_${studentCode}_${teacherCode}_${courseCode}_${schoolCode}_${date}_${timeSlot}`;
@@ -13,6 +26,7 @@ export async function POST(request: Request) {
       presenceStatus, 
       descriptiveStatus: descriptiveStatus || 'None',
       gradeCount: grades?.length || 0,
+      assessmentCount: assessments?.length || 0,
       hasNote: note ? 'Yes' : 'No' 
     });
 
@@ -61,6 +75,7 @@ export async function POST(request: Request) {
           grades: grades || [],
           presenceStatus: presenceStatus || "present",
           descriptiveStatus: descriptiveStatus || "",
+          assessments: assessments || [],
           updatedAt: new Date(),
         },
         $setOnInsert: {

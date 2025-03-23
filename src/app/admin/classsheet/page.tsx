@@ -104,6 +104,12 @@ type GradeEntry = {
 
 type PresenceStatus = "present" | "absent" | "late";
 
+type AssessmentEntry = {
+  title: string;
+  value: string;
+  date: string;
+};
+
 type CellData = {
   classCode: string;
   studentCode: number;
@@ -115,7 +121,8 @@ type CellData = {
   note: string;
   grades: GradeEntry[];
   presenceStatus: PresenceStatus;
-  descriptiveStatus?: string; // New field for descriptive status
+  descriptiveStatus?: string;
+  assessments?: AssessmentEntry[]; // New field for assessment pairs
 };
 
 type ClassData = {
@@ -147,6 +154,19 @@ type Column = {
   timeSlot: string;
   formattedDate: string;
 };
+
+// Predefined assessment options
+const ASSESSMENT_TITLES = [
+  "مهارت تفکر",
+  "مهارت همکاری",
+  "مشارکت در کلاس",
+  "انجام تکالیف",
+  "خلاقیت",
+  "نظم و انضباط",
+  "مسئولیت پذیری",
+];
+
+const ASSESSMENT_VALUES = ["عالی", "خوب", "متوسط", "ضعیف", "بسیار ضعیف"];
 
 const ClassSheet = ({
   schoolCode = "2295566177",
@@ -277,6 +297,12 @@ const ClassSheet = ({
     useState<PresenceStatus>("present");
   const [descriptiveStatus, setDescriptiveStatus] = useState<string>("");
   const [grades, setGrades] = useState<GradeEntry[]>([]);
+  const [assessments, setAssessments] = useState<AssessmentEntry[]>([]);
+  const [newAssessment, setNewAssessment] = useState<AssessmentEntry>({
+    title: "",
+    value: "",
+    date: new Date().toISOString(),
+  });
   const [newGrade, setNewGrade] = useState<GradeEntry>({
     value: 0,
     description: "",
@@ -340,6 +366,7 @@ const ClassSheet = ({
             presenceStatus: cell.presenceStatus || "present",
             note: cell.note || "",
             descriptiveStatus: cell.descriptiveStatus || "",
+            assessments: cell.assessments || [],
           };
         });
 
@@ -424,11 +451,13 @@ const ClassSheet = ({
       setPresenceStatus(cellData.presenceStatus || "present");
       setGrades(cellData.grades || []);
       setDescriptiveStatus(cellData.descriptiveStatus || "");
+      setAssessments(cellData.assessments || []);
     } else {
       setNoteText("");
       setPresenceStatus("present");
       setGrades([]);
       setDescriptiveStatus("");
+      setAssessments([]);
     }
 
     setIsModalOpen(true);
@@ -467,6 +496,36 @@ const ClassSheet = ({
     setGrades(newGrades);
   };
 
+  // Add a new assessment
+  const handleAddAssessment = () => {
+    if (!newAssessment.title) {
+      toast.error("Assessment title is required");
+      return;
+    }
+
+    if (!newAssessment.value) {
+      toast.error("Assessment value is required");
+      return;
+    }
+
+    setAssessments([
+      ...assessments,
+      { ...newAssessment, date: new Date().toISOString() },
+    ]);
+    setNewAssessment({
+      title: "",
+      value: "",
+      date: new Date().toISOString(),
+    });
+  };
+
+  // Remove an assessment
+  const handleRemoveAssessment = (index: number) => {
+    const newAssessments = [...assessments];
+    newAssessments.splice(index, 1);
+    setAssessments(newAssessments);
+  };
+
   // Save the note
   const handleSaveNote = async () => {
     if (!selectedCell || !selectedOption) return;
@@ -488,6 +547,7 @@ const ClassSheet = ({
         grades: grades,
         presenceStatus: presenceStatus,
         descriptiveStatus: descriptiveStatus,
+        assessments: assessments,
       };
 
       const response = await fetch("/api/classsheet/save", {
@@ -776,6 +836,31 @@ const ClassSheet = ({
                             </div>
                           )}
 
+                          {/* Assessments (if any) */}
+                          {cellData.assessments &&
+                            cellData.assessments.length > 0 && (
+                              <div className="w-full text-center mt-1">
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                  {cellData.assessments.map(
+                                    (assessment, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="relative group"
+                                        title={`${assessment.title}: ${assessment.value}`}
+                                      >
+                                        <Badge className="bg-blue-500 text-white">
+                                          {assessment.title.substring(0, 2)}
+                                        </Badge>
+                                        <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                          {assessment.title}: {assessment.value}
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                           {/* Grades Section */}
                           {cellData.grades && cellData.grades.length > 0 && (
                             <div className="w-full mt-1">
@@ -1004,6 +1089,112 @@ const ClassSheet = ({
                   type="button"
                   size="sm"
                   onClick={handleAddGrade}
+                  className="mb-0.5"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  افزودن
+                </Button>
+              </div>
+            </div>
+
+            {/* Assessments Section */}
+            <div className="space-y-2 border p-2 rounded-md">
+              <Label>ارزیابی‌ها:</Label>
+
+              {/* Existing Assessments */}
+              {assessments.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {assessments.map((assessment, index) => {
+                    // Determine badge color based on assessment value
+                    let badgeColor = "bg-gray-100";
+                    if (assessment.value === "عالی")
+                      badgeColor = "bg-green-100 text-green-800";
+                    else if (assessment.value === "خوب")
+                      badgeColor = "bg-blue-100 text-blue-800";
+                    else if (assessment.value === "متوسط")
+                      badgeColor = "bg-yellow-100 text-yellow-800";
+                    else if (assessment.value === "ضعیف")
+                      badgeColor = "bg-orange-100 text-orange-800";
+                    else if (assessment.value === "بسیار ضعیف")
+                      badgeColor = "bg-red-100 text-red-800";
+
+                    return (
+                      <div
+                        key={index}
+                        className={`flex items-center gap-1 p-1 rounded ${badgeColor}`}
+                      >
+                        <span className="font-bold">{assessment.title}:</span>
+                        <span>{assessment.value}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveAssessment(index);
+                          }}
+                          className="text-red-500 hover:text-red-700 ml-1"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-gray-500 text-sm mb-2">
+                  هیچ ارزیابی ثبت نشده است
+                </div>
+              )}
+
+              {/* Add New Assessment */}
+              <div className="flex items-end gap-2">
+                <div className="flex-grow-0">
+                  <Label htmlFor="assessment-title" className="text-xs">
+                    عنوان ارزیابی:
+                  </Label>
+                  <Select
+                    value={newAssessment.title}
+                    onValueChange={(value) =>
+                      setNewAssessment({ ...newAssessment, title: value })
+                    }
+                  >
+                    <SelectTrigger id="assessment-title" className="w-[180px]">
+                      <SelectValue placeholder="انتخاب عنوان" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSESSMENT_TITLES.map((title) => (
+                        <SelectItem key={title} value={title}>
+                          {title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-grow-0">
+                  <Label htmlFor="assessment-value" className="text-xs">
+                    مقدار ارزیابی:
+                  </Label>
+                  <Select
+                    value={newAssessment.value}
+                    onValueChange={(value) =>
+                      setNewAssessment({ ...newAssessment, value: value })
+                    }
+                  >
+                    <SelectTrigger id="assessment-value" className="w-[180px]">
+                      <SelectValue placeholder="انتخاب مقدار" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSESSMENT_VALUES.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddAssessment}
                   className="mb-0.5"
                 >
                   <PlusIcon className="h-4 w-4 mr-1" />
