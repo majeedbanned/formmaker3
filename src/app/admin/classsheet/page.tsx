@@ -99,6 +99,7 @@ type GradeEntry = {
   value: number;
   description: string;
   date: string;
+  totalPoints?: number; // Maximum possible points for this grade
 };
 
 type PresenceStatus = "present" | "absent" | "late";
@@ -278,6 +279,7 @@ const ClassSheet = ({
     value: 0,
     description: "",
     date: new Date().toISOString(),
+    totalPoints: 20,
   });
   const [cellsData, setCellsData] = useState<Record<string, CellData>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -434,8 +436,23 @@ const ClassSheet = ({
       return;
     }
 
+    if (!newGrade.totalPoints || newGrade.totalPoints <= 0) {
+      toast.error("Total points must be greater than 0");
+      return;
+    }
+
+    if (newGrade.value > newGrade.totalPoints) {
+      toast.error("Grade cannot exceed total points");
+      return;
+    }
+
     setGrades([...grades, { ...newGrade, date: new Date().toISOString() }]);
-    setNewGrade({ value: 0, description: "", date: new Date().toISOString() });
+    setNewGrade({
+      value: 0,
+      description: "",
+      date: new Date().toISOString(),
+      totalPoints: newGrade.totalPoints, // Preserve the last used total points
+    });
   };
 
   // Remove a grade
@@ -749,35 +766,42 @@ const ClassSheet = ({
                             <div className="w-full mt-1">
                               {/* Individual Grades */}
                               <div className="flex flex-wrap gap-1 justify-center">
-                                {cellData.grades.map((grade, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="relative group"
-                                    title={
-                                      grade.description ||
-                                      `نمره: ${grade.value}`
-                                    }
-                                  >
-                                    <Badge
-                                      className={`
-                                        ${
-                                          grade.value >= 16
-                                            ? "bg-green-600"
-                                            : grade.value >= 12
-                                            ? "bg-amber-500"
-                                            : "bg-red-600"
-                                        }
-                                      `}
+                                {cellData.grades.map((grade, idx) => {
+                                  // Calculate percentage for proper color coding
+                                  const totalPoints = grade.totalPoints || 20;
+                                  const percentage =
+                                    (grade.value / totalPoints) * 100;
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="relative group"
+                                      title={
+                                        grade.description ||
+                                        `نمره: ${grade.value} از ${totalPoints}`
+                                      }
                                     >
-                                      {grade.value}
-                                    </Badge>
-                                    {grade.description && (
-                                      <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                        {grade.description}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                                      <Badge
+                                        className={`
+                                          ${
+                                            percentage >= 80
+                                              ? "bg-green-600"
+                                              : percentage >= 60
+                                              ? "bg-amber-500"
+                                              : "bg-red-600"
+                                          }
+                                        `}
+                                      >
+                                        {grade.value}/{totalPoints}
+                                      </Badge>
+                                      {grade.description && (
+                                        <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                          {grade.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -856,27 +880,32 @@ const ClassSheet = ({
               {/* Existing Grades */}
               {grades.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {grades.map((grade, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 bg-gray-100 p-1 rounded"
-                    >
-                      <span className="font-bold">{grade.value}</span>
-                      {grade.description && (
-                        <span className="text-xs">({grade.description})</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveGrade(index);
-                        }}
-                        className="text-red-500 hover:text-red-700"
+                  {grades.map((grade, index) => {
+                    const totalPoints = grade.totalPoints || 20;
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-1 bg-gray-100 p-1 rounded"
                       >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <span className="font-bold">
+                          {grade.value}/{totalPoints}
+                        </span>
+                        {grade.description && (
+                          <span className="text-xs">({grade.description})</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveGrade(index);
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-gray-500 text-sm mb-2">
@@ -886,25 +915,40 @@ const ClassSheet = ({
 
               {/* Add New Grade */}
               <div className="flex items-end gap-2">
-                <div className="flex-1">
+                <div className="flex-grow-0">
                   <Label htmlFor="grade-value" className="text-xs">
                     نمره:
                   </Label>
-                  <Input
-                    id="grade-value"
-                    type="number"
-                    min="0"
-                    max="20"
-                    step="0.25"
-                    value={newGrade.value || ""}
-                    onChange={(e) =>
-                      setNewGrade({
-                        ...newGrade,
-                        value: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="mt-1"
-                  />
+                  <div className="flex items-center mt-1">
+                    <Input
+                      id="grade-value"
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={newGrade.value || ""}
+                      onChange={(e) =>
+                        setNewGrade({
+                          ...newGrade,
+                          value: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-20"
+                    />
+                    <span className="mx-1">از</span>
+                    <Input
+                      id="grade-total"
+                      type="number"
+                      min="1"
+                      value={newGrade.totalPoints || 20}
+                      onChange={(e) =>
+                        setNewGrade({
+                          ...newGrade,
+                          totalPoints: parseFloat(e.target.value) || 20,
+                        })
+                      }
+                      className="w-20"
+                    />
+                  </div>
                 </div>
                 <div className="flex-1">
                   <Label htmlFor="grade-desc" className="text-xs">
