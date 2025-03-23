@@ -182,6 +182,50 @@ type AssessmentOption = {
   createdAt: string;
 };
 
+// Helper function: Get Persian month name
+function getPersianMonthName(month: number): string {
+  const persianMonths = [
+    "فروردین",
+    "اردیبهشت",
+    "خرداد",
+    "تیر",
+    "مرداد",
+    "شهریور",
+    "مهر",
+    "آبان",
+    "آذر",
+    "دی",
+    "بهمن",
+    "اسفند",
+  ];
+  return persianMonths[month - 1];
+}
+
+// Helper function: Check if date is last day of Persian month
+// This function may be useful in the future for other date calculations
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isLastDayOfPersianMonth(date: Date): boolean {
+  const tomorrow = new Date(date);
+  tomorrow.setDate(date.getDate() + 1);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const jalaliToday = gregorian_to_jalali(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate()
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const jalaliTomorrow = gregorian_to_jalali(
+    tomorrow.getFullYear(),
+    tomorrow.getMonth() + 1,
+    tomorrow.getDate()
+  );
+
+  // If the month changes in Jalali calendar, it's the last day
+  return jalaliToday[1] !== jalaliTomorrow[1];
+}
+
 const ClassSheet = ({
   schoolCode = "2295566177",
   teacherCode = "102",
@@ -710,14 +754,31 @@ const ClassSheet = ({
 
   // Compute dynamic columns based on the date range.
   const columns: Column[] = [];
+  const monthlyGradeColumns: Column[] = [];
+
   if (startDate && endDate) {
     const start =
       startDate instanceof Date ? startDate : new Date(startDate as string);
     const end = endDate instanceof Date ? endDate : new Date(endDate as string);
+
+    // Track processed months to avoid duplicates
+    const processedMonths = new Set<string>();
+
     // Iterate through each day in the range (inclusive).
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const currentDate = new Date(d);
       const persianDay = getPersianDayName(currentDate);
+
+      // Get the Jalali date for the current date
+      const jalaliDate = gregorian_to_jalali(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        currentDate.getDate()
+      );
+
+      const persianMonth = jalaliDate[1];
+      const monthYearKey = `${jalaliDate[0]}-${persianMonth}`;
+
       // For each schedule slot, if its day matches the current date's Persian day name, add a column.
       if (selectedOption && selectedOption.weeklySchedule) {
         selectedOption.weeklySchedule.forEach((slot) => {
@@ -728,10 +789,86 @@ const ClassSheet = ({
               timeSlot: slot.timeSlot,
               formattedDate: formatJalaliDate(currentDate),
             });
+
+            // Add a monthly grade column for each unique month in the date range
+            // But only add it once per month
+            if (!processedMonths.has(monthYearKey)) {
+              processedMonths.add(monthYearKey);
+
+              // Create a date for the 15th of the month (middle of month) to avoid date calculation issues
+              const monthColumnDate = new Date(currentDate);
+
+              monthlyGradeColumns.push({
+                date: monthColumnDate,
+                day: "monthly",
+                timeSlot: "grade",
+                formattedDate: getPersianMonthName(persianMonth),
+              });
+            }
           }
         });
       }
     }
+  }
+
+  // Combine regular columns with month summary columns and sort chronologically
+  // Place monthly columns at the end of their respective months
+  const allColumns: Column[] = [];
+
+  // Group columns by month
+  const columnsByMonth = new Map<string, Column[]>();
+
+  // Add all regular columns to their respective month groups
+  columns.forEach((col) => {
+    const jalaliDate = gregorian_to_jalali(
+      col.date.getFullYear(),
+      col.date.getMonth() + 1,
+      col.date.getDate()
+    );
+    const monthYearKey = `${jalaliDate[0]}-${jalaliDate[1]}`;
+
+    if (!columnsByMonth.has(monthYearKey)) {
+      columnsByMonth.set(monthYearKey, []);
+    }
+
+    columnsByMonth.get(monthYearKey)!.push(col);
+  });
+
+  // For each month group, add regular columns followed by the monthly column
+  // Sort months chronologically
+  const sortedMonthKeys = Array.from(columnsByMonth.keys()).sort();
+
+  sortedMonthKeys.forEach((monthYearKey) => {
+    const [year, month] = monthYearKey.split("-").map(Number);
+
+    // Get and sort the regular columns for this month
+    const monthColumns = columnsByMonth.get(monthYearKey) || [];
+    monthColumns.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    // Add the regular columns
+    allColumns.push(...monthColumns);
+
+    // Find the monthly column for this month
+    const monthlyColumn = monthlyGradeColumns.find((col) => {
+      const jalaliDate = gregorian_to_jalali(
+        col.date.getFullYear(),
+        col.date.getMonth() + 1,
+        col.date.getDate()
+      );
+      return jalaliDate[0] === year && jalaliDate[1] === month;
+    });
+
+    // Add the monthly grade column if it exists
+    if (monthlyColumn) {
+      allColumns.push(monthlyColumn);
+    }
+  });
+
+  // If no columns were added (can happen if there are no regular columns but there are monthly columns),
+  // add all monthly columns at the end
+  if (allColumns.length === 0 && monthlyGradeColumns.length > 0) {
+    monthlyGradeColumns.sort((a, b) => a.date.getTime() - b.date.getTime());
+    allColumns.push(...monthlyGradeColumns);
   }
 
   const { students } = classDocument.data;
@@ -918,13 +1055,17 @@ const ClassSheet = ({
               <th className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-blue-600">
                 نام دانش‌آموز
               </th>
-              {columns.length > 0 ? (
-                columns.map((col, index) => (
+              {allColumns.length > 0 ? (
+                allColumns.map((col, index) => (
                   <th
                     key={index}
-                    className="px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 text-sm whitespace-normal"
+                    className={`px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 text-sm whitespace-normal ${
+                      col.day === "monthly" ? "bg-purple-600" : ""
+                    }`}
                   >
-                    {`${col.day}-زنگ ${col.timeSlot} (${col.formattedDate})`}
+                    {col.day === "monthly"
+                      ? `نمره ماهانه ${col.formattedDate}`
+                      : `${col.day}-زنگ ${col.timeSlot} (${col.formattedDate})`}
                   </th>
                 ))
               ) : (
@@ -942,7 +1083,87 @@ const ClassSheet = ({
                   <td className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white">
                     {fullName}
                   </td>
-                  {columns.map((col, index) => {
+                  {allColumns.map((col, index) => {
+                    // Special handling for monthly grade columns
+                    if (col.day === "monthly") {
+                      // Get all cells for this student in this month
+                      const monthCells = columns
+                        .filter((regCol) => {
+                          // Get Jalali month for regular column
+                          const regDate = gregorian_to_jalali(
+                            regCol.date.getFullYear(),
+                            regCol.date.getMonth() + 1,
+                            regCol.date.getDate()
+                          );
+                          // Get Jalali month for summary column
+                          const summaryDate = gregorian_to_jalali(
+                            col.date.getFullYear(),
+                            col.date.getMonth() + 1,
+                            col.date.getDate()
+                          );
+                          // Compare months
+                          return regDate[1] === summaryDate[1];
+                        })
+                        .map((monthCol) =>
+                          getCellContent(student.studentCode, monthCol)
+                        )
+                        .filter((cell) => cell !== null) as CellData[];
+
+                      // Calculate monthly grade if there are any grades
+                      const allGrades = monthCells.flatMap(
+                        (cell) => cell.grades || []
+                      );
+                      const hasGrades = allGrades.length > 0;
+                      let monthlyGrade = "-";
+                      let gradeColor = "bg-gray-300";
+
+                      if (hasGrades) {
+                        const totalValue = allGrades.reduce(
+                          (sum, grade) => sum + grade.value,
+                          0
+                        );
+                        const totalPoints = allGrades.reduce(
+                          (sum, grade) => sum + (grade.totalPoints || 20),
+                          0
+                        );
+                        const calculatedGrade = (
+                          (totalValue / totalPoints) *
+                          20
+                        ).toFixed(2);
+                        monthlyGrade = calculatedGrade;
+
+                        // Color based on grade value
+                        const gradeValue = parseFloat(calculatedGrade);
+                        if (gradeValue >= 16)
+                          gradeColor = "bg-green-600 text-white";
+                        else if (gradeValue >= 12)
+                          gradeColor = "bg-amber-500 text-white";
+                        else gradeColor = "bg-red-600 text-white";
+                      }
+
+                      return (
+                        <td
+                          key={`monthly-grade-${student.studentCode}-${index}`}
+                          className="px-2 py-2 w-[150px] min-w-[150px] text-center border border-gray-300 bg-purple-50"
+                        >
+                          <div className="flex flex-col items-center">
+                            <div className="text-sm font-bold mb-1">
+                              نمره ماهانه
+                            </div>
+                            <Badge
+                              className={`text-sm font-bold ${gradeColor}`}
+                            >
+                              {monthlyGrade}
+                            </Badge>
+                            <div className="text-xs mt-1 text-gray-500">
+                              تعداد نمرات: {allGrades.length}
+                            </div>
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    // Regular cell handling (existing code)
                     const cellData = getCellContent(student.studentCode, col);
 
                     // Prepare cell display content
