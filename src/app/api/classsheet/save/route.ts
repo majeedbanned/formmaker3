@@ -4,13 +4,14 @@ import { MongoClient } from "mongodb";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode, grades, presenceStatus } = body;
+    const { classCode, studentCode, teacherCode, courseCode, date, timeSlot, note, schoolCode, grades, presenceStatus, descriptiveStatus } = body;
 
     // Create a unique identifier for debugging
     const cellIdentifier = `${classCode}_${studentCode}_${teacherCode}_${courseCode}_${schoolCode}_${date}_${timeSlot}`;
     console.log("Saving cell data with identifier:", cellIdentifier);
     console.log("Data includes:", { 
       presenceStatus, 
+      descriptiveStatus: descriptiveStatus || 'None',
       gradeCount: grades?.length || 0,
       hasNote: note ? 'Yes' : 'No' 
     });
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
           note,
           grades: grades || [],
           presenceStatus: presenceStatus || "present",
+          descriptiveStatus: descriptiveStatus || "",
           updatedAt: new Date(),
         },
         $setOnInsert: {

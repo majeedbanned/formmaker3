@@ -115,6 +115,7 @@ type CellData = {
   note: string;
   grades: GradeEntry[];
   presenceStatus: PresenceStatus;
+  descriptiveStatus?: string; // New field for descriptive status
 };
 
 type ClassData = {
@@ -274,6 +275,7 @@ const ClassSheet = ({
   const [noteText, setNoteText] = useState("");
   const [presenceStatus, setPresenceStatus] =
     useState<PresenceStatus>("present");
+  const [descriptiveStatus, setDescriptiveStatus] = useState<string>("");
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [newGrade, setNewGrade] = useState<GradeEntry>({
     value: 0,
@@ -337,6 +339,7 @@ const ClassSheet = ({
             grades: cell.grades || [],
             presenceStatus: cell.presenceStatus || "present",
             note: cell.note || "",
+            descriptiveStatus: cell.descriptiveStatus || "",
           };
         });
 
@@ -420,10 +423,12 @@ const ClassSheet = ({
       setNoteText(cellData.note || "");
       setPresenceStatus(cellData.presenceStatus || "present");
       setGrades(cellData.grades || []);
+      setDescriptiveStatus(cellData.descriptiveStatus || "");
     } else {
       setNoteText("");
       setPresenceStatus("present");
       setGrades([]);
+      setDescriptiveStatus("");
     }
 
     setIsModalOpen(true);
@@ -482,6 +487,7 @@ const ClassSheet = ({
         note: noteText,
         grades: grades,
         presenceStatus: presenceStatus,
+        descriptiveStatus: descriptiveStatus,
       };
 
       const response = await fetch("/api/classsheet/save", {
@@ -761,6 +767,15 @@ const ClassSheet = ({
                             )}
                           </div>
 
+                          {/* Descriptive Status Badge (if any) */}
+                          {cellData.descriptiveStatus && (
+                            <div className="w-full text-center mt-1">
+                              <Badge className="bg-purple-500 text-white">
+                                {cellData.descriptiveStatus}
+                              </Badge>
+                            </div>
+                          )}
+
                           {/* Grades Section */}
                           {cellData.grades && cellData.grades.length > 0 && (
                             <div className="w-full mt-1">
@@ -869,6 +884,27 @@ const ClassSheet = ({
                   <SelectItem value="present">حاضر</SelectItem>
                   <SelectItem value="absent">غایب</SelectItem>
                   <SelectItem value="late">با تاخیر</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Descriptive Status */}
+            <div className="space-y-2">
+              <Label htmlFor="descriptive-status">وضعیت توصیفی:</Label>
+              <Select
+                value={descriptiveStatus}
+                onValueChange={(value) => setDescriptiveStatus(value)}
+              >
+                <SelectTrigger id="descriptive-status">
+                  <SelectValue placeholder="انتخاب وضعیت توصیفی" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="خیلی خوب">خیلی خوب</SelectItem>
+                  <SelectItem value="خوب">خوب</SelectItem>
+                  <SelectItem value="قابل قبول">قابل قبول</SelectItem>
+                  <SelectItem value="نیازمند تلاش بیشتر">
+                    نیازمند تلاش بیشتر
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
