@@ -310,8 +310,8 @@ export default function Home() {
       isOpen: true,
     },
     {
-      name: "courseCode2",
-      title: "درس‌ها",
+      name: "students2",
+      title: "دانش آموزان",
       type: "autoCompleteText",
       isShowInList: true,
       isSearchable: true,
@@ -321,13 +321,13 @@ export default function Home() {
       isMultiple: true,
 
       dataSource: {
-        collectionName: "courses",
-        labelField: "courseName",
-        valueField: "courseCode",
-        sortField: "courseCode",
+        collectionName: "students",
+        labelField: "studentName",
+        valueField: "studentCode",
+        sortField: "studentCode",
         sortOrder: "asc",
         filterQuery: { schoolCode: user?.schoolCode },
-        dependsOn: ["Grade", "major"],
+        // dependsOn: ["Grade", "major"],
       },
 
       // Static options as fallback in case the datasource fails
