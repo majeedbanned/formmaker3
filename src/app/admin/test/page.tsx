@@ -80,6 +80,41 @@ const sampleFormStructure: FormField[] = [
       requiredMessage: "First name is required",
     },
   },
+  {
+    name: "students2",
+    title: "دانش آموزان",
+    type: "autoCompleteText",
+    isShowInList: true,
+    isSearchable: true,
+    required: false,
+    enabled: true,
+    visible: true,
+    isMultiple: true,
+
+    dataSource: {
+      collectionName: "students",
+      labelField: "studentName",
+      valueField: "studentCode",
+      sortField: "studentCode",
+      sortOrder: "asc",
+      filterQuery: { schoolCode: "2295566177" },
+      // dependsOn: ["Grade", "major"],
+    },
+
+    // Static options as fallback in case the datasource fails
+    options: [
+      { label: "زبان فارسی", value: "10110" },
+      { label: "زبان عربی", value: "10150" },
+      { label: "زبان انگلیسی", value: "10170" },
+      { label: "ریاضی", value: "10210" },
+      { label: "فیزیک", value: "10410" },
+    ],
+    autoCompleteStyle: {
+      allowNew: false,
+      maxTags: 2,
+      minLength: 2, // Only start searching after 2 characters are typed
+    },
+  },
 
   {
     name: "fa",

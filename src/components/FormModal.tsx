@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   useForm,
   useFieldArray,
@@ -15,10 +15,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "./ui/checkbox";
 import {
   Select,
@@ -26,7 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "@/components/ui/select";
 import type {
   FormModalProps,
   FormField,
@@ -682,383 +682,160 @@ const FormField = ({
           )}
         </label>
         <Textarea
+          id={field.name}
+          disabled={isDisabled}
+          placeholder={field.placeholder}
+          className={`w-full ${layout.direction === "rtl" && "text-right"}`}
           {...register(field.name, validationRules)}
-          disabled={isDisabled}
-          className={`${
-            layout.direction === "rtl" ? "text-right" : "text-left"
-          }`}
-          dir={layout.direction}
-          rows={4}
         />
         {errors[field.name] && (
-          <p
-            className={`text-destructive text-sm ${
-              layout.direction === "rtl" ? "text-right" : "text-left"
-            }`}
-          >
+          <p className="text-sm text-destructive mt-1">
             {errors[field.name]?.message as string}
           </p>
         )}
       </div>
     );
-  } else if (field.type === "radio" && field.options) {
-    return (
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">
-          {field.title}
-          {field.required && <span className="text-destructive">*</span>}
-        </label>
-        <RadioGroup
-          value={String(fieldValue || field.defaultValue || "")}
-          onValueChange={(value) => {
-            setValue(field.name, value, { shouldValidate: true });
-          }}
-          className={field.layout === "inline" ? "flex gap-4" : "space-y-2"}
-          disabled={isDisabled}
-        >
-          {field.options.map((option) => (
-            <div
-              key={String(option.value)}
-              className={`flex items-center ${
-                layout.direction === "rtl" ? "space-x-reverse" : ""
-              } space-x-2`}
-            >
-              <RadioGroupItem
-                value={String(option.value)}
-                id={`${field.name}-${option.value}`}
-              />
-              <label
-                htmlFor={`${field.name}-${option.value}`}
-                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {option.label}
-              </label>
-            </div>
-          ))}
-        </RadioGroup>
-        <input type="hidden" {...register(field.name, validationRules)} />
-        {errors[field.name] && (
-          <p
-            className={`text-destructive text-sm ${
-              layout.direction === "rtl" ? "text-right" : "text-left"
-            }`}
-          >
-            {errors[field.name]?.message as string}
-          </p>
-        )}
-      </div>
-    );
-  } else if (field.type === "switch") {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <Label
-            htmlFor={field.name}
-            className={cn(
-              field.required &&
-                "after:content-['*'] after:ml-0.5 after:text-red-500"
-            )}
-          >
-            {field.title}
-          </Label>
-          <Switch
-            id={field.name}
-            checked={fieldValue}
-            onCheckedChange={(checked) =>
-              setValue(field.name, checked, { shouldValidate: true })
-            }
-            disabled={!field.enabled}
-          />
-        </div>
-        {errors[field.name] && (
-          <span className="text-sm text-red-500">
-            {errors[field.name]?.message as string}
-          </span>
-        )}
-      </div>
-    );
-  } else if (field.type === "togglegroup") {
-    return (
-      <div className="flex flex-col gap-2">
-        <Label
-          className={cn(
-            field.required &&
-              "after:content-['*'] after:ml-0.5 after:text-red-500"
-          )}
-        >
-          {field.title}
-        </Label>
-        <ToggleGroup
-          type="multiple"
-          value={Array.isArray(fieldValue) ? fieldValue : []}
-          onValueChange={(value) =>
-            setValue(field.name, value, { shouldValidate: true })
-          }
-          disabled={!field.enabled}
-        >
-          {field.options?.map((option) => (
-            <ToggleGroupItem
-              key={String(option.value)}
-              value={String(option.value)}
-            >
-              {option.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {errors[field.name] && (
-          <span className="text-sm text-red-500">
-            {errors[field.name]?.message as string}
-          </span>
-        )}
-      </div>
-    );
-  } else if (field.type === "label") {
-    return (
-      <Label
-        className={cn(
-          field.labelStyle?.fontSize && `text-${field.labelStyle.fontSize}`,
-          field.labelStyle?.fontWeight && `font-${field.labelStyle.fontWeight}`,
-          field.labelStyle?.color && `text-${field.labelStyle.color}`,
-          field.labelStyle?.textAlign && `text-${field.labelStyle.textAlign}`
-        )}
-      >
-        {field.title}
-      </Label>
-    );
-  } else if (field.type === "datepicker") {
-    return (
-      <div className="space-y-2">
-        <label
-          htmlFor={field.name}
-          className={`block text-sm font-medium text-${
-            layout.direction === "rtl" ? "right" : "left"
-          }`}
-        >
-          {field.title}
-          {field.required && <span className="text-destructive">*</span>}
-        </label>
-        <DatePicker
-          calendar={persian}
-          locale={persian_fa}
-          value={fieldValue as Value}
-          onChange={(date) => {
-            //console.log("dateeeeeee", date.toString());
-            setValue(field.name, date?.toString(), { shouldValidate: true });
-          }}
-          disabled={isDisabled}
-          multiple={field.isMultiple}
-          format={field.datepickerStyle?.format || "YYYY-MM-DD"}
-          className={cn(
-            "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            field.datepickerStyle?.className
-          )}
-        />
-        <input type="hidden" {...register(field.name, validationRules)} />
-        {errors[field.name] && (
-          <p className="text-destructive text-sm">
-            {errors[field.name]?.message as string}
-          </p>
-        )}
-      </div>
-    );
-  } else if (field.type === "autocomplete") {
-    const options = field.dataSource ? dynamicOptions : field.options || [];
-    const suggestions = options.filter(
-      (option) => !selectedTags.some((tag) => tag.value === option.value)
-    );
+  } else if (field.type === "importTextBox") {
+    // Parse import text to structured data
+    const parseImportText = (text: string): object[] => {
+      if (!text.trim()) return [];
 
-    // Prepare a map of values to labels for selected items
-    const selectedLabelsMap: Record<string, string> = {};
-    if (Array.isArray(fieldValue)) {
-      fieldValue.forEach((item) => {
-        if (
-          typeof item === "object" &&
-          item !== null &&
-          "value" in item &&
-          "label" in item
-        ) {
-          selectedLabelsMap[String(item.value)] = String(item.label);
-        }
+      const rows = text.trim().split("\n");
+      const nameBinding = field.importTextBoxStyle?.nameBinding || [];
+
+      // Convert Persian/Arabic digits to English
+      const convertToEnglishDigits = (str: string): string => {
+        return str.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+      };
+
+      // Process rows into objects according to binding schema
+      const processedObjects = rows.map((row) => {
+        const columns = row.split("\t");
+        const obj: Record<string, string | number> = {};
+
+        nameBinding.forEach((binding, index) => {
+          if (index >= columns.length) return;
+
+          // Get the column value and trim it
+          let value = columns[index]?.trim() || "";
+
+          // Handle field type
+          if (binding.type === "number") {
+            // Convert any non-English digits
+            value = convertToEnglishDigits(value);
+            // Convert to actual number
+            obj[binding.name] = value ? Number(value) : 0;
+          } else {
+            // Default to text
+            obj[binding.name] = value;
+          }
+        });
+
+        return obj;
       });
-    } else if (
-      fieldValue &&
-      typeof fieldValue === "object" &&
-      "value" in fieldValue &&
-      "label" in fieldValue
-    ) {
-      selectedLabelsMap[String(fieldValue.value)] = String(fieldValue.label);
-    }
+
+      // Handle uniqueness constraints
+      const uniqueFields = nameBinding
+        .filter((binding) => binding.isUnique)
+        .map((binding) => binding.name);
+
+      if (uniqueFields.length > 0) {
+        const uniqueMap: Record<string, Record<string, number>> = {};
+
+        // Initialize maps for each unique field
+        uniqueFields.forEach((field) => {
+          uniqueMap[field] = {};
+        });
+
+        // Mark latest index for each unique value
+        processedObjects.forEach((obj, index) => {
+          uniqueFields.forEach((field) => {
+            const value = String(obj[field]); // Convert to string for use as key
+            if (value) {
+              uniqueMap[field][value] = index;
+            }
+          });
+        });
+
+        // Keep only the latest entries for each unique field
+        return processedObjects.filter((obj, index) => {
+          return !uniqueFields.some((field) => {
+            const value = String(obj[field]); // Convert to string for use as key
+            return value && uniqueMap[field][value] !== index;
+          });
+        });
+      }
+
+      return processedObjects;
+    };
+
+    // Format structured data to display text
+    const formatImportData = (data: object[]): string => {
+      if (!Array.isArray(data) || data.length === 0) return "";
+
+      const nameBinding = field.importTextBoxStyle?.nameBinding || [];
+
+      return data
+        .map((item) => {
+          const row = nameBinding.map((binding) => {
+            return (item as Record<string, any>)[binding.name] !== undefined
+              ? String((item as Record<string, any>)[binding.name])
+              : "";
+          });
+          return row.join("\t");
+        })
+        .join("\n");
+    };
+
+    // Event handler for textarea changes
+    const handleImportTextChange = (
+      e: React.ChangeEvent<HTMLTextAreaElement>
+    ) => {
+      const text = e.target.value;
+      const parsedData = parseImportText(text);
+      // Update the form data with the structured parsed data
+      setValue(field.name, parsedData, { shouldValidate: true });
+    };
+
+    // Initialize textarea with formatted data if in edit mode
+    const initialValue = useMemo(() => {
+      const fieldValue = watch(field.name);
+      return Array.isArray(fieldValue) ? formatImportData(fieldValue) : "";
+    }, [field.name, watch]);
 
     return (
-      <div className="space-y-2">
-        <label
-          htmlFor={field.name}
-          className={`block text-sm font-medium text-${
-            layout.direction === "rtl" ? "right" : "left"
-          }`}
-        >
+      <div className="form-field">
+        <div className="mb-1 text-sm font-medium text-gray-700">
           {field.title}
-          {field.required && <span className="text-destructive">*</span>}
-          {isDisabled && (
-            <span className="text-muted-foreground text-xs ml-1">
-              (Read-only)
-            </span>
-          )}
-        </label>
-        <AutocompleteTags
-          options={options}
-          selected={
-            Array.isArray(fieldValue)
-              ? fieldValue.map((v) => {
-                  if (typeof v === "object" && v !== null && "value" in v) {
-                    return String(v.value);
-                  }
-                  return String(v);
-                })
-              : fieldValue && typeof fieldValue === "object" && fieldValue.value
-              ? [String(fieldValue.value)]
-              : fieldValue && typeof fieldValue === "string"
-              ? [fieldValue]
-              : []
+          {field.required && <span className="text-red-500 ml-1">*</span>}
+        </div>
+        <Textarea
+          rows={field.importTextBoxStyle?.rows || 5}
+          placeholder={
+            field.importTextBoxStyle?.placeholder ||
+            "Paste tabular data here..."
           }
-          selectedLabels={selectedLabelsMap}
-          onChange={(values, newOptionLabel) => {
-            // Convert string values to objects with both label and value
-            const fullObjects = values.map((value) => {
-              // First check if this is the newly added value and we have label info
-              if (newOptionLabel && newOptionLabel.value === value) {
-                return {
-                  label: newOptionLabel.label,
-                  value: newOptionLabel.value,
-                };
-              }
-
-              // Then check if this value is in the existing field values (for preserving labels on unselect)
-              if (Array.isArray(fieldValue)) {
-                const existingItem = fieldValue.find(
-                  (item) =>
-                    typeof item === "object" &&
-                    item !== null &&
-                    "value" in item &&
-                    String(item.value) === value
-                );
-
-                if (
-                  existingItem &&
-                  typeof existingItem === "object" &&
-                  "label" in existingItem
-                ) {
-                  return {
-                    label: String(existingItem.label),
-                    value: value,
-                  };
-                }
-              } else if (
-                fieldValue &&
-                typeof fieldValue === "object" &&
-                "value" in fieldValue &&
-                "label" in fieldValue &&
-                String(fieldValue.value) === value
-              ) {
-                return {
-                  label: String(fieldValue.label),
-                  value: value,
-                };
-              }
-
-              // Then check if it's a custom value (not in options)
-              const existingOption = options.find((opt) => opt.value === value);
-              if (existingOption) {
-                // Use the option with both label and value
-                return {
-                  label: existingOption.label,
-                  value: existingOption.value,
-                };
-              } else {
-                // For custom values, use the value as the label too
-                return {
-                  label: value,
-                  value: value,
-                };
-              }
-            });
-
-            // Save the full objects to the database
-            setValue(
-              field.name,
-              field.isMultiple
-                ? fullObjects
-                : fullObjects.length > 0
-                ? fullObjects[0]
-                : "",
-              { shouldValidate: true }
-            );
-          }}
-          placeholder={layout.texts?.selectPlaceholder || "Select or type..."}
-          inputPlaceholder={layout.texts?.searchPlaceholder || "Search..."}
-          emptyMessage={layout.texts?.noResultsMessage || "No results found"}
-          disabled={isDisabled}
-          allowCustomValues={field.autoCompleteStyle?.allowNew || false}
-          loading={isLoadingOptions}
-          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
-          className={layout.direction === "rtl" ? "text-right" : "text-left"}
-          onSearch={handleAutoCompleteSearch}
-          minSearchLength={field.autoCompleteStyle?.minLength || 2}
+          className={field.importTextBoxStyle?.className || "w-full"}
+          onChange={handleImportTextChange}
+          defaultValue={initialValue}
         />
-        <input type="hidden" {...register(field.name, validationRules)} />
-        {errors[field.name] && (
-          <p className="text-sm text-destructive mt-1">
-            {errors[field.name]?.message as string}
-          </p>
-        )}
-      </div>
-    );
-  } else if (field.type === "shadcnmultiselect") {
-    const options = field.dataSource ? dynamicOptions : field.options || [];
-
-    // Always handle as multiple selection for shadcnmultiselect
-    // Convert single values to arrays if needed
-    const currentValue = Array.isArray(fieldValue)
-      ? fieldValue
-      : fieldValue
-      ? [fieldValue]
-      : [];
-
-    return (
-      <div className="space-y-2">
-        <label
-          htmlFor={field.name}
-          className={`block text-sm font-medium text-${
-            layout.direction === "rtl" ? "right" : "left"
-          }`}
-        >
-          {field.title}
-          {field.required && <span className="text-destructive">*</span>}
-          {isDisabled && (
-            <span className="text-muted-foreground text-xs ml-1">
-              (Read-only)
+        <div className="text-xs text-gray-500 mt-1">
+          ستون‌ها باید از اکسل با Tab جداشده باشند. ترتیب ستون‌ها:
+          {field.importTextBoxStyle?.nameBinding?.map((binding, i) => (
+            <span key={binding.name} className="mx-1">
+              {binding.name}
+              {binding.isUnique && (
+                <small className="text-blue-500"> (منحصر به فرد)</small>
+              )}
+              {binding.type === "number" && (
+                <small className="text-green-500"> (عدد)</small>
+              )}
+              {i < (field.importTextBoxStyle?.nameBinding?.length || 0) - 1
+                ? " - "
+                : ""}
             </span>
-          )}
-        </label>
-        <MultiSelect
-          options={options}
-          selected={currentValue}
-          onChange={(values) => {
-            setValue(field.name, values, { shouldValidate: true });
-          }}
-          placeholder={layout.texts?.selectPlaceholder || "Select options..."}
-          disabled={isDisabled}
-          emptyMessage={isLoadingOptions ? "" : "No options available"}
-          loading={isLoadingOptions}
-          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
-          className={layout.direction === "rtl" ? "text-right" : "text-left"}
-        />
-        <input type="hidden" {...register(field.name, validationRules)} />
-        {errors[field.name] && (
-          <p className="text-sm text-destructive mt-1">
-            {errors[field.name]?.message as string}
-          </p>
-        )}
+          ))}
+        </div>
       </div>
     );
   } else if (field.type === "file") {

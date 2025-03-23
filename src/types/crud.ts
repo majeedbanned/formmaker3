@@ -47,7 +47,7 @@ export interface UploadedFile {
 export interface FormFieldMinimal {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect", "autoCompleteText"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect", "autoCompleteText", "importTextBox"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -125,6 +125,18 @@ export interface FormFieldMinimal {
     maxTags?: number;   // Maximum number of tags allowed
     minLength?: number; // Minimum length of search text before showing options
     className?: string; // Additional CSS class name
+  };
+  
+  // For importTextBox type
+  importTextBoxStyle?: {
+    rows?: number;       // Number of rows for the textarea (default: 10)
+    className?: string;  // Additional CSS class name
+    placeholder?: string; // Placeholder text
+    nameBinding?: Array<{
+      name: string;       // Field name for mapping
+      type?: 'text' | 'number' | 'date' | 'boolean'; // Type of the field (default: 'text')
+      isUnique?: boolean; // Whether to enforce uniqueness for this field
+    }>;
   };
 }
 

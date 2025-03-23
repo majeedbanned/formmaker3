@@ -181,6 +181,27 @@ export default function Home() {
     // Example of shadcnmultiselect field with datasource
 
     {
+      name: "students",
+      title: "لیست دانش آموزان (وارد کردن با کپی از اکسل)",
+      type: "importTextBox",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      importTextBoxStyle: {
+        rows: 100,
+        placeholder: "اطلاعات دانش آموزان را از اکسل کپی و اینجا پیست کنید...",
+        nameBinding: [
+          { name: "studentCode", type: "number", isUnique: true },
+          { name: "studentName", type: "text", isUnique: false },
+          { name: "studentlname", type: "text", isUnique: false },
+          { name: "phone", type: "text", isUnique: false },
+        ],
+      },
+    },
+
+    {
       enabled: true,
       visible: true,
       isShowInList: true,
@@ -309,41 +330,8 @@ export default function Home() {
       orientation: "horizontal",
       isOpen: true,
     },
-    {
-      name: "students2",
-      title: "دانش آموزان",
-      type: "autoCompleteText",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      isMultiple: true,
 
-      dataSource: {
-        collectionName: "students",
-        labelField: "studentName",
-        valueField: "studentCode",
-        sortField: "studentCode",
-        sortOrder: "asc",
-        filterQuery: { schoolCode: user?.schoolCode },
-        // dependsOn: ["Grade", "major"],
-      },
-
-      // Static options as fallback in case the datasource fails
-      options: [
-        { label: "زبان فارسی", value: "10110" },
-        { label: "زبان عربی", value: "10150" },
-        { label: "زبان انگلیسی", value: "10170" },
-        { label: "ریاضی", value: "10210" },
-        { label: "فیزیک", value: "10410" },
-      ],
-      autoCompleteStyle: {
-        allowNew: false,
-        maxTags: 2,
-        minLength: 2, // Only start searching after 2 characters are typed
-      },
-    },
+    // Example of importTextBox field for importing student data
   ] as const;
 
   return (
