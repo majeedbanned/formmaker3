@@ -1421,7 +1421,7 @@ const ClassSheet = ({
           courseCode: selectedOption.courseCode,
           schoolCode: schoolCode,
           date: formattedDate, // Use YYYY-MM-DD format consistently
-          timeSlot: selectedColumn.timeSlot,
+          timeSlot: selectedColumn.timeSlot, // Ensure timeSlot from original column is used
           note: bulkNote,
           grades: existingCell?.grades || [],
           presenceStatus: bulkPresenceStatus,
@@ -1429,18 +1429,18 @@ const ClassSheet = ({
           assessments: existingCell?.assessments || [],
         };
 
-        // Always add the bulk grade if value > 0, regardless of description
+        // Add the bulk grade if value > 0
         if (bulkGrade.value > 0) {
           cellData.grades.push({
             ...bulkGrade,
             description:
               bulkGrade.description ||
-              `Bulk grade added on ${new Date().toLocaleDateString()}`,
+              `نمره گروهی افزوده شده در ${formatJalaliDate(new Date())}`,
             date: new Date().toISOString(),
           });
         }
 
-        // Add the bulk assessment if it was provided
+        // Add the bulk assessment if both title and value are provided
         if (bulkAssessment.title && bulkAssessment.value) {
           cellData.assessments.push({
             ...bulkAssessment,
@@ -2837,7 +2837,7 @@ const ClassSheet = ({
 
       {/* Bulk Add Modal */}
       <Dialog open={isBulkModalOpen} onOpenChange={setIsBulkModalOpen}>
-        <DialogContent className="max-w-3xl p-6">
+        <DialogContent className="max-w-3xl" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
               وارد کردن دسته جمعی{" "}
@@ -2853,7 +2853,7 @@ const ClassSheet = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-6 mt-4">
+          <div className="grid grid-cols-1 gap-6 mt-4 max-h-[70vh] overflow-y-auto p-4">
             {/* Presence Status */}
             <div>
               <Label htmlFor="bulkPresenceStatus" className="block mb-2">
@@ -2881,12 +2881,24 @@ const ClassSheet = ({
               <Label htmlFor="bulkDescriptiveStatus" className="block mb-2">
                 وضعیت توصیفی (همه دانش آموزان)
               </Label>
-              <Input
-                id="bulkDescriptiveStatus"
+              <Select
                 value={bulkDescriptiveStatus}
-                onChange={(e) => setBulkDescriptiveStatus(e.target.value)}
-                className="w-full"
-              />
+                onValueChange={(value) => setBulkDescriptiveStatus(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="انتخاب وضعیت توصیفی" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* <SelectItem value="1">بدون وضعیت</SelectItem> */}
+                  <SelectItem value="نیاز به تلاش بیشتر">
+                    نیاز به تلاش بیشتر
+                  </SelectItem>
+                  <SelectItem value="قابل قبول">قابل قبول</SelectItem>
+                  <SelectItem value="خوب">خوب</SelectItem>
+                  <SelectItem value="خیلی خوب">خیلی خوب</SelectItem>
+                  <SelectItem value="عالی">عالی</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Bulk Grade */}
@@ -2946,15 +2958,6 @@ const ClassSheet = ({
                   />
                 </div>
               </div>
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  onClick={handleAddBulkGrade}
-                  className="w-full"
-                >
-                  آماده‌سازی نمره برای همه دانش آموزان
-                </Button>
-              </div>
             </div>
 
             {/* Bulk Assessment */}
@@ -3013,15 +3016,6 @@ const ClassSheet = ({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  onClick={handleAddBulkAssessment}
-                  className="w-full"
-                >
-                  ثبت ارزیابی برای همه دانش آموزان
-                </Button>
               </div>
             </div>
 
