@@ -33,6 +33,18 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
+// Import required chart libraries
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
 // Helper function: Convert Gregorian to Jalali
 function gregorian_to_jalali(gy: number, gm: number, gd: number) {
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -417,6 +429,31 @@ const ClassSheet = ({
       late: number;
     };
     assessmentsSummary: Record<string, string[]>;
+  } | null>(null);
+
+  // Add new state for student report modal
+  const [isStudentReportOpen, setIsStudentReportOpen] = useState(false);
+  const [studentReportData, setStudentReportData] = useState<{
+    student: Student | null;
+    monthlyGrades: {
+      month: string;
+      grade: number;
+      assessmentAdjustment: number;
+      baseGrade: number;
+      totalGrades: number;
+      attendance: {
+        present: number;
+        absent: number;
+        late: number;
+      };
+    }[];
+    totalAttendance: {
+      present: number;
+      absent: number;
+      late: number;
+    };
+    averageGrade: number;
+    totalAssessments: Record<string, Record<string, number>>;
   } | null>(null);
 
   // Create a unique key for each cell
@@ -1093,6 +1130,212 @@ const ClassSheet = ({
     setIsMonthlyReportOpen(true);
   };
 
+  // Handle student name cell click to show full report
+  const handleStudentNameClick = (student: Student) => {
+    if (!selectedOption) return;
+
+    // Find all months in our data
+    const months = new Set<string>();
+    const studentCells = Object.values(cellsData).filter(
+      (cell) => cell.studentCode === student.studentCode
+    );
+
+    // Process all cells to get unique months
+    studentCells.forEach((cell) => {
+      const cellDate = new Date(cell.date);
+      const jalaliDate = gregorian_to_jalali(
+        cellDate.getFullYear(),
+        cellDate.getMonth() + 1,
+        cellDate.getDate()
+      );
+      // Use monthYear directly to add to the Set
+      const monthName = getPersianMonthName(jalaliDate[1]);
+      months.add(`${monthName} ${jalaliDate[0]}`);
+    });
+
+    // Prepare monthly data
+    const monthlyGrades = Array.from(months).map((monthStr) => {
+      const [monthName, yearStr] = monthStr.split(" ");
+      const monthIndex =
+        [
+          "فروردین",
+          "اردیبهشت",
+          "خرداد",
+          "تیر",
+          "مرداد",
+          "شهریور",
+          "مهر",
+          "آبان",
+          "آذر",
+          "دی",
+          "بهمن",
+          "اسفند",
+        ].indexOf(monthName) + 1;
+      const year = parseInt(yearStr);
+
+      // Get all cells for this student in this month
+      const monthCells = studentCells.filter((cell) => {
+        const cellDate = new Date(cell.date);
+        const jalaliDate = gregorian_to_jalali(
+          cellDate.getFullYear(),
+          cellDate.getMonth() + 1,
+          cellDate.getDate()
+        );
+        return jalaliDate[0] === year && jalaliDate[1] === monthIndex;
+      });
+
+      // Calculate attendance
+      const attendance = {
+        present: 0,
+        absent: 0,
+        late: 0,
+      };
+
+      monthCells.forEach((cell) => {
+        if (cell.presenceStatus === "present") attendance.present++;
+        else if (cell.presenceStatus === "absent") attendance.absent++;
+        else if (cell.presenceStatus === "late") attendance.late++;
+      });
+
+      // Get all grades for the month
+      const allGrades = monthCells.flatMap((cell) => cell.grades || []);
+
+      // Calculate grade
+      let baseGrade = 0;
+      let grade = 0;
+      let assessmentAdjustment = 0;
+
+      if (allGrades.length > 0) {
+        // Calculate total value and points for grades
+        const totalValue = allGrades.reduce(
+          (sum, grade) => sum + grade.value,
+          0
+        );
+        const totalPoints = allGrades.reduce(
+          (sum, grade) => sum + (grade.totalPoints || 20),
+          0
+        );
+
+        // Calculate the base grade
+        baseGrade = (totalValue / totalPoints) * 20;
+
+        // Calculate assessment point adjustments
+        const monthAssessments = monthCells.flatMap(
+          (cell) => cell.assessments || []
+        );
+
+        assessmentAdjustment = monthAssessments.reduce((sum, assessment) => {
+          const weight = getAssessmentWeight(assessment.value);
+          return sum + weight;
+        }, 0);
+
+        // Apply adjustment (but keep grade within 0-20 range)
+        grade = Math.max(0, Math.min(20, baseGrade + assessmentAdjustment));
+      }
+
+      return {
+        month: monthStr,
+        grade,
+        baseGrade,
+        assessmentAdjustment,
+        totalGrades: allGrades.length,
+        attendance,
+      };
+    });
+
+    // Sort months chronologically
+    monthlyGrades.sort((a, b) => {
+      const [aMonthName, aYearStr] = a.month.split(" ");
+      const [bMonthName, bYearStr] = b.month.split(" ");
+
+      const aYear = parseInt(aYearStr);
+      const bYear = parseInt(bYearStr);
+
+      if (aYear !== bYear) return aYear - bYear;
+
+      const aMonthIndex = [
+        "فروردین",
+        "اردیبهشت",
+        "خرداد",
+        "تیر",
+        "مرداد",
+        "شهریور",
+        "مهر",
+        "آبان",
+        "آذر",
+        "دی",
+        "بهمن",
+        "اسفند",
+      ].indexOf(aMonthName);
+      const bMonthIndex = [
+        "فروردین",
+        "اردیبهشت",
+        "خرداد",
+        "تیر",
+        "مرداد",
+        "شهریور",
+        "مهر",
+        "آبان",
+        "آذر",
+        "دی",
+        "بهمن",
+        "اسفند",
+      ].indexOf(bMonthName);
+
+      return aMonthIndex - bMonthIndex;
+    });
+
+    // Calculate total attendance
+    const totalAttendance = monthlyGrades.reduce(
+      (total, month) => {
+        return {
+          present: total.present + month.attendance.present,
+          absent: total.absent + month.attendance.absent,
+          late: total.late + month.attendance.late,
+        };
+      },
+      { present: 0, absent: 0, late: 0 }
+    );
+
+    // Calculate average grade
+    const validGrades = monthlyGrades.filter((month) => month.grade > 0);
+    const averageGrade =
+      validGrades.length > 0
+        ? validGrades.reduce((sum, month) => sum + month.grade, 0) /
+          validGrades.length
+        : 0;
+
+    // Collect all assessment data
+    const totalAssessments: Record<string, Record<string, number>> = {};
+
+    studentCells.forEach((cell) => {
+      if (cell.assessments && cell.assessments.length > 0) {
+        cell.assessments.forEach((assessment) => {
+          if (!totalAssessments[assessment.title]) {
+            totalAssessments[assessment.title] = {};
+          }
+
+          if (!totalAssessments[assessment.title][assessment.value]) {
+            totalAssessments[assessment.title][assessment.value] = 0;
+          }
+
+          totalAssessments[assessment.title][assessment.value]++;
+        });
+      }
+    });
+
+    // Set the data and open the modal
+    setStudentReportData({
+      student,
+      monthlyGrades,
+      totalAttendance,
+      averageGrade,
+      totalAssessments,
+    });
+
+    setIsStudentReportOpen(true);
+  };
+
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection */}
@@ -1222,8 +1465,14 @@ const ClassSheet = ({
               const fullName = `${student.studentName} ${student.studentlname}`;
               return (
                 <tr key={student.studentCode} className="hover:bg-gray-50">
-                  <td className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white">
-                    {fullName}
+                  <td
+                    className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white cursor-pointer hover:bg-blue-50"
+                    onClick={() => handleStudentNameClick(student)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{fullName}</span>
+                      <span className="text-blue-500 text-xs">(گزارش)</span>
+                    </div>
                   </td>
                   {allColumns.map((col, index) => {
                     // Special handling for monthly grade columns
@@ -2124,6 +2373,250 @@ const ClassSheet = ({
 
           <DialogFooter className="sm:justify-start">
             <Button type="button" onClick={() => setIsMonthlyReportOpen(false)}>
+              بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Student Report Modal */}
+      <Dialog open={isStudentReportOpen} onOpenChange={setIsStudentReportOpen}>
+        <DialogContent
+          className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl"
+          dir="rtl"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              گزارش کامل {studentReportData?.student?.studentName}{" "}
+              {studentReportData?.student?.studentlname}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {studentReportData && (
+              <>
+                {/* GPA and Attendance Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-lg font-medium mb-2">معدل کل</div>
+                    <div
+                      className={`text-3xl font-bold ${
+                        studentReportData.averageGrade >= 16
+                          ? "text-green-600"
+                          : studentReportData.averageGrade >= 12
+                          ? "text-amber-500"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {studentReportData.averageGrade.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">از ۲۰</div>
+                  </div>
+
+                  <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-lg font-medium mb-2">حضور</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {studentReportData.totalAttendance.present}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">جلسه</div>
+                  </div>
+
+                  <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-lg font-medium mb-2">غیبت</div>
+                    <div className="text-3xl font-bold text-red-600">
+                      {studentReportData.totalAttendance.absent}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">جلسه</div>
+                  </div>
+
+                  <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-lg font-medium mb-2">تاخیر</div>
+                    <div className="text-3xl font-bold text-amber-500">
+                      {studentReportData.totalAttendance.late}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">جلسه</div>
+                  </div>
+                </div>
+
+                {/* Progress Chart */}
+                {studentReportData.monthlyGrades.length > 0 && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <h3 className="text-lg font-bold mb-4">
+                      نمودار پیشرفت تحصیلی
+                    </h3>
+                    <div className="h-[400px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={studentReportData.monthlyGrades}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                          <YAxis
+                            domain={[0, 20]}
+                            ticks={[0, 5, 10, 15, 20]}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <Tooltip
+                            formatter={(value: number) => value.toFixed(2)}
+                            labelFormatter={(label: string) => `ماه: ${label}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="grade"
+                            name="نمره نهایی"
+                            stroke="#10b981"
+                            strokeWidth={2}
+                            dot={{ r: 6 }}
+                            activeDot={{ r: 8 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="baseGrade"
+                            name="نمره پایه (بدون تعدیل)"
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={{ r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Monthly Data Table */}
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+                  <h3 className="text-lg font-bold mb-4">جدول نمرات ماهانه</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="p-2 text-right border">ماه</th>
+                          <th className="p-2 text-right border">نمره نهایی</th>
+                          <th className="p-2 text-right border">نمره پایه</th>
+                          <th className="p-2 text-right border">
+                            تعدیل ارزیابی‌ها
+                          </th>
+                          <th className="p-2 text-right border">تعداد نمرات</th>
+                          <th className="p-2 text-right border">حضور</th>
+                          <th className="p-2 text-right border">غیبت</th>
+                          <th className="p-2 text-right border">تاخیر</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentReportData.monthlyGrades.map((month, idx) => (
+                          <tr key={idx} className="border-b hover:bg-gray-50">
+                            <td className="p-2 border font-bold">
+                              {month.month}
+                            </td>
+                            <td
+                              className={`p-2 border font-bold ${
+                                month.grade >= 16
+                                  ? "text-green-600"
+                                  : month.grade >= 12
+                                  ? "text-amber-500"
+                                  : month.grade > 0
+                                  ? "text-red-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {month.grade > 0 ? month.grade.toFixed(2) : "-"}
+                            </td>
+                            <td className="p-2 border">
+                              {month.baseGrade > 0
+                                ? month.baseGrade.toFixed(2)
+                                : "-"}
+                            </td>
+                            <td className="p-2 border">
+                              {month.assessmentAdjustment !== 0
+                                ? `${
+                                    month.assessmentAdjustment > 0 ? "+" : ""
+                                  }${month.assessmentAdjustment.toFixed(2)}`
+                                : "-"}
+                            </td>
+                            <td className="p-2 border">
+                              {month.totalGrades || "-"}
+                            </td>
+                            <td className="p-2 border text-green-600">
+                              {month.attendance.present || "-"}
+                            </td>
+                            <td className="p-2 border text-red-600">
+                              {month.attendance.absent || "-"}
+                            </td>
+                            <td className="p-2 border text-amber-500">
+                              {month.attendance.late || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Assessment Summary */}
+                {Object.keys(studentReportData.totalAssessments).length > 0 && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-bold mb-4">خلاصه ارزیابی‌ها</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(studentReportData.totalAssessments).map(
+                        ([title, values]) => (
+                          <div
+                            key={title}
+                            className="p-3 bg-gray-50 rounded-lg shadow-sm"
+                          >
+                            <h4 className="font-bold text-md mb-2">{title}</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(values).map(
+                                ([value, count], idx) => {
+                                  // Get weight for this assessment value
+                                  const weight = getAssessmentWeight(value);
+
+                                  // Choose color based on value
+                                  let bgColor = "bg-gray-100";
+                                  if (value === "عالی")
+                                    bgColor = "bg-green-100 text-green-800";
+                                  else if (value === "خوب")
+                                    bgColor = "bg-blue-100 text-blue-800";
+                                  else if (value === "متوسط")
+                                    bgColor = "bg-yellow-100 text-yellow-800";
+                                  else if (value === "ضعیف")
+                                    bgColor = "bg-orange-100 text-orange-800";
+                                  else if (value === "بسیار ضعیف")
+                                    bgColor = "bg-red-100 text-red-800";
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`px-2 py-1 rounded-full ${bgColor} text-sm flex items-center`}
+                                    >
+                                      {value}
+                                      <span className="mx-1">×</span>
+                                      <span className="font-bold">{count}</span>
+                                      {weight !== 0 && (
+                                        <span className="text-xs text-gray-600 ml-1">
+                                          ({weight > 0 ? "+" : ""}
+                                          {weight})
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" onClick={() => setIsStudentReportOpen(false)}>
               بستن
             </Button>
           </DialogFooter>
