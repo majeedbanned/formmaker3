@@ -380,8 +380,7 @@ const ClassSheet = ({
     columnIndex: number;
   } | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [presenceStatus, setPresenceStatus] =
-    useState<PresenceStatus>("present");
+  const [presenceStatus, setPresenceStatus] = useState<PresenceStatus | "">("");
   const [descriptiveStatus, setDescriptiveStatus] = useState<string>("");
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [assessments, setAssessments] = useState<AssessmentEntry[]>([]);
@@ -430,8 +429,9 @@ const ClassSheet = ({
     date: new Date().toISOString(),
     totalPoints: 20,
   });
-  const [bulkPresenceStatus, setBulkPresenceStatus] =
-    useState<PresenceStatus>("present");
+  const [bulkPresenceStatus, setBulkPresenceStatus] = useState<
+    PresenceStatus | ""
+  >("");
   const [bulkDescriptiveStatus, setBulkDescriptiveStatus] = useState("");
   const [bulkAssessment, setBulkAssessment] = useState<AssessmentEntry>({
     title: "",
@@ -626,13 +626,13 @@ const ClassSheet = ({
 
     if (cellData) {
       setNoteText(cellData.note || "");
-      setPresenceStatus(cellData.presenceStatus || "present");
+      setPresenceStatus(cellData.presenceStatus || "");
       setGrades(cellData.grades || []);
       setDescriptiveStatus(cellData.descriptiveStatus || "");
       setAssessments(cellData.assessments || []);
     } else {
       setNoteText("");
-      setPresenceStatus("present");
+      setPresenceStatus("");
       setGrades([]);
       setDescriptiveStatus("");
       setAssessments([]);
@@ -720,6 +720,9 @@ const ClassSheet = ({
       // Use the column's date with consistent formatting
       const formattedDate = column.date.toISOString().split("T")[0];
 
+      // Ensure presence status is a valid value
+      const validPresenceStatus: PresenceStatus = presenceStatus || "present";
+
       const cellData = {
         classCode: classDocument.data.classCode,
         studentCode: selectedCell.studentCode,
@@ -730,7 +733,7 @@ const ClassSheet = ({
         timeSlot: column.timeSlot, // Ensure timeSlot from original column is used
         note: noteText,
         grades: grades,
-        presenceStatus: presenceStatus,
+        presenceStatus: validPresenceStatus, // Use the validated presence status
         descriptiveStatus: descriptiveStatus,
         assessments: assessments,
       };
@@ -1338,7 +1341,7 @@ const ClassSheet = ({
       date: new Date().toISOString(),
       totalPoints: 20,
     });
-    setBulkPresenceStatus("present");
+    setBulkPresenceStatus("");
     setBulkDescriptiveStatus("");
     setBulkAssessment({
       title: "",
@@ -1413,6 +1416,10 @@ const ClassSheet = ({
         // Ensure consistent date format for saving
         const formattedDate = selectedColumn.date.toISOString().split("T")[0];
 
+        // Ensure presence status is a valid value
+        const validPresenceStatus: PresenceStatus =
+          bulkPresenceStatus || "present";
+
         // Prepare cell data with bulk values
         const cellData = {
           classCode: classDocument.data.classCode,
@@ -1424,7 +1431,7 @@ const ClassSheet = ({
           timeSlot: selectedColumn.timeSlot, // Ensure timeSlot from original column is used
           note: bulkNote,
           grades: existingCell?.grades || [],
-          presenceStatus: bulkPresenceStatus,
+          presenceStatus: validPresenceStatus, // Use the validated presence status
           descriptiveStatus: bulkDescriptiveStatus,
           assessments: existingCell?.assessments || [],
         };
@@ -1944,7 +1951,10 @@ const ClassSheet = ({
 
       {/* Note Input Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent
+          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle>
               اطلاعات{" "}
@@ -1957,20 +1967,23 @@ const ClassSheet = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 mt-4">
             {/* Presence Status */}
-            <div className="space-y-2">
-              <Label htmlFor="presence-status">وضعیت حضور:</Label>
+            <div>
+              <Label htmlFor="presenceStatus" className="block mb-2">
+                وضعیت حضور
+              </Label>
               <Select
                 value={presenceStatus}
                 onValueChange={(value) =>
                   setPresenceStatus(value as PresenceStatus)
                 }
               >
-                <SelectTrigger id="presence-status">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="انتخاب وضعیت حضور" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent dir="rtl">
+                  <SelectItem value=" ">انتخاب کنید</SelectItem>
                   <SelectItem value="present">حاضر</SelectItem>
                   <SelectItem value="absent">غایب</SelectItem>
                   <SelectItem value="late">با تاخیر</SelectItem>
@@ -2393,7 +2406,7 @@ const ClassSheet = ({
       {/* Monthly Report Modal */}
       <Dialog open={isMonthlyReportOpen} onOpenChange={setIsMonthlyReportOpen}>
         <DialogContent
-          className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl"
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
           dir="rtl"
         >
           <DialogHeader>
@@ -2594,7 +2607,7 @@ const ClassSheet = ({
       {/* Student Report Modal */}
       <Dialog open={isStudentReportOpen} onOpenChange={setIsStudentReportOpen}>
         <DialogContent
-          className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl"
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
           dir="rtl"
         >
           <DialogHeader>
@@ -2862,13 +2875,14 @@ const ClassSheet = ({
               <Select
                 value={bulkPresenceStatus}
                 onValueChange={(value) =>
-                  setBulkPresenceStatus(value as PresenceStatus)
+                  setBulkPresenceStatus(value as PresenceStatus | "")
                 }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="انتخاب وضعیت حضور" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value=" ">انتخاب کنید</SelectItem>
                   <SelectItem value="present">حاضر</SelectItem>
                   <SelectItem value="absent">غایب</SelectItem>
                   <SelectItem value="late">با تاخیر</SelectItem>
