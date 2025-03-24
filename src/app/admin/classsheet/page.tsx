@@ -415,46 +415,31 @@ const ClassSheet = ({
 
   // Add new state for monthly report modal
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
-  const [monthlyReportData, setMonthlyReportData] = useState<{
-    student: Student | null;
-    month: string;
-    cells: CellData[];
-    baseGrade: number;
-    finalGrade: number;
-    assessmentAdjustment: number;
-    allGrades: GradeEntry[];
-    attendanceSummary: {
-      present: number;
-      absent: number;
-      late: number;
-    };
-    assessmentsSummary: Record<string, string[]>;
-  } | null>(null);
+  const [monthlyReportData, setMonthlyReportData] = useState<any>(null);
 
-  // Add new state for student report modal
+  // State for student full report
   const [isStudentReportOpen, setIsStudentReportOpen] = useState(false);
-  const [studentReportData, setStudentReportData] = useState<{
-    student: Student | null;
-    monthlyGrades: {
-      month: string;
-      grade: number;
-      assessmentAdjustment: number;
-      baseGrade: number;
-      totalGrades: number;
-      attendance: {
-        present: number;
-        absent: number;
-        late: number;
-      };
-    }[];
-    totalAttendance: {
-      present: number;
-      absent: number;
-      late: number;
-    };
-    averageGrade: number;
-    totalAssessments: Record<string, Record<string, number>>;
-  } | null>(null);
+  const [studentReportData, setStudentReportData] = useState<any>(null);
+
+  // State for bulk operations
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [bulkGrade, setBulkGrade] = useState<GradeEntry>({
+    value: 0,
+    description: "",
+    date: new Date().toISOString(),
+    totalPoints: 20,
+  });
+  const [bulkPresenceStatus, setBulkPresenceStatus] =
+    useState<PresenceStatus>("present");
+  const [bulkDescriptiveStatus, setBulkDescriptiveStatus] = useState("");
+  const [bulkAssessment, setBulkAssessment] = useState<AssessmentEntry>({
+    title: "",
+    value: "",
+    date: new Date().toISOString(),
+  });
+  const [bulkNote, setBulkNote] = useState("");
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
 
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
@@ -466,8 +451,9 @@ const ClassSheet = ({
 
   // Format a cell key from database record
   const formatCellKeyFromDB = (cell: CellData) => {
-    // Convert the date string to YYYY-MM-DD format
-    const dateStr = new Date(cell.date).toISOString().split("T")[0];
+    // Ensure consistent date format by creating a new Date and extracting YYYY-MM-DD
+    const date = new Date(cell.date);
+    const dateStr = date.toISOString().split("T")[0];
 
     return `${cell.classCode}_${cell.studentCode}_${cell.teacherCode}_${cell.courseCode}_${cell.schoolCode}_${dateStr}_${cell.timeSlot}`;
   };
@@ -584,6 +570,7 @@ const ClassSheet = ({
     studentCode: number,
     column: Column
   ): CellData | null => {
+    // Get the standard cell key
     const cellKey = getCellKey(studentCode, column);
 
     // Debug: Log the cell key we're trying to find
@@ -596,29 +583,21 @@ const ClassSheet = ({
       );
     }
 
-    // Try to find the note in our cellsData
+    // Try to find the cell in our cellsData using the standard key
     if (cellsData[cellKey]) {
       return cellsData[cellKey];
     }
 
-    // Try alternative key formats in case of date format issues
-    // Create a simpler key without time part
-    const dateStr = column.date.toISOString();
-    const simpleDateKey = `${classDocument.data.classCode}_${studentCode}_${
-      selectedOption?.teacherCode
-    }_${selectedOption?.courseCode}_${schoolCode}_${
-      dateStr.split("T")[0]
-    }T00:00:00.000Z_${column.timeSlot}`;
-
-    if (cellsData[simpleDateKey]) {
-      return cellsData[simpleDateKey];
-    }
-
-    // If still not found, try to find by iterating through all keys
+    // If not found with standard key, try with a more flexible approach
+    // Create a prefix to match the beginning of the key (everything except date and time slot)
     const prefix = `${classDocument.data.classCode}_${studentCode}_${selectedOption?.teacherCode}_${selectedOption?.courseCode}_${schoolCode}_`;
-    const datePart = column.date.toISOString().split("T")[0]; // Just the YYYY-MM-DD part
 
+    // Get just the YYYY-MM-DD part of the date for matching
+    const datePart = column.date.toISOString().split("T")[0];
+
+    // Search through all keys for a match
     for (const key of Object.keys(cellsData)) {
+      // Check if the key starts with our prefix, contains our date, and ends with our time slot
       if (
         key.startsWith(prefix) &&
         key.includes(datePart) &&
@@ -637,10 +616,13 @@ const ClassSheet = ({
     columnIndex: number,
     column: Column
   ) => {
+    console.log(`Clicked cell for student ${studentCode}, column:`, column);
+    // Save both columnIndex and the actual column object to ensure consistency
     setSelectedCell({ studentCode, columnIndex });
 
     // Get the existing data for this cell, if any
     const cellData = getCellContent(studentCode, column);
+    console.log("Cell data found:", cellData);
 
     if (cellData) {
       setNoteText(cellData.note || "");
@@ -726,25 +708,34 @@ const ClassSheet = ({
   const handleSaveNote = async () => {
     if (!selectedCell || !selectedOption) return;
 
-    const column = columns[selectedCell.columnIndex];
+    const column = allColumns[selectedCell.columnIndex];
+    console.log("Saving for column:", column);
+
+    // Ensure we use a consistent date format for the cell key
     const cellKey = getCellKey(selectedCell.studentCode, column);
+    console.log("Cell key for saving:", cellKey);
 
     setIsLoading(true);
     try {
+      // Use the column's date with consistent formatting
+      const formattedDate = column.date.toISOString().split("T")[0];
+
       const cellData = {
         classCode: classDocument.data.classCode,
         studentCode: selectedCell.studentCode,
         teacherCode: selectedOption.teacherCode,
         courseCode: selectedOption.courseCode,
         schoolCode: schoolCode,
-        date: column.date.toISOString().split("T")[0], // Use YYYY-MM-DD format
-        timeSlot: column.timeSlot,
+        date: formattedDate, // Use YYYY-MM-DD format consistently
+        timeSlot: column.timeSlot, // Ensure timeSlot from original column is used
         note: noteText,
         grades: grades,
         presenceStatus: presenceStatus,
         descriptiveStatus: descriptiveStatus,
         assessments: assessments,
       };
+
+      console.log("Saving cell data:", cellData);
 
       const response = await fetch("/api/classsheet/save", {
         method: "POST",
@@ -758,7 +749,7 @@ const ClassSheet = ({
         throw new Error("Failed to save note");
       }
 
-      // Update local state
+      // Update local state with the consistent key
       setCellsData((prev) => ({
         ...prev,
         [cellKey]: cellData,
@@ -1336,6 +1327,220 @@ const ClassSheet = ({
     setIsStudentReportOpen(true);
   };
 
+  // Handle column header click for bulk add
+  const handleColumnHeaderClick = (column: Column) => {
+    if (!selectedOption || column.day === "monthly") return;
+
+    // Reset bulk form fields
+    setBulkGrade({
+      value: 0,
+      description: "",
+      date: new Date().toISOString(),
+      totalPoints: 20,
+    });
+    setBulkPresenceStatus("present");
+    setBulkDescriptiveStatus("");
+    setBulkAssessment({
+      title: "",
+      value: "",
+      date: new Date().toISOString(),
+    });
+    setBulkNote("");
+
+    // Set selected column
+    setSelectedColumn(column);
+
+    // Open the bulk modal
+    setIsBulkModalOpen(true);
+  };
+
+  // Add a bulk grade for all students
+  const handleAddBulkGrade = () => {
+    if (bulkGrade.value <= 0) {
+      toast.error("Grade value must be greater than 0");
+      return;
+    }
+
+    if (!bulkGrade.totalPoints || bulkGrade.totalPoints <= 0) {
+      toast.error("Total points must be greater than 0");
+      return;
+    }
+
+    if (bulkGrade.value > bulkGrade.totalPoints) {
+      toast.error("Grade cannot exceed total points");
+      return;
+    }
+
+    // Don't reset the grade since we need to use it in the save function
+    toast.success("Grade prepared for bulk save");
+  };
+
+  // Add a bulk assessment for all students
+  const handleAddBulkAssessment = () => {
+    if (!bulkAssessment.title) {
+      toast.error("Assessment title is required");
+      return;
+    }
+
+    if (!bulkAssessment.value) {
+      toast.error("Assessment value is required");
+      return;
+    }
+
+    setBulkAssessment({
+      title: "",
+      value: "",
+      date: new Date().toISOString(),
+    });
+
+    toast.success("Assessment prepared for bulk save");
+  };
+
+  // Save bulk data for all students
+  const handleBulkSave = async () => {
+    if (!selectedColumn || !selectedOption) return;
+
+    setIsBulkLoading(true);
+    try {
+      // Create an array of promises for each student
+      const savePromises = students.map(async (student) => {
+        // Get existing cell data for this student and column
+        const existingCell = getCellContent(
+          student.studentCode,
+          selectedColumn
+        );
+
+        // Ensure consistent date format for saving
+        const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+        // Prepare cell data with bulk values
+        const cellData = {
+          classCode: classDocument.data.classCode,
+          studentCode: student.studentCode,
+          teacherCode: selectedOption.teacherCode,
+          courseCode: selectedOption.courseCode,
+          schoolCode: schoolCode,
+          date: formattedDate, // Use YYYY-MM-DD format consistently
+          timeSlot: selectedColumn.timeSlot,
+          note: bulkNote,
+          grades: existingCell?.grades || [],
+          presenceStatus: bulkPresenceStatus,
+          descriptiveStatus: bulkDescriptiveStatus,
+          assessments: existingCell?.assessments || [],
+        };
+
+        // Always add the bulk grade if value > 0, regardless of description
+        if (bulkGrade.value > 0) {
+          cellData.grades.push({
+            ...bulkGrade,
+            description:
+              bulkGrade.description ||
+              `Bulk grade added on ${new Date().toLocaleDateString()}`,
+            date: new Date().toISOString(),
+          });
+        }
+
+        // Add the bulk assessment if it was provided
+        if (bulkAssessment.title && bulkAssessment.value) {
+          cellData.assessments.push({
+            ...bulkAssessment,
+            date: new Date().toISOString(),
+          });
+        }
+
+        // Save the data
+        const response = await fetch("/api/classsheet/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(cellData),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to save data for student ${student.studentCode}`
+          );
+        }
+
+        // Update local state with a consistent cell key
+        const cellKey = getCellKey(student.studentCode, selectedColumn);
+        setCellsData((prev) => ({
+          ...prev,
+          [cellKey]: cellData,
+        }));
+
+        return { success: true, studentCode: student.studentCode };
+      });
+
+      // Wait for all saves to complete
+      await Promise.all(savePromises);
+
+      toast.success("Bulk data saved successfully for all students");
+      setIsBulkModalOpen(false);
+
+      // Reset the bulk grade after saving
+      setBulkGrade({
+        value: 0,
+        description: "",
+        date: new Date().toISOString(),
+        totalPoints: 20,
+      });
+
+      // Reset the bulk assessment after saving
+      setBulkAssessment({
+        title: "",
+        value: "",
+        date: new Date().toISOString(),
+      });
+
+      // Reload the cell data after saving
+      if (selectedOption) {
+        // Fetch data from API again
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: classDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to reload cell data");
+        }
+
+        const data = await response.json();
+
+        // Convert array of cell data to a dictionary for easier access
+        const cellsDataMap: Record<string, CellData> = {};
+        data.forEach((cell: CellData) => {
+          const key = formatCellKeyFromDB(cell);
+          cellsDataMap[key] = {
+            ...cell,
+            // Ensure these properties exist with defaults if they don't
+            grades: cell.grades || [],
+            presenceStatus: cell.presenceStatus || "present",
+            note: cell.note || "",
+            descriptiveStatus: cell.descriptiveStatus || "",
+            assessments: cell.assessments || [],
+          };
+        });
+
+        setCellsData(cellsDataMap);
+      }
+    } catch (error) {
+      console.error("Error saving bulk data:", error);
+      toast.error("Failed to save bulk data for all students");
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection */}
@@ -1445,12 +1650,19 @@ const ClassSheet = ({
                   <th
                     key={index}
                     className={`px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 text-sm whitespace-normal ${
-                      col.day === "monthly" ? "bg-purple-600" : ""
+                      col.day === "monthly"
+                        ? "bg-purple-600"
+                        : "cursor-pointer hover:bg-blue-600"
                     }`}
+                    onClick={() =>
+                      col.day !== "monthly" && handleColumnHeaderClick(col)
+                    }
                   >
                     {col.day === "monthly"
                       ? `نمره ماهانه ${col.formattedDate}`
-                      : `${col.day}-زنگ ${col.timeSlot} (${col.formattedDate})`}
+                      : `${col.day}-زنگ ${col.timeSlot} (${
+                          col.formattedDate
+                        }) ${col.day !== "monthly" ? "➕" : ""}`}
                   </th>
                 ))
               ) : (
@@ -2618,6 +2830,230 @@ const ClassSheet = ({
           <DialogFooter className="sm:justify-start">
             <Button type="button" onClick={() => setIsStudentReportOpen(false)}>
               بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Add Modal */}
+      <Dialog open={isBulkModalOpen} onOpenChange={setIsBulkModalOpen}>
+        <DialogContent className="max-w-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              وارد کردن دسته جمعی{" "}
+              {selectedColumn && (
+                <>
+                  برای تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 gap-6 mt-4">
+            {/* Presence Status */}
+            <div>
+              <Label htmlFor="bulkPresenceStatus" className="block mb-2">
+                وضعیت حضور (همه دانش آموزان)
+              </Label>
+              <Select
+                value={bulkPresenceStatus}
+                onValueChange={(value) =>
+                  setBulkPresenceStatus(value as PresenceStatus)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="انتخاب وضعیت حضور" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">حاضر</SelectItem>
+                  <SelectItem value="absent">غایب</SelectItem>
+                  <SelectItem value="late">با تاخیر</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Descriptive Status */}
+            <div>
+              <Label htmlFor="bulkDescriptiveStatus" className="block mb-2">
+                وضعیت توصیفی (همه دانش آموزان)
+              </Label>
+              <Input
+                id="bulkDescriptiveStatus"
+                value={bulkDescriptiveStatus}
+                onChange={(e) => setBulkDescriptiveStatus(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Bulk Grade */}
+            <div className="border p-4 rounded-md bg-blue-50">
+              <h3 className="font-bold mb-3">
+                افزودن نمره برای همه دانش آموزان
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bulkGradeValue" className="block mb-2">
+                    مقدار نمره
+                  </Label>
+                  <Input
+                    id="bulkGradeValue"
+                    type="number"
+                    value={bulkGrade.value}
+                    onChange={(e) =>
+                      setBulkGrade((prev) => ({
+                        ...prev,
+                        value: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bulkGradeTotalPoints" className="block mb-2">
+                    از چند نمره
+                  </Label>
+                  <Input
+                    id="bulkGradeTotalPoints"
+                    type="number"
+                    value={bulkGrade.totalPoints}
+                    onChange={(e) =>
+                      setBulkGrade((prev) => ({
+                        ...prev,
+                        totalPoints: parseFloat(e.target.value) || 20,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="bulkGradeDescription" className="block mb-2">
+                    توضیحات نمره (اختیاری)
+                  </Label>
+                  <Input
+                    id="bulkGradeDescription"
+                    value={bulkGrade.description}
+                    onChange={(e) =>
+                      setBulkGrade((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  onClick={handleAddBulkGrade}
+                  className="w-full"
+                >
+                  آماده‌سازی نمره برای همه دانش آموزان
+                </Button>
+              </div>
+            </div>
+
+            {/* Bulk Assessment */}
+            <div className="border p-4 rounded-md bg-green-50">
+              <h3 className="font-bold mb-3">
+                افزودن ارزیابی برای همه دانش آموزان
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bulkAssessmentTitle" className="block mb-2">
+                    عنوان ارزیابی
+                  </Label>
+                  <Select
+                    value={bulkAssessment.title}
+                    onValueChange={(value) =>
+                      setBulkAssessment((prev) => ({ ...prev, title: value }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="انتخاب عنوان ارزیابی" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSESSMENT_TITLES.map((title, idx) => (
+                        <SelectItem key={idx} value={title}>
+                          {title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="bulkAssessmentValue" className="block mb-2">
+                    مقدار ارزیابی
+                  </Label>
+                  <Select
+                    value={bulkAssessment.value}
+                    onValueChange={(value) =>
+                      setBulkAssessment((prev) => ({ ...prev, value }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="انتخاب مقدار ارزیابی" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSESSMENT_VALUES.map((entry, index) => (
+                        <SelectItem key={index} value={entry.value}>
+                          {entry.value}{" "}
+                          {entry.weight !== 0 && (
+                            <span>
+                              ({entry.weight > 0 ? "+" : ""}
+                              {entry.weight})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  onClick={handleAddBulkAssessment}
+                  className="w-full"
+                >
+                  ثبت ارزیابی برای همه دانش آموزان
+                </Button>
+              </div>
+            </div>
+
+            {/* Note */}
+            <div>
+              <Label htmlFor="bulkNote" className="block mb-2">
+                یادداشت (برای همه دانش آموزان)
+              </Label>
+              <Textarea
+                id="bulkNote"
+                value={bulkNote}
+                onChange={(e) => setBulkNote(e.target.value)}
+                className="min-h-[100px] w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBulkModalOpen(false)}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={handleBulkSave}
+              disabled={isBulkLoading}
+              className="mr-2"
+            >
+              {isBulkLoading ? "در حال ذخیره..." : "ذخیره برای همه دانش آموزان"}
             </Button>
           </DialogFooter>
         </DialogContent>
