@@ -136,7 +136,7 @@ type CellData = {
   timeSlot: string;
   note: string;
   grades: GradeEntry[];
-  presenceStatus: PresenceStatus;
+  presenceStatus: PresenceStatus | null;
   descriptiveStatus?: string;
   assessments?: AssessmentEntry[]; // New field for assessment pairs
 };
@@ -493,7 +493,7 @@ const ClassSheet = ({
             ...cell,
             // Ensure these properties exist with defaults if they don't
             grades: cell.grades || [],
-            presenceStatus: cell.presenceStatus || "present",
+            presenceStatus: cell.presenceStatus || null,
             note: cell.note || "",
             descriptiveStatus: cell.descriptiveStatus || "",
             assessments: cell.assessments || [],
@@ -720,9 +720,6 @@ const ClassSheet = ({
       // Use the column's date with consistent formatting
       const formattedDate = column.date.toISOString().split("T")[0];
 
-      // Ensure presence status is a valid value
-      const validPresenceStatus: PresenceStatus = presenceStatus || "present";
-
       const cellData = {
         classCode: classDocument.data.classCode,
         studentCode: selectedCell.studentCode,
@@ -733,7 +730,7 @@ const ClassSheet = ({
         timeSlot: column.timeSlot, // Ensure timeSlot from original column is used
         note: noteText,
         grades: grades,
-        presenceStatus: validPresenceStatus, // Use the validated presence status
+        presenceStatus: presenceStatus || null, // Don't default to present
         descriptiveStatus: descriptiveStatus,
         assessments: assessments,
       };
@@ -1053,12 +1050,14 @@ const ClassSheet = ({
       present: 0,
       absent: 0,
       late: 0,
+      unset: 0,
     };
 
     monthCells.forEach((cell) => {
       if (cell.presenceStatus === "present") attendanceSummary.present++;
       else if (cell.presenceStatus === "absent") attendanceSummary.absent++;
       else if (cell.presenceStatus === "late") attendanceSummary.late++;
+      else attendanceSummary.unset++;
     });
 
     // Get all grades for the month
@@ -1416,10 +1415,6 @@ const ClassSheet = ({
         // Ensure consistent date format for saving
         const formattedDate = selectedColumn.date.toISOString().split("T")[0];
 
-        // Ensure presence status is a valid value
-        const validPresenceStatus: PresenceStatus =
-          bulkPresenceStatus || "present";
-
         // Prepare cell data with bulk values
         const cellData = {
           classCode: classDocument.data.classCode,
@@ -1431,7 +1426,7 @@ const ClassSheet = ({
           timeSlot: selectedColumn.timeSlot, // Ensure timeSlot from original column is used
           note: bulkNote,
           grades: existingCell?.grades || [],
-          presenceStatus: validPresenceStatus, // Use the validated presence status
+          presenceStatus: bulkPresenceStatus || null, // Don't default to present
           descriptiveStatus: bulkDescriptiveStatus,
           assessments: existingCell?.assessments || [],
         };
@@ -1531,7 +1526,7 @@ const ClassSheet = ({
             ...cell,
             // Ensure these properties exist with defaults if they don't
             grades: cell.grades || [],
-            presenceStatus: cell.presenceStatus || "present",
+            presenceStatus: cell.presenceStatus || null,
             note: cell.note || "",
             descriptiveStatus: cell.descriptiveStatus || "",
             assessments: cell.assessments || [],
@@ -1952,7 +1947,7 @@ const ClassSheet = ({
       {/* Note Input Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
-          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
           dir="rtl"
         >
           <DialogHeader>

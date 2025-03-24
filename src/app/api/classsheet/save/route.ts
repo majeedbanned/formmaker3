@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         $set: {
           note,
           grades: grades || [],
-          presenceStatus: presenceStatus || "present",
+          presenceStatus,
           descriptiveStatus: descriptiveStatus || "",
           assessments: assessments || [],
           updatedAt: new Date(),
