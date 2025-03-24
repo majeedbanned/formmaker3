@@ -1546,10 +1546,10 @@ const ClassSheet = ({
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection */}
-      <div className="mb-6">
+      <div className="mb-6 bg-white rounded-xl shadow-sm p-6">
         <label
           htmlFor="course-select"
-          className="block mb-2 text-lg font-medium text-gray-700"
+          className="block mb-3 text-lg font-medium text-gray-700"
         >
           انتخاب معلم-درس:
         </label>
@@ -1557,7 +1557,7 @@ const ClassSheet = ({
           id="course-select"
           value={selectedOption?.value}
           onChange={handleSelectChange}
-          className="w-full p-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
         >
           {courseOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1568,16 +1568,28 @@ const ClassSheet = ({
       </div>
 
       {/* Date Range and Navigation */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mb-6 bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-5">
           <button
             onClick={() => navigateTwoWeeks("backward")}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors"
+            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors flex items-center"
           >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-1.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
             دو هفته قبل
           </button>
 
-          <div className="text-center text-lg font-medium">
+          <div className="text-center text-lg font-medium px-4 py-2 bg-gray-50 rounded-lg">
             {formatJalaliDate(
               startDate instanceof Date
                 ? startDate
@@ -1591,17 +1603,29 @@ const ClassSheet = ({
 
           <button
             onClick={() => navigateTwoWeeks("forward")}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors"
+            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors flex items-center"
           >
             دو هفته بعد
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-1.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <label
               htmlFor="start-date"
-              className="block mb-2 text-lg font-medium text-gray-700"
+              className="block mb-3 text-lg font-medium text-gray-700"
             >
               تاریخ شروع:
             </label>
@@ -1613,14 +1637,14 @@ const ClassSheet = ({
                 setStartDate(date);
               }}
               format="YYYY/MM/DD"
-              className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="w-full rounded-lg border border-gray-200 bg-background px-4 py-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
               calendarPosition="bottom-right"
             />
           </div>
           <div>
             <label
               htmlFor="end-date"
-              className="block mb-2 text-lg font-medium text-gray-700"
+              className="block mb-3 text-lg font-medium text-gray-700"
             >
               تاریخ پایان:
             </label>
@@ -1632,7 +1656,7 @@ const ClassSheet = ({
                 setEndDate(date);
               }}
               format="YYYY/MM/DD"
-              className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="w-full rounded-lg border border-gray-200 bg-background px-4 py-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
               calendarPosition="bottom-right"
             />
           </div>
@@ -1640,35 +1664,48 @@ const ClassSheet = ({
       </div>
 
       {/* Dynamic Schedule Sheet */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 shadow rounded-lg table-fixed">
-          <thead className="bg-blue-500 text-white">
+      <div className="bg-white rounded-xl shadow-sm p-3 overflow-x-auto">
+        <table className="min-w-full bg-white border-collapse rounded-lg overflow-hidden">
+          <thead>
             <tr>
-              <th className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-blue-600">
+              <th className="sticky right-0 z-20 px-4 py-4 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-blue-600 text-white font-bold text-sm shadow-sm">
                 نام دانش‌آموز
               </th>
               {allColumns.length > 0 ? (
                 allColumns.map((col, index) => (
                   <th
                     key={index}
-                    className={`px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 text-sm whitespace-normal ${
+                    className={`px-4 py-4 w-[150px] min-w-[150px] h-14 border-b border-gray-200 text-sm whitespace-normal font-medium transition-colors ${
                       col.day === "monthly"
-                        ? "bg-purple-600"
-                        : "cursor-pointer hover:bg-blue-600"
+                        ? "bg-purple-600 text-white"
+                        : "bg-blue-500 text-white cursor-pointer hover:bg-blue-600"
                     }`}
                     onClick={() =>
                       col.day !== "monthly" && handleColumnHeaderClick(col)
                     }
                   >
-                    {col.day === "monthly"
-                      ? `نمره ماهانه ${col.formattedDate}`
-                      : `${col.day}-زنگ ${col.timeSlot} (${
-                          col.formattedDate
-                        }) ${col.day !== "monthly" ? "➕" : ""}`}
+                    <div className="flex flex-col items-center space-y-1">
+                      {col.day === "monthly" ? (
+                        <>
+                          <span className="font-bold">نمره ماهانه</span>
+                          <span>{col.formattedDate}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {col.day} - زنگ {col.timeSlot}
+                          </span>
+                          <span className="text-xs opacity-90">
+                            {col.formattedDate}
+                          </span>
+                          <span className="text-xl mt-1">➕</span>
+                        </>
+                      )}
+                    </div>
                   </th>
                 ))
               ) : (
-                <th className="px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300">
+                <th className="px-4 py-3 w-[150px] min-w-[150px] h-14 border-b border-gray-200 bg-gray-100 text-center">
                   لطفاً تاریخ شروع و پایان را وارد کنید
                 </th>
               )}
@@ -1678,14 +1715,16 @@ const ClassSheet = ({
             {students.map((student) => {
               const fullName = `${student.studentName} ${student.studentlname}`;
               return (
-                <tr key={student.studentCode} className="hover:bg-gray-50">
+                <tr key={student.studentCode}>
                   <td
-                    className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border border-gray-300 bg-white cursor-pointer hover:bg-blue-50"
+                    className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-white cursor-pointer hover:bg-blue-50 shadow-sm"
                     onClick={() => handleStudentNameClick(student)}
                   >
                     <div className="flex items-center justify-between">
-                      <span>{fullName}</span>
-                      <span className="text-blue-500 text-xs">(گزارش)</span>
+                      <span className="font-medium">{fullName}</span>
+                      <span className="text-blue-500 text-xs bg-blue-50 px-2 py-0.5 rounded">
+                        گزارش
+                      </span>
                     </div>
                   </td>
                   {allColumns.map((col, index) => {
@@ -1720,7 +1759,7 @@ const ClassSheet = ({
                       );
                       const hasGrades = allGrades.length > 0;
                       let monthlyGrade = "-";
-                      let gradeColor = "bg-gray-300";
+                      let gradeColor = "bg-gray-200 text-gray-700";
                       let assessmentAdjustment = 0;
 
                       if (hasGrades) {
@@ -1772,7 +1811,7 @@ const ClassSheet = ({
                       return (
                         <td
                           key={`monthly-grade-${student.studentCode}-${index}`}
-                          className="px-2 py-2 w-[150px] min-w-[150px] text-center border border-gray-300 bg-purple-50 cursor-pointer hover:bg-purple-100"
+                          className="px-3 py-3 w-[150px] min-w-[150px] text-center border-b border-gray-200 bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors hover:shadow-md hover:border-purple-300"
                           onClick={() =>
                             handleMonthlyCellClick(
                               student,
@@ -1782,22 +1821,30 @@ const ClassSheet = ({
                           }
                         >
                           <div className="flex flex-col items-center">
-                            <div className="text-sm font-bold mb-1">
+                            <div className="text-sm font-medium mb-2 text-purple-800">
                               نمره ماهانه
                             </div>
                             <Badge
-                              className={`text-sm font-bold ${gradeColor}`}
+                              className={`text-base font-bold px-3 py-1 ${gradeColor}`}
                             >
                               {monthlyGrade}
                             </Badge>
-                            <div className="text-xs mt-1 text-gray-500">
-                              تعداد نمرات: {allGrades.length}
+                            <div className="text-xs mt-2 text-gray-500">
+                              {allGrades.length} نمره
                             </div>
                             {assessmentAdjustment !== 0 && (
-                              <div className="text-xs mt-1 text-gray-500">
-                                تعدیل ارزیابی‌ها:{" "}
-                                {assessmentAdjustment > 0 ? "+" : ""}
-                                {assessmentAdjustment}
+                              <div className="text-xs mt-1 text-gray-500 flex items-center">
+                                <span>تعدیل:</span>
+                                <Badge
+                                  className={`mr-1 px-1.5 ${
+                                    assessmentAdjustment > 0
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                  }`}
+                                >
+                                  {assessmentAdjustment > 0 ? "+" : ""}
+                                  {assessmentAdjustment}
+                                </Badge>
                               </div>
                             )}
                           </div>
@@ -1809,26 +1856,43 @@ const ClassSheet = ({
                     const cellData = getCellContent(student.studentCode, col);
 
                     // Prepare cell display content
-                    let displayContent: React.ReactNode = "*";
+                    let displayContent: React.ReactNode = (
+                      <div className="flex items-center justify-center h-full w-full opacity-30">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                      </div>
+                    );
 
                     if (cellData) {
                       // Prepare the cell content
                       displayContent = (
-                        <div className="flex flex-col items-center gap-1 h-full w-full">
+                        <div className="flex flex-col items-center gap-1.5 h-full w-full">
                           {/* Presence Status Badge */}
                           <div className="w-full text-center">
                             {cellData.presenceStatus === "present" && (
-                              <Badge className="bg-green-500 text-white">
+                              <Badge className="bg-green-100 text-green-800 font-medium border border-green-200 shadow-sm">
                                 حاضر
                               </Badge>
                             )}
                             {cellData.presenceStatus === "absent" && (
-                              <Badge className="bg-red-500 text-white">
+                              <Badge className="bg-red-100 text-red-800 font-medium border border-red-200 shadow-sm">
                                 غایب
                               </Badge>
                             )}
                             {cellData.presenceStatus === "late" && (
-                              <Badge className="bg-amber-500 text-white">
+                              <Badge className="bg-amber-100 text-amber-800 font-medium border border-amber-200 shadow-sm">
                                 تاخیر
                               </Badge>
                             )}
@@ -1837,7 +1901,7 @@ const ClassSheet = ({
                           {/* Descriptive Status Badge (if any) */}
                           {cellData.descriptiveStatus && (
                             <div className="w-full text-center mt-1">
-                              <Badge className="bg-purple-500 text-white">
+                              <Badge className="bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
                                 {cellData.descriptiveStatus}
                               </Badge>
                             </div>
@@ -1855,7 +1919,7 @@ const ClassSheet = ({
                                         className="relative group"
                                         title={`${assessment.title}: ${assessment.value}`}
                                       >
-                                        <Badge className="bg-blue-500 text-white">
+                                        <Badge className="bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
                                           {assessment.title.substring(0, 2)}
                                         </Badge>
                                         <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
@@ -1890,12 +1954,13 @@ const ClassSheet = ({
                                     >
                                       <Badge
                                         className={`
+                                          border shadow-sm
                                           ${
                                             percentage >= 80
-                                              ? "bg-green-600"
+                                              ? "bg-green-100 text-green-800 border-green-200"
                                               : percentage >= 60
-                                              ? "bg-amber-500"
-                                              : "bg-red-600"
+                                              ? "bg-amber-100 text-amber-800 border-amber-200"
+                                              : "bg-red-100 text-red-800 border-red-200"
                                           }
                                         `}
                                       >
@@ -1915,7 +1980,7 @@ const ClassSheet = ({
 
                           {/* Note Text (if any) */}
                           {cellData.note && cellData.note.trim() !== "" && (
-                            <div className="text-xs truncate mt-1 text-gray-700 max-w-full">
+                            <div className="text-xs truncate mt-1.5 text-gray-700 max-w-full bg-gray-50 px-2 py-0.5 rounded-sm border border-gray-100 w-full text-center">
                               {cellData.note.length > 30
                                 ? `${cellData.note.substring(0, 30)}...`
                                 : cellData.note}
@@ -1928,7 +1993,7 @@ const ClassSheet = ({
                     return (
                       <td
                         key={`cell-${student.studentCode}-${index}`}
-                        className="px-2 py-2 w-[150px] min-w-[150px] h-14 text-center border border-gray-300 cursor-pointer hover:bg-gray-200 overflow-hidden"
+                        className="px-2 py-2 w-[150px] min-w-[150px] h-14 text-center border border-gray-200 cursor-pointer transition-all overflow-hidden hover:bg-blue-50 hover:shadow-md hover:border-blue-200"
                         onClick={() =>
                           handleCellClick(student.studentCode, index, col)
                         }
