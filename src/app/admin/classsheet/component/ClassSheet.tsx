@@ -1988,120 +1988,124 @@ const ClassSheet = ({
 
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
-      {/* Teacher-Course Selection */}
-      <div className="mb-6 bg-white rounded-xl shadow-sm p-6">
-        <label
-          htmlFor="course-select"
-          className="block mb-3 text-lg font-medium text-gray-700"
-        >
-          انتخاب معلم-درس:
-        </label>
-        <select
-          id="course-select"
-          value={selectedOption?.value}
-          onChange={handleSelectChange}
-          className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-        >
-          {courseOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Date Range and Navigation */}
-      <div className="mb-6 bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <button
-            onClick={() => navigateTwoWeeks("backward")}
-            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors flex items-center"
+      {/* Teacher-Course Selection and Date Range in a single row */}
+      <div className="mb-6 bg-white rounded-xl shadow-sm p-4 flex flex-col md:flex-row md:items-center md:space-x-4 md:space-x-reverse space-y-4 md:space-y-0">
+        {/* Teacher-Course Selection */}
+        <div className="md:w-1/3">
+          <label
+            htmlFor="course-select"
+            className="block mb-1 text-sm font-medium text-gray-700"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 ml-1.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-            دو هفته قبل
-          </button>
-
-          <div className="text-center text-lg font-medium px-4 py-2 bg-gray-50 rounded-lg">
-            {formatJalaliDate(
-              startDate instanceof Date
-                ? startDate
-                : new Date(startDate as string)
-            )}{" "}
-            تا{" "}
-            {formatJalaliDate(
-              endDate instanceof Date ? endDate : new Date(endDate as string)
-            )}
-          </div>
-
-          <button
-            onClick={() => navigateTwoWeeks("forward")}
-            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors flex items-center"
+            انتخاب معلم-درس:
+          </label>
+          <select
+            id="course-select"
+            value={selectedOption?.value}
+            onChange={handleSelectChange}
+            className="w-full p-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
           >
-            دو هفته بعد
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-1.5"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+            {courseOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label
-              htmlFor="start-date"
-              className="block mb-3 text-lg font-medium text-gray-700"
-            >
-              تاریخ شروع:
-            </label>
-            <DatePicker
-              calendar={persian}
-              locale={persian_fa}
-              value={startDate}
-              onChange={(date) => {
-                setStartDate(date);
-              }}
-              format="YYYY/MM/DD"
-              className="w-full rounded-lg border border-gray-200 bg-background px-4 py-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-              calendarPosition="bottom-right"
-            />
+        {/* Date Range Section */}
+        <div className="md:w-2/3 flex flex-col">
+          <div className="flex items-center mb-2 justify-between">
+            <span className="text-sm font-medium text-gray-700">تاریخ:</span>
+            <div className="flex space-x-2 space-x-reverse items-center">
+              <button
+                onClick={() => navigateTwoWeeks("backward")}
+                className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center text-xs"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                دو هفته قبل
+              </button>
+
+              <div className="text-center text-sm font-medium px-3 py-1.5 bg-gray-50 rounded-lg">
+                {formatJalaliDate(
+                  startDate instanceof Date
+                    ? startDate
+                    : new Date(startDate as string)
+                )}{" "}
+                تا{" "}
+                {formatJalaliDate(
+                  endDate instanceof Date
+                    ? endDate
+                    : new Date(endDate as string)
+                )}
+              </div>
+
+              <button
+                onClick={() => navigateTwoWeeks("forward")}
+                className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center text-xs"
+              >
+                دو هفته بعد
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
-          <div>
-            <label
-              htmlFor="end-date"
-              className="block mb-3 text-lg font-medium text-gray-700"
-            >
-              تاریخ پایان:
-            </label>
-            <DatePicker
-              calendar={persian}
-              locale={persian_fa}
-              value={endDate}
-              onChange={(date) => {
-                setEndDate(date);
-              }}
-              format="YYYY/MM/DD"
-              className="w-full rounded-lg border border-gray-200 bg-background px-4 py-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-              calendarPosition="bottom-right"
-            />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative">
+              <DatePicker
+                calendar={persian}
+                locale={persian_fa}
+                value={startDate}
+                onChange={(date) => {
+                  setStartDate(date);
+                }}
+                format="YYYY/MM/DD"
+                className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+                calendarPosition="bottom-right"
+                placeholder="تاریخ شروع"
+              />
+              <span className="absolute right-3 top-1.5 text-xs text-gray-500">
+                تاریخ شروع
+              </span>
+            </div>
+            <div className="relative">
+              <DatePicker
+                calendar={persian}
+                locale={persian_fa}
+                value={endDate}
+                onChange={(date) => {
+                  setEndDate(date);
+                }}
+                format="YYYY/MM/DD"
+                className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+                calendarPosition="bottom-right"
+                placeholder="تاریخ پایان"
+              />
+              <span className="absolute right-3 top-1.5 text-xs text-gray-500">
+                تاریخ پایان
+              </span>
+            </div>
           </div>
         </div>
       </div>
