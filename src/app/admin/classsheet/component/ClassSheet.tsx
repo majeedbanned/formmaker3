@@ -256,9 +256,9 @@ function isLastDayOfPersianMonth(date: Date): boolean {
 }
 
 const ClassSheet = ({
-  schoolCode = "2295566177",
-  teacherCode = "102",
-  courseCode = "",
+  schoolCode,
+  teacherCode,
+  courseCode,
   classDocuments,
 }: {
   schoolCode?: string;
@@ -802,9 +802,9 @@ const ClassSheet = ({
       6: "شنبه",
       0: "یکشنبه",
       1: "دوشنبه",
-      2: "سه‌شنبه",
+      2: "سه شنبه",
       3: "چهارشنبه",
-      4: "پنج‌شنبه",
+      4: "پنج شنبه",
       5: "جمعه",
     };
     return mapping[date.getDay()];

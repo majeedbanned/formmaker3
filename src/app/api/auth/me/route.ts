@@ -58,12 +58,12 @@ export async function GET() {
     console.log("Auth token found in cookies");
 
     const payload = await verifyJWT(token) as AuthPayload;
-    console.log("JWT verified successfully. Payload:", {
-      userId: payload.userId,
-      userType: payload.userType,
-      schoolCode: payload.schoolCode,
-      username: payload.username
-    });
+    // console.log("JWT verified successfully. Payload:", {
+    //   userId: payload.userId,
+    //   userType: payload.userType,
+    //   schoolCode: payload.schoolCode,
+    //   username: payload.username
+    // });
     
     const user: User = {
       id: payload.userId,
