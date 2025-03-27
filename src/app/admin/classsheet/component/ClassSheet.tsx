@@ -21,6 +21,8 @@ import {
   PlusIcon,
   XMarkIcon,
   PlusCircleIcon,
+  ChatBubbleLeftIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import {
   Select,
@@ -465,6 +467,17 @@ const ClassSheet = ({
   const [newEventDescription, setNewEventDescription] = useState("");
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+
+  // New state to track columns with comments or events
+  const [columnsWithComments, setColumnsWithComments] = useState<Set<string>>(
+    new Set()
+  );
+  const [columnsWithEvents, setColumnsWithEvents] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Add a state to track if comments and events have been fetched
+  const [hasFetchedData, setHasFetchedData] = useState(false);
 
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
@@ -1528,6 +1541,24 @@ const ClassSheet = ({
       }
 
       toast.success("یادداشت با موفقیت ذخیره شد");
+
+      // Update columnsWithComments state
+      if (teacherComment.trim()) {
+        // Add this column to the set if there's a comment
+        setColumnsWithComments((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(getColumnKey(selectedColumn));
+          return newSet;
+        });
+      } else {
+        // Remove this column from the set if comment is empty
+        setColumnsWithComments((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(getColumnKey(selectedColumn));
+          return newSet;
+        });
+      }
+
       setIsTeacherCommentModalOpen(false);
     } catch (error) {
       console.error("Error saving teacher comment:", error);
@@ -1617,6 +1648,13 @@ const ClassSheet = ({
       // Update local events state
       setEvents([...events, savedEvent]);
 
+      // Update columnsWithEvents state
+      setColumnsWithEvents((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(getColumnKey(selectedColumn));
+        return newSet;
+      });
+
       // Reset form
       setNewEventTitle("");
       setNewEventDescription("");
@@ -1642,7 +1680,17 @@ const ClassSheet = ({
       }
 
       // Update local events state
-      setEvents(events.filter((event) => event._id !== eventId));
+      const updatedEvents = events.filter((event) => event._id !== eventId);
+      setEvents(updatedEvents);
+
+      // If no events left for this column, remove it from the set
+      if (selectedColumn && updatedEvents.length === 0) {
+        setColumnsWithEvents((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(getColumnKey(selectedColumn));
+          return newSet;
+        });
+      }
 
       toast.success("رویداد با موفقیت حذف شد");
     } catch (error) {
@@ -1838,6 +1886,84 @@ const ClassSheet = ({
     }
   };
 
+  // Function to generate a unique key for column identification
+  const getColumnKey = (column: Column) => {
+    // Format the date as YYYY-MM-DD to ensure consistency
+    const dateStr = column.date.toISOString().split("T")[0];
+    return `${dateStr}_${column.timeSlot}`;
+  };
+
+  // Function to check for teacher comments and events on initial load
+  const fetchCommentsAndEvents = async () => {
+    if (!selectedOption || !allColumns.length) return;
+
+    try {
+      const commentColumns = new Set<string>();
+      const eventColumns = new Set<string>();
+
+      // Only check columns that are not monthly
+      const columnsToCheck = allColumns.filter((col) => col.day !== "monthly");
+
+      // Process columns in batches to avoid too many concurrent requests
+      const batchSize = 5;
+      for (let i = 0; i < columnsToCheck.length; i += batchSize) {
+        const batch = columnsToCheck.slice(i, i + batchSize);
+
+        // Create promises for all comment and event fetches
+        const commentPromises = batch.map((column) => {
+          const formattedDate = column.date.toISOString().split("T")[0];
+          return fetch(
+            `/api/teacherComment?schoolCode=${schoolCode}&teacherCode=${selectedOption.teacherCode}&courseCode=${selectedOption.courseCode}&classCode=${selectedClassDocument.data.classCode}&date=${formattedDate}&timeSlot=${column.timeSlot}`
+          ).then((res) => res.json());
+        });
+
+        const eventPromises = batch.map((column) => {
+          const formattedDate = column.date.toISOString().split("T")[0];
+          return fetch(
+            `/api/events?schoolCode=${schoolCode}&teacherCode=${selectedOption.teacherCode}&courseCode=${selectedOption.courseCode}&classCode=${selectedClassDocument.data.classCode}&date=${formattedDate}&timeSlot=${column.timeSlot}`
+          ).then((res) => res.json());
+        });
+
+        // Wait for all promises in the batch
+        const commentResults = await Promise.all(commentPromises);
+        const eventResults = await Promise.all(eventPromises);
+
+        // Process results and update sets
+        commentResults.forEach((result, index) => {
+          if (result && result.comment) {
+            commentColumns.add(getColumnKey(batch[index]));
+          }
+        });
+
+        eventResults.forEach((result, index) => {
+          if (result && Array.isArray(result) && result.length > 0) {
+            eventColumns.add(getColumnKey(batch[index]));
+          }
+        });
+      }
+
+      // Update state with found columns
+      setColumnsWithComments(commentColumns);
+      setColumnsWithEvents(eventColumns);
+      setHasFetchedData(true);
+    } catch (error) {
+      console.error("Error fetching comments and events:", error);
+    }
+  };
+
+  // Call fetchCommentsAndEvents when course option changes or allColumns is populated
+  useEffect(() => {
+    if (selectedOption && allColumns.length > 0 && !hasFetchedData) {
+      fetchCommentsAndEvents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOption, allColumns.length, hasFetchedData]);
+
+  // Reset hasFetchedData when selectedOption changes
+  useEffect(() => {
+    setHasFetchedData(false);
+  }, [selectedOption]);
+
   return (
     <div className="p-6 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection */}
@@ -1987,9 +2113,27 @@ const ClassSheet = ({
                         </>
                       ) : (
                         <>
-                          <span>
-                            {col.day} - زنگ {col.timeSlot}
-                          </span>
+                          <div className="flex items-center">
+                            <span>
+                              {col.day} - زنگ {col.timeSlot}
+                            </span>
+
+                            {/* Show comment and event icons if they exist */}
+                            <div className="flex ml-2 space-x-1">
+                              {columnsWithComments.has(getColumnKey(col)) && (
+                                <ChatBubbleLeftIcon
+                                  className="h-4 w-4 text-yellow-300"
+                                  title="یادداشت روزانه معلم"
+                                />
+                              )}
+                              {columnsWithEvents.has(getColumnKey(col)) && (
+                                <CalendarIcon
+                                  className="h-4 w-4 text-yellow-300"
+                                  title="رویداد"
+                                />
+                              )}
+                            </div>
+                          </div>
                           <span className="text-xs opacity-90">
                             {col.formattedDate}
                           </span>
