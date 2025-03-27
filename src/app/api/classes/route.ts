@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
 
     // Connect to the database
-    const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/formmaker";
+    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
     await connectToDatabase(MONGODB_URI);
 
     // Get the classes model
@@ -43,153 +43,12 @@ export async function GET(request: NextRequest) {
     
     
     console.log(`Found ${classes.length} classes for teacher ${teacherCode} in school ${schoolCode}`);
- console.log(( classes))
+ //console.log(( classes))
 
  const responseData = classes.map(classObj => ({ data: classObj.data }));
- console.log( responseData)
+ //console.log( responseData)
     // Return the classes
 
-const ttt=[
-  {
-    data: {
-      classCode: "232",
-      className: "دوم سیب",
-      major: "16000",
-      Grade: "11",
-      schoolCode: "2295566177",
-      teachers: [
-        {
-          teacherCode: "102",
-          courseCode: "11131",
-          weeklySchedule: [
-            { day: "سه‌شنبه", timeSlot: "9" },
-            { day: "دوشنبه", timeSlot: "9" },
-            { day: "دوشنبه", timeSlot: "10" },
-          ],
-          weeklySchedule_expanded: true,
-        },
-        {
-          teacherCode: "we",
-          courseCode: "11111",
-          weeklySchedule: [
-            { day: "شنبه", timeSlot: "8" },
-            { day: "پنج‌شنبه", timeSlot: "7" },
-          ],
-          weeklySchedule_expanded: true,
-        },
-        {
-          teacherCode: "102",
-          courseCode: "22222",
-          weeklySchedule: [
-            { day: "چهارشنبه", timeSlot: "11" },
-            { day: "پنج‌شنبه", timeSlot: "12" },
-          ],
-          weeklySchedule_expanded: true,
-        },
-      ],
-      teachers_expanded: true,
-      students: [
-        {
-          studentCode: 2295845241,
-          studentName: "رضا",
-          studentlname: "شیری",
-          phone: "9175231560",
-        },
-        {
-          studentCode: 2286655145,
-          studentName: "محمود",
-          studentlname: "قادری",
-          phone: "9120011451",
-        },
-        {
-          studentCode: 2295566177,
-          studentName: "نیما",
-          studentlname: "قاسمی",
-          phone: "9177204118",
-        },
-        {
-          studentCode: 2295566173,
-          studentName: "قاسم",
-          studentlname: "قاسمی",
-          phone: "9177204118",
-        },
-      ],
-    },
-  },
- 
-];
-
-
-const  schoolData = [
-  {
-    data: {
-      classCode: "232",
-      className: "دوم سیب",
-      major: "16000",
-      Grade: "11",
-      schoolCode: "2295566177",
-      teachers: [
-        {
-          teacherCode: "102",
-          courseCode: "11131",
-          weeklySchedule: [
-            { day: "سه شنبه", timeSlot: "9" },
-            { day: "دوشنبه", timeSlot: "9" },
-            { day: "دوشنبه", timeSlot: "10" }
-          ],
-          weeklySchedule_expanded: true
-        },
-        {
-          teacherCode: "we",
-          courseCode: "11111",
-          weeklySchedule: [
-            { day: "شنبه", timeSlot: "8" },
-            { day: "پنج شنبه", timeSlot: "7" }
-          ],
-          weeklySchedule_expanded: true
-        },
-        {
-          teacherCode: "102",
-          courseCode: "22222",
-          weeklySchedule: [
-            { day: "چهارشنبه", timeSlot: "11" },
-            { day: "پنج‌شنبه", timeSlot: "12" },
-          ],
-          weeklySchedule_expanded: true,
-        },
-      ],
-      teachers_expanded: true,
-      students: [
-        {
-          studentCode: 2295845241,
-          studentName: "رضا",
-          studentlname: "شیری",
-          phone: "9175231560",
-        },
-        {
-          studentCode: 2286655145,
-          studentName: "محمود",
-          studentlname: "قادری",
-          phone: "9120011451",
-        },
-        {
-          studentCode: 2295566177,
-          studentName: "نیما",
-          studentlname: "قاسمی",
-          phone: "9177204118",
-        },
-        {
-          studentCode: 2295566173,
-          studentName: "قاسم",
-          studentlname: "قاسمی",
-          phone: "9177204118",
-        },
-      ],
-     
-    }
-  },
- 
-];
 
 
 
