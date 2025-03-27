@@ -839,18 +839,40 @@ const ClassSheet = ({
 
   // Function to navigate dates forward or backward by two weeks
   const navigateTwoWeeks = (direction: "forward" | "backward") => {
-    const startDt =
-      startDate instanceof Date ? startDate : new Date(startDate as string);
-    const endDt =
-      endDate instanceof Date ? endDate : new Date(endDate as string);
+    if (!startDate || !endDate) return;
+
+    // Clone the dates to avoid mutating the state directly
+    let newStartDate: Date;
+    let newEndDate: Date;
+
+    // Handle both Date objects and Value objects from react-multi-date-picker
+    if (startDate instanceof Date) {
+      newStartDate = new Date(startDate);
+    } else if (typeof startDate === "string") {
+      newStartDate = new Date(startDate);
+    } else {
+      // Handle Value from react-multi-date-picker
+      const dateObj = startDate as unknown as { toDate: () => Date };
+      newStartDate = dateObj.toDate ? dateObj.toDate() : new Date();
+    }
+
+    if (endDate instanceof Date) {
+      newEndDate = new Date(endDate);
+    } else if (typeof endDate === "string") {
+      newEndDate = new Date(endDate);
+    } else {
+      // Handle Value from react-multi-date-picker
+      const dateObj = endDate as unknown as { toDate: () => Date };
+      newEndDate = dateObj.toDate ? dateObj.toDate() : new Date();
+    }
 
     const daysToAdjust = direction === "forward" ? 14 : -14;
 
-    startDt.setDate(startDt.getDate() + daysToAdjust);
-    endDt.setDate(endDt.getDate() + daysToAdjust);
+    newStartDate.setDate(newStartDate.getDate() + daysToAdjust);
+    newEndDate.setDate(newEndDate.getDate() + daysToAdjust);
 
-    setStartDate(startDt);
-    setEndDate(endDt);
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
   };
 
   // Helper: Map JavaScript's getDay() to Persian day names (week starting from "شنبه").
