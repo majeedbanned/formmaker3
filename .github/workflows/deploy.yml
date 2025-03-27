@@ -21,10 +21,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /var/www/formmaker3
-            git fetch origin
-            git reset --hard origin/master
-            git config user.name "majeedbanned"
-            git config user.email "majeed.ghasemi@gail.com"
+            # git fetch origin
+            # git reset --hard origin/master
+            # git config user.name "majeedbanned"
+            # git config user.email "majeed.ghasemi@gail.com"
             git pull origin master
             npm install
             npm run build
