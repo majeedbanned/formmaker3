@@ -255,6 +255,35 @@ function isLastDayOfPersianMonth(date: Date): boolean {
   return jalaliToday[1] !== jalaliTomorrow[1];
 }
 
+// Add new types for TeacherComment and Event
+type TeacherComment = {
+  _id?: string;
+  schoolCode: string;
+  teacherCode: string;
+  courseCode: string;
+  classCode: string;
+  date: string;
+  timeSlot: string;
+  comment: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type Event = {
+  _id?: string;
+  schoolCode: string;
+  teacherCode: string;
+  courseCode: string;
+  classCode: string;
+  date: string;
+  timeSlot: string;
+  title: string;
+  description: string;
+  persianDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 const ClassSheet = ({
   schoolCode,
   teacherCode,
@@ -419,6 +448,23 @@ const ClassSheet = ({
   });
   const [bulkNote, setBulkNote] = useState("");
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+
+  // New state for teacher comment
+  const [isTeacherCommentModalOpen, setIsTeacherCommentModalOpen] =
+    useState(false);
+  const [teacherComment, setTeacherComment] = useState("");
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const [existingComment, setExistingComment] = useState<TeacherComment | null>(
+    null
+  );
+
+  // New state for events
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDescription, setNewEventDescription] = useState("");
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   // Create a unique key for each cell
   const getCellKey = (studentCode: number, column: Column) => {
@@ -1312,29 +1358,297 @@ const ClassSheet = ({
 
   // Handle column header click for bulk add
   const handleColumnHeaderClick = (column: Column) => {
-    if (!selectedOption || column.day === "monthly") return;
+    if (!selectedOption) return;
 
-    // Reset bulk form fields
-    setBulkGrade({
-      value: 0,
-      description: "",
-      date: new Date().toISOString(),
-      totalPoints: 20,
-    });
-    setBulkPresenceStatus("");
-    setBulkDescriptiveStatus("");
-    setBulkAssessment({
-      title: "",
-      value: "",
-      date: new Date().toISOString(),
-    });
-    setBulkNote("");
-
-    // Set selected column
+    // Set selected column regardless of which modal will open
     setSelectedColumn(column);
 
-    // Open the bulk modal
-    setIsBulkModalOpen(true);
+    // For monthly columns, don't show action menu
+    if (column.day === "monthly") return;
+
+    // Show a custom menu with options
+    const menu = document.createElement("div");
+    menu.className =
+      "fixed bg-white shadow-lg rounded-md p-2 z-50 border flex flex-col";
+    menu.style.zIndex = "1000";
+
+    // Helper function to create menu items
+    const createMenuItem = (text: string, onClick: () => void) => {
+      const item = document.createElement("button");
+      item.className =
+        "px-4 py-2 hover:bg-gray-100 text-right w-full rounded-md transition-colors";
+      item.innerText = text;
+      item.onclick = (e) => {
+        e.preventDefault();
+        onClick();
+        document.body.removeChild(menu);
+      };
+      return item;
+    };
+
+    // Add menu options
+    menu.appendChild(
+      createMenuItem("وارد کردن دسته جمعی", () => {
+        // Reset bulk form fields
+        setBulkGrade({
+          value: 0,
+          description: "",
+          date: new Date().toISOString(),
+          totalPoints: 20,
+        });
+        setBulkPresenceStatus("");
+        setBulkDescriptiveStatus("");
+        setBulkAssessment({
+          title: "",
+          value: "",
+          date: new Date().toISOString(),
+        });
+        setBulkNote("");
+
+        // Open the bulk modal
+        setIsBulkModalOpen(true);
+      })
+    );
+
+    menu.appendChild(
+      createMenuItem("یادداشت روزانه معلم", () => {
+        // Load existing comment and open modal
+        fetchTeacherComment(column);
+      })
+    );
+
+    menu.appendChild(
+      createMenuItem("رویدادها", () => {
+        // Load events and open modal
+        fetchEvents(column);
+      })
+    );
+
+    // Position menu near the cursor
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) {
+        if (document.body.contains(menu)) {
+          document.body.removeChild(menu);
+        }
+        document.removeEventListener("click", handleClickOutside);
+      }
+    };
+
+    // Add to DOM and position it
+    document.body.appendChild(menu);
+
+    // Get the cursor position from the event (assuming it's available)
+    // If not, we could use the column header position in the UI as fallback
+    const event = window.event as MouseEvent;
+    if (event) {
+      menu.style.top = `${event.clientY + 10}px`;
+      menu.style.left = `${event.clientX}px`;
+    } else {
+      // Fallback position: center of viewport
+      menu.style.top = "50%";
+      menu.style.left = "50%";
+      menu.style.transform = "translate(-50%, -50%)";
+    }
+
+    // Remove menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener("click", handleClickOutside);
+    }, 0);
+  };
+
+  // Function to fetch teacher comment
+  const fetchTeacherComment = async (column: Column) => {
+    if (!selectedOption || !column) return;
+
+    try {
+      setIsSavingComment(true);
+
+      // Format date consistently
+      const formattedDate = column.date.toISOString().split("T")[0];
+
+      const response = await fetch(
+        `/api/teacherComment?schoolCode=${schoolCode}&teacherCode=${selectedOption.teacherCode}&courseCode=${selectedOption.courseCode}&classCode=${selectedClassDocument.data.classCode}&date=${formattedDate}&timeSlot=${column.timeSlot}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch teacher comment");
+      }
+
+      const data = await response.json();
+
+      if (data && data.comment) {
+        setExistingComment(data);
+        setTeacherComment(data.comment);
+      } else {
+        setExistingComment(null);
+        setTeacherComment("");
+      }
+
+      // Open modal
+      setIsTeacherCommentModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching teacher comment:", error);
+      toast.error("Failed to load teacher comment");
+    } finally {
+      setIsSavingComment(false);
+    }
+  };
+
+  // Function to save teacher comment
+  const handleSaveTeacherComment = async () => {
+    if (!selectedOption || !selectedColumn) return;
+
+    try {
+      setIsSavingComment(true);
+
+      // Format date consistently
+      const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+      const commentData = {
+        _id: existingComment?._id,
+        schoolCode,
+        teacherCode: selectedOption.teacherCode,
+        courseCode: selectedOption.courseCode,
+        classCode: selectedClassDocument.data.classCode,
+        date: formattedDate,
+        timeSlot: selectedColumn.timeSlot,
+        comment: teacherComment,
+      };
+
+      const response = await fetch("/api/teacherComment", {
+        method: existingComment ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(commentData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save teacher comment");
+      }
+
+      toast.success("یادداشت با موفقیت ذخیره شد");
+      setIsTeacherCommentModalOpen(false);
+    } catch (error) {
+      console.error("Error saving teacher comment:", error);
+      toast.error("Failed to save teacher comment");
+    } finally {
+      setIsSavingComment(false);
+    }
+  };
+
+  // Function to fetch events
+  const fetchEvents = async (column: Column) => {
+    if (!selectedOption || !column) return;
+
+    try {
+      setIsLoadingEvents(true);
+
+      // Format date consistently
+      const formattedDate = column.date.toISOString().split("T")[0];
+
+      const response = await fetch(
+        `/api/events?schoolCode=${schoolCode}&teacherCode=${selectedOption.teacherCode}&courseCode=${selectedOption.courseCode}&classCode=${selectedClassDocument.data.classCode}&date=${formattedDate}&timeSlot=${column.timeSlot}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+
+      const data = await response.json();
+
+      setEvents(data || []);
+
+      // Reset new event form
+      setNewEventTitle("");
+      setNewEventDescription("");
+
+      // Open modal
+      setIsEventModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      toast.error("Failed to load events");
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
+  // Function to save a new event
+  const handleAddEvent = async () => {
+    if (!selectedOption || !selectedColumn) return;
+
+    if (!newEventTitle.trim()) {
+      toast.error("عنوان رویداد الزامی است");
+      return;
+    }
+
+    try {
+      setIsSavingEvent(true);
+
+      // Format date consistently
+      const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+      const eventData = {
+        schoolCode,
+        teacherCode: selectedOption.teacherCode,
+        courseCode: selectedOption.courseCode,
+        classCode: selectedClassDocument.data.classCode,
+        date: formattedDate,
+        timeSlot: selectedColumn.timeSlot,
+        title: newEventTitle,
+        description: newEventDescription,
+        persianDate: formatJalaliDate(selectedColumn.date),
+      };
+
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add event");
+      }
+
+      const savedEvent = await response.json();
+
+      // Update local events state
+      setEvents([...events, savedEvent]);
+
+      // Reset form
+      setNewEventTitle("");
+      setNewEventDescription("");
+
+      toast.success("رویداد با موفقیت افزوده شد");
+    } catch (error) {
+      console.error("Error adding event:", error);
+      toast.error("Failed to add event");
+    } finally {
+      setIsSavingEvent(false);
+    }
+  };
+
+  // Function to delete an event
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
+
+      // Update local events state
+      setEvents(events.filter((event) => event._id !== eventId));
+
+      toast.success("رویداد با موفقیت حذف شد");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
   };
 
   // Add a bulk grade for all students
@@ -3103,6 +3417,179 @@ const ClassSheet = ({
               className="mr-2"
             >
               {isBulkLoading ? "در حال ذخیره..." : "ذخیره برای همه دانش آموزان"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Teacher Comment Modal */}
+      <Dialog
+        open={isTeacherCommentModalOpen}
+        onOpenChange={setIsTeacherCommentModalOpen}
+      >
+        <DialogContent className="max-w-3xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              یادداشت روزانه معلم{" "}
+              {selectedColumn && (
+                <>
+                  برای تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <div className="mb-3">
+              <Label htmlFor="teacherComment">یادداشت فعالیت‌های کلاسی:</Label>
+              <Textarea
+                id="teacherComment"
+                rows={6}
+                placeholder="یادداشت خود را وارد کنید..."
+                value={teacherComment}
+                onChange={(e) => setTeacherComment(e.target.value)}
+                className="mt-1 w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="sm:justify-start mt-4">
+            <Button
+              type="button"
+              onClick={handleSaveTeacherComment}
+              disabled={isSavingComment}
+            >
+              {isSavingComment ? (
+                <>
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-r-transparent rounded-full mr-2"></span>
+                  ذخیره...
+                </>
+              ) : (
+                "ذخیره یادداشت"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsTeacherCommentModalOpen(false)}
+            >
+              انصراف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Events Modal */}
+      <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
+        <DialogContent className="max-w-3xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              رویدادهای{" "}
+              {selectedColumn && (
+                <>
+                  تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {/* Existing Events */}
+            {isLoadingEvents ? (
+              <div className="text-center p-4">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-r-transparent rounded-full mx-auto mb-2"></div>
+                <p>در حال بارگیری رویدادها...</p>
+              </div>
+            ) : events.length > 0 ? (
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-2">رویدادهای ثبت شده:</h3>
+                <div className="space-y-3 max-h-[40vh] overflow-y-auto p-1">
+                  {events.map((event) => (
+                    <div
+                      key={event._id}
+                      className="border rounded-md p-3 bg-gray-50 relative hover:bg-gray-100 transition-colors"
+                    >
+                      <button
+                        onClick={() => handleDeleteEvent(event._id!)}
+                        className="absolute top-2 left-2 text-red-500 hover:text-red-700"
+                        title="حذف رویداد"
+                        aria-label="Delete event"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                      <h4 className="font-bold">{event.title}</h4>
+                      <p className="text-gray-600 text-sm mb-1">
+                        {event.persianDate}
+                      </p>
+                      <p className="text-gray-800">{event.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-4 mb-6 bg-gray-50 rounded-md">
+                <p>هیچ رویدادی برای این تاریخ ثبت نشده است.</p>
+              </div>
+            )}
+
+            {/* Add New Event Form */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-medium mb-3">افزودن رویداد جدید:</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="eventTitle">عنوان رویداد:</Label>
+                  <Input
+                    id="eventTitle"
+                    value={newEventTitle}
+                    onChange={(e) => setNewEventTitle(e.target.value)}
+                    placeholder="عنوان رویداد را وارد کنید..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="eventDescription">توضیحات:</Label>
+                  <Textarea
+                    id="eventDescription"
+                    rows={3}
+                    value={newEventDescription}
+                    onChange={(e) => setNewEventDescription(e.target.value)}
+                    placeholder="توضیحات رویداد را وارد کنید..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="sm:justify-start mt-4">
+            <Button
+              type="button"
+              onClick={handleAddEvent}
+              disabled={isSavingEvent || !newEventTitle.trim()}
+            >
+              {isSavingEvent ? (
+                <>
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-r-transparent rounded-full mr-2"></span>
+                  افزودن...
+                </>
+              ) : (
+                "افزودن رویداد"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEventModalOpen(false)}
+            >
+              بستن
             </Button>
           </DialogFooter>
         </DialogContent>
