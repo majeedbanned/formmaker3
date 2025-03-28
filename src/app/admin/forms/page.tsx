@@ -61,7 +61,7 @@ export default function Home() {
       _id: rowId,
     };
     updateFilterInURL(combinedFilter);
-    console.log("Share clicked for row:", rowId);
+    // console.log("Share clicked for row:", rowId);
   };
 
   if (isLoading) {

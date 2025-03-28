@@ -13,7 +13,7 @@ export const connectToDatabase = async (connectionString: string) => {
 
   const connectWithRetry = async () => {
     try {
-      console.log(`Attempting to connect to MongoDB (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
+      // console.log(`Attempting to connect to MongoDB (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
       
       await mongoose.connect(connectionString, {
         serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
@@ -52,7 +52,7 @@ export const connectToDatabase = async (connectionString: string) => {
       
       if (connectionAttempts < MAX_RETRIES) {
         connectionAttempts++;
-        console.log(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
+        // console.log(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         return connectWithRetry();
       }

@@ -137,7 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Filter navigation items based on permissions
   const filteredNavMain = React.useMemo(() => {
     if (!user) return [];
-    console.log("uu", user);
+    // console.log("uu", user);
     return data.navMain
       .map((section) => ({
         ...section,

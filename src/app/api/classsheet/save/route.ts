@@ -21,14 +21,14 @@ export async function POST(request: Request) {
 
     // Create a unique identifier for debugging
     const cellIdentifier = `${classCode}_${studentCode}_${teacherCode}_${courseCode}_${schoolCode}_${date}_${timeSlot}`;
-    console.log("Saving cell data with identifier:", cellIdentifier);
-    console.log("Data includes:", { 
-      presenceStatus, 
-      descriptiveStatus: descriptiveStatus || 'None',
-      gradeCount: grades?.length || 0,
-      assessmentCount: assessments?.length || 0,
-      hasNote: note ? 'Yes' : 'No' 
-    });
+    // console.log("Saving cell data with identifier:", cellIdentifier);
+    // console.log("Data includes:", { 
+    //   presenceStatus, 
+    //   descriptiveStatus: descriptiveStatus || 'None',
+    //   gradeCount: grades?.length || 0,
+    //   assessmentCount: assessments?.length || 0,
+    //   hasNote: note ? 'Yes' : 'No' 
+    // });
 
     // Validate required fields
     if (!classCode || !studentCode || !teacherCode || !courseCode || !date || !timeSlot || !schoolCode) {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       timeSlot,
     });
 
-    console.log("Existing record found:", existingRecord ? "Yes" : "No");
+    // console.log("Existing record found:", existingRecord ? "Yes" : "No");
     
     // Create or update the cell data
     const result = await collection.updateOne(
@@ -85,11 +85,11 @@ export async function POST(request: Request) {
       { upsert: true }
     );
 
-    console.log("Save result:", {
-      cellIdentifier,
-      upserted: result.upsertedCount > 0,
-      modified: result.modifiedCount > 0
-    });
+    // console.log("Save result:", {
+    //   cellIdentifier,
+    //   upserted: result.upsertedCount > 0,
+    //   modified: result.modifiedCount > 0
+    // });
 
     await client.close();
     

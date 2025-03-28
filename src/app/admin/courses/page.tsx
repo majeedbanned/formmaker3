@@ -83,7 +83,7 @@ export default function Home() {
       _id: rowId,
     };
     updateFilterInURL(combinedFilter);
-    console.log("Share clicked for row:", rowId);
+    // console.log("Share clicked for row:", rowId);
   };
 
   if (isLoading) {
@@ -98,7 +98,7 @@ export default function Home() {
   }
 
   const maghta = user?.maghta;
-  console.log("maghta", maghta);
+  // console.log("maghta", maghta);
 
   const gradeOptions =
     maghta === "1"

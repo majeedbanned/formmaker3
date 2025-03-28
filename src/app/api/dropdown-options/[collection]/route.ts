@@ -73,7 +73,7 @@ export async function GET(
           acc[`data.${key}`] = value;
           return acc;
         }, {} as QueryFilter);
-        console.log("Applied filter query:", query);
+        // console.log("Applied filter query:", query);
       } catch (filterError) {
         console.error("Failed to parse filter query:", filterError);
         return NextResponse.json(
@@ -137,7 +137,7 @@ export async function GET(
         .sort(sort)
         .limit(limitNum || 0)
         //.lean();
-      console.log("Found documents count:", documents.length ,"query:",query);
+      // console.log("Found documents count:", documents.length ,"query:",query);
      // console.log("Sample document:", documents[0]);
     } catch (queryError) {
       console.error("Database query failed:", queryError);

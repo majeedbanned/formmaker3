@@ -521,7 +521,7 @@ const ClassSheet = ({
         }
 
         const data = await response.json();
-        console.log("Loaded data:", data);
+        //console.log("Loaded data:", data);
 
         // Convert array of cell data to a dictionary for easier access
         const cellsDataMap: Record<string, CellData> = {};
@@ -538,7 +538,7 @@ const ClassSheet = ({
           };
         });
 
-        console.log("Cell data map:", cellsDataMap);
+        // console.log("Cell data map:", cellsDataMap);
         setCellsData(cellsDataMap);
       } catch (error) {
         console.error("Error loading cell data:", error);
@@ -614,11 +614,11 @@ const ClassSheet = ({
     // Debug: Log the cell key we're trying to find
     if (process.env.NODE_ENV === "development") {
       const simpleDateStr = column.date.toISOString().split("T")[0];
-      console.log(
-        `Looking for cell: ${studentCode}-${simpleDateStr}-${column.timeSlot}`,
-        `Key: ${cellKey}`,
-        `Has data: ${cellsData[cellKey] ? "Yes" : "No"}`
-      );
+      //   console.log(
+      //     `Looking for cell: ${studentCode}-${simpleDateStr}-${column.timeSlot}`,
+      //     `Key: ${cellKey}`,
+      //     `Has data: ${cellsData[cellKey] ? "Yes" : "No"}`
+      //   );
     }
 
     // Try to find the cell in our cellsData using the standard key
@@ -654,13 +654,13 @@ const ClassSheet = ({
     columnIndex: number,
     column: Column
   ) => {
-    console.log(`Clicked cell for student ${studentCode}, column:`, column);
+    // console.log(`Clicked cell for student ${studentCode}, column:`, column);
     // Save both columnIndex and the actual column object to ensure consistency
     setSelectedCell({ studentCode, columnIndex });
 
     // Get the existing data for this cell, if any
     const cellData = getCellContent(studentCode, column);
-    console.log("Cell data found:", cellData);
+    // console.log("Cell data found:", cellData);
 
     if (cellData) {
       setNoteText(cellData.note || "");
@@ -747,11 +747,11 @@ const ClassSheet = ({
     if (!selectedCell || !selectedOption) return;
 
     const column = allColumns[selectedCell.columnIndex];
-    console.log("Saving for column:", column);
+    // console.log("Saving for column:", column);
 
     // Ensure we use a consistent date format for the cell key
     const cellKey = getCellKey(selectedCell.studentCode, column);
-    console.log("Cell key for saving:", cellKey);
+    // console.log("Cell key for saving:", cellKey);
 
     setIsLoading(true);
     try {
@@ -773,7 +773,7 @@ const ClassSheet = ({
         assessments: assessments,
       };
 
-      console.log("Saving cell data:", cellData);
+      //   console.log("Saving cell data:", cellData);
 
       const response = await fetch("/api/classsheet/save", {
         method: "POST",

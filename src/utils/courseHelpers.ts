@@ -394,14 +394,14 @@ export async function addPredefinedCourses(schoolCode: string, maghta: string) {
     const existingCourses = await model.find({ 'data.schoolCode': schoolCode });
     
     if (existingCourses.length > 0) {
-      console.log(`Courses already exist for school ${schoolCode}`);
+      // console.log(`Courses already exist for school ${schoolCode}`);
       return;
     }
 
     // Get predefined courses for the maghta
     const courses = predefinedCourses[maghta];
     if (!courses) {
-      console.log(`No predefined courses found for maghta ${maghta}`);
+      // console.log(`No predefined courses found for maghta ${maghta}`);
       return;
     }
 
@@ -418,7 +418,7 @@ export async function addPredefinedCourses(schoolCode: string, maghta: string) {
       }))
     );
 
-    console.log(`Added ${result.length} predefined courses for school ${schoolCode}`);
+    // console.log(`Added ${result.length} predefined courses for school ${schoolCode}`);
     return result;
   } catch (error) {
     console.error('Error adding predefined courses:', error);

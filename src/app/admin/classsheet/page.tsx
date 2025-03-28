@@ -86,7 +86,7 @@ export default function ClassSheetPage() {
           toast.warning("Some class data may be incomplete");
         }
 
-        console.log("Fetched class data:", data);
+        //  console.log("Fetched class data:", data);
         setClassDocuments(data);
       } catch (err) {
         console.error("Error fetching class data:", err);
@@ -141,7 +141,7 @@ export default function ClassSheetPage() {
     );
   }
 
-  console.log("classDocuments", classDocuments);
+  // console.log("classDocuments", classDocuments);
 
   return (
     <div>

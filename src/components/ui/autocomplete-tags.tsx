@@ -61,18 +61,18 @@ export function AutocompleteTags({
     setInternalSelectedLabels({ ...selectedLabels });
   }, [selectedLabels]);
 
-  console.log(
-    "AutocompleteTags options:",
-    options,
-    "selected:",
-    selected,
-    "showOptions:",
-    showOptions,
-    "selectedLabels:",
-    selectedLabels,
-    "internalSelectedLabels:",
-    internalSelectedLabels
-  );
+  // console.log(
+  //   "AutocompleteTags options:",
+  //   options,
+  //   "selected:",
+  //   selected,
+  //   "showOptions:",
+  //   showOptions,
+  //   "selectedLabels:",
+  //   selectedLabels,
+  //   "internalSelectedLabels:",
+  //   internalSelectedLabels
+  // );
 
   React.useEffect(() => {
     if (
@@ -113,7 +113,7 @@ export function AutocompleteTags({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.log("handleKeyDown", e.key, inputValue, allowCustomValues);
+    // console.log("handleKeyDown", e.key, inputValue, allowCustomValues);
     if (e.key === "Enter" && inputValue && allowCustomValues) {
       e.preventDefault();
       if (!selected.includes(inputValue)) {

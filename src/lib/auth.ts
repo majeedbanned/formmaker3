@@ -44,7 +44,7 @@ export async function authenticateUser(
   // Get the appropriate model based on user type
   const model = getDynamicModel(userType === "school" ? "schools" : userType === "teacher" ? "teachers" : "students") as Model<School | Teacher | Student>;
 
-  console.log('Searching for user:', { userType, schoolCode, username });
+  // console.log('Searching for user:', { userType, schoolCode, username });
   
   // Build query based on user type
   let query: Record<string, string> = {};
@@ -62,36 +62,36 @@ export async function authenticateUser(
     };
   }
 
-  console.log('MongoDB query:', JSON.stringify(query, null, 2));
+  // console.log('MongoDB query:', JSON.stringify(query, null, 2));
   
   // Find the matching user using the query
   const user = await model.findOne(query);
-  console.log('Found matching user:', user ? 'Yes' : 'No');
+  // console.log('Found matching user:', user ? 'Yes' : 'No');
 
   if (!user) {
-    console.log('No user found with provided credentials');
+     // console.log('No user found with provided credentials');
     throw new Error("اطلاعات وارد شده اشتباه است");
   }
 
   // Get user data from the Map
   const userData = user.data;
-  console.log('User data:', Object.fromEntries(userData));
+  // console.log('User data:', Object.fromEntries(userData));
   
   const isActive = userData.get('isActive');
   const userPassword = userData.get('password');
 
   // Check if user is active
   if (!isActive) {
-    console.log('User is not active');
+    // console.log('User is not active');
     throw new Error("این حساب کاربری غیرفعال است");
   }
 
   // Verify password
   if (userPassword !== password) {
-    console.log('Password mismatch:', {
-      provided: password,
-      stored: userPassword
-    });
+    // console.log('Password mismatch:', {
+    //   provided: password,
+    //   stored: userPassword
+    // });
     throw new Error("اطلاعات وارد شده اشتباه است");
   }
 

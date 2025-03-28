@@ -1178,11 +1178,11 @@ const FormField = ({
     }
 
     // Log options to help debug
-    console.log(`autoCompleteText options for ${field.name}:`, options);
-    console.log(
-      `autoCompleteText selected labels for ${field.name}:`,
-      selectedLabelsMap
-    );
+    // console.log(`autoCompleteText options for ${field.name}:`, options);
+    // console.log(
+    //   `autoCompleteText selected labels for ${field.name}:`,
+    //   selectedLabelsMap
+    // );
 
     // Local search handler for this specific field
     const handleAutoCompleteSearch = async (query: string) => {

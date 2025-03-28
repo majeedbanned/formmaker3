@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    console.log("Executing query:", JSON.stringify(query));
+    // console.log("Executing query:", JSON.stringify(query));
 
     // Fetch classes from the database
     const classes = await ClassModel.find(query).lean();
     
     
-    console.log(`Found ${classes.length} classes for teacher ${teacherCode} in school ${schoolCode}`);
+    // console.log(`Found ${classes.length} classes for teacher ${teacherCode} in school ${schoolCode}`);
  //console.log(( classes))
 
  const responseData = classes.map(classObj => ({ data: classObj.data }));

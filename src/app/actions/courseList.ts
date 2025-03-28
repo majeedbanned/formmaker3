@@ -55,7 +55,7 @@ async function connectToDatabase(connectionString: string) {
  * Fetches courses/classes based on school code and optionally teacher code
  */
 export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?: string) {
-  console.log('[CourseList] Starting fetchCoursesBySchoolCode with schoolCode:', schoolCode, 'teacherCode:', teacherCode);
+  //console.log('[CourseList] Starting fetchCoursesBySchoolCode with schoolCode:', schoolCode, 'teacherCode:', teacherCode);
   
   try {
     if (!schoolCode) {
@@ -64,7 +64,7 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
     }
 
     const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI || '';
-    console.log('[CourseList] Using connection string:', connectionString ? 'Present' : 'Missing');
+    //console.log('[CourseList] Using connection string:', connectionString ? 'Present' : 'Missing');
     
     const client = await connectToDatabase(connectionString);
     
@@ -79,7 +79,7 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       query['data.teachers.teacherCode'] = teacherCode;
     }
     
-    console.log('[CourseList] Executing query:', query);
+   // console.log('[CourseList] Executing query:', query);
     
     const courses = await collection
       .find(query)
@@ -93,7 +93,7 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       .sort({ 'data.className': 1 })
       .toArray();
       
-    console.log('[CourseList] Query executed successfully. Found courses:', courses.length);
+   // console.log('[CourseList] Query executed successfully. Found courses:', courses.length);
     
     await client.close();
     console.log('[CourseList] Database connection closed');
@@ -118,7 +118,7 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       };
     });
     
-    console.log('[CourseList] Data transformed successfully. Returning', transformedCourses.length, 'courses');
+  //  console.log('[CourseList] Data transformed successfully. Returning', transformedCourses.length, 'courses');
     return transformedCourses;
   } catch (error) {
     console.error('[CourseList] Error in fetchCoursesBySchoolCode:', error);

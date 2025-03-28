@@ -3,11 +3,11 @@ import { encryptFilter } from './encryption';
 export function generateFilterUrl(baseUrl: string, filter: Record<string, unknown>): string {
 
   const encryptedFilter = encryptFilter(filter);
-  console.log('first',filter)
+  // console.log('first',filter)
 
   const url = new URL(baseUrl);
   url.searchParams.set('filter', encryptedFilter);
-  console.log(url.toString())
+  // console.log(url.toString())
 
   return url.toString();
 }

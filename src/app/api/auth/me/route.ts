@@ -83,7 +83,7 @@ export async function GET() {
     } 
     // For teachers and students, fetch maghta from their school
     else if (payload.userType === 'teacher' || payload.userType === 'student') {
-      console.log(`User is a ${payload.userType}, fetching maghta from school`);
+      // console.log(`User is a ${payload.userType}, fetching maghta from school`);
       const SchoolModel = getDynamicModel('schools') as Model<School>;
       const school = await SchoolModel.findOne({ 'data.schoolCode': payload.schoolCode });
       
@@ -95,14 +95,14 @@ export async function GET() {
       }
     }
     
-    console.log("Sending user data:", {
-      id: user.id,
-      userType: user.userType,
-      schoolCode: user.schoolCode,
-      username: user.username,
-      maghta: user.maghta,
-      grade: user.grade
-    });
+    // console.log("Sending user data:", {
+    //   id: user.id,
+    //   userType: user.userType,
+    //   schoolCode: user.schoolCode,
+    //   username: user.username,
+    //   maghta: user.maghta,
+    //   grade: user.grade
+    // });
 
     return NextResponse.json({ user });
   } catch (error) {

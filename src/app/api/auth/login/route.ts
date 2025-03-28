@@ -10,15 +10,15 @@ export async function POST(request: Request) {
     console.log("Login request received");
     const body = await request.json();
     const { userType, schoolCode, username, password } = body;
-    console.log("Login attempt for:", { userType, schoolCode, username });
+    // console.log("Login attempt for:", { userType, schoolCode, username });
 
     const { token, user } = await authenticateUser(userType, schoolCode, username, password);
-    console.log("Authentication successful for user:", { 
-      id: user.id, 
-      userType: user.userType, 
-      schoolCode: user.schoolCode, 
-      username: user.username 
-    });
+    // console.log("Authentication successful for user:", { 
+    //   id: user.id, 
+    //   userType: user.userType, 
+    //   schoolCode: user.schoolCode, 
+    //   username: user.username 
+    // });
 
     // Set cookie
     const cookieStore = await cookies();
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         permissions: user.permissions,
       }
     };
-    console.log("Sending successful response:", response);
+    // console.log("Sending successful response:", response);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
