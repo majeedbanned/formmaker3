@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Fragment } from "react";
 import {
   useForm,
   useFieldArray,
@@ -1401,6 +1401,370 @@ const FormField = ({
           <p className="text-sm text-destructive mt-1">
             {errors[field.name]?.message as string}
           </p>
+        )}
+      </div>
+    );
+  } else if (field.type === "compositefields" && field.compositeFieldsStyle) {
+    // Get existing data for this field from the editing entity data
+    const existingData = window.__EDITING_ENTITY_DATA__?.[field.name] as
+      | Record<string, unknown>
+      | undefined;
+
+    // Determine the initial selected item value
+    // First check if there's existing data with a type field
+    // If not, use the defaultItem from the configuration
+    const initialItemValue =
+      (existingData?.type as string) ||
+      field.compositeFieldsStyle.defaultItem ||
+      "";
+
+    // State to track the selected item (initialized with the correct value)
+    const [selectedItemValue, setSelectedItemValue] =
+      useState<string>(initialItemValue);
+
+    // Find the selected item's configuration
+    const selectedItem = field.compositeFieldsStyle.items.find(
+      (item) => item.value === selectedItemValue
+    );
+
+    // Initialize field values from default or existing data
+    useEffect(() => {
+      if (selectedItem) {
+        // Set the type field value
+        setValue(`${field.name}.type`, selectedItemValue, {
+          shouldValidate: true,
+        });
+
+        // For each field in the selected item, check if it already has a value
+        selectedItem.fields.forEach((itemField) => {
+          const fieldPath = `${field.name}.${selectedItemValue}.${itemField.name}`;
+
+          // Check if we have existing data for this field
+          if (
+            existingData &&
+            existingData[selectedItemValue] &&
+            typeof existingData[selectedItemValue] === "object" &&
+            (existingData[selectedItemValue] as Record<string, unknown>)?.[
+              itemField.name
+            ] !== undefined
+          ) {
+            // Use the value from existing data
+            const fieldValue = (
+              existingData[selectedItemValue] as Record<string, unknown>
+            )[itemField.name];
+            setValue(fieldPath, fieldValue, { shouldValidate: true });
+          }
+          // If no existing data but we have a default value, use that
+          else if (itemField.defaultValue !== undefined) {
+            setValue(fieldPath, itemField.defaultValue, {
+              shouldValidate: true,
+            });
+          }
+        });
+      }
+    }, [selectedItemValue, selectedItem, field.name, setValue, existingData]);
+
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label
+            htmlFor={`${field.name}-selector`}
+            className={`block text-sm font-medium text-${
+              layout.direction === "rtl" ? "right" : "left"
+            }`}
+          >
+            {field.title}
+            {field.required && <span className="text-destructive">*</span>}
+          </label>
+
+          <Select
+            value={selectedItemValue}
+            onValueChange={(value) => {
+              setSelectedItemValue(value);
+            }}
+            disabled={isDisabled}
+          >
+            <SelectTrigger id={`${field.name}-selector`}>
+              <SelectValue
+                placeholder={
+                  layout.texts?.selectPlaceholder || "Select an option"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {field.compositeFieldsStyle.items.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Hidden input to store the selected type */}
+          <input
+            type="hidden"
+            {...register(`${field.name}.type`, {
+              required: field.required
+                ? field.validation?.requiredMessage || "This field is required"
+                : false,
+            })}
+          />
+
+          {errors[field.name]?.type && (
+            <p className="text-sm text-destructive mt-1">
+              {
+                (errors[field.name] as Record<string, unknown>)?.type
+                  ?.message as string
+              }
+            </p>
+          )}
+        </div>
+
+        {/* Render fields for the selected item */}
+        {selectedItem && (
+          <div className="border-l-2 pl-4 mt-4 space-y-4">
+            {selectedItem.fields.map((itemField) => {
+              const fieldName = `${field.name}.${selectedItemValue}.${itemField.name}`;
+
+              // Render different field types
+              return (
+                <Fragment key={fieldName}>
+                  {itemField.type === "text" && (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor={fieldName}
+                        className={`block text-sm font-medium text-${
+                          layout.direction === "rtl" ? "right" : "left"
+                        }`}
+                      >
+                        {itemField.title}
+                        {itemField.required && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </label>
+                      <Input
+                        id={fieldName}
+                        disabled={isDisabled}
+                        placeholder={itemField.placeholder}
+                        className={
+                          layout.direction === "rtl"
+                            ? "text-right"
+                            : "text-left"
+                        }
+                        {...register(fieldName, {
+                          required: itemField.required
+                            ? "This field is required"
+                            : false,
+                        })}
+                      />
+                      {errors[field.name]?.[selectedItemValue]?.[
+                        itemField.name
+                      ] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {
+                            errors[field.name]?.[selectedItemValue]?.[
+                              itemField.name
+                            ]?.message as string
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {itemField.type === "number" && (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor={fieldName}
+                        className={`block text-sm font-medium text-${
+                          layout.direction === "rtl" ? "right" : "left"
+                        }`}
+                      >
+                        {itemField.title}
+                        {itemField.required && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </label>
+                      <Input
+                        id={fieldName}
+                        type="number"
+                        disabled={isDisabled}
+                        placeholder={itemField.placeholder}
+                        className={
+                          layout.direction === "rtl"
+                            ? "text-right"
+                            : "text-left"
+                        }
+                        {...register(fieldName, {
+                          required: itemField.required
+                            ? "This field is required"
+                            : false,
+                          valueAsNumber: true,
+                        })}
+                      />
+                      {errors[field.name]?.[selectedItemValue]?.[
+                        itemField.name
+                      ] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {
+                            errors[field.name]?.[selectedItemValue]?.[
+                              itemField.name
+                            ]?.message as string
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {itemField.type === "dropdown" && itemField.options && (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor={fieldName}
+                        className={`block text-sm font-medium text-${
+                          layout.direction === "rtl" ? "right" : "left"
+                        }`}
+                      >
+                        {itemField.title}
+                        {itemField.required && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </label>
+                      <Select
+                        value={watch(fieldName) || ""}
+                        onValueChange={(value) => {
+                          setValue(fieldName, value, { shouldValidate: true });
+                        }}
+                        disabled={isDisabled}
+                      >
+                        <SelectTrigger id={fieldName}>
+                          <SelectValue
+                            placeholder={
+                              layout.texts?.selectPlaceholder ||
+                              "Select an option"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {itemField.options.map((option) => (
+                            <SelectItem
+                              key={option.value.toString()}
+                              value={option.value.toString()}
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <input
+                        type="hidden"
+                        {...register(fieldName, {
+                          required: itemField.required
+                            ? "This field is required"
+                            : false,
+                        })}
+                      />
+                      {errors[field.name]?.[selectedItemValue]?.[
+                        itemField.name
+                      ] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {
+                            errors[field.name]?.[selectedItemValue]?.[
+                              itemField.name
+                            ]?.message as string
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {itemField.type === "checkbox" && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={fieldName}
+                        checked={watch(fieldName) || false}
+                        onCheckedChange={(checked) => {
+                          setValue(fieldName, checked, {
+                            shouldValidate: true,
+                          });
+                        }}
+                        disabled={isDisabled}
+                      />
+                      <label
+                        htmlFor={fieldName}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {itemField.title}
+                        {itemField.required && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </label>
+                      <input
+                        type="hidden"
+                        {...register(fieldName, {
+                          required: itemField.required
+                            ? "This field is required"
+                            : false,
+                        })}
+                      />
+                      {errors[field.name]?.[selectedItemValue]?.[
+                        itemField.name
+                      ] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {
+                            errors[field.name]?.[selectedItemValue]?.[
+                              itemField.name
+                            ]?.message as string
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {itemField.type === "switch" && (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id={fieldName}
+                        checked={watch(fieldName) || false}
+                        onCheckedChange={(checked) => {
+                          setValue(fieldName, checked, {
+                            shouldValidate: true,
+                          });
+                        }}
+                        disabled={isDisabled}
+                      />
+                      <label
+                        htmlFor={fieldName}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {itemField.title}
+                        {itemField.required && (
+                          <span className="text-destructive">*</span>
+                        )}
+                      </label>
+                      <input
+                        type="hidden"
+                        {...register(fieldName, {
+                          required: itemField.required
+                            ? "This field is required"
+                            : false,
+                        })}
+                      />
+                      {errors[field.name]?.[selectedItemValue]?.[
+                        itemField.name
+                      ] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {
+                            errors[field.name]?.[selectedItemValue]?.[
+                              itemField.name
+                            ]?.message as string
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>
         )}
       </div>
     );

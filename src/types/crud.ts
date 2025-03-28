@@ -141,6 +141,45 @@ export interface FormFieldMinimal {
       defaultValue?: string | number; // Default value to apply when importing
     }>;
   };
+  
+  // For compositefields type
+  compositeFieldsStyle?: {
+    items: Array<{
+      label: string;      // Display label in dropdown
+      value: string;      // Value to store
+      fields: Array<{     // Fields to show when this item is selected
+        name: string;     // Field name for mapping
+        title: string;    // Display title for the field
+        type: 'text' | 'number' | 'dropdown' | 'checkbox' | 'switch';  // Field type
+        required?: boolean; // Whether this field is required
+        options?: Array<{ label: string; value: string | number }>;  // For dropdown/checkbox
+        placeholder?: string; // Placeholder text
+        defaultValue?: unknown;   // Default value
+      }>;
+    }>;
+    defaultItem?: string; // Default selected item value
+    
+    // The data structure for compositefields is stored as follows:
+    // {
+    //   fieldName: {
+    //     type: "selectedItemValue",
+    //     selectedItemValue: {
+    //       field1: value1,
+    //       field2: value2
+    //     }
+    //   }
+    // }
+    // Example:
+    // {
+    //   special_requirements: {
+    //     type: "technical",
+    //     technical: {
+    //       equipment: "computer",
+    //       quantity: 2
+    //     }
+    //   }
+    // }
+  };
 }
 
 export interface FormField extends FormFieldMinimal {
