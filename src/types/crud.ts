@@ -106,7 +106,8 @@ export interface FormFieldMinimal {
     hideYear?: boolean;  // Whether to hide year in header
     className?: string;  // Additional CSS class name
     containerClassName?: string;  // Additional CSS class name for container
-    calendarPosition?: 'top' | 'bottom' | 'left' | 'right';  // Calendar position relative to input
+    calendarPosition?: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';  // Calendar position relative to input
+    plugins?: React.ReactNode[];  // Custom plugins for the datepicker (e.g., TimePicker, DatePanel)
   };
   autocompleteStyle?: {  // For autocomplete type
     allowNew?: boolean;  // Whether to allow creating new tags

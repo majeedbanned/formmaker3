@@ -422,6 +422,27 @@ export default function Home() {
       },
     },
 
+    {
+      name: "schedule_datetime",
+      title: "زمان برگزاری کلاس",
+      type: "datepicker",
+      isShowInList: true,
+      isSearchable: true,
+      required: true,
+      enabled: true,
+      visible: true,
+      datepickerStyle: {
+        format: "YYYY/MM/DD HH:mm",
+        calendar: "persian",
+        locale: "fa",
+        timePicker: true, // Enable time picker plugin
+        calendarPosition: "bottom-right", // Now this is valid after updating the type
+        className: "custom-datepicker",
+        minDate: new Date(), // Cannot select dates before today
+        weekStartDayIndex: 6, // Week starts on Saturday (for Persian calendar)
+      },
+    },
+
     // Example of importTextBox field for importing student data
   ] as const;
 

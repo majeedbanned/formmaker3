@@ -1057,12 +1057,12 @@ const FormField = ({
           locale={persian_fa}
           value={fieldValue as Value}
           onChange={(date) => {
-            console.log("dateeeeeee", date.toString());
-            console.log(
-              "field.datepickerStyle?.plugins"
-              //  field.datepickerStyle?.plugins
-            );
-            setValue(field.name, date?.toString(), { shouldValidate: true });
+            setValue(field.name, date ? date.toString() : "", {
+              shouldValidate: true,
+            });
+          }}
+          style={{
+            padding: "17px",
           }}
           disabled={isDisabled}
           multiple={field.isMultiple}
@@ -1071,10 +1071,30 @@ const FormField = ({
             "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
             field.datepickerStyle?.className
           )}
+          plugins={[
+            // Add TimePicker plugin if timePicker is enabled in the field config
+            ...(field.datepickerStyle?.timePicker
+              ? [<TimePicker position="bottom" />]
+              : []),
+            // Add any additional plugins from the field configuration
+            ...(field.datepickerStyle?.plugins || []),
+          ]}
+          // Add other DatePicker props from the configuration
+          onlyMonthPicker={field.datepickerStyle?.onlyMonthPicker}
+          onlyYearPicker={field.datepickerStyle?.onlyYearPicker}
+          minDate={field.datepickerStyle?.minDate}
+          maxDate={field.datepickerStyle?.maxDate}
+          weekStartDayIndex={field.datepickerStyle?.weekStartDayIndex}
+          disableYearPicker={field.datepickerStyle?.disableYearPicker}
+          disableMonthPicker={field.datepickerStyle?.disableMonthPicker}
+          readOnly={field.datepickerStyle?.readOnly || isDisabled}
+          hideWeekDays={field.datepickerStyle?.hideWeekDays}
+          hideMonth={field.datepickerStyle?.hideMonth}
+          hideYear={field.datepickerStyle?.hideYear}
         />
         <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (
-          <p className="text-destructive text-sm">
+          <p className="text-sm text-destructive mt-1">
             {errors[field.name]?.message as string}
           </p>
         )}

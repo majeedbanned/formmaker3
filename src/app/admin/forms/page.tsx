@@ -152,6 +152,7 @@ export default function Home() {
         className: "custom-datepicker",
         calendar: "persian",
         locale: "fa",
+        timePicker: true, // Enable time picker plugin
         calendarPosition: "bottom",
         weekStartDayIndex: 6,
         hideWeekDays: false,
@@ -184,12 +185,13 @@ export default function Home() {
         return formatter.format(date);
       },
       datepickerStyle: {
-        format: "YYYY/MM/DD",
+        format: "YYYY/MM/DD HH:mm",
         className: "custom-datepicker",
         calendar: "persian",
         locale: "fa",
         calendarPosition: "bottom",
         weekStartDayIndex: 6,
+        timePicker: true, // Enable time picker plugin
         hideWeekDays: false,
         hideMonth: false,
         hideYear: false,
@@ -216,6 +218,90 @@ export default function Home() {
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },
+    },
+
+    {
+      enabled: true,
+      visible: true,
+      isSearchable: true,
+      isShowInList: true,
+      name: "Access",
+      title: "دسترسی به فرم",
+      type: "text",
+      required: false,
+      fields: [
+        {
+          name: "students",
+          title: "دانش آموزان",
+          type: "autoCompleteText",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          isMultiple: true,
+
+          dataSource: {
+            collectionName: "students",
+            labelField: "studentName",
+            valueField: "studentCode",
+            sortField: "studentCode",
+            sortOrder: "asc",
+            filterQuery: { schoolCode: "2295566177" },
+            // dependsOn: ["Grade", "major"],
+          },
+
+          autoCompleteStyle: {
+            allowNew: false,
+            maxTags: 2,
+            minLength: 2, // Only start searching after 2 characters are typed
+          },
+        },
+
+        {
+          name: "classCode",
+          title: "کلاس",
+          type: "shadcnmultiselect",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          isMultiple: true,
+
+          dataSource: {
+            collectionName: "classes",
+            labelField: "className",
+            valueField: "classCode",
+            sortField: "classCode",
+            sortOrder: "asc",
+            filterQuery: { schoolCode: "2295566177" },
+            // dependsOn: ["Grade", "major"],
+          },
+        },
+
+        {
+          name: "teachers",
+          title: "اساتید",
+          type: "shadcnmultiselect",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          isMultiple: true,
+
+          dataSource: {
+            collectionName: "teachers",
+            labelField: "teacherName",
+            valueField: "teacherCode",
+            sortField: "teacherCode",
+            sortOrder: "asc",
+            filterQuery: { schoolCode: "2295566177" },
+            // dependsOn: ["Grade", "major"],
+          },
+        },
+      ],
     },
 
     // Example of shadcnmultiselect field with datasource
