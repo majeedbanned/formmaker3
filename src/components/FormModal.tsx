@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, Fragment } from "react";
+
 import {
   useForm,
   useFieldArray,
@@ -64,6 +65,7 @@ import { validateFile } from "@/utils/fileUpload";
 import { Progress } from "./ui/progress";
 import { MultiSelect } from "./ui/multi-select";
 import { AutocompleteTags } from "@/components/ui/autocomplete-tags";
+import TimePicker from "react-multi-date-picker/plugins/time_picker";
 
 // Add type definitions for window.__EDITING_ENTITY_DATA__
 declare global {
@@ -1055,7 +1057,11 @@ const FormField = ({
           locale={persian_fa}
           value={fieldValue as Value}
           onChange={(date) => {
-            //console.log("dateeeeeee", date.toString());
+            console.log("dateeeeeee", date.toString());
+            console.log(
+              "field.datepickerStyle?.plugins"
+              //  field.datepickerStyle?.plugins
+            );
             setValue(field.name, date?.toString(), { shouldValidate: true });
           }}
           disabled={isDisabled}
