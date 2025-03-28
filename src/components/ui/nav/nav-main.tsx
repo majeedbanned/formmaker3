@@ -34,7 +34,7 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>پارس پلاس- اتوماسیون هوشمند آموزشی</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible

@@ -1987,9 +1987,9 @@ const ClassSheet = ({
   }, [selectedOption]);
 
   return (
-    <div className="p-6 bg-gray-100" dir="rtl">
+    <div className="p-0 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection and Date Range in a single row */}
-      <div className="mb-6 bg-white rounded-xl shadow-sm p-4 flex flex-col md:flex-row md:items-center md:space-x-4 md:space-x-reverse space-y-4 md:space-y-0">
+      <div className="mb-0 items-end bg-white px-0  py-4 flex flex-col md:flex-row  md:space-x-4 md:space-x-reverse space-y-4 md:space-y-0">
         {/* Teacher-Course Selection */}
         <div className="md:w-1/3">
           <label
@@ -2002,7 +2002,7 @@ const ClassSheet = ({
             id="course-select"
             value={selectedOption?.value}
             onChange={handleSelectChange}
-            className="w-full p-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+            className="w-full p-2 border border-gray-200 rounded-lg  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
           >
             {courseOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -2013,9 +2013,56 @@ const ClassSheet = ({
         </div>
 
         {/* Date Range Section */}
-        <div className="md:w-2/3 flex flex-col">
-          <div className="flex items-center mb-2 justify-between">
-            <span className="text-sm font-medium text-gray-700">تاریخ:</span>
+
+        <div className="border-0  md:w-1/3 flex flex-col md:flex-row gap-4">
+          <div className="relative">
+            <DatePicker
+              calendar={persian}
+              locale={persian_fa}
+              value={startDate}
+              onChange={(date) => {
+                setStartDate(date);
+              }}
+              format="YYYY/MM/DD"
+              style={{
+                padding: "17px",
+              }}
+              //   containerStyle={{
+              //     padding: "17px",
+              //   }}
+              className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+              calendarPosition="bottom-right"
+              placeholder="تاریخ شروع"
+            />
+            {/* <span className="absolute right-3 top-1.5 text-xs text-gray-500">
+              تاریخ شروع
+            </span> */}
+          </div>
+          <div className="relative">
+            <DatePicker
+              calendar={persian}
+              locale={persian_fa}
+              style={{
+                padding: "17px",
+              }}
+              value={endDate}
+              onChange={(date) => {
+                setEndDate(date);
+              }}
+              format="YYYY/MM/DD"
+              className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+              calendarPosition="bottom-right"
+              placeholder="تاریخ پایان"
+            />
+            {/* <span className="absolute right-3 top-1.5 text-xs text-gray-500">
+              تاریخ پایان
+            </span> */}
+          </div>
+        </div>
+
+        <div className="md:w-1/3 flex flex-col items-end">
+          <div className="flex  mb-0 justify-between">
+            {/* <span className="text-sm font-medium text-gray-700">تاریخ:</span> */}
             <div className="flex space-x-2 space-x-reverse items-center">
               <button
                 onClick={() => navigateTwoWeeks("backward")}
@@ -2023,13 +2070,13 @@ const ClassSheet = ({
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
+                  className="h-4 w-4 mr-1"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
                   <path
                     fillRule="evenodd"
-                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
                     clipRule="evenodd"
                   />
                 </svg>
@@ -2057,65 +2104,28 @@ const ClassSheet = ({
                 دو هفته بعد
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
+                  className="h-4 w-4 ml-1"
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
                   <path
                     fillRule="evenodd"
-                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
                     clipRule="evenodd"
                   />
                 </svg>
               </button>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="relative">
-              <DatePicker
-                calendar={persian}
-                locale={persian_fa}
-                value={startDate}
-                onChange={(date) => {
-                  setStartDate(date);
-                }}
-                format="YYYY/MM/DD"
-                className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-                calendarPosition="bottom-right"
-                placeholder="تاریخ شروع"
-              />
-              <span className="absolute right-3 top-1.5 text-xs text-gray-500">
-                تاریخ شروع
-              </span>
-            </div>
-            <div className="relative">
-              <DatePicker
-                calendar={persian}
-                locale={persian_fa}
-                value={endDate}
-                onChange={(date) => {
-                  setEndDate(date);
-                }}
-                format="YYYY/MM/DD"
-                className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-                calendarPosition="bottom-right"
-                placeholder="تاریخ پایان"
-              />
-              <span className="absolute right-3 top-1.5 text-xs text-gray-500">
-                تاریخ پایان
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Dynamic Schedule Sheet */}
-      <div className="bg-white rounded-xl shadow-sm p-3 overflow-x-auto">
+      <div className="bg-white   p-0 overflow-x-auto">
         <table className="min-w-full bg-white border-collapse rounded-lg overflow-hidden">
           <thead>
             <tr>
-              <th className="sticky right-0 z-20 px-4 py-4 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-blue-600 text-white font-bold text-sm shadow-sm">
+              <th className=" px-4 py-4 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-blue-600 text-white font-bold text-sm shadow-sm">
                 نام دانش‌آموز
               </th>
               {allColumns.length > 0 ? (

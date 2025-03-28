@@ -94,16 +94,19 @@ const data = {
           system: "classes",
           requiredPermission: "show",
         },
+      ],
+    },
+
+    {
+      title: "امکانات",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
         {
-          title: "ثبت دانش آموزان",
-          url: "/admin/importstudents",
+          title: "دفتر کلاسی",
+          url: "/admin/classsheet",
           system: "importstudents",
-          requiredPermission: "show",
-        },
-        {
-          title: "برنامه هفتگی",
-          url: "/admin/weeklyschedule",
-          system: "weeklyschedule",
           requiredPermission: "show",
         },
       ],
