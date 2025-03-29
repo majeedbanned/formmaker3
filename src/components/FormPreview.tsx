@@ -30,6 +30,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Upload, FileText, X } from "lucide-react";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Progress } from "@/components/ui/progress1";
+import DatePicker from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 interface FormPreviewProps {
   isOpen: boolean;
@@ -45,6 +48,7 @@ interface FormFieldItem {
   required: boolean | string;
   items: string;
   fieldOrder: string | number;
+  datepickerStyle?: Record<string, unknown>; // Corrected type from 'any' to 'unknown'
 }
 
 // Define type for form values
@@ -559,6 +563,37 @@ export default function FormPreview({
               )}
             </div>
           );
+        case "date":
+          const datePickerProps = {
+            calendar: persian,
+            locale: persian_fa,
+            format: "YYYY/MM/DD", // Standard format for date picker
+            ...(field.datepickerStyle || {}), // Apply custom styles
+          };
+
+          return (
+            <div dir="ltr" className="relative">
+              <DatePicker
+                value={formValues[fieldId] as string | Date | null}
+                onChange={(date) => {
+                  // Format the date to a string before saving
+                  const formattedDate = date
+                    ? date.format(datePickerProps.format)
+                    : null;
+                  handleInputChange(fieldId, formattedDate);
+                }}
+                calendar={datePickerProps.calendar}
+                locale={datePickerProps.locale}
+                format={datePickerProps.format}
+                containerClassName="w-full"
+                inputClass={`w-full p-2 border rounded-md text-right ${
+                  hasError ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="YYYY/MM/DD"
+                calendarPosition="bottom-right"
+              />
+            </div>
+          );
         default:
           return (
             <div className="text-sm text-gray-500 italic">
@@ -600,6 +635,8 @@ export default function FormPreview({
               ? "رادیو"
               : field.fieldType === "file"
               ? "فایل"
+              : field.fieldType === "date"
+              ? "تاریخ"
               : field.fieldType}
           </div>
         </div>
@@ -618,6 +655,15 @@ export default function FormPreview({
       const isRequired = field.required === true || field.required === "true";
 
       if (isRequired) {
+        // Special handling for date fields
+        if (field.fieldType === "date") {
+          const dateValue = formValues[fieldId] as string | null;
+          if (!dateValue) {
+            errors.push(fieldId);
+          }
+          return;
+        }
+
         // Special handling for file fields
         if (field.fieldType === "file") {
           const fileValue = formValues[fieldId] as UploadedFile | null;
