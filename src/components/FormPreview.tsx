@@ -27,8 +27,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, FileText, X } from "lucide-react";
 import { CheckedState } from "@radix-ui/react-checkbox";
+import { Progress } from "@/components/ui/progress1";
 
 interface FormPreviewProps {
   isOpen: boolean;
@@ -47,7 +48,23 @@ interface FormFieldItem {
 }
 
 // Define type for form values
-type FormValueType = string | number | boolean | CheckedState;
+type FormValueType =
+  | string
+  | number
+  | boolean
+  | CheckedState
+  | UploadedFile
+  | null;
+
+// Define type for uploaded file
+interface UploadedFile {
+  filename: string;
+  originalName: string;
+  path: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
 
 // Define type for submission data
 interface SubmissionData {
@@ -78,6 +95,12 @@ export default function FormPreview({
     useState<SubmissionData | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formSchoolCode, setFormSchoolCode] = useState("");
+  const [fileUploads, setFileUploads] = useState<
+    Record<
+      string,
+      { progress: number; uploading: boolean; error: string | null }
+    >
+  >({});
 
   // Fetch existing submission data when dialog opens
   useEffect(() => {
@@ -169,6 +192,116 @@ export default function FormPreview({
     if (errorFields.includes(fieldId)) {
       setErrorFields(errorFields.filter((id) => id !== fieldId));
     }
+  };
+
+  // Function to handle file upload
+  const handleFileUpload = async (fieldId: string, file: File) => {
+    if (!formData || !formData._id) return;
+
+    // Set initial upload state
+    setFileUploads((prev) => ({
+      ...prev,
+      [fieldId]: { progress: 0, uploading: true, error: null },
+    }));
+
+    try {
+      // Create form data for upload
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("filename", file.name);
+      uploadData.append("formId", formData._id);
+      uploadData.append(
+        "schoolCode",
+        formSchoolCode || (formData.data.schoolCode as string) || ""
+      );
+
+      // Create fetch request with progress tracking
+      const xhr = new XMLHttpRequest();
+
+      // Setup progress handler
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setFileUploads((prev) => ({
+            ...prev,
+            [fieldId]: { ...prev[fieldId], progress },
+          }));
+        }
+      });
+
+      // Wait for the upload to complete
+      const uploadPromise = new Promise<UploadedFile>((resolve, reject) => {
+        xhr.open("POST", "/api/formfiles/upload");
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              if (response.success && response.file) {
+                resolve(response.file as UploadedFile);
+              } else {
+                reject(new Error(response.error || "Upload failed"));
+              }
+            } catch (err) {
+              console.error("Error parsing response:", err);
+              reject(new Error("Invalid response"));
+            }
+          } else {
+            reject(new Error(`HTTP error ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.send(uploadData);
+      });
+
+      // Wait for upload to complete
+      const uploadedFile = await uploadPromise;
+
+      // Update form values with the uploaded file info
+      handleInputChange(fieldId, uploadedFile);
+
+      // Clear uploading state
+      setFileUploads((prev) => ({
+        ...prev,
+        [fieldId]: { progress: 100, uploading: false, error: null },
+      }));
+
+      // Show success toast
+      toast.success("فایل با موفقیت آپلود شد", {
+        description: `${file.name} آپلود شد`,
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+
+      // Update error state
+      setFileUploads((prev) => ({
+        ...prev,
+        [fieldId]: {
+          progress: 0,
+          uploading: false,
+          error: error instanceof Error ? error.message : "خطا در آپلود فایل",
+        },
+      }));
+
+      // Show error toast
+      toast.error("خطا در آپلود فایل", {
+        description:
+          error instanceof Error ? error.message : "لطفا دوباره تلاش کنید",
+      });
+    }
+  };
+
+  // Function to handle file removal
+  const handleFileRemove = (fieldId: string) => {
+    handleInputChange(fieldId, null);
+
+    // Reset the upload state for this field
+    setFileUploads((prev) => {
+      const newState = { ...prev };
+      delete newState[fieldId];
+      return newState;
+    });
   };
 
   // Function to render form field items based on their type
@@ -323,6 +456,109 @@ export default function FormPreview({
               )}
             </RadioGroup>
           );
+        case "file":
+          // Handle file upload field
+          const uploadState = fileUploads[fieldId];
+          const fileValue = formValues[fieldId] as UploadedFile | null;
+
+          return (
+            <div className="space-y-2">
+              {!fileValue && !uploadState?.uploading && (
+                <div className="flex items-center justify-center w-full">
+                  <label
+                    htmlFor={`file-upload-${fieldId}`}
+                    className={`flex flex-col items-center justify-center w-full h-32 
+                    border-2 border-dashed rounded-lg cursor-pointer 
+                    hover:bg-gray-50 ${
+                      hasError ? "border-red-500" : "border-gray-300"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">کلیک کنید</span> یا فایل
+                        را به اینجا بکشید
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        SVG, PNG, JPG, PDF تا 10MB
+                      </p>
+                    </div>
+                    <input
+                      id={`file-upload-${fieldId}`}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(fieldId, e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {uploadState?.uploading && (
+                <div className="p-4 border border-gray-200 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 space-x-reverse rtl:space-x-reverse">
+                      <Loader2 className="animate-spin w-4 h-4 text-blue-500" />
+                      <span className="text-sm font-medium">
+                        در حال آپلود...
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleFileRemove(fieldId)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">لغو</span>
+                    </Button>
+                  </div>
+                  <Progress value={uploadState.progress} className="h-2" />
+                </div>
+              )}
+
+              {fileValue && !uploadState?.uploading && (
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 space-x-reverse rtl:space-x-reverse">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <a
+                        href={fileValue.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:underline"
+                      >
+                        {fileValue.originalName}
+                      </a>
+                    </div>
+                    <div className="flex space-x-2 rtl:space-x-reverse">
+                      <span className="text-xs text-gray-500">
+                        {Math.round(fileValue.size / 1024)} KB
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleFileRemove(fieldId)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">حذف</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {uploadState?.error && (
+                <div className="text-sm text-red-500 mt-1">
+                  خطا: {uploadState.error}
+                </div>
+              )}
+            </div>
+          );
         default:
           return (
             <div className="text-sm text-gray-500 italic">
@@ -362,6 +598,8 @@ export default function FormPreview({
               ? "چک باکس"
               : field.fieldType === "radio"
               ? "رادیو"
+              : field.fieldType === "file"
+              ? "فایل"
               : field.fieldType}
           </div>
         </div>
@@ -380,6 +618,15 @@ export default function FormPreview({
       const isRequired = field.required === true || field.required === "true";
 
       if (isRequired) {
+        // Special handling for file fields
+        if (field.fieldType === "file") {
+          const fileValue = formValues[fieldId] as UploadedFile | null;
+          if (!fileValue) {
+            errors.push(fieldId);
+          }
+          return;
+        }
+
         // Special handling for checkbox fields with multiple items
         if (field.fieldType === "checkbox" && field.items) {
           const checkboxOptions = field.items
