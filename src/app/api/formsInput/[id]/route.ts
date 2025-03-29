@@ -18,7 +18,7 @@ export async function DELETE(
     }
 
     // Get connection string
-    const connectionString = process.env.MONGODB_URI;
+    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
     if (!connectionString) {
       return NextResponse.json(
         { error: 'Database connection string is not configured' },

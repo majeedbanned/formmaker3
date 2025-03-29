@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Get connection string from environment variable
-    const connectionString = process.env.MONGODB_URI;
+    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
     if (!connectionString) {
       return NextResponse.json(
         { error: 'Database connection string is not configured' }, 

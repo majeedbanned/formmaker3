@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get connection string
-    const connectionString = process.env.MONGODB_URI;
+    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
     if (!connectionString) {
       return NextResponse.json(
         { error: "Database connection string is not configured" },
@@ -151,7 +151,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Get MongoDB connection string
-    const connectionString = process.env.MONGODB_URI;
+    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
     
     if (!connectionString) {
       return NextResponse.json(
