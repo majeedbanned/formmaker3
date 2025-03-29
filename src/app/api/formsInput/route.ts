@@ -28,70 +28,100 @@ function getPersianDateTime() {
 }
 
 // Handler for POST requests (new form submissions)
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const formData = await request.json();
-    
-    // Extract required fields
-    const { formId, formName, schoolCode, username } = formData;
-    
+    // Parse request body
+    const data = await req.json();
+
     // Validate required fields
-    if (!formId || !schoolCode) {
+    const requiredFields = ["formId", "formName", "schoolCode", "username", "answers"];
+    const missingFields = requiredFields.filter(field => !data[field]);
+
+    if (missingFields.length > 0) {
       return NextResponse.json(
-        { error: 'formId and schoolCode are required fields' }, 
+        { 
+          error: "Missing required fields", 
+          missingFields 
+        }, 
         { status: 400 }
       );
     }
-    
-    // Get MongoDB connection string
+
+    // Get connection string
     const connectionString = process.env.MONGODB_URI;
-    
     if (!connectionString) {
       return NextResponse.json(
-        { error: 'Database connection string is not configured' }, 
+        { error: "Database connection string is not configured" },
         { status: 500 }
       );
     }
 
     // Connect to MongoDB
     await connectToDatabase(connectionString);
-    
+
     try {
-      // Get Persian date and time
-      const { persianDate, persianTime } = getPersianDateTime();
-      
-      // Create a document for insertion
-      const document = {
-        formId,
-        formName: formName || '',
-        schoolCode,
-        username: username || 'anonymous',
-        answers: formData.answers || {},
-        persianDate,
-        persianTime,
+      // Prepare the form input data
+      const formInput = {
+        formId: data.formId,
+        formName: data.formName,
+        schoolCode: data.schoolCode,
+        username: data.username,
+        answers: data.answers,
+        persianDate: data.persianDate || null,
+        persianTime: data.persianTime || null,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
+
+      // Insert or update the form input
+      let responseId = data._id;
       
-      // Insert the document
-      const result = await mongoose.connection.collection('formsInput').insertOne(document);
-      
+      if (data._id) {
+        // Update existing submission
+        const updateResult = await mongoose.connection
+          .collection("formsInput")
+          .updateOne(
+            { _id: new mongoose.Types.ObjectId(data._id) },
+            { $set: { 
+                answers: data.answers,
+                persianDate: data.persianDate || null,
+                persianTime: data.persianTime || null,
+                updatedAt: new Date()
+              } 
+            }
+          );
+        
+        if (updateResult.matchedCount === 0) {
+          return NextResponse.json(
+            { error: "Form input not found" },
+            { status: 404 }
+          );
+        }
+      } else {
+        // Insert new submission
+        const insertResult = await mongoose.connection
+          .collection("formsInput")
+          .insertOne(formInput);
+          
+        responseId = insertResult.insertedId.toString();
+      }
+
       return NextResponse.json({
         success: true,
-        insertedId: result.insertedId,
-        message: 'Form submitted successfully'
+        message: data._id ? "Form input updated successfully" : "Form input submitted successfully",
+        id: responseId,
       });
     } catch (dbError) {
-      console.error('Database insertion error:', dbError);
+      console.error("Database error:", dbError);
       return NextResponse.json(
-        { error: 'Error inserting form submission' },
+        { error: "Error operating on the database" },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Error processing form submission:', error);
+    console.error("Error processing form input submission:", error);
     return NextResponse.json(
-      { error: 'Failed to process form submission' },
+      { error: "Failed to process form input submission" },
       { status: 500 }
     );
   }

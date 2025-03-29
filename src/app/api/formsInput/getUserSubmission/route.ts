@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     // Get query parameters
-    const { searchParams } = new URL(request.url);
+    const searchParams = req.nextUrl.searchParams;
     const formId = searchParams.get('formId');
     const username = searchParams.get('username');
     const schoolCode = searchParams.get('schoolCode');
@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
     // Validate required parameters
     if (!formId || !username) {
       return NextResponse.json(
-        { error: 'Required parameters missing: formId and username are required' }, 
+        { 
+          error: 'Required parameters missing', 
+          missing: !formId ? 'formId' : 'username' 
+        }, 
         { status: 400 }
       );
     }
@@ -45,17 +48,19 @@ export async function GET(request: NextRequest) {
       // Find the user's submission for this form
       const submission = await mongoose.connection.collection('formsInput').findOne(query);
       
-      if (!submission) {
+      // Return appropriate response
+      if (submission) {
         return NextResponse.json({
-          found: false,
-          message: 'No existing submission found'
+          success: true,
+          found: true,
+          submission
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          found: false
         });
       }
-      
-      return NextResponse.json({
-        found: true,
-        submission
-      });
     } catch (dbError) {
       console.error('Database query error:', dbError);
       return NextResponse.json(
@@ -64,9 +69,9 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error('Error fetching form submission:', error);
+    console.error('Error fetching user submission:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch form submission' },
+      { error: 'Failed to fetch user submission' },
       { status: 500 }
     );
   }

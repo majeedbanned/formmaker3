@@ -2,12 +2,18 @@
 import { useState } from "react";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon, EyeIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentIcon,
+  ShareIcon,
+  EyeIcon,
+  ClipboardDocumentIcon as ClipboardListIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings, Entity } from "@/types/crud";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import FormPreview from "@/components/FormPreview";
+import FormInputsModal from "@/components/FormInputsModal";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -49,6 +55,10 @@ export default function Home() {
   // States for form preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewFormData, setPreviewFormData] = useState<Entity | null>(null);
+
+  // States for form inputs
+  const [isInputsModalOpen, setIsInputsModalOpen] = useState(false);
+  const [inputsFormData, setInputsFormData] = useState<Entity | null>(null);
 
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
@@ -131,6 +141,42 @@ export default function Home() {
         };
         setPreviewFormData(mockEntity);
         setIsPreviewOpen(true);
+      });
+  };
+
+  // Function to handle showing form inputs
+  const handleShowFormInputs = (rowId: string) => {
+    // Fetch the form data first
+    fetch(`/api/forms/${rowId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch form data");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setInputsFormData(data);
+        setIsInputsModalOpen(true);
+      })
+      .catch((error) => {
+        console.error("Error fetching form data:", error);
+        // Create fallback data
+        const mockEntity: Entity = {
+          _id: rowId,
+          data: {
+            formCode: "F-" + Math.floor(Math.random() * 1000),
+            formName: "نمونه فرم",
+            formType: "0",
+            startDate: "۱۴۰۴/۰۱/۰۲ ۲۲:۴۴",
+            endDate: "۱۴۰۴/۰۱/۱۱ ۲۲:۴۴",
+            schoolCode: user?.schoolCode || "",
+            formFields: [],
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setInputsFormData(mockEntity);
+        setIsInputsModalOpen(true);
       });
   };
 
@@ -485,6 +531,11 @@ export default function Home() {
               icon: EyeIcon,
             },
             {
+              label: "مشاهده پاسخ‌ها",
+              action: handleShowFormInputs,
+              icon: ClipboardListIcon,
+            },
+            {
               label: "مشاهده سند",
               link: "/document",
               icon: DocumentIcon,
@@ -514,6 +565,14 @@ export default function Home() {
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           formData={previewFormData}
+          layoutDirection={layout.direction}
+        />
+
+        {/* Form Inputs Modal */}
+        <FormInputsModal
+          isOpen={isInputsModalOpen}
+          onClose={() => setIsInputsModalOpen(false)}
+          formData={inputsFormData}
           layoutDirection={layout.direction}
         />
       </div>
