@@ -1,12 +1,13 @@
 "use client";
-import TimePicker from "react-multi-date-picker/plugins/analog_time_picker";
+import { useState } from "react";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
-import { FormField, LayoutSettings } from "@/types/crud";
+import { DocumentIcon, ShareIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { FormField, LayoutSettings, Entity } from "@/types/crud";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import FormPreview from "@/components/FormPreview";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -45,6 +46,10 @@ export default function Home() {
   const router = useRouter();
   const { isLoading, user } = useAuth();
 
+  // States for form preview
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewFormData, setPreviewFormData] = useState<Entity | null>(null);
+
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
     const encryptedFilter = encryptFilter(filter);
@@ -62,6 +67,71 @@ export default function Home() {
     };
     updateFilterInURL(combinedFilter);
     // console.log("Share clicked for row:", rowId);
+  };
+
+  // Function to preview form
+  const handleFormPreview = (rowId: string) => {
+    // In a real implementation, you would fetch the form from your API
+    fetch(`/api/forms/${rowId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch form data");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setPreviewFormData(data);
+        setIsPreviewOpen(true);
+      })
+      .catch((error) => {
+        console.error("Error fetching form data:", error);
+        // Fallback to mock data if API fails
+        const mockEntity: Entity = {
+          _id: rowId,
+          data: {
+            formCode: "F-" + Math.floor(Math.random() * 1000),
+            formName: "نمونه فرم",
+            formType: "0",
+            startDate: "۱۴۰۴/۰۱/۰۲ ۲۲:۴۴",
+            endDate: "۱۴۰۴/۰۱/۱۱ ۲۲:۴۴",
+            schoolCode: user?.schoolCode || "",
+            formFields: [
+              {
+                fieldType: "textbox",
+                fieldTitle: "نام و نام خانوادگی",
+                required: true,
+                items: "",
+                fieldOrder: "1",
+              },
+              {
+                fieldType: "dropdown",
+                fieldTitle: "جنسیت",
+                required: true,
+                items: "مرد,زن",
+                fieldOrder: "2",
+              },
+              {
+                fieldType: "textarea",
+                fieldTitle: "توضیحات",
+                required: false,
+                items: "",
+                fieldOrder: "3",
+              },
+              {
+                fieldType: "checkbox",
+                fieldTitle: "موافقت با قوانین",
+                required: true,
+                items: " ",
+                fieldOrder: "4",
+              },
+            ],
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setPreviewFormData(mockEntity);
+        setIsPreviewOpen(true);
+      });
   };
 
   if (isLoading) {
@@ -409,12 +479,17 @@ export default function Home() {
           layout={layout}
           rowActions={[
             {
-              label: "View Document",
+              label: "پیش‌نمایش فرم",
+              action: handleFormPreview,
+              icon: EyeIcon,
+            },
+            {
+              label: "مشاهده سند",
               link: "/document",
               icon: DocumentIcon,
             },
             {
-              label: "Share",
+              label: "اشتراک‌گذاری",
               action: shareWithFilters,
               icon: ShareIcon,
             },
@@ -431,6 +506,14 @@ export default function Home() {
           onAfterGroupDelete={(ids) => {
             console.log("Entities deleted:", ids);
           }}
+        />
+
+        {/* Form Preview Modal */}
+        <FormPreview
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          formData={previewFormData}
+          layoutDirection={layout.direction}
         />
       </div>
     </main>
