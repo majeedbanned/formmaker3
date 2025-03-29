@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +49,18 @@ interface FormFieldItem {
 // Define type for form values
 type FormValueType = string | number | boolean | CheckedState;
 
+// Define type for submission data
+interface SubmissionData {
+  _id: string;
+  formId: string;
+  formName: string;
+  schoolCode: string;
+  username: string;
+  answers: Record<string, FormValueType>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function FormPreview({
   isOpen,
   onClose,
@@ -60,7 +72,68 @@ export default function FormPreview({
     {}
   );
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errorFields, setErrorFields] = useState<string[]>([]);
+  const [existingSubmission, setExistingSubmission] =
+    useState<SubmissionData | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [formSchoolCode, setFormSchoolCode] = useState("");
+
+  // Fetch existing submission data when dialog opens
+  useEffect(() => {
+    if (formData) {
+      // Extract school code from form data
+      setFormSchoolCode((formData.data.schoolCode as string) || "");
+    }
+
+    const fetchExistingSubmission = async () => {
+      if (!isOpen || !formData || !user || !isFormEditable) return;
+
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `/api/formsInput/getUserSubmission?formId=${formData._id}&username=${user.username}&schoolCode=${formSchoolCode}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch submission data");
+        }
+
+        const result = await response.json();
+
+        if (result.found) {
+          setExistingSubmission(result.submission);
+          setIsEditMode(true);
+
+          // Populate form values from existing submission
+          if (result.submission.answers) {
+            setFormValues(
+              result.submission.answers as Record<string, FormValueType>
+            );
+          }
+        } else {
+          setIsEditMode(false);
+          setFormValues({});
+        }
+      } catch (error) {
+        console.error("Error fetching existing submission:", error);
+        toast.error("خطا در بازیابی اطلاعات", {
+          description: "امکان بازیابی اطلاعات قبلی وجود ندارد.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only fetch if we have the necessary data and form is editable
+    if (isOpen && formData && user) {
+      // Check if form is editable (depends on formData being available)
+      const isFormEditable = formData.data.formType === "0";
+      if (isFormEditable) {
+        fetchExistingSubmission();
+      }
+    }
+  }, [isOpen, formData, user, formSchoolCode]);
 
   if (!formData) return null;
 
@@ -81,6 +154,9 @@ export default function FormPreview({
   const startDate = (formData.data.startDate as string) || "";
   const endDate = (formData.data.endDate as string) || "";
   const schoolCode = (formData.data.schoolCode as string) || "";
+
+  // Check if form is editable
+  const isFormEditable = formData.data.formType === "0";
 
   // Handle input change
   const handleInputChange = (fieldId: string, value: FormValueType) => {
@@ -307,11 +383,15 @@ export default function FormPreview({
         schoolCode: schoolCode,
         username: user?.username || "anonymous",
         answers: formValues,
+        // If we're in edit mode, pass the existing submission ID for update
+        ...(isEditMode && existingSubmission
+          ? { existingId: existingSubmission._id }
+          : {}),
       };
 
       // Send to API
       const response = await fetch("/api/formsInput", {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -321,9 +401,14 @@ export default function FormPreview({
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("فرم با موفقیت ثبت شد", {
-          description: "پاسخ‌های شما با موفقیت ذخیره شدند",
-        });
+        toast.success(
+          isEditMode ? "فرم با موفقیت بروزرسانی شد" : "فرم با موفقیت ثبت شد",
+          {
+            description: isEditMode
+              ? "پاسخ‌های شما با موفقیت بروزرسانی شدند"
+              : "پاسخ‌های شما با موفقیت ذخیره شدند",
+          }
+        );
         // Reset form values
         setFormValues({});
         // Close modal after successful submission
@@ -342,6 +427,23 @@ export default function FormPreview({
     }
   };
 
+  // If loading, show a spinner
+  if (loading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          dir={layoutDirection}
+        >
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <p className="mt-4 text-gray-600">در حال بارگذاری اطلاعات...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -350,6 +452,27 @@ export default function FormPreview({
       >
         <DialogHeader>
           <DialogTitle className="text-xl">{formName}</DialogTitle>
+          {isEditMode && (
+            <div className="text-sm text-blue-600 mt-1">
+              <span className="inline-flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                در حال ویرایش پاسخ‌های قبلی
+              </span>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="mt-4 bg-gray-50 p-4 rounded-lg text-sm">
@@ -372,7 +495,9 @@ export default function FormPreview({
 
         <Separator className="my-4" />
 
-        <div className="mb-2 font-medium">تکمیل فرم</div>
+        <div className="mb-2 font-medium">
+          {isEditMode ? "ویرایش پاسخ‌ها" : "تکمیل فرم"}
+        </div>
 
         {sortedFields.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -394,8 +519,10 @@ export default function FormPreview({
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                در حال ثبت...
+                {isEditMode ? "در حال بروزرسانی..." : "در حال ثبت..."}
               </>
+            ) : isEditMode ? (
+              "بروزرسانی فرم"
             ) : (
               "ثبت فرم"
             )}
