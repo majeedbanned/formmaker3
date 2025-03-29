@@ -234,22 +234,57 @@ export default function FormPreview({
             </Select>
           );
         case "checkbox":
+          // Parse items string to get checkbox options
+          const checkboxOptions = field.items
+            .split(",")
+            .filter(Boolean)
+            .map((item) => item.trim());
+
           return (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id={`checkbox-${index}`}
-                checked={(formValues[fieldId] as CheckedState) || false}
-                onCheckedChange={(checked) =>
-                  handleInputChange(fieldId, checked)
-                }
-                className={hasError ? "border-red-500" : ""}
-              />
-              <Label
-                htmlFor={`checkbox-${index}`}
-                className="text-sm font-normal"
-              >
-                {field.fieldTitle}
-              </Label>
+            <div
+              className={`flex flex-col gap-2 ${
+                hasError ? "border border-red-500 rounded-md p-2" : ""
+              }`}
+            >
+              {checkboxOptions.length > 0 ? (
+                checkboxOptions.map((option, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`checkbox-${index}-${i}`}
+                      checked={
+                        formValues[`${fieldId}-${option}`] === true ||
+                        formValues[`${fieldId}-${option}`] === "true"
+                      }
+                      onCheckedChange={(checked) =>
+                        handleInputChange(`${fieldId}-${option}`, checked)
+                      }
+                    />
+                    <Label
+                      htmlFor={`checkbox-${index}-${i}`}
+                      className="text-sm font-normal"
+                    >
+                      {option}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`checkbox-${index}`}
+                    checked={(formValues[fieldId] as CheckedState) || false}
+                    onCheckedChange={(checked) =>
+                      handleInputChange(fieldId, checked)
+                    }
+                    className={hasError ? "border-red-500" : ""}
+                  />
+                  <Label
+                    htmlFor={`checkbox-${index}`}
+                    className="text-sm font-normal"
+                  >
+                    {field.fieldTitle}
+                  </Label>
+                </div>
+              )}
             </div>
           );
         case "radio":
@@ -345,6 +380,29 @@ export default function FormPreview({
       const isRequired = field.required === true || field.required === "true";
 
       if (isRequired) {
+        // Special handling for checkbox fields with multiple items
+        if (field.fieldType === "checkbox" && field.items) {
+          const checkboxOptions = field.items
+            .split(",")
+            .filter(Boolean)
+            .map((item) => item.trim());
+
+          if (checkboxOptions.length > 0) {
+            // For multi-checkbox, check if at least one option is selected
+            const hasSelection = checkboxOptions.some(
+              (option) =>
+                formValues[`${fieldId}-${option}`] === true ||
+                formValues[`${fieldId}-${option}`] === "true"
+            );
+
+            if (!hasSelection) {
+              errors.push(fieldId);
+            }
+            return;
+          }
+        }
+
+        // Standard validation for other fields
         const value = formValues[fieldId];
         const isEmpty =
           value === undefined ||
