@@ -129,7 +129,7 @@ export default function Home() {
     },
     {
       name: "startDate",
-      title: "تاریخ شروع",
+      title: "تاریخ و زمان شروع",
       type: "datepicker",
       isShowInList: true,
       isSearchable: true,
@@ -166,7 +166,7 @@ export default function Home() {
 
     {
       name: "endDate",
-      title: "تاریخ پایان",
+      title: "تاریخ و زمان پایان",
       type: "datepicker",
       isShowInList: true,
       isSearchable: true,
@@ -205,8 +205,8 @@ export default function Home() {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: true,
-      isSearchable: true,
+      isShowInList: false,
+      isSearchable: false,
       groupUniqueness: true,
 
       defaultValue: user?.schoolCode,
@@ -214,7 +214,7 @@ export default function Home() {
 
       required: true,
       enabled: true,
-      visible: true,
+      visible: false,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },

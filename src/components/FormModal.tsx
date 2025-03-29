@@ -132,7 +132,7 @@ const NestedFields = ({
   layout,
   isDisabled,
 }: FormFieldProps & { parentPath?: string }) => {
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, prepend } = useFieldArray({
     control,
     name: field.nestedType === "array" ? `${parentPath}${field.name}` : "",
   });
@@ -168,7 +168,7 @@ const NestedFields = ({
 
   return (
     <>
-      <div className="space-y-4 pl-0 border-l-0 border-gray-200">
+      <div className="space-y-4  p-4 rounded-2xl border-l-0 bg-gray-100 border-gray-200">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -188,7 +188,19 @@ const NestedFields = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({})}
+                onClick={() => {
+                  // Create an empty object with a property for each nested field
+                  const emptyItem = nestedFields.reduce((acc, nestedField) => {
+                    acc[nestedField.name] =
+                      nestedField.defaultValue !== undefined
+                        ? nestedField.defaultValue
+                        : "";
+                    return acc;
+                  }, {} as Record<string, any>);
+
+                  // Add the empty item at the top of the list
+                  prepend(emptyItem);
+                }}
                 disabled={
                   field.arrayMaxItems
                     ? fields.length >= field.arrayMaxItems
