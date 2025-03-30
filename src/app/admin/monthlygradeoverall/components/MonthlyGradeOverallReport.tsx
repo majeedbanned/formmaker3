@@ -187,12 +187,21 @@ type MonthlyGrade = {
   value: number;
 };
 
+// Add a new type to track the weighted grade calculations for tooltips
+type WeightedGradeInfo = {
+  courseName: string;
+  grade: number;
+  vahed: number;
+  weightedValue: number;
+};
+
 type StudentGradesByMonth = {
   studentCode: number;
   studentName: string;
   courseGrades: Record<string, number | null>;
   courseMonthlyGrades: Record<string, MonthlyGrade[]>;
   average: number | null;
+  weightedGradesInfo: WeightedGradeInfo[]; // Add this to store detailed calculation info
 };
 
 const MonthlyGradeOverallReport = ({
@@ -422,6 +431,7 @@ const MonthlyGradeOverallReport = ({
             courseGrades: {},
             courseMonthlyGrades: {},
             average: null,
+            weightedGradesInfo: [], // Initialize the weighted grades info array
           };
         });
 
@@ -669,22 +679,47 @@ const MonthlyGradeOverallReport = ({
 
         // Calculate averages and convert to array
         const gradesArray = Object.values(studentGradesMap).map((student) => {
-          const courseGrades = Object.values(student.courseGrades).filter(
-            (grade): grade is number => grade !== null
-          );
+          // Filter out null grades
+          const validCourseInfos = courseInfo.filter((course) => {
+            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+            return student.courseGrades[courseKey] !== null;
+          });
 
-          // Calculate average with proper precision
+          // Calculate weighted average based on vahed values
+          let totalWeight = 0;
+          let weightedSum = 0;
+          const weightedGradesInfo: WeightedGradeInfo[] = [];
+
+          validCourseInfos.forEach((course) => {
+            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+            const grade = student.courseGrades[courseKey];
+            const vahed = course.vahed || 1; // Default to 1 if not specified
+
+            if (grade !== null) {
+              weightedSum += grade * vahed;
+              totalWeight += vahed;
+
+              // Store detailed info for tooltip
+              weightedGradesInfo.push({
+                courseName: course.courseName,
+                grade,
+                vahed,
+                weightedValue: grade * vahed,
+              });
+            }
+          });
+
+          // Calculate final weighted average
           let average = null;
-          if (courseGrades.length > 0) {
-            // Sum all grades with full precision
-            const sum = courseGrades.reduce((total, grade) => total + grade, 0);
-            // Calculate average and avoid floating point precision issues
-            average = Math.round((sum / courseGrades.length) * 100) / 100;
+          if (totalWeight > 0) {
+            // Round to 2 decimal places for consistency
+            average = Math.round((weightedSum / totalWeight) * 100) / 100;
           }
 
           return {
             ...student,
             average,
+            weightedGradesInfo,
           };
         });
 
@@ -986,7 +1021,7 @@ const MonthlyGradeOverallReport = ({
     return month ? month.label : monthNumber;
   };
 
-  // Helper function to format tooltip content
+  // Helper function to format tooltip content for monthly grades
   const formatTooltipContent = (grades: MonthlyGrade[]): string => {
     if (!grades || grades.length === 0) return "اطلاعاتی موجود نیست";
 
@@ -998,6 +1033,35 @@ const MonthlyGradeOverallReport = ({
           )}`
       )
       .join("\n");
+  };
+
+  // Helper function to format the weighted average tooltip content
+  const formatWeightedAverageTooltip = (info: WeightedGradeInfo[]): string => {
+    if (!info || info.length === 0) return "اطلاعاتی موجود نیست";
+
+    // Calculate total weights and sum for final display
+    const totalWeight = info.reduce((sum, item) => sum + item.vahed, 0);
+    const weightedSum = info.reduce((sum, item) => sum + item.weightedValue, 0);
+    const average = Math.round((weightedSum / totalWeight) * 100) / 100;
+
+    // Create detailed breakdown
+    let tooltip = "محاسبه میانگین بر اساس واحد:\n\n";
+
+    // Add each course's calculation
+    info.forEach((item) => {
+      const formattedGrade = toPersianDigits(item.grade?.toFixed(2));
+      const formattedVahed = toPersianDigits(item.vahed);
+      const formattedWeighted = toPersianDigits(item.weightedValue.toFixed(2));
+
+      tooltip += `${item.courseName}: ${formattedGrade} × ${formattedVahed} واحد = ${formattedWeighted}\n`;
+    });
+
+    // Add summary calculation
+    tooltip += `\nمجموع: ${toPersianDigits(weightedSum.toFixed(2))}\n`;
+    tooltip += `تعداد کل واحد: ${toPersianDigits(totalWeight)}\n`;
+    tooltip += `میانگین نهایی: ${toPersianDigits(average.toFixed(2))}`;
+
+    return tooltip;
   };
 
   // Add custom CSS for vertical text
@@ -1172,7 +1236,7 @@ const MonthlyGradeOverallReport = ({
                           );
                         })}
 
-                        {/* Average column */}
+                        {/* Average column with weighted calculation tooltip */}
                         <TableHead
                           className="w-[90px] font-bold cursor-pointer"
                           onClick={() => requestSort("average")}
@@ -1230,6 +1294,19 @@ const MonthlyGradeOverallReport = ({
                                 ? getScoreColorClass(student.average)
                                 : "text-gray-400"
                             }`}
+                            title={
+                              student.weightedGradesInfo.length > 0
+                                ? formatWeightedAverageTooltip(
+                                    student.weightedGradesInfo
+                                  )
+                                : ""
+                            }
+                            style={{
+                              cursor:
+                                student.weightedGradesInfo.length > 0
+                                  ? "help"
+                                  : "default",
+                            }}
                           >
                             {student.average !== null
                               ? toPersianDigits(student.average.toFixed(2))
