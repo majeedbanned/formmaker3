@@ -45,7 +45,7 @@ export default function ClassSheetPage() {
 
   // Hardcoded values for now, could be from authentication context
   const schoolCode = "2295566177";
-  const teacherCode = "we";
+  const teacherCode = "102";
 
   useEffect(() => {
     const fetchClassData = async () => {

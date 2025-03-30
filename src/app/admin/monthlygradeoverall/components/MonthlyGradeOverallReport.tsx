@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -82,6 +82,18 @@ type CellData = {
   presenceStatus: "present" | "absent" | "late" | null;
   descriptiveStatus?: string;
   assessments?: AssessmentEntry[];
+};
+
+// Add a type for the assessment data from the API
+type AssessmentData = {
+  data: {
+    value: string;
+    adjustment: number;
+    title?: string;
+    teacherCode?: string;
+    courseCode?: string;
+    schoolCode?: string;
+  };
 };
 
 // Helper function for Persian date conversion
@@ -235,6 +247,8 @@ const MonthlyGradeOverallReport = ({
     direction: "ascending" | "descending";
   } | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [courseSpecificAssessmentValues, setCourseSpecificAssessmentValues] =
+    useState<Record<string, Record<string, number>>>({});
 
   // Get the current Persian year and month based on the current date
   const currentDate = new Date();
@@ -286,37 +300,134 @@ const MonthlyGradeOverallReport = ({
     setIsInitialized(true);
   }, [currentJYear, currentJMonth, isInitialized]);
 
-  // Update the calculateFinalScore function
-  const calculateFinalScore = (
-    grades: GradeEntry[],
-    assessments: AssessmentEntry[]
-  ): number | null => {
-    if (!grades || grades.length === 0) return null;
+  // Wrap the calculateFinalScore function in useCallback
+  const calculateFinalScore = useCallback(
+    (
+      grades: GradeEntry[],
+      assessments: AssessmentEntry[],
+      courseKey: string
+    ): number | null => {
+      if (!grades || grades.length === 0) return null;
 
-    // Calculate average of grades
-    const average =
-      grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
+      // Calculate average of grades
+      const average =
+        grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
 
-    // If no assessments, return the average grade
-    if (!assessments || assessments.length === 0) return average;
+      // If no assessments, return the average grade
+      if (!assessments || assessments.length === 0) return average;
 
-    // Calculate direct assessment adjustment (add/subtract directly)
-    const assessmentAdjustment = assessments.reduce((total, assessment) => {
-      const adjustment = ASSESSMENT_VALUES_MAP[assessment.value] || 0;
-      return total + adjustment;
-    }, 0);
+      // Calculate direct assessment adjustment (add/subtract directly)
+      const assessmentAdjustment = assessments.reduce((total, assessment) => {
+        // Check if there's a custom value for this course and assessment
+        const courseSpecificValues =
+          courseSpecificAssessmentValues[courseKey] || {};
+        // Use course-specific value if available, otherwise fallback to default
+        const adjustment =
+          courseSpecificValues[assessment.value] !== undefined
+            ? courseSpecificValues[assessment.value]
+            : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
 
-    // Calculate final score with direct addition of assessment adjustment
-    let finalScore = average + assessmentAdjustment;
+        return total + adjustment;
+      }, 0);
 
-    // Cap at 20
-    finalScore = Math.min(finalScore, 20);
+      // Calculate final score with direct addition of assessment adjustment
+      let finalScore = average + assessmentAdjustment;
 
-    // Ensure not negative
-    finalScore = Math.max(finalScore, 0);
+      // Cap at 20
+      finalScore = Math.min(finalScore, 20);
 
-    return finalScore;
-  };
+      // Ensure not negative
+      finalScore = Math.max(finalScore, 0);
+
+      return finalScore;
+    },
+    [courseSpecificAssessmentValues]
+  );
+
+  // Wrap the formatGradeCalculationTooltip function in useCallback
+  const formatGradeCalculationTooltip = useCallback(
+    (
+      grades: GradeEntry[],
+      assessments: AssessmentEntry[],
+      courseKey: string
+    ): string => {
+      if (!grades || grades.length === 0) return "اطلاعاتی موجود نیست";
+
+      // Calculate the raw grade average
+      const gradeAverage =
+        grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
+
+      // Build the tooltip text
+      let tooltip = "محاسبه نمره:\n\n";
+
+      // Show each individual grade
+      tooltip += "نمرات اصلی:\n";
+      grades.forEach((grade, index) => {
+        tooltip += `${index + 1}. ${toPersianDigits(grade.value.toFixed(2))}`;
+        if (grade.description) {
+          tooltip += ` (${grade.description})`;
+        }
+        tooltip += "\n";
+      });
+
+      // Show raw average
+      tooltip += `\nمیانگین نمرات: ${toPersianDigits(
+        gradeAverage.toFixed(2)
+      )}\n`;
+
+      // If there are assessments, show how they affected the grade
+      if (assessments && assessments.length > 0) {
+        tooltip += "\nارزیابی‌های معلم:\n";
+
+        let assessmentAdjustmentTotal = 0;
+        assessments.forEach((assessment) => {
+          // Get course-specific assessment value or fall back to default
+          const courseSpecificValues =
+            courseSpecificAssessmentValues[courseKey] || {};
+          const adjustment =
+            courseSpecificValues[assessment.value] !== undefined
+              ? courseSpecificValues[assessment.value]
+              : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+
+          assessmentAdjustmentTotal += adjustment;
+
+          // Show the assessment with its direct adjustment value
+          tooltip += `- ${assessment.title || "ارزیابی"}: ${
+            assessment.value
+          } (${adjustment > 0 ? "+" : ""}${adjustment})\n`;
+        });
+
+        // Show the direct calculation
+        tooltip += `\nتأثیر ارزیابی‌ها: ${
+          assessmentAdjustmentTotal > 0 ? "+" : ""
+        }${toPersianDigits(assessmentAdjustmentTotal.toString())}\n`;
+
+        // Calculate final score with direct addition
+        let finalScore = gradeAverage + assessmentAdjustmentTotal;
+        // Cap at 20
+        finalScore = Math.min(finalScore, 20);
+        // Ensure not negative
+        finalScore = Math.max(finalScore, 0);
+
+        // Show calculation
+        tooltip += `\nمحاسبه نهایی: ${toPersianDigits(
+          gradeAverage.toFixed(2)
+        )} ${assessmentAdjustmentTotal >= 0 ? "+" : ""}${toPersianDigits(
+          assessmentAdjustmentTotal.toString()
+        )} = ${toPersianDigits(finalScore.toFixed(2))}`;
+
+        // Add note if capped
+        if (gradeAverage + assessmentAdjustmentTotal > 20) {
+          tooltip += `\n(محدود شده به حداکثر نمره ۲۰)`;
+        } else if (gradeAverage + assessmentAdjustmentTotal < 0) {
+          tooltip += `\n(محدود شده به حداقل نمره ۰)`;
+        }
+      }
+
+      return tooltip;
+    },
+    [courseSpecificAssessmentValues]
+  );
 
   // Update course info when selected class changes
   useEffect(() => {
@@ -374,6 +485,62 @@ const MonthlyGradeOverallReport = ({
             }
           });
 
+          // Fetch custom assessment values for each teacher/course
+          const assessmentPromises = teacherCourses.map(
+            async (teacherCourse) => {
+              try {
+                const response = await fetch(
+                  `/api/assessments?teacherCode=${teacherCourse.teacherCode}&courseCode=${teacherCourse.courseCode}&schoolCode=${schoolCode}`
+                );
+
+                if (!response.ok) {
+                  return {
+                    courseKey: `${teacherCourse.teacherCode}_${teacherCourse.courseCode}`,
+                    values: {},
+                  };
+                }
+
+                const assessmentData =
+                  (await response.json()) as AssessmentData[];
+                const customValues: Record<string, number> = {};
+                // console.log("assessmentData", assessmentData);
+                if (assessmentData && assessmentData.data.length > 0) {
+                  // Process assessment data to extract custom values
+                  assessmentData.data.forEach((assessment: AssessmentData) => {
+                    console.log(
+                      "assessmentstart",
+                      assessment
+                      //   assessment.data.value,
+                      //   assessment.data.weight
+                    );
+
+                    if (
+                      assessment &&
+                      assessment.value &&
+                      assessment.weight !== undefined
+                    ) {
+                      console.log("assessmentxxx");
+
+                      customValues[assessment.value] = assessment.weight;
+                    }
+                  });
+                }
+                // console.log("assessment1", customValues);
+
+                return {
+                  courseKey: `${teacherCourse.teacherCode}_${teacherCourse.courseCode}`,
+                  values: customValues,
+                };
+              } catch (error) {
+                console.error("Error fetching assessment values:", error);
+                return {
+                  courseKey: `${teacherCourse.teacherCode}_${teacherCourse.courseCode}`,
+                  values: {},
+                };
+              }
+            }
+          );
+
           // Wait for all course data to be fetched
           const coursesWithDetails = await Promise.all(coursePromises);
           console.log(
@@ -385,6 +552,21 @@ const MonthlyGradeOverallReport = ({
             }))
           );
           setCourseInfo(coursesWithDetails);
+
+          // Process custom assessment values
+          const assessmentResults = await Promise.all(assessmentPromises);
+          const assessmentValuesMap: Record<
+            string,
+            Record<string, number>
+          > = {};
+
+          assessmentResults.forEach((result) => {
+            if (Object.keys(result.values).length > 0) {
+              assessmentValuesMap[result.courseKey] = result.values;
+            }
+          });
+
+          setCourseSpecificAssessmentValues(assessmentValuesMap);
         } catch (error) {
           console.error("Error fetching course details:", error);
 
@@ -404,78 +586,6 @@ const MonthlyGradeOverallReport = ({
       fetchCourseDetails();
     }
   }, [selectedClass, classDocuments, schoolCode]);
-
-  // Update the tooltip formatter to show the correct calculation
-  const formatGradeCalculationTooltip = (
-    grades: GradeEntry[],
-    assessments: AssessmentEntry[]
-  ): string => {
-    if (!grades || grades.length === 0) return "اطلاعاتی موجود نیست";
-
-    // Calculate the raw grade average
-    const gradeAverage =
-      grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
-
-    // Build the tooltip text
-    let tooltip = "محاسبه نمره:\n\n";
-
-    // Show each individual grade
-    tooltip += "نمرات اصلی:\n";
-    grades.forEach((grade, index) => {
-      tooltip += `${index + 1}. ${toPersianDigits(grade.value.toFixed(2))}`;
-      if (grade.description) {
-        tooltip += ` (${grade.description})`;
-      }
-      tooltip += "\n";
-    });
-
-    // Show raw average
-    tooltip += `\nمیانگین نمرات: ${toPersianDigits(gradeAverage.toFixed(2))}\n`;
-
-    // If there are assessments, show how they affected the grade
-    if (assessments && assessments.length > 0) {
-      tooltip += "\nارزیابی‌های معلم:\n";
-
-      let assessmentAdjustmentTotal = 0;
-      assessments.forEach((assessment) => {
-        const adjustment = ASSESSMENT_VALUES_MAP[assessment.value] || 0;
-        assessmentAdjustmentTotal += adjustment;
-
-        // Show the assessment with its direct adjustment value
-        tooltip += `- ${assessment.title || "ارزیابی"}: ${assessment.value} (${
-          adjustment > 0 ? "+" : ""
-        }${adjustment})\n`;
-      });
-
-      // Show the direct calculation
-      tooltip += `\nتأثیر ارزیابی‌ها: ${
-        assessmentAdjustmentTotal > 0 ? "+" : ""
-      }${toPersianDigits(assessmentAdjustmentTotal.toString())}\n`;
-
-      // Calculate final score with direct addition
-      let finalScore = gradeAverage + assessmentAdjustmentTotal;
-      // Cap at 20
-      finalScore = Math.min(finalScore, 20);
-      // Ensure not negative
-      finalScore = Math.max(finalScore, 0);
-
-      // Show calculation
-      tooltip += `\nمحاسبه نهایی: ${toPersianDigits(gradeAverage.toFixed(2))} ${
-        assessmentAdjustmentTotal >= 0 ? "+" : ""
-      }${toPersianDigits(
-        assessmentAdjustmentTotal.toString()
-      )} = ${toPersianDigits(finalScore.toFixed(2))}`;
-
-      // Add note if capped
-      if (gradeAverage + assessmentAdjustmentTotal > 20) {
-        tooltip += `\n(محدود شده به حداکثر نمره ۲۰)`;
-      } else if (gradeAverage + assessmentAdjustmentTotal < 0) {
-        tooltip += `\n(محدود شده به حداقل نمره ۰)`;
-      }
-    }
-
-    return tooltip;
-  };
 
   // Fetch grades data when selections change
   useEffect(() => {
@@ -701,7 +811,8 @@ const MonthlyGradeOverallReport = ({
                     if (monthData.grades.length > 0) {
                       const monthlyScore = calculateFinalScore(
                         monthData.grades,
-                        monthData.assessments
+                        monthData.assessments,
+                        courseKey
                       );
 
                       if (monthlyScore !== null) {
@@ -750,16 +861,11 @@ const MonthlyGradeOverallReport = ({
                     finalScore = null; // If no valid monthly grades, set to null
                   }
                 } else {
-                  // For specific month, store grades and assessments for tooltip
-                  studentGradesMap[studentCode].gradeDetails[courseKey] = {
-                    grades: data.grades,
-                    assessments: data.assessments,
-                  };
-
-                  // Calculate final score as before
+                  // For specific month, calculate with the courseKey parameter
                   finalScore = calculateFinalScore(
                     data.grades,
-                    data.assessments
+                    data.assessments,
+                    courseKey
                   );
                 }
 
@@ -848,6 +954,8 @@ const MonthlyGradeOverallReport = ({
     courseInfo,
     classDocuments,
     schoolCode,
+    calculateFinalScore,
+    courseSpecificAssessmentValues,
   ]);
 
   // Get a color class based on score value
@@ -1384,7 +1492,8 @@ const MonthlyGradeOverallReport = ({
                                     ? formatTooltipContent(monthlyGrades)
                                     : formatGradeCalculationTooltip(
                                         gradeDetails.grades,
-                                        gradeDetails.assessments
+                                        gradeDetails.assessments,
+                                        courseKey
                                       )
                                 }
                                 style={{
