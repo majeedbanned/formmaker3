@@ -249,6 +249,7 @@ const MonthlyGradeOverallReport = ({
   const [isPrinting, setIsPrinting] = useState(false);
   const [courseSpecificAssessmentValues, setCourseSpecificAssessmentValues] =
     useState<Record<string, Record<string, number>>>({});
+  const [showRankings, setShowRankings] = useState<boolean>(true);
 
   // Get the current Persian year and month based on the current date
   const currentDate = new Date();
@@ -1397,7 +1398,7 @@ const MonthlyGradeOverallReport = ({
 
   // Add function to render rank badge
   const renderRankBadge = (rank: number | undefined) => {
-    if (!rank || rank > 3) return null;
+    if (!showRankings || !rank || rank > 3) return null;
 
     const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
 
@@ -1466,6 +1467,45 @@ const MonthlyGradeOverallReport = ({
     }
   };
 
+  // Create a function to calculate column averages
+  const calculateColumnAverages = () => {
+    if (studentGrades.length === 0) return {};
+
+    const averages: Record<string, number | null> = {};
+
+    // Calculate average for each course
+    courseInfo.forEach((course) => {
+      const courseKey = `${course.teacherCode}_${course.courseCode}`;
+      const validGrades = studentGrades
+        .map((student) => student.courseGrades[courseKey])
+        .filter(
+          (grade): grade is number => grade !== null && grade !== undefined
+        );
+
+      if (validGrades.length > 0) {
+        const sum = validGrades.reduce((acc, grade) => acc + grade, 0);
+        averages[courseKey] =
+          Math.round((sum / validGrades.length) * 100) / 100;
+      } else {
+        averages[courseKey] = null;
+      }
+    });
+
+    // Calculate overall average
+    const validAverages = studentGrades
+      .map((student) => student.average)
+      .filter((avg): avg is number => avg !== null && avg !== undefined);
+
+    if (validAverages.length > 0) {
+      const sum = validAverages.reduce((acc, avg) => acc + avg, 0);
+      averages.overall = Math.round((sum / validAverages.length) * 100) / 100;
+    } else {
+      averages.overall = null;
+    }
+
+    return averages;
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
@@ -1527,6 +1567,20 @@ const MonthlyGradeOverallReport = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Add checkbox for rankings */}
+            <div className="flex items-center space-x-2 mt-4">
+              <input
+                type="checkbox"
+                id="show-rankings"
+                checked={showRankings}
+                onChange={(e) => setShowRankings(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <Label htmlFor="show-rankings" className="cursor-pointer">
+                نمایش رتبه‌بندی
+              </Label>
             </div>
           </CardContent>
         </Card>
@@ -1784,6 +1838,53 @@ const MonthlyGradeOverallReport = ({
                                   title={topStudent.name}
                                 >
                                   {topStudent.name}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+
+                      {/* Column averages row */}
+                      <tr className="bg-blue-50">
+                        <td colSpan={3} className="p-2 font-bold text-blue-800">
+                          میانگین ستون‌ها
+                        </td>
+
+                        {/* Course column averages */}
+                        {(() => {
+                          const columnAverages = calculateColumnAverages();
+
+                          return courseInfo.map((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            const average = columnAverages[courseKey];
+
+                            return (
+                              <td key={`avg-${courseKey}`} className="p-2">
+                                <div className="flex flex-col items-center">
+                                  <div className="font-bold text-blue-800">
+                                    {average !== null
+                                      ? toPersianDigits(average.toFixed(2))
+                                      : "-"}
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          });
+                        })()}
+
+                        {/* Overall average */}
+                        <td className="p-2">
+                          {(() => {
+                            const columnAverages = calculateColumnAverages();
+                            const overallAverage = columnAverages.overall;
+
+                            return (
+                              <div className="flex flex-col items-center">
+                                <div className="font-bold text-blue-800">
+                                  {overallAverage !== null
+                                    ? toPersianDigits(overallAverage.toFixed(2))
+                                    : "-"}
                                 </div>
                               </div>
                             );
