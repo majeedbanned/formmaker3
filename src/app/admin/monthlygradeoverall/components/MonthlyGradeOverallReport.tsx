@@ -88,7 +88,7 @@ type CellData = {
 type AssessmentData = {
   data: {
     value: string;
-    adjustment: number;
+    weight: number;
     title?: string;
     teacherCode?: string;
     courseCode?: string;
@@ -507,13 +507,6 @@ const MonthlyGradeOverallReport = ({
                 if (assessmentData && assessmentData.data.length > 0) {
                   // Process assessment data to extract custom values
                   assessmentData.data.forEach((assessment: AssessmentData) => {
-                    console.log(
-                      "assessmentstart",
-                      assessment
-                      //   assessment.data.value,
-                      //   assessment.data.weight
-                    );
-
                     if (
                       assessment &&
                       assessment.value &&
