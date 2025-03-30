@@ -179,6 +179,7 @@ type CourseInfo = {
   courseCode: string;
   teacherCode: string;
   courseName: string;
+  vahed?: number;
 };
 
 type MonthlyGrade = {
@@ -308,16 +309,83 @@ const MonthlyGradeOverallReport = ({
     );
 
     if (classDoc) {
-      // For now we don't have actual course names, so we'll use placeholder names
-      const courses = classDoc.data.teachers.map((teacher) => ({
+      setLoading(true);
+
+      // Extract teacher-course pairs from the class
+      const teacherCourses = classDoc.data.teachers.map((teacher) => ({
         courseCode: teacher.courseCode,
         teacherCode: teacher.teacherCode,
-        courseName: `درس ${teacher.courseCode}`, // Placeholder course name
       }));
 
-      setCourseInfo(courses);
+      // Fetch course details for each courseCode
+      const fetchCourseDetails = async () => {
+        try {
+          // Create promises for all course fetch operations
+          const coursePromises = teacherCourses.map(async (teacherCourse) => {
+            const response = await fetch(
+              `/api/courses?courseCode=${teacherCourse.courseCode}&schoolCode=${schoolCode}`
+            );
+
+            if (!response.ok) {
+              console.error(
+                `Failed to fetch course ${teacherCourse.courseCode}`
+              );
+              return {
+                ...teacherCourse,
+                courseName: `درس ${teacherCourse.courseCode}`, // Fallback name
+                vahed: 1, // Default value
+              };
+            }
+
+            const courseData = await response.json();
+            // If course data exists, use it, otherwise use fallback
+            if (courseData && courseData.length > 0 && courseData[0].data) {
+              return {
+                ...teacherCourse,
+                courseName:
+                  courseData[0].data.courseName ||
+                  `درس ${teacherCourse.courseCode}`,
+                vahed: courseData[0].data.vahed || 1,
+              };
+            } else {
+              return {
+                ...teacherCourse,
+                courseName: `درس ${teacherCourse.courseCode}`, // Fallback name
+                vahed: 1, // Default value
+              };
+            }
+          });
+
+          // Wait for all course data to be fetched
+          const coursesWithDetails = await Promise.all(coursePromises);
+          console.log(
+            "Fetched courses:",
+            coursesWithDetails.map((c) => ({
+              courseCode: c.courseCode,
+              courseName: c.courseName,
+              vahed: c.vahed,
+            }))
+          );
+          setCourseInfo(coursesWithDetails);
+        } catch (error) {
+          console.error("Error fetching course details:", error);
+
+          // Fallback to basic info if there's an error
+          const basicCourseInfo = teacherCourses.map((teacherCourse) => ({
+            ...teacherCourse,
+            courseName: `درس ${teacherCourse.courseCode}`,
+            vahed: 1,
+          }));
+
+          setCourseInfo(basicCourseInfo);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCourseDetails();
     }
-  }, [selectedClass, classDocuments]);
+  }, [selectedClass, classDocuments, schoolCode]);
 
   // Fetch grades data when selections change
   useEffect(() => {
@@ -800,9 +868,9 @@ const MonthlyGradeOverallReport = ({
     courseInfo.forEach((course) => {
       const courseKey = `${course.teacherCode}_${course.courseCode}`;
       columns.push({
-        header: course.courseName,
+        header: `${course.courseName} (${course.vahed} واحد)`,
         key: courseKey,
-        width: 15,
+        width: 18,
       });
     });
 
@@ -932,9 +1000,38 @@ const MonthlyGradeOverallReport = ({
       .join("\n");
   };
 
+  // Add custom CSS for vertical text
+  const verticalTextStyles = `
+    .vertical-text {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      white-space: nowrap;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .course-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .vahed-badge {
+      background-color: #e2e8f0;
+      border-radius: 9999px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+  `;
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      <style dangerouslySetInnerHTML={{ __html: verticalTextStyles }} />
       <div className={`space-y-6 ${isPrinting ? "printing" : ""}`} dir="rtl">
         <Card className="print:hidden">
           <CardHeader>
@@ -1051,17 +1148,26 @@ const MonthlyGradeOverallReport = ({
                           نام دانش‌آموز <SortIcon column="studentName" />
                         </TableHead>
 
-                        {/* Course columns */}
+                        {/* Course columns with vertical text */}
                         {courseInfo.map((course) => {
                           const courseKey = `${course.teacherCode}_${course.courseCode}`;
                           return (
                             <TableHead
                               key={courseKey}
-                              className="w-[100px] cursor-pointer"
+                              className="w-[70px] cursor-pointer p-1"
                               onClick={() => requestSort(courseKey)}
                             >
-                              {course.courseName}{" "}
-                              <SortIcon column={courseKey} />
+                              <div className="course-header">
+                                <div className="vertical-text">
+                                  {course.courseName}
+                                </div>
+                                <span className="vahed-badge">
+                                  {course.vahed} واحد
+                                </span>
+                                <div className="mt-1">
+                                  <SortIcon column={courseKey} />
+                                </div>
+                              </div>
                             </TableHead>
                           );
                         })}
@@ -1109,7 +1215,9 @@ const MonthlyGradeOverallReport = ({
                                 }}
                               >
                                 {score !== null
-                                  ? toPersianDigits(Number(score?.toFixed(2)))
+                                  ? toPersianDigits(
+                                      (Math.round(score * 100) / 100).toFixed(2)
+                                    )
                                   : "-"}
                               </TableCell>
                             );
