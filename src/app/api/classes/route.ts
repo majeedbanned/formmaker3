@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase, getDynamicModel } from "@/lib/mongodb";
 
+interface ClassDocument {
+  _id?: any;
+  data: {
+    classCode: string;
+    className: string;
+    schoolCode: string;
+    teachers: Array<{
+      teacherCode: string;
+      courseCode: string;
+      weeklySchedule: Array<{
+        day: string;
+        timeSlot: string;
+      }>;
+    }>;
+    students: Array<{
+      studentCode: number;
+      studentName: string;
+      studentlname: string;
+      phone: string;
+    }>;
+    [key: string]: any;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get query parameters
@@ -8,16 +34,13 @@ export async function GET(request: NextRequest) {
     const schoolCode = searchParams.get("schoolCode");
     const teacherCode = searchParams.get("teacherCode");
 
-    // Validate required parameters
-    if (!schoolCode || !teacherCode) {
+    // Validate required parameter - schoolCode is always required
+    if (!schoolCode) {
       return NextResponse.json(
-        { error: "Missing required parameters: schoolCode and teacherCode" },
+        { error: "Missing required parameter: schoolCode" },
         { status: 400 }
       );
     }
-
-
-    
 
     // Connect to the database
     const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
@@ -26,33 +49,25 @@ export async function GET(request: NextRequest) {
     // Get the classes model
     const ClassModel = getDynamicModel("classes");
 
-    // Build the query to find classes where the teacher teaches
-    const query = {
-      'data.schoolCode': schoolCode,
-      'data.teachers': {
+    // Build the query based on available parameters
+    const query: Record<string, any> = {
+      'data.schoolCode': schoolCode
+    };
+
+    // If teacherCode is provided, filter by teacher
+    if (teacherCode) {
+      query['data.teachers'] = {
         $elemMatch: {
           teacherCode: teacherCode
         }
-      }
-    };
-
-    // console.log("Executing query:", JSON.stringify(query));
+      };
+    }
 
     // Fetch classes from the database
-    const classes = await ClassModel.find(query).lean();
+    const classes = await ClassModel.find(query).lean().exec();
     
-    
-    // console.log(`Found ${classes.length} classes for teacher ${teacherCode} in school ${schoolCode}`);
- //console.log(( classes))
-
- const responseData = classes.map(classObj => ({ data: classObj.data }));
- //console.log( responseData)
-    // Return the classes
-
-
-
-
-
+    // Convert the database results to the expected response format
+    const responseData = (classes as ClassDocument[]).map(classObj => ({ data: classObj.data }));
 
     return NextResponse.json(responseData);
   } catch (error) {

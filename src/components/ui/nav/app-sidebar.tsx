@@ -109,6 +109,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "گزارش نمرات ماهانه",
+          url: "/admin/monthlygrade",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
