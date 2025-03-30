@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -84,7 +84,7 @@ type CellData = {
   assessments?: AssessmentEntry[];
 };
 
-// Add a type for the assessment data from the API
+// Update the AssessmentData type to match the expected structure from the API
 type AssessmentData = {
   data: {
     value: string;
@@ -1302,6 +1302,170 @@ const MonthlyGradeOverallReport = ({
     }
   `;
 
+  // Add function to calculate ranks for students based on grades and average
+  const calculateStudentRanks = useCallback(
+    (students: StudentGradesByMonth[]) => {
+      // Create maps to store rankings for each course and average
+      const ranksByCourse: Record<string, Record<number, number>> = {};
+      const averageRanks: Record<number, number> = {};
+
+      // Initialize rank storage for each course
+      courseInfo.forEach((course) => {
+        const courseKey = `${course.teacherCode}_${course.courseCode}`;
+        ranksByCourse[courseKey] = {};
+      });
+
+      // Calculate ranks for each course
+      courseInfo.forEach((course) => {
+        const courseKey = `${course.teacherCode}_${course.courseCode}`;
+
+        // Get all students with scores for this course
+        const studentsWithScores = students
+          .map((student) => ({
+            studentCode: student.studentCode,
+            score: student.courseGrades[courseKey],
+          }))
+          .filter(
+            (student) => student.score !== null && student.score !== undefined
+          );
+
+        // Sort students by score (descending)
+        const sortedStudents = [...studentsWithScores].sort(
+          (a, b) => (b.score ?? 0) - (a.score ?? 0)
+        );
+
+        // Assign ranks (equal scores get the same rank)
+        let currentRank = 1;
+        let previousScore: number | null = null;
+
+        sortedStudents.forEach((student, index) => {
+          if (student.score !== previousScore) {
+            // New score, assign new rank
+            currentRank = index + 1;
+          }
+
+          ranksByCourse[courseKey][student.studentCode] = currentRank;
+          previousScore = student.score;
+        });
+      });
+
+      // Calculate ranks for average
+      const studentsWithAvg = students
+        .map((student) => ({
+          studentCode: student.studentCode,
+          average: student.average,
+        }))
+        .filter((student) => student.average !== null);
+
+      // Sort students by average (descending)
+      const sortedByAvg = [...studentsWithAvg].sort(
+        (a, b) => (b.average ?? 0) - (a.average ?? 0)
+      );
+
+      // Assign ranks for average
+      let currentRank = 1;
+      let previousAvg: number | null = null;
+
+      sortedByAvg.forEach((student, index) => {
+        if (student.average !== previousAvg) {
+          // New average, assign new rank
+          currentRank = index + 1;
+        }
+
+        averageRanks[student.studentCode] = currentRank;
+        previousAvg = student.average;
+      });
+
+      return { courseRanks: ranksByCourse, averageRanks };
+    },
+    [courseInfo]
+  );
+
+  // Use the memoized ranks
+  const studentRanks = useMemo(
+    () => calculateStudentRanks(studentGrades),
+    [calculateStudentRanks, studentGrades]
+  );
+
+  // Add function to get rank badge styles
+  const getRankBadgeClass = (rank: number): string => {
+    if (rank === 1) return "bg-amber-100 text-amber-800 font-bold"; // Gold
+    if (rank === 2) return "bg-slate-100 text-slate-700 font-bold"; // Silver
+    if (rank === 3) return "bg-orange-100 text-orange-700 font-bold"; // Bronze
+    return "bg-gray-100 text-gray-700"; // Default
+  };
+
+  // Add function to render rank badge
+  const renderRankBadge = (rank: number | undefined) => {
+    if (!rank || rank > 3) return null;
+
+    const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+
+    return (
+      <div
+        className={`text-xs mt-1 px-1 py-0.5 rounded-full ${getRankBadgeClass(
+          rank
+        )}`}
+      >
+        {emoji} {toPersianDigits(rank)}
+      </div>
+    );
+  };
+
+  // Fix the getTopStudent function to handle all edge cases and return types correctly
+  const getTopStudent = (
+    students: StudentGradesByMonth[],
+    courseKey: string | "average"
+  ): { name: string; score: number | null } | null => {
+    if (students.length === 0) return null;
+
+    if (courseKey === "average") {
+      // Find top student by average
+      const validStudents = students.filter(
+        (student) => student.average !== null
+      );
+      if (validStudents.length === 0) return null;
+
+      // Use a safer comparison approach
+      let topStudent = validStudents[0];
+      for (let i = 1; i < validStudents.length; i++) {
+        if ((validStudents[i].average ?? 0) > (topStudent.average ?? 0)) {
+          topStudent = validStudents[i];
+        }
+      }
+
+      return {
+        name: topStudent.studentName,
+        score: topStudent.average,
+      };
+    } else {
+      // Find top student for a specific course
+      const validStudents = students.filter(
+        (student) =>
+          student.courseGrades[courseKey] !== null &&
+          student.courseGrades[courseKey] !== undefined
+      );
+
+      if (validStudents.length === 0) return null;
+
+      // Use a safer comparison approach
+      let topStudent = validStudents[0];
+      for (let i = 1; i < validStudents.length; i++) {
+        if (
+          (validStudents[i].courseGrades[courseKey] ?? 0) >
+          (topStudent.courseGrades[courseKey] ?? 0)
+        ) {
+          topStudent = validStudents[i];
+        }
+      }
+
+      return {
+        name: topStudent.studentName,
+        score: topStudent.courseGrades[courseKey],
+      };
+    }
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
@@ -1470,6 +1634,10 @@ const MonthlyGradeOverallReport = ({
                             const score = student.courseGrades[courseKey];
                             const monthlyGrades =
                               student.courseMonthlyGrades[courseKey] || [];
+                            const courseRank =
+                              studentRanks.courseRanks[courseKey]?.[
+                                student.studentCode
+                              ];
 
                             // Get grade details for tooltip
                             const gradeDetails = student.gradeDetails[
@@ -1493,11 +1661,16 @@ const MonthlyGradeOverallReport = ({
                                   cursor: "help",
                                 }}
                               >
-                                {score !== null
-                                  ? toPersianDigits(
-                                      (Math.round(score * 100) / 100).toFixed(2)
-                                    )
-                                  : "-"}
+                                <div className="flex flex-col items-center">
+                                  {score !== null
+                                    ? toPersianDigits(
+                                        (Math.round(score * 100) / 100).toFixed(
+                                          2
+                                        )
+                                      )
+                                    : "-"}
+                                  {renderRankBadge(courseRank)}
+                                </div>
                               </TableCell>
                             );
                           })}
@@ -1523,13 +1696,101 @@ const MonthlyGradeOverallReport = ({
                                   : "default",
                             }}
                           >
-                            {student.average !== null
-                              ? toPersianDigits(student.average.toFixed(2))
-                              : "-"}
+                            <div className="flex flex-col items-center">
+                              {student.average !== null
+                                ? toPersianDigits(student.average.toFixed(2))
+                                : "-"}
+                              {studentRanks.averageRanks[student.studentCode] <=
+                                3 &&
+                                renderRankBadge(
+                                  studentRanks.averageRanks[student.studentCode]
+                                )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
+
+                    {/* Add top students section */}
+                    <tfoot className="bg-amber-50 border-t-2 border-amber-200">
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="p-2 font-bold text-amber-800"
+                        >
+                          نفرات برتر
+                        </td>
+
+                        {/* Course top students */}
+                        {courseInfo.map((course) => {
+                          const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                          const topStudent = getTopStudent(
+                            studentGrades,
+                            courseKey
+                          );
+
+                          return (
+                            <td key={`top-${courseKey}`} className="p-2">
+                              {topStudent ? (
+                                <div className="flex flex-col items-center">
+                                  <div className="text-amber-800 text-xs">
+                                    🏆 نفر اول
+                                  </div>
+                                  <div className="font-bold text-amber-800">
+                                    {topStudent.score !== null
+                                      ? toPersianDigits(
+                                          topStudent.score.toFixed(2)
+                                        )
+                                      : "-"}
+                                  </div>
+                                  <div
+                                    className="text-xs text-amber-800 truncate max-w-[100px]"
+                                    title={topStudent.name}
+                                  >
+                                    {topStudent.name}
+                                  </div>
+                                </div>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                          );
+                        })}
+
+                        {/* Average top student */}
+                        <td className="p-2">
+                          {(() => {
+                            const topStudent = getTopStudent(
+                              studentGrades,
+                              "average"
+                            );
+
+                            if (!topStudent) return "-";
+
+                            return (
+                              <div className="flex flex-col items-center">
+                                <div className="text-amber-800 text-xs">
+                                  🏆 نفر اول
+                                </div>
+                                <div className="font-bold text-amber-800">
+                                  {topStudent.score !== null
+                                    ? toPersianDigits(
+                                        topStudent.score.toFixed(2)
+                                      )
+                                    : "-"}
+                                </div>
+                                <div
+                                  className="text-xs text-amber-800 truncate max-w-[100px]"
+                                  title={topStudent.name}
+                                >
+                                  {topStudent.name}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    </tfoot>
                   </Table>
                 </div>
               ) : (
