@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PrinterIcon } from "lucide-react";
+import { PrinterIcon, CreditCardIcon, IdCardIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Class data interface
@@ -42,7 +42,7 @@ interface ClassDocument {
 // Define PDF component props type
 interface PDFExportComponentProps {
   classData: ClassData;
-  printStyle: "list" | "card";
+  printStyle: "list" | "card1" | "card2";
 }
 
 // Import the PDF component with dynamic import to prevent SSR issues
@@ -63,7 +63,9 @@ export default function PrintsPage() {
   const [classes, setClasses] = useState<ClassDocument[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [printStyle, setPrintStyle] = useState<"list" | "card">("list");
+  const [printStyle, setPrintStyle] = useState<"list" | "card1" | "card2">(
+    "list"
+  );
 
   useEffect(() => {
     if (user?.schoolCode) {
@@ -172,22 +174,96 @@ export default function PrintsPage() {
           {/* Print style selection */}
           <div className="mt-4 border-t pt-4">
             <h3 className="text-sm font-medium mb-2">انتخاب نوع نمایش</h3>
-            <div className="flex space-x-2 rtl:space-x-reverse">
+            <div className="flex flex-wrap space-x-2 rtl:space-x-reverse gap-y-2">
               <Button
                 variant={printStyle === "list" ? "default" : "outline"}
                 onClick={() => setPrintStyle("list")}
-                className="min-w-24"
+                className="min-w-24 flex items-center gap-2"
               >
+                <PrinterIcon className="h-4 w-4" />
                 لیست
               </Button>
+
               <Button
-                variant={printStyle === "card" ? "default" : "outline"}
-                onClick={() => setPrintStyle("card")}
-                className="min-w-24"
+                variant={printStyle === "card1" ? "default" : "outline"}
+                onClick={() => setPrintStyle("card1")}
+                className="min-w-28 flex items-center gap-2"
               >
-                کارت دانش آموزی
+                <IdCardIcon className="h-4 w-4" />
+                کارت دانش آموزی 1
+              </Button>
+
+              <Button
+                variant={printStyle === "card2" ? "default" : "outline"}
+                onClick={() => setPrintStyle("card2")}
+                className="min-w-28 flex items-center gap-2"
+              >
+                <CreditCardIcon className="h-4 w-4" />
+                کارت دانش آموزی 2
               </Button>
             </div>
+
+            {/* Preview of card styles */}
+            {printStyle !== "list" && (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium mb-2">پیش نمایش طرح کارت</h4>
+                <div className="flex flex-wrap gap-4">
+                  {printStyle === "card1" ? (
+                    <div className="border border-black rounded-md p-3 bg-white w-64">
+                      <div className="border-b border-black pb-2 mb-2 text-center font-bold">
+                        کلاس نمونه
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600 text-sm">
+                          کد دانش آموز:
+                        </span>
+                        <span className="font-bold text-sm">12345</span>
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600 text-sm">نام:</span>
+                        <span className="font-bold text-sm">محمد</span>
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600 text-sm">
+                          نام خانوادگی:
+                        </span>
+                        <span className="font-bold text-sm">احمدی</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border border-blue-500 rounded-lg p-3 bg-blue-50 w-64">
+                      <div className="bg-blue-100 text-blue-900 p-1 rounded mb-3 text-center font-bold">
+                        دانش آموز کلاس نمونه
+                      </div>
+                      <div className="flex items-center mb-2">
+                        <span className="text-gray-700 text-sm w-2/5">
+                          کد دانش آموز:
+                        </span>
+                        <span className="font-bold text-sm bg-white p-1 rounded w-3/5 text-right">
+                          12345
+                        </span>
+                      </div>
+                      <div className="flex items-center mb-2">
+                        <span className="text-gray-700 text-sm w-2/5">
+                          نام:
+                        </span>
+                        <span className="font-bold text-sm bg-white p-1 rounded w-3/5 text-right">
+                          محمد
+                        </span>
+                      </div>
+                      <div className="flex items-center mb-2">
+                        <span className="text-gray-700 text-sm w-2/5">
+                          نام خانوادگی:
+                        </span>
+                        <span className="font-bold text-sm bg-white p-1 rounded w-3/5 text-right">
+                          احمدی
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -232,31 +308,75 @@ export default function PrintsPage() {
                 </Table>
               </div>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          ) : printStyle === "card1" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {getSelectedClassStudents().map((student) => (
-                <Card key={student.studentCode} className="p-4 flex flex-col">
-                  <div className="border-b pb-2 mb-2">
+                <Card
+                  key={student.studentCode}
+                  className="p-4 flex flex-col border border-black"
+                >
+                  <div className="border-b pb-2 mb-2 text-center">
                     <h3 className="text-lg font-bold">
-                      {getSelectedClassData()?.className}
+                      کلاس {getSelectedClassData()?.className}
                     </h3>
                   </div>
                   <div className="flex flex-col space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-500">کد دانش آموز:</span>
-                      <span>{student.studentCode}</span>
+                      <span className="font-bold">{student.studentCode}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">نام:</span>
-                      <span>{student.studentName}</span>
+                      <span className="font-bold">{student.studentName}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">نام خانوادگی:</span>
-                      <span>{student.studentlname}</span>
+                      <span className="font-bold">{student.studentlname}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">شماره تماس:</span>
-                      <span>{student.phone}</span>
+                      <span className="font-bold">{student.phone}</span>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {getSelectedClassStudents().map((student) => (
+                <Card
+                  key={student.studentCode}
+                  className="p-4 flex flex-col border border-blue-500 bg-blue-50"
+                >
+                  <div className="bg-blue-100 p-2 mb-3 rounded text-center">
+                    <h3 className="text-lg font-bold text-blue-900">
+                      دانش آموز کلاس {getSelectedClassData()?.className}
+                    </h3>
+                  </div>
+                  <div className="flex flex-col space-y-3">
+                    <div className="flex items-center">
+                      <span className="text-gray-700 w-2/5">کد دانش آموز:</span>
+                      <span className="bg-white p-1 rounded w-3/5 text-right font-bold">
+                        {student.studentCode}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-gray-700 w-2/5">نام:</span>
+                      <span className="bg-white p-1 rounded w-3/5 text-right font-bold">
+                        {student.studentName}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-gray-700 w-2/5">نام خانوادگی:</span>
+                      <span className="bg-white p-1 rounded w-3/5 text-right font-bold">
+                        {student.studentlname}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-gray-700 w-2/5">شماره تماس:</span>
+                      <span className="bg-white p-1 rounded w-3/5 text-right font-bold">
+                        {student.phone}
+                      </span>
                     </div>
                   </div>
                 </Card>
