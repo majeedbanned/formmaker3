@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyJWT } from "@/lib/jwt";
+import { logger } from "@/lib/logger";
 
 // Set runtime to experimental-edge since we're not using Mongoose here
 export const runtime = 'experimental-edge';
 
 export async function middleware(request: NextRequest) {
+  // Extract the domain from the host header
+  const domain = request.headers.get("host") || "localhost:3000";
+  
+  // Get the token if it exists
   const token = request.cookies.get("auth-token")?.value;
+
+  // Add domain to headers for all requests
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-domain", domain);
+  
+  // Check if this is an API route
+  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  if (isApiRoute) {
+    logger.info(`API request for domain: ${domain}, path: ${request.nextUrl.pathname}`);
+  }
 
   // Check if this is an admin route
   const isAdminRoute = request.nextUrl.pathname.startsWith("/s");
@@ -36,7 +51,6 @@ export async function middleware(request: NextRequest) {
       };
       
       // Add user info to headers for downstream use
-      const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId);
       requestHeaders.set("x-user-type", payload.userType);
       requestHeaders.set("x-school-code", payload.schoolCode);
@@ -66,9 +80,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  // For non-admin routes, pass the domain in the header
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
-  matcher: ["/s/:path*"],
+  matcher: ["/s/:path*", "/api/:path*"],
 }; 

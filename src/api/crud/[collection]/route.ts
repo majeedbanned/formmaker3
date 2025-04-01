@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase, getDynamicModel } from '@/lib/mongodb';
-import mongoose, { FilterQuery, Model } from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb';
+import mongoose, { Filter, Document } from 'mongoose';
 import { FormField } from '@/types/crud';
 import { logger } from '@/lib/logger';
 
@@ -39,7 +39,7 @@ export async function POST(
     const duplicateFields: Record<string, string> = {};
 
     for (const [field, value] of uniqueFields) {
-      const query = { [`data.${field}`]: value } as FilterQuery<any>;
+      const query = { [`data.${field}`]: value } as Filter<Document>;
       const existingDoc = await collection.findOne(query);
 
       if (existingDoc) {
@@ -56,7 +56,7 @@ export async function POST(
       .map(f => f.name);
 
     if (groupUniqueFields.length > 0) {
-      const groupQuery = {} as FilterQuery<any>;
+      const groupQuery = {} as Filter<Document>;
       let hasGroupValues = false;
 
       groupUniqueFields.forEach(field => {
@@ -70,10 +70,6 @@ export async function POST(
         const existingDoc = await collection.findOne(groupQuery);
         if (existingDoc) {
           const fields = groupUniqueFields.filter(field => data[field] !== undefined && data[field] !== null);
-          const titles = fields.map(field => {
-            const formField = formStructure.find(f => f.name === field);
-            return formField?.title || field;
-          });
           
           fields.forEach(field => {
             const formField = formStructure.find(f => f.name === field);
@@ -213,7 +209,7 @@ export async function PUT(
       const query = { 
         _id: { $ne: new mongoose.Types.ObjectId(id) }, // Exclude current document
         [`data.${field}`]: value 
-      } as FilterQuery<any>;
+      } as Filter<Document>;
       const existingDoc = await collection.findOne(query);
 
       if (existingDoc) {
@@ -230,7 +226,7 @@ export async function PUT(
       .map(f => f.name);
 
     if (groupUniqueFields.length > 0) {
-      const groupQuery = { _id: { $ne: new mongoose.Types.ObjectId(id) } } as FilterQuery<any>;
+      const groupQuery = { _id: { $ne: new mongoose.Types.ObjectId(id) } } as Filter<Document>;
       let hasGroupValues = false;
 
       groupUniqueFields.forEach(field => {
@@ -264,7 +260,6 @@ export async function PUT(
         { status: 400 }
       );
     }
-    console.log('>>>>>', id)
 
     const result = await collection.findOneAndUpdate(
       { _id: new mongoose.Types.ObjectId(id) },
@@ -276,18 +271,17 @@ export async function PUT(
       },
       { returnDocument: 'after' }
     );
-    //console.log('>>>>><<<', result.data)
 
-    if (!result ) {
+    if (!result) {
       logger.warn(`Document not found for update in ${params.collection}`, { domain, id });
       return NextResponse.json(
-        { error: 'Document not found3' },
+        { error: 'Document not found1' },
         { status: 404 }
       );
     }
 
     logger.info(`Document updated successfully in ${params.collection}`, { domain, id });
-    return NextResponse.json(result.data);
+    return NextResponse.json(result.value);
   } catch (err) {
     logger.error('Update error:', err);
     return NextResponse.json(
@@ -317,7 +311,7 @@ export async function DELETE(
     if (result.deletedCount === 0) {
       logger.warn(`Document not found for deletion in ${params.collection}`, { domain, id });
       return NextResponse.json(
-        { error: 'Document not found4' },
+        { error: 'Document not found2' },
         { status: 404 }
       );
     }

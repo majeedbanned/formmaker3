@@ -4,7 +4,7 @@ import { SortingState } from "@tanstack/react-table";
 
 interface UseCrudProps {
   collectionName: string;
-  connectionString: string;
+  connectionString?: string;
   initialFilter?: Record<string, unknown>;
   formStructure: FormField[];
 }
@@ -38,11 +38,16 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
         url.searchParams.set("filters", JSON.stringify(combinedFilters));
       }
 
-      const response = await fetch(url, {
-        headers: {
-          "x-mongodb-connection": connectionString,
-        },
-      });
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      // Only add connection string if provided (for backward compatibility)
+      if (connectionString) {
+        headers["x-mongodb-connection"] = connectionString;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) throw new Error("Failed to fetch entities");
 
@@ -60,12 +65,23 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
       setLoading(true);
       setError(null);
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      // Only add connection string if provided (for backward compatibility)
+      if (connectionString) {
+        headers["x-mongodb-connection"] = connectionString;
+      }
+
       const response = await fetch(`/api/crud/${collectionName}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ connectionString, data, formStructure }),
+        headers,
+        body: JSON.stringify({ 
+          data, 
+          formStructure,
+          ...(connectionString ? { connectionString } : {})
+        }),
       });
 
       if (!response.ok) {
@@ -89,12 +105,24 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
       setLoading(true);
       setError(null);
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      // Only add connection string if provided (for backward compatibility)
+      if (connectionString) {
+        headers["x-mongodb-connection"] = connectionString;
+      }
+
       const response = await fetch(`/api/crud/${collectionName}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ connectionString, id, data, formStructure }),
+        headers,
+        body: JSON.stringify({ 
+          id, 
+          data, 
+          formStructure,
+          ...(connectionString ? { connectionString } : {})
+        }),
       });
 
       if (!response.ok) {
@@ -118,15 +146,23 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `/api/crud/${collectionName}?id=${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "x-mongodb-connection": connectionString,
-          },
-        }
-      );
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      // Only add connection string if provided (for backward compatibility)
+      if (connectionString) {
+        headers["x-mongodb-connection"] = connectionString;
+      }
+
+      const response = await fetch(`/api/crud/${collectionName}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ 
+          id,
+          ...(connectionString ? { connectionString } : {})
+        }),
+      });
 
       if (!response.ok) throw new Error("Failed to delete entity");
 

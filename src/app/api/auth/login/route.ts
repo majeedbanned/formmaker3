@@ -1,36 +1,30 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { authenticateUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 // Set runtime to nodejs
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    console.log("Login request received");
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    
+    logger.info("Login request received", { domain });
+    
     const body = await request.json();
     const { userType, schoolCode, username, password } = body;
-    // console.log("Login attempt for:", { userType, schoolCode, username });
 
-    const { token, user } = await authenticateUser(userType, schoolCode, username, password);
-    // console.log("Authentication successful for user:", { 
-    //   id: user.id, 
-    //   userType: user.userType, 
-    //   schoolCode: user.schoolCode, 
-    //   username: user.username 
-    // });
+    const { token, user } = await authenticateUser(
+      domain,
+      userType,
+      schoolCode,
+      username,
+      password
+    );
 
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set("auth-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-    console.log("Auth token cookie set successfully");
-
-    const response = {
+    // Set cookie with token
+    const response = NextResponse.json({
       message: "ورود موفقیت‌آمیز",
       user: {
         id: user.id,
@@ -41,14 +35,23 @@ export async function POST(request: Request) {
         role: user.role,
         permissions: user.permissions,
       }
-    };
-    // console.log("Sending successful response:", response);
+    }, { status: 200 });
 
-    return NextResponse.json(response, { status: 200 });
+    // Set the cookie in the response
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+
+    logger.info("Auth token cookie set successfully", { domain });
+    return response;
+
   } catch (error) {
-    console.error("Login error:", error);
+    logger.error("Login error:", error);
     if (error instanceof Error) {
-      console.error("Error details:", {
+      logger.error("Error details:", {
         message: error.message,
         stack: error.stack,
         name: error.name

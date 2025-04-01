@@ -205,14 +205,14 @@ export default function PrintsPage() {
 
             {/* Preview of card styles */}
             {printStyle !== "list" && (
-            <div className="mt-4 border-t pt-4">
+              <div className="mt-4 border-t pt-4">
                 <h4 className="text-sm font-medium mb-2">پیش نمایش طرح کارت</h4>
-              <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap gap-4">
                   {printStyle === "card1" ? (
                     <div className="border border-black rounded-md p-3 bg-white w-64">
                       <div className="border-b border-black pb-2 mb-2 text-center font-bold">
                         کلاس نمونه
-                        </div>
+                      </div>
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-600 text-sm">
                           کد دانش آموز:
@@ -222,14 +222,14 @@ export default function PrintsPage() {
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-600 text-sm">نام:</span>
                         <span className="font-bold text-sm">محمد</span>
-                </div>
+                      </div>
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-600 text-sm">
                           نام خانوادگی:
                         </span>
                         <span className="font-bold text-sm">احمدی</span>
-                  </div>
-                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="border border-blue-500 rounded-lg p-3 bg-blue-50 w-64">
                       <div className="bg-blue-100 text-blue-900 p-1 rounded mb-3 text-center font-bold">
@@ -242,7 +242,7 @@ export default function PrintsPage() {
                         <span className="font-bold text-sm bg-white p-1 rounded w-3/5 text-right">
                           12345
                         </span>
-                </div>
+                      </div>
                       <div className="flex items-center mb-2">
                         <span className="text-gray-700 text-sm w-2/5">
                           نام:
@@ -250,7 +250,7 @@ export default function PrintsPage() {
                         <span className="font-bold text-sm bg-white p-1 rounded w-3/5 text-right">
                           محمد
                         </span>
-                        </div>
+                      </div>
                       <div className="flex items-center mb-2">
                         <span className="text-gray-700 text-sm w-2/5">
                           نام خانوادگی:
@@ -259,13 +259,13 @@ export default function PrintsPage() {
                           احمدی
                         </span>
                       </div>
-                      </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-              </div>
-            </div>
+          </div>
+        </div>
       </Card>
 
       {/* Content display based on selected style */}
@@ -339,8 +339,8 @@ export default function PrintsPage() {
                     </div>
                   </div>
                 </Card>
-                  ))}
-                </div>
+              ))}
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {getSelectedClassStudents().map((student) => (

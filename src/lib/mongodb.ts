@@ -1,21 +1,72 @@
 import mongoose from 'mongoose';
+import { logger } from './logger';
+import fs from 'fs';
+import path from 'path';
 
-let isConnected = false;
-let connectionAttempts = 0;
+// Define the database config type
+interface DatabaseConfig {
+  connectionString: string;
+  description: string;
+}
+
+// Load database configuration from JSON file
+let databaseConfig: Record<string, DatabaseConfig> = {};
+try {
+  const configPath = path.join(process.cwd(), 'src/config/database.json');
+  const configData = fs.readFileSync(configPath, 'utf8');
+  databaseConfig = JSON.parse(configData);
+} catch (error) {
+  logger.error('Failed to load database configuration:', error);
+  // Initialize with empty object to avoid runtime errors
+  databaseConfig = {};
+}
+
+// Cache connections by domain to avoid reconnecting for each request
+const connectionCache: Record<string, {
+  connection: mongoose.Connection;
+  isConnected: boolean;
+}> = {};
+
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 5000; // 5 seconds
 
-export const connectToDatabase = async (connectionString: string) => {
-  if (isConnected) {
-    console.log('Already connected to MongoDB');
-    return;
+// Get the connection string for a specific domain
+export const getConnectionString = (domain: string): string => {
+  const config = databaseConfig[domain];
+  
+  if (!config || !config.connectionString) {
+    throw new Error(`No database configuration found for domain: ${domain}`);
+  }
+  
+  return config.connectionString;
+};
+
+export const connectToDatabase = async (domain: string) => {
+  // Check if we already have a connection for this domain
+  if (connectionCache[domain]?.isConnected) {
+    logger.info(`Using existing MongoDB connection for domain: ${domain}`);
+    console.log('connectionCache[domain]', connectionCache[domain])
+    return connectionCache[domain].connection;
   }
 
-  const connectWithRetry = async () => {
+  let connectionAttempts = 0;
+  
+  // Get the connection string for this domain
+  let connectionString: string;
+  try {
+    connectionString = getConnectionString(domain);
+  } catch (error) {
+    logger.error(`Domain configuration error: ${(error as Error).message}`);
+    throw error;
+  }
+
+  const connectWithRetry = async (): Promise<mongoose.Connection> => {
     try {
-      // console.log(`Attempting to connect to MongoDB (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
+      logger.info(`Connecting to MongoDB for domain: ${domain} (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
       
-      await mongoose.connect(connectionString, {
+      // Create a new connection for this domain
+      // Using separate mongoose connection to avoid conflicts between domains
+      const connection = mongoose.createConnection(connectionString, {
         serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
         socketTimeoutMS: 45000, // Socket timeout
         connectTimeoutMS: 15000, // Connection timeout
@@ -26,67 +77,78 @@ export const connectToDatabase = async (connectionString: string) => {
         heartbeatFrequencyMS: 10000, // How often to check server status
       });
 
-      isConnected = true;
-      connectionAttempts = 0;
-      console.log('Successfully connected to MongoDB');
-
       // Set up connection event handlers
-      mongoose.connection.on('error', (err) => {
-        console.error('MongoDB connection error:', err);
-        isConnected = false;
+      connection.on('error', (err) => {
+        logger.error(`MongoDB connection error for domain ${domain}:`, err);
+        if (connectionCache[domain]) {
+          connectionCache[domain].isConnected = false;
+        }
       });
 
-      mongoose.connection.on('disconnected', () => {
-        console.log('MongoDB disconnected');
-        isConnected = false;
+      connection.on('disconnected', () => {
+        logger.info(`MongoDB disconnected for domain: ${domain}`);
+        if (connectionCache[domain]) {
+          connectionCache[domain].isConnected = false;
+        }
       });
 
-      mongoose.connection.on('reconnected', () => {
-        console.log('MongoDB reconnected');
-        isConnected = true;
+      connection.on('reconnected', () => {
+        logger.info(`MongoDB reconnected for domain: ${domain}`);
+        if (connectionCache[domain]) {
+          connectionCache[domain].isConnected = true;
+        }
       });
 
+      // Cache the connection
+      connectionCache[domain] = {
+        connection,
+        isConnected: true
+      };
+      
+      connectionAttempts = 0;
+      logger.info(`Successfully connected to MongoDB for domain: ${domain}`);
+      
+      return connection;
     } catch (error) {
-      console.error('Error connecting to MongoDB:', error);
-      isConnected = false;
+      logger.error(`Error connecting to MongoDB for domain ${domain}:`, error);
       
       if (connectionAttempts < MAX_RETRIES) {
         connectionAttempts++;
-        // console.log(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
+        logger.info(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         return connectWithRetry();
       }
       
-      throw new Error(`Failed to connect to MongoDB after ${MAX_RETRIES} attempts`);
+      throw new Error(`Failed to connect to MongoDB for domain ${domain} after ${MAX_RETRIES} attempts`);
     }
   };
 
   return connectWithRetry();
 };
 
-export const getDynamicModel = (collectionName: string) => {
-  // Check if model already exists to prevent recompilation
-  if (mongoose.models[collectionName]) {
-    return mongoose.models[collectionName];
+export const getDynamicModel = (connection: mongoose.Connection, collectionName: string) => {
+  // Try to get the model from this connection if it exists
+  try {
+    return connection.model(collectionName);
+  } catch {
+    // Model doesn't exist, create it
+    const schema = new mongoose.Schema({
+      _id: mongoose.Schema.Types.ObjectId,
+      data: {
+        type: Map,
+        of: mongoose.Schema.Types.Mixed
+      },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now }
+    }, { 
+      timestamps: true,
+      strict: false 
+    });
+
+    // Add indexes for better query performance
+    schema.index({ 'data.schoolCode': 1 });
+    schema.index({ 'data.username': 1 });
+
+    return connection.model(collectionName, schema);
   }
-
-  // Create a dynamic schema that can accept any fields
-  const schema = new mongoose.Schema({
-    _id: mongoose.Schema.Types.ObjectId,
-    data: {
-      type: Map,
-      of: mongoose.Schema.Types.Mixed
-    },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-  }, { 
-    timestamps: true,
-    strict: false 
-  });
-
-  // Add indexes for better query performance
-  schema.index({ 'data.schoolCode': 1 });
-  schema.index({ 'data.username': 1 });
-
-  return mongoose.model(collectionName, schema);
 }; 

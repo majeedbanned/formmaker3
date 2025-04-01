@@ -183,7 +183,7 @@ export interface FormFieldMinimal {
   };
 }
 
-export interface FormField extends FormFieldMinimal {
+export interface FormField extends Omit<FormFieldMinimal, 'required'> {
   required?: boolean;
   disabled?: boolean;
   controlSize?: "sm" | "md" | "lg";
@@ -207,7 +207,7 @@ export interface FormField extends FormFieldMinimal {
     refreshInterval?: number;
     customLabel?: string;
   };
-  icon?: any;
+  icon?: React.ComponentType<{ className?: string }>;
   placeholder?: string;
   autoCompleteStyle?: {
     className?: string;
@@ -223,11 +223,11 @@ export interface FormField extends FormFieldMinimal {
     ) => boolean;
   };
   // Default value for the field
-  defaultValue?: any;
+  defaultValue?: unknown;
   // Validator function
-  validator?: (value: any) => string | null;
+  validator?: (value: unknown) => string | null;
   // Mask function
-  mask?: (value: any) => string;
+  mask?: (value: unknown) => string;
 }
 
 export interface Entity {
@@ -302,7 +302,7 @@ export interface RowAction {
 export interface CRUDComponentProps {
   formStructure: FormField[];
   collectionName: string;
-  connectionString: string;
+  connectionString?: string;
   initialFilter?: Record<string, unknown>;
   permissions?: {
     canList?: boolean;

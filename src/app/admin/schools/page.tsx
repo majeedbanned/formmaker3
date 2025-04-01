@@ -6,7 +6,6 @@ import { ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings, Entity } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
-import { useAuth } from "@/hooks/useAuth";
 
 const sampleFormStructure: FormField[] = [
   {
@@ -34,7 +33,6 @@ const sampleFormStructure: FormField[] = [
     isSearchable: true,
     isUnique: true,
     required: true,
-
     enabled: true,
     visible: true,
     validation: {
@@ -63,7 +61,6 @@ const sampleFormStructure: FormField[] = [
     type: "text",
     isShowInList: true,
     isSearchable: true,
-
     required: true,
     enabled: true,
     visible: true,
@@ -111,7 +108,7 @@ const sampleFormStructure: FormField[] = [
     enabled: true,
     visible: true,
     readonly: false,
-    groupUniqueness: true,
+    // groupUniqueness: true,
     options: [
       { label: "ابتدایی", value: "1" },
       { label: "متوسطه اول", value: "2" },
@@ -180,7 +177,6 @@ const sampleFormStructure: FormField[] = [
           { label: "اطلاعات دانش آموزان", value: "student" },
           { label: "اطلاعات استادان", value: "teacher" },
           { label: "اطلاعات مدرسه", value: "school" },
-
           { label: "تعریف کلاس ها", value: "classes" },
           { label: "تعریف دروس", value: "courses" },
           { label: "ثبت دانش آموزان", value: "importstudents" },
@@ -251,102 +247,59 @@ const layout: LayoutSettings = {
 };
 
 function SchoolsPageContent() {
-  const { initialFilter } = useInitialFilter();
-  const { hasPermission, isLoading } = useAuth();
-
-  // Get user permissions for the schools system
-  const permissions = {
-    canView: hasPermission("school", "show"),
-    canList: hasPermission("school", "list"),
-    canCreate: hasPermission("school", "create"),
-    canEdit: hasPermission("school", "edit"),
-    canDelete: hasPermission("school", "delete"),
-    canGroupDelete: hasPermission("school", "groupDelete"),
-    canSearch: hasPermission("school", "search"),
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user doesn't have view permission, show access denied
-  if (!permissions.canView) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">
-            دسترسی محدود شده
-          </h1>
-          <p className="text-gray-600">شما مجوز دسترسی به این بخش را ندارید</p>
-        </div>
-      </div>
-    );
-  }
+  const initialFilter = useInitialFilter();
 
   const shareWithFilters = (rowId: string) => {
-    const filter = { _id: rowId };
-    const encryptedFilter = encryptFilter(filter);
-    const url = `${window.location.origin}/admin/schools?filter=${encryptedFilter}`;
-    navigator.clipboard.writeText(url);
+    const encryptedFilter = encryptFilter({ id: rowId });
+    const url = `/admin/schools?filter=${encryptedFilter}`;
+    window.open(url, "_blank");
   };
 
   const handleAfterAdd = (entity: Entity) => {
-    console.log("Entity added:", entity);
+    console.log("Added:", entity);
   };
 
   const handleAfterEdit = (entity: Entity) => {
-    console.log("Entity updated:", entity);
+    console.log("Edited:", entity);
   };
 
   const handleAfterDelete = (id: string) => {
-    console.log("Entity deleted:", id);
+    console.log("Deleted:", id);
   };
 
   const handleAfterGroupDelete = (ids: string[]) => {
-    console.log("Entities deleted:", ids);
+    console.log("Group deleted:", ids);
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">مدیریت مدارس</h1>
-
-        <CRUDComponent
-          formStructure={sampleFormStructure}
-          collectionName="schools"
-          connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
-          initialFilter={initialFilter as Record<string, unknown>}
-          layout={layout}
-          permissions={{
-            canList: permissions.canList,
-            canAdd: permissions.canCreate,
-            canEdit: permissions.canEdit,
-            canDelete: permissions.canDelete,
-            canGroupDelete: permissions.canGroupDelete,
-            canAdvancedSearch: permissions.canSearch,
-            canSearchAllFields: permissions.canSearch,
-          }}
-          rowActions={[
-            {
-              label: "اشتراک",
-              action: shareWithFilters,
-              icon: ShareIcon,
-            },
-          ]}
-          onAfterAdd={handleAfterAdd}
-          onAfterEdit={handleAfterEdit}
-          onAfterDelete={handleAfterDelete}
-          onAfterGroupDelete={handleAfterGroupDelete}
-        />
-      </div>
-    </main>
+    <div className="container mx-auto p-4">
+      <CRUDComponent
+        collectionName="schools"
+        formStructure={sampleFormStructure}
+        layout={layout}
+        initialFilter={initialFilter}
+        permissions={{
+          canList: true,
+          canAdd: true,
+          canEdit: true,
+          canDelete: true,
+          canGroupDelete: true,
+          canAdvancedSearch: true,
+          canSearchAllFields: true,
+        }}
+        rowActions={[
+          {
+            icon: ShareIcon,
+            label: "اشتراک‌گذاری",
+            action: shareWithFilters,
+          },
+        ]}
+        onAfterAdd={handleAfterAdd}
+        onAfterEdit={handleAfterEdit}
+        onAfterDelete={handleAfterDelete}
+        onAfterGroupDelete={handleAfterGroupDelete}
+      />
+    </div>
   );
 }
 

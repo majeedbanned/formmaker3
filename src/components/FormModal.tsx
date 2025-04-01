@@ -376,7 +376,6 @@ const FormField = ({
         setIsLoadingOptions(true);
         try {
           const params = new URLSearchParams({
-            connectionString: process.env.NEXT_PUBLIC_MONGODB_URI || "",
             labelField: field.dataSource.labelField,
             valueField: field.dataSource.valueField,
             ...(field.dataSource.filterQuery && {
@@ -397,7 +396,12 @@ const FormField = ({
           const response = await fetch(
             `/api/dropdown-options/${
               field.dataSource.collectionName
-            }?${params.toString()}`
+            }?${params.toString()}`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
           );
 
           if (!response.ok) {
@@ -488,7 +492,6 @@ const FormField = ({
           // Only proceed with the API call if we have valid dependencies
           if (hasValidDependencies) {
             const params = new URLSearchParams({
-              connectionString: process.env.NEXT_PUBLIC_MONGODB_URI || "",
               labelField: field.dataSource!.labelField,
               valueField: field.dataSource!.valueField,
               filterQuery: JSON.stringify(filterQuery),
@@ -508,7 +511,11 @@ const FormField = ({
               field.dataSource!.collectionName
             }?${params.toString()}`;
 
-            const response = await fetch(url);
+            const response = await fetch(url, {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            });
 
             if (!response.ok) {
               throw new Error(
@@ -1213,10 +1220,6 @@ const FormField = ({
           params.append("query", query);
 
           // Add common parameters for dropdown options endpoint
-          params.append(
-            "connectionString",
-            process.env.NEXT_PUBLIC_MONGODB_URI || ""
-          );
           params.append("labelField", field.dataSource.labelField);
           params.append("valueField", field.dataSource.valueField);
 
@@ -1270,7 +1273,11 @@ const FormField = ({
           console.log(`Fetching options from: ${apiUrl}?${params.toString()}`);
 
           // Make the API request
-          const response = await fetch(`${apiUrl}?${params.toString()}`);
+          const response = await fetch(`${apiUrl}?${params.toString()}`, {
+            headers: {
+              "x-domain": window.location.host,
+            },
+          });
           if (!response.ok) {
             throw new Error(
               `Failed to fetch options: ${response.status} ${response.statusText}`

@@ -1,0 +1,14 @@
+{
+  "localhost:3000": {
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/parsamooz?authSource=admin",
+    "description": "Local development database"
+  },
+  "localhost:3001": {
+    "connectionString": "mongodb://masterdbUser:anotherStrongPassword123@185.128.137.182:27017/masterdb?authSource=masterdb",
+    "description": "Test environment database"
+  },
+  "alireza.ir": {
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/alireza_db?authSource=admin",
+    "description": "Production database for alireza.ir"
+  }
+} 

@@ -51,9 +51,16 @@ export default function Home() {
     const loadPredefinedCourses = async () => {
       if (user?.schoolCode && user?.maghta) {
         try {
+          // Get domain from window location (in client component)
+          const domain =
+            typeof window !== "undefined"
+              ? window.location.host
+              : "localhost:3000";
+
           const result = await addPredefinedCoursesAction(
             user.schoolCode,
-            user.maghta
+            user.maghta,
+            domain
           );
           if (!result.success) {
             console.error("Failed to load predefined courses:", result.error);

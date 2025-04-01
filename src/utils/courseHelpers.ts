@@ -1,5 +1,5 @@
-import { getDynamicModel } from "@/lib/mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
 
 interface PredefinedCourse {
   courseCode: string;
@@ -377,31 +377,27 @@ const predefinedCourses: Record<string, PredefinedCourse[]> = {
   ]
 };
 
-export async function addPredefinedCourses(schoolCode: string, maghta: string) {
+export async function addPredefinedCourses(schoolCode: string, maghta: string, domain: string = "localhost:3000") {
   try {
-    // Ensure MongoDB connection is established
-    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
-    if (!connectionString) {
-      throw new Error("MongoDB connection string is not configured");
-    }
-    
-    await connectToDatabase(connectionString);
+    // Connect to domain-specific database
+    const connection = await connectToDatabase(domain);
+    logger.info(`Connected to database for domain: ${domain}`);
 
-    // Get the courses model
-    const model = getDynamicModel("courses");
+    // Get the courses collection directly from the connection
+    const coursesCollection = connection.collection("courses");
 
     // Check if there are any existing courses for this school
-    const existingCourses = await model.find({ 'data.schoolCode': schoolCode });
+    const existingCourses = await coursesCollection.find({ 'data.schoolCode': schoolCode }).toArray();
     
     if (existingCourses.length > 0) {
-      // console.log(`Courses already exist for school ${schoolCode}`);
+      logger.info(`Courses already exist for school ${schoolCode} in domain ${domain}`);
       return;
     }
 
     // Get predefined courses for the maghta
     const courses = predefinedCourses[maghta];
     if (!courses) {
-      // console.log(`No predefined courses found for maghta ${maghta}`);
+      logger.warn(`No predefined courses found for maghta ${maghta}`);
       return;
     }
 
@@ -411,17 +407,19 @@ export async function addPredefinedCourses(schoolCode: string, maghta: string) {
       schoolCode
     }));
 
-    // Insert all courses
-    const result = await model.insertMany(
+    // Insert all courses with properly structured data
+    const result = await coursesCollection.insertMany(
       coursesWithSchoolCode.map(course => ({
-        data: new Map(Object.entries(course))
+        data: new Map(Object.entries(course)),
+        createdAt: new Date(),
+        updatedAt: new Date()
       }))
     );
 
-    // console.log(`Added ${result.length} predefined courses for school ${schoolCode}`);
+    logger.info(`Added ${result.insertedCount} predefined courses for school ${schoolCode} in domain ${domain}`);
     return result;
   } catch (error) {
-    console.error('Error adding predefined courses:', error);
+    logger.error('Error adding predefined courses:', error);
     throw error;
   }
 } 
