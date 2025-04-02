@@ -82,7 +82,11 @@ export default function Home() {
   // Function to preview form
   const handleFormPreview = (rowId: string) => {
     // In a real implementation, you would fetch the form from your API
-    fetch(`/api/forms/${rowId}`)
+    fetch(`/api/forms/${rowId}`, {
+      headers: {
+        "x-domain": window.location.host,
+      },
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch form data");
@@ -147,7 +151,11 @@ export default function Home() {
   // Function to handle showing form inputs
   const handleShowFormInputs = (rowId: string) => {
     // Fetch the form data first
-    fetch(`/api/forms/${rowId}`)
+    fetch(`/api/forms/${rowId}`, {
+      headers: {
+        "x-domain": window.location.host,
+      },
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch form data");

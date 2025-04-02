@@ -115,6 +115,18 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "گزارش نمرات سالانه",
+          url: "/admin/monthgradeall",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "فرم ها",
+          url: "/admin/forms",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

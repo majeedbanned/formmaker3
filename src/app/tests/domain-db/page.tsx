@@ -30,7 +30,11 @@ export default function DomainDatabaseTest() {
 
     try {
       // Make a request to the API
-      const response = await fetch("/api/forms?limit=5");
+      const response = await fetch("/api/forms?limit=5", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`API request failed with status: ${response.status}`);

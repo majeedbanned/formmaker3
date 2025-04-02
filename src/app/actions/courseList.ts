@@ -1,6 +1,7 @@
 'use server';
 
-import { MongoClient } from 'mongodb';
+import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
 
 interface Teacher {
   teacherCode: string;
@@ -21,55 +22,24 @@ interface ClassData {
   teachers_expanded: boolean;
 }
 
-interface ClassDocument {
-  _id: { $oid: string };
-  data: ClassData;
-  createdAt: { $date: string };
-  updatedAt: { $date: string };
-  __v: number;
-}
-
-/**
- * Connects to MongoDB database
- */
-async function connectToDatabase(connectionString: string) {
-  console.log('[CourseList] Attempting to connect to database...');
-  
-  if (!connectionString) {
-    console.error('[CourseList] No connection string provided');
-    throw new Error('No connection string provided');
-  }
-  
-  try {
-    const client = new MongoClient(connectionString);
-    await client.connect();
-    console.log('[CourseList] Successfully connected to database');
-    return client;
-  } catch (error) {
-    console.error('[CourseList] Failed to connect to database:', error);
-    throw error;
-  }
-}
-
 /**
  * Fetches courses/classes based on school code and optionally teacher code
  */
-export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?: string) {
-  //console.log('[CourseList] Starting fetchCoursesBySchoolCode with schoolCode:', schoolCode, 'teacherCode:', teacherCode);
+export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?: string, domain: string = "localhost:3000") {
+  logger.info(`Starting fetchCoursesBySchoolCode with schoolCode: ${schoolCode}, teacherCode: ${teacherCode || 'none'}, domain: ${domain}`);
   
   try {
     if (!schoolCode) {
-      console.warn('[CourseList] No school code provided');
+      logger.warn('No school code provided');
       return { error: 'School code is required' };
     }
 
-    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI || '';
-    //console.log('[CourseList] Using connection string:', connectionString ? 'Present' : 'Missing');
+    // Connect to the domain-specific database
+    const connection = await connectToDatabase(domain);
+    logger.info(`Connected to database for domain: ${domain}`);
     
-    const client = await connectToDatabase(connectionString);
-    
-    const db = client.db();
-    const collection = db.collection<ClassDocument>('classes');
+    // Get the classes collection directly from the connection
+    const collection = connection.collection('classes');
     
     // Build query based on provided parameters
     const query: Record<string, unknown> = { 'data.schoolCode': schoolCode };
@@ -79,7 +49,7 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       query['data.teachers.teacherCode'] = teacherCode;
     }
     
-   // console.log('[CourseList] Executing query:', query);
+    logger.info(`Executing query for classes in domain: ${domain}`);
     
     const courses = await collection
       .find(query)
@@ -93,16 +63,13 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       .sort({ 'data.className': 1 })
       .toArray();
       
-   // console.log('[CourseList] Query executed successfully. Found courses:', courses.length);
-    
-    await client.close();
-    console.log('[CourseList] Database connection closed');
+    logger.info(`Query executed successfully. Found ${courses.length} courses in domain: ${domain}`);
     
     // Transform data for dropdown
     const transformedCourses = courses.map(course => {
       // If teacherCode is provided, find the teacher's courses
       let teacherCourses: string[] = [];
-      if (teacherCode) {
+      if (teacherCode && course.data.teachers) {
         const teacher = course.data.teachers.find((t: Teacher) => t.teacherCode === teacherCode);
         if (teacher) {
           teacherCourses = teacher.courseCode ? [teacher.courseCode] : [];
@@ -110,18 +77,18 @@ export async function fetchCoursesBySchoolCode(schoolCode: string, teacherCode?:
       }
 
       return {
-        label: `${course.data.className}`,
-        value: course.data.classCode,
-        code: course.data.classCode,
-        grade: course.data.Grade,
+        label: `${course.data.className || ''}`,
+        value: course.data.classCode || '',
+        code: course.data.classCode || '',
+        grade: course.data.Grade || '',
         teacherCourses
       };
     });
     
-  //  console.log('[CourseList] Data transformed successfully. Returning', transformedCourses.length, 'courses');
+    logger.info(`Data transformed successfully. Returning ${transformedCourses.length} courses from domain: ${domain}`);
     return transformedCourses;
   } catch (error) {
-    console.error('[CourseList] Error in fetchCoursesBySchoolCode:', error);
+    logger.error(`Error in fetchCoursesBySchoolCode for domain ${domain}:`, error);
     return { error: 'Failed to fetch courses' };
   }
 } 
