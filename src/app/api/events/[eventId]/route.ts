@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase, getDynamicModel } from "@/lib/mongodb";
-import mongoose from "mongoose";
+import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
+import { ObjectId } from "mongodb";
 
 // DELETE - Delete an event by ID
 export async function DELETE(
@@ -10,38 +11,51 @@ export async function DELETE(
   try {
     const { eventId } = params;
 
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Deleting event with ID: ${eventId} for domain: ${domain}`);
+
     // Validate event ID
-    if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
+    if (!eventId || !ObjectId.isValid(eventId)) {
       return NextResponse.json(
         { error: "Invalid event ID" },
         { status: 400 }
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the events collection directly from the connection
+      const eventsCollection = connection.collection("events");
 
-    // Get the model
-    const EventModel = getDynamicModel("events");
+      // Delete the event
+      const result = await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
 
-    // Delete the event
-    const result = await EventModel.deleteOne({ _id: eventId });
+      if (result.deletedCount === 0) {
+        logger.warn(`Event not found with ID: ${eventId}`);
+        return NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        );
+      }
 
-    if (result.deletedCount === 0) {
+      logger.info(`Successfully deleted event with ID: ${eventId}`);
+      // Return success
       return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
+        { success: true, message: "Event deleted successfully" },
+        { status: 200 }
+      );
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
+      return NextResponse.json(
+        { error: "Error connecting to the database" },
+        { status: 500 }
       );
     }
-
-    // Return success
-    return NextResponse.json(
-      { success: true, message: "Event deleted successfully" },
-      { status: 200 }
-    );
   } catch (error) {
-    console.error("Error deleting event:", error);
+    logger.error("Error deleting event:", error);
     return NextResponse.json(
       { error: "Failed to delete event" },
       { status: 500 }

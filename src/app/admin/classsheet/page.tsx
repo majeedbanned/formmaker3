@@ -65,7 +65,7 @@ export default function ClassSheetPage() {
         }
 
         const data = await response.json();
-
+        console.log("data", data);
         // Validate data structure
         if (!Array.isArray(data)) {
           throw new Error("Invalid data format received from server");

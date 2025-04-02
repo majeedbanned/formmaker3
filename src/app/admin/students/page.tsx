@@ -237,7 +237,6 @@ function StudentsPageContent() {
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="students"
-          connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           importFunction={{

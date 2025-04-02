@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase, getDynamicModel } from "@/lib/mongodb";
-import mongoose from "mongoose";
+import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
+import { ObjectId } from "mongodb";
 
 // GET - Fetch a teacher comment
 export async function GET(request: NextRequest) {
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date");
     const timeSlot = searchParams.get("timeSlot");
 
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Fetching teacher comment for domain: ${domain}, schoolCode: ${schoolCode}`);
+
     // Validate required parameters
     if (!schoolCode || !teacherCode || !courseCode || !classCode || !date || !timeSlot) {
       return NextResponse.json(
@@ -22,30 +27,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the teacherComments collection directly from the connection
+      const teacherCommentsCollection = connection.collection("teacherComments");
 
-    // Get the model
-    const TeacherCommentModel = getDynamicModel("teacherComments");
+      // Build the query
+      const query = {
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+      };
 
-    // Build the query
-    const query = {
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-    };
+      // Fetch comment from the database
+      const comment = await teacherCommentsCollection.findOne(query);
 
-    // Fetch comment from the database
-    const comment = await TeacherCommentModel.findOne(query).lean();
-
-    // Return the comment (may be null if not found)
-    return NextResponse.json(comment || null);
+      logger.info(`Teacher comment ${comment ? 'found' : 'not found'} for query parameters`);
+      // Return the comment (may be null if not found)
+      return NextResponse.json(comment || null);
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
+      return NextResponse.json(
+        { error: "Error connecting to the database" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error fetching teacher comment:", error);
+    logger.error("Error processing teacher comment request:", error);
     return NextResponse.json(
       { error: "Failed to fetch teacher comment" },
       { status: 500 }
@@ -69,51 +82,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Creating teacher comment for domain: ${domain}, schoolCode: ${schoolCode}`);
 
-    // Get the model
-    const TeacherCommentModel = getDynamicModel("teacherComments");
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the teacherComments collection directly from the connection
+      const teacherCommentsCollection = connection.collection("teacherComments");
 
-    // Check if a comment already exists
-    const existingComment = await TeacherCommentModel.findOne({
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-    });
+      // Check if a comment already exists
+      const existingComment = await teacherCommentsCollection.findOne({
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+      });
 
-    if (existingComment) {
+      if (existingComment) {
+        logger.warn(`Teacher comment already exists for this date and time slot: ${date}, ${timeSlot}`);
+        return NextResponse.json(
+          { error: "Comment already exists for this date and time slot. Use PUT to update." },
+          { status: 409 }
+        );
+      }
+
+      // Create new comment document
+      const newComment = {
+        _id: new ObjectId(),
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+        comment,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Insert into database
+      const result = await teacherCommentsCollection.insertOne(newComment);
+
+      if (!result.acknowledged) {
+        throw new Error("Failed to insert teacher comment");
+      }
+
+      logger.info(`Created new teacher comment with ID: ${newComment._id}`);
+      // Return the created comment
+      return NextResponse.json(newComment, { status: 201 });
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
-        { error: "Comment already exists for this date and time slot. Use PUT to update." },
-        { status: 409 }
+        { error: "Error connecting to the database" },
+        { status: 500 }
       );
     }
-
-    // Create new comment
-    const newComment = new TeacherCommentModel({
-      _id: new mongoose.Types.ObjectId(),
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-      comment,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Save to database
-    await newComment.save();
-
-    // Return the created comment
-    return NextResponse.json(newComment, { status: 201 });
   } catch (error) {
-    console.error("Error creating teacher comment:", error);
+    logger.error("Error creating teacher comment:", error);
     return NextResponse.json(
       { error: "Failed to create teacher comment" },
       { status: 500 }
@@ -137,47 +167,71 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Updating teacher comment for domain: ${domain}, schoolCode: ${schoolCode}`);
 
-    // Get the model
-    const TeacherCommentModel = getDynamicModel("teacherComments");
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the teacherComments collection directly from the connection
+      const teacherCommentsCollection = connection.collection("teacherComments");
 
-    // Build the query
-    const query = {
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-    };
+      // Build the query
+      const query: Record<string, unknown> = {
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+      };
 
-    // Add _id to query if provided
-    if (_id) {
-      query._id = _id;
-    }
-
-    // Update the comment
-    const updateResult = await TeacherCommentModel.findOneAndUpdate(
-      query,
-      { 
-        $set: { 
-          comment,
-          updatedAt: new Date()
-        } 
-      },
-      { 
-        new: true, // Return the updated document
-        upsert: true // Create if it doesn't exist
+      // Add _id to query if provided
+      if (_id) {
+        query._id = new ObjectId(_id);
       }
-    );
 
-    // Return the updated comment
-    return NextResponse.json(updateResult);
+      // Update the comment with upsert option
+      const updateResult = await teacherCommentsCollection.findOneAndUpdate(
+        query,
+        { 
+          $set: { 
+            comment,
+            updatedAt: new Date()
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          }
+        },
+        { 
+          returnDocument: 'after', // Return the updated document
+          upsert: true // Create if it doesn't exist
+        }
+      );
+
+      logger.info(`Teacher comment updated successfully`);
+      // Return the updated comment - handle potential null result
+      if (updateResult) {
+        return NextResponse.json(updateResult.value || { 
+          success: true, 
+          message: "Comment updated but could not retrieve it" 
+        });
+      } else {
+        return NextResponse.json({ 
+          error: "Failed to update comment" 
+        }, { status: 500 });
+      }
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
+      return NextResponse.json(
+        { error: "Error connecting to the database" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error updating teacher comment:", error);
+    logger.error("Error updating teacher comment:", error);
     return NextResponse.json(
       { error: "Failed to update teacher comment" },
       { status: 500 }

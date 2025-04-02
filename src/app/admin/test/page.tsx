@@ -6,7 +6,7 @@ import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
-import { filterExamples } from "@/utils/filterHelpers";
+
 import { Suspense } from "react";
 
 // Font Variants Demo Component
@@ -621,7 +621,6 @@ function TestPage() {
           formStructure={sampleFormStructure}
           layout={layoutSettings}
           initialFilter={initialFilter as Record<string, unknown>}
-          connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
           rowActions={[
             {
               label: "Share",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase, getDynamicModel } from "@/lib/mongodb";
-import mongoose from "mongoose";
+import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
+import { ObjectId } from "mongodb";
 
 // GET - Fetch events
 export async function GET(request: NextRequest) {
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date");
     const timeSlot = searchParams.get("timeSlot");
 
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Fetching events for domain: ${domain}, schoolCode: ${schoolCode}`);
+
     // Validate required parameters
     if (!schoolCode || !teacherCode || !courseCode || !classCode || !date || !timeSlot) {
       return NextResponse.json(
@@ -22,30 +27,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the events collection directly from the connection
+      const eventsCollection = connection.collection("events");
 
-    // Get the model
-    const EventModel = getDynamicModel("events");
+      // Build the query
+      const query = {
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+      };
 
-    // Build the query
-    const query = {
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-    };
+      // Fetch events from the database
+      const events = await eventsCollection.find(query).toArray();
 
-    // Fetch events from the database
-    const events = await EventModel.find(query).lean();
-
-    // Return the events
-    return NextResponse.json(events || []);
+      logger.info(`Found ${events.length} events for query parameters`);
+      // Return the events
+      return NextResponse.json(events || []);
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
+      return NextResponse.json(
+        { error: "Error connecting to the database" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error fetching events:", error);
+    logger.error("Error processing events request:", error);
     return NextResponse.json(
       { error: "Failed to fetch events" },
       { status: 500 }
@@ -69,36 +82,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Connect to the database
-    const MONGODB_URI = process.env.NEXT_PUBLIC_MONGODB_URI || "mongodb://localhost:27017/formmaker";
-    await connectToDatabase(MONGODB_URI);
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Creating event for domain: ${domain}, schoolCode: ${schoolCode}`);
 
-    // Get the model
-    const EventModel = getDynamicModel("events");
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the events collection directly from the connection
+      const eventsCollection = connection.collection("events");
 
-    // Create new event
-    const newEvent = new EventModel({
-      _id: new mongoose.Types.ObjectId(),
-      schoolCode,
-      teacherCode,
-      courseCode,
-      classCode,
-      date,
-      timeSlot,
-      title,
-      description: description || '',
-      persianDate,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+      // Create new event document
+      const newEvent = {
+        _id: new ObjectId(),
+        schoolCode,
+        teacherCode,
+        courseCode,
+        classCode,
+        date,
+        timeSlot,
+        title,
+        description: description || '',
+        persianDate,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-    // Save to database
-    await newEvent.save();
+      // Insert into database
+      const result = await eventsCollection.insertOne(newEvent);
 
-    // Return the created event
-    return NextResponse.json(newEvent, { status: 201 });
+      if (!result.acknowledged) {
+        throw new Error("Failed to insert event");
+      }
+
+      logger.info(`Created new event with ID: ${newEvent._id}`);
+      // Return the created event
+      return NextResponse.json(newEvent, { status: 201 });
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
+      return NextResponse.json(
+        { error: "Error connecting to the database" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error creating event:", error);
+    logger.error("Error creating event:", error);
     return NextResponse.json(
       { error: "Failed to create event" },
       { status: 500 }

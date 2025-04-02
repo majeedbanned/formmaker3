@@ -454,7 +454,6 @@ export default function Home() {
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="classes"
-          connectionString={process.env.NEXT_PUBLIC_MONGODB_URI || ""}
           initialFilter={hardcodedFilter}
           permissions={{
             canList: true,
