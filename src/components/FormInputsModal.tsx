@@ -82,7 +82,12 @@ export default function FormInputsModal({
       const response = await fetch(
         `/api/formsInput/list?formId=${formData?._id}&schoolCode=${
           user?.schoolCode || formData?.data.schoolCode || ""
-        }`
+        }`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
       );
 
       if (!response.ok) {
@@ -120,6 +125,9 @@ export default function FormInputsModal({
     try {
       const response = await fetch(`/api/formsInput/${deletingId}`, {
         method: "DELETE",
+        headers: {
+          "x-domain": window.location.host,
+        },
       });
 
       if (!response.ok) {

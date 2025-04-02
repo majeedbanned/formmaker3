@@ -1,13 +1,19 @@
-import { NextResponse } from "next/server";
-import { MongoClient, ObjectId } from "mongodb";
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
+import { logger } from "@/lib/logger";
+import { ObjectId } from "mongodb";
 
 // DELETE - Remove an assessment option
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = params.id;
+    
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Deleting assessment option with ID: ${id} for domain: ${domain}`);
     
     if (!id) {
       return NextResponse.json(
@@ -16,33 +22,40 @@ export async function DELETE(
       );
     }
 
-    // Connect to MongoDB
-    const client = new MongoClient(process.env.NEXT_PUBLIC_MONGODB_URI || "");
-    await client.connect();
-    
-    const db = client.db();
-    const collection = db.collection("assessments");
-    
-    // Delete the assessment option
-    const result = await collection.deleteOne({
-      _id: new ObjectId(id)
-    });
-
-    await client.close();
-    
-    if (result.deletedCount === 0) {
+    try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the assessments collection directly from the connection
+      const assessmentsCollection = connection.collection("assessments");
+      
+      // Delete the assessment option
+      const result = await assessmentsCollection.deleteOne({
+        _id: new ObjectId(id)
+      });
+      
+      if (result.deletedCount === 0) {
+        logger.warn(`Assessment option not found with ID: ${id}`);
+        return NextResponse.json(
+          { error: "Assessment option not found" },
+          { status: 404 }
+        );
+      }
+      
+      logger.info(`Successfully deleted assessment option with ID: ${id}`);
+      return NextResponse.json({
+        success: true,
+        message: "Assessment option deleted successfully"
+      });
+    } catch (dbError) {
+      logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
-        { error: "Assessment option not found" },
-        { status: 404 }
+        { error: "Error connecting to the database" },
+        { status: 500 }
       );
     }
-    
-    return NextResponse.json({
-      success: true,
-      message: "Assessment option deleted successfully"
-    });
   } catch (error) {
-    console.error("Error deleting assessment option:", error);
+    logger.error("Error deleting assessment option:", error);
     return NextResponse.json(
       { error: "Failed to delete assessment option" },
       { status: 500 }

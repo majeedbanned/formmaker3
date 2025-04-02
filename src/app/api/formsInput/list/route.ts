@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import mongoose from "mongoose";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,27 +9,27 @@ export async function GET(req: NextRequest) {
     const formId = searchParams.get("formId");
     const schoolCode = searchParams.get("schoolCode");
 
+    // Get domain from request headers
+    const domain = req.headers.get("x-domain") || "localhost:3000";
+
     // Validate required parameters
     if (!formId) {
+      logger.warn(`Missing required parameter 'formId' for form inputs list on domain: ${domain}`);
       return NextResponse.json(
         { error: "Required parameter missing: formId is required" },
         { status: 400 }
       );
     }
 
-    // Get connection string from environment variable
-    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
-    if (!connectionString) {
-      return NextResponse.json(
-        { error: "Database connection string is not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Connect to MongoDB
-    await connectToDatabase(connectionString);
+    logger.info(`Fetching form inputs list for domain: ${domain}, formId: ${formId}, schoolCode: ${schoolCode || 'all'}`);
 
     try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the formsInput collection directly from the connection
+      const formsInputCollection = connection.collection("formsInput");
+
       // Build query object
       const filter: Record<string, string> = { formId };
 
@@ -39,26 +39,27 @@ export async function GET(req: NextRequest) {
       }
 
       // Find all form inputs for this form
-      const inputs = await mongoose.connection
-        .collection("formsInput")
+      const inputs = await formsInputCollection
         .find(filter)
         .sort({ createdAt: -1 }) // Newest first
         .toArray();
 
+      logger.info(`Found ${inputs.length} form inputs for formId: ${formId}, domain: ${domain}`);
+      
       // Return the results
       return NextResponse.json({
         success: true,
         inputs,
       });
     } catch (dbError) {
-      console.error("Database query error:", dbError);
+      logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error querying the database" },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Error fetching form inputs:", error);
+    logger.error("Error fetching form inputs:", error);
     return NextResponse.json(
       { error: "Failed to fetch form inputs" },
       { status: 500 }

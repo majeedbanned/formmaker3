@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import mongoose from 'mongoose';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,8 +10,12 @@ export async function GET(req: NextRequest) {
     const username = searchParams.get('username');
     const schoolCode = searchParams.get('schoolCode');
     
+    // Get domain from request headers
+    const domain = req.headers.get("x-domain") || "localhost:3000";
+    
     // Validate required parameters
     if (!formId || !username) {
+      logger.warn(`Missing required parameters for getUserSubmission on domain: ${domain}, formId: ${formId}, username: ${username}`);
       return NextResponse.json(
         { 
           error: 'Required parameters missing', 
@@ -21,19 +25,15 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    // Get connection string from environment variable
-    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI;
-    if (!connectionString) {
-      return NextResponse.json(
-        { error: 'Database connection string is not configured' }, 
-        { status: 500 }
-      );
-    }
+    logger.info(`Fetching user submission for domain: ${domain}, formId: ${formId}, username: ${username}, schoolCode: ${schoolCode}`);
 
-    // Connect to MongoDB
-    await connectToDatabase(connectionString);
-    
     try {
+      // Connect to the domain-specific database
+      const connection = await connectToDatabase(domain);
+      
+      // Get the formsInput collection directly from the connection
+      const formsInputCollection = connection.collection('formsInput');
+      
       // Build query object
       const query: Record<string, string> = {
         formId,
@@ -46,30 +46,32 @@ export async function GET(req: NextRequest) {
       }
       
       // Find the user's submission for this form
-      const submission = await mongoose.connection.collection('formsInput').findOne(query);
+      const submission = await formsInputCollection.findOne(query);
       
       // Return appropriate response
       if (submission) {
+        logger.info(`Found submission for user ${username}, form ${formId} on domain: ${domain}`);
         return NextResponse.json({
           success: true,
           found: true,
           submission
         });
       } else {
+        logger.info(`No submission found for user ${username}, form ${formId} on domain: ${domain}`);
         return NextResponse.json({
           success: true,
           found: false
         });
       }
     } catch (dbError) {
-      console.error('Database query error:', dbError);
+      logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: 'Error querying the database' },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Error fetching user submission:', error);
+    logger.error('Error fetching user submission:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user submission' },
       { status: 500 }

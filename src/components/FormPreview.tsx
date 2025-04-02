@@ -131,7 +131,12 @@ export default function FormPreview({
         try {
           setLoading(true);
           const response = await fetch(
-            `/api/formsInput/getUserSubmission?formId=${formData._id}&username=${user.username}&schoolCode=${formSchoolCode}`
+            `/api/formsInput/getUserSubmission?formId=${formData._id}&username=${user.username}&schoolCode=${formSchoolCode}`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
           );
 
           if (!response.ok) {
@@ -758,6 +763,7 @@ export default function FormPreview({
         method: isEditMode ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-domain": window.location.host,
         },
         body: JSON.stringify(submissionData),
       });
