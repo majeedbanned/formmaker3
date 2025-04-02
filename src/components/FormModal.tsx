@@ -2175,6 +2175,11 @@ export default function FormModal({
 
           // Start the upload
           xhr.open("POST", "/api/upload");
+
+          // Add the domain header
+          const domain = window.location.host;
+          xhr.setRequestHeader("x-domain", domain);
+
           xhr.send(formData);
 
           // Wait for the upload to complete

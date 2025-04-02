@@ -26,8 +26,14 @@ export async function uploadFile(
       formData.append('directory', config.directory);
     }
 
+    // Get the current domain
+    const domain = typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
+
     const response = await fetch('/api/upload', {
       method: 'POST',
+      headers: {
+        'x-domain': domain
+      },
       body: formData,
     });
 

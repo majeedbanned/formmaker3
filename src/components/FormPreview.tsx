@@ -255,6 +255,10 @@ export default function FormPreview({
       const uploadPromise = new Promise<UploadedFile>((resolve, reject) => {
         xhr.open("POST", "/api/formfiles/upload");
 
+        // Add the domain header
+        const domain = window.location.host;
+        xhr.setRequestHeader("x-domain", domain);
+
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,10 +12,13 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const directory = formData.get('directory') as string || 'uploads';
     const oldFilePath = formData.get('oldFilePath') as string;
-    const connectionString = process.env.NEXT_PUBLIC_MONGODB_URI || '';
     const collectionName = formData.get('collectionName') as string;
     const documentId = formData.get('documentId') as string;
     const fieldName = formData.get('fieldName') as string;
+
+    // Get domain from request headers
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    logger.info(`Handling file upload for domain: ${domain}, directory: ${directory}`);
 
     if (!file) {
       return NextResponse.json(
@@ -39,9 +44,10 @@ export async function POST(request: NextRequest) {
       try {
         if (existsSync(oldFileFullPath)) {
           await unlink(oldFileFullPath);
+          logger.info(`Deleted old file: ${oldFilePath}`);
         }
       } catch (error) {
-        console.error('Error deleting old file:', error);
+        logger.error(`Error deleting old file: ${oldFilePath}`, error);
       }
     }
 
@@ -52,6 +58,7 @@ export async function POST(request: NextRequest) {
     // Write file
     const filePath = join(uploadDir, filename);
     await writeFile(filePath, buffer);
+    logger.info(`File written to: ${filePath}`);
 
     // Create file info object
     const fileInfo = {
@@ -64,28 +71,40 @@ export async function POST(request: NextRequest) {
     };
 
     // Update MongoDB if document ID is provided
-    if (connectionString && collectionName && documentId && fieldName) {
-      const client = await MongoClient.connect(connectionString);
-      const db = client.db();
-      const collection = db.collection(collectionName);
+    if (collectionName && documentId && fieldName) {
+      try {
+        // Connect to the domain-specific database
+        const connection = await connectToDatabase(domain);
+        
+        // Get the collection directly from the connection
+        const collection = connection.collection(collectionName);
 
-      const updateQuery = {
-        _id: new ObjectId(documentId)
-      };
+        const updateQuery = {
+          _id: new ObjectId(documentId)
+        };
 
-      const updateData = {
-        $set: {
-          [`data.${fieldName}`]: fileInfo
+        const updateData = {
+          $set: {
+            [`data.${fieldName}`]: fileInfo
+          }
+        };
+
+        const result = await collection.updateOne(updateQuery, updateData);
+        
+        if (result.matchedCount === 0) {
+          logger.warn(`No document found to update with ID: ${documentId}`);
+        } else {
+          logger.info(`Updated document in ${collectionName}, ID: ${documentId}, field: ${fieldName}`);
         }
-      };
-
-      await collection.updateOne(updateQuery, updateData);
-      await client.close();
+      } catch (dbError) {
+        logger.error(`Database error for domain ${domain}:`, dbError);
+        // Continue with file upload even if database update fails
+      }
     }
 
     return NextResponse.json(fileInfo);
   } catch (error) {
-    console.error('Upload error:', error);
+    logger.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Upload failed' },
       { status: 500 }
