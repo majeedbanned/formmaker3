@@ -10,8 +10,8 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "Form Maker",
-  description: "A dynamic form creation and management system",
+  title: "پارسا موز | سیستم مدیریت آموزش",
+  description: "سامانه مدیریت آموزش و یادگیری برای مدارس و موسسات آموزشی",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html>
+    <html lang="fa">
       <body className={`${vazirmatn.className} font-sans`}>
         {children}
         <Toaster />
