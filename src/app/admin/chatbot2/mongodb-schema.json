@@ -1,0 +1,164 @@
+{
+  "collections": [
+    {
+      "name": "schools",
+      "description": "Contains information about educational institutions/schools. Most fields are nested within a 'data' object.",
+      "fields": [
+        { "name": "data", "type": "Object", "description": "Container object for school data with nested fields" },
+        { "name": "data.schoolName", "type": "String", "description": "Name of the school (e.g., 'مدرسه متوسطه دوم رازی')" },
+        { "name": "data.schoolCode", "type": "String", "description": "Unique code identifying the school (e.g., '2295566177')" },
+        { "name": "data.maghta", "type": "String", "enum": ["1", "2", "3"], "description": "Educational level of the school (مقطع تحصیلی) (e.g., '3' for high school)" },
+        { "name": "data.isActive", "type": "Boolean", "description": "Whether the school is currently active" },
+        { "name": "data.username", "type": "String", "description": "Username for school account login (often same as schoolCode)" },
+        { "name": "data.domain", "type": "String", "description": "Custom domain for the school (e.g., 'pars3.farsamooz.ir')" }
+        
+      ],
+      "relationships": [
+        { "with": "classes", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school has many classes" },
+        { "with": "teachers", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school employs many teachers" },
+        { "with": "students", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school has many students enrolled" },
+        { "with": "courses", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school offers many courses" }
+      ]
+    },
+
+    {
+        "name": "students",
+        "description": "Contains information about students, including personal details and class enrollments.",
+        "fields": [
+          { "name": "data", "type": "Object", "description": "Container object for student data with nested fields" },
+          { "name": "data.studentName", "type": "String", "description": "Student's first name (e.g., 'محمد')" },
+         
+          { "name": "data.studentCode", "type": "String", "description": "Unique code identifying the student (شماره دانش آموز/شناسه دانش آموز/نام کاربری/کد ملی) (e.g., '3362214521')" },
+          { "name": "data.schoolCode", "type": "String", "description": "School code the student belongs to" },
+          { "name": "data.classCode", "type": "Array<String>", "description": "Array of class codes the student is enrolled in (e.g., ['232', '200'])" },
+          { "name": "data.isActive", "type": "Boolean", "description": "Whether the student is currently active/unactive" },
+          { "name": "data.birthdate", "type": "String", "description": "Student's birthdate in Persian date format (e.g., '۱۳۸۰/۰۵/۱۲')" },
+          { "name": "data.fatherName", "type": "String", "description": "Student's father's name (e.g., 'علی')" },
+          { "name": "data.phoneNumber", "type": "String", "description": "Contact phone number (e.g., '09175231560')" }
+
+        ],
+        "relationships": [
+          { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each student belongs to a single school" },
+          { "with": "classes", "type": "manyToMany", "joinField": "data.classCode", "targetField": "data.classCode", "description": "A student can be enrolled in multiple classes" }
+        ]
+    },
+
+    {
+        "name": "teachers",
+        "description": "Contains information about teachers, including contact details and class assignments.",
+        "fields": [
+          { "name": "data", "type": "Object", "description": "Container object for teacher data with nested fields" },
+          { "name": "data.teacherName", "type": "String", "description": "Teacher's first name (e.g., 'علی')" },
+         
+          { "name": "data.teacherCode", "type": "String", "description": "Unique code identifying the teacher (e.g., '102')" },
+          { "name": "data.schoolCode", "type": "String", "description": "School code the teacher is associated with" },
+          { "name": "data.isActive", "type": "Boolean", "description": "Whether the teacher is currently active" },
+          { "name": "data.phoneNumber", "type": "String", "description": "Contact phone number" },
+        ],
+        "relationships": [
+          { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each teacher belongs to a single school" },
+          { "with": "classes", "type": "manyToMany", "joinField": "data.teacherCode", "targetField": "data.teachers[].teacherCode", "description": "A teacher can teach multiple classes" },
+        ]
+      },
+
+      {
+        "name": "courses",
+        "description": "Contains information about academic courses offered.",
+        "fields": [
+          { "name": "data", "type": "Object", "description": "Container object for course data with nested fields" },
+          { "name": "data.courseCode", "type": "String", "description": "Unique code identifying the course (e.g., '710')" },
+          { "name": "data.courseName", "type": "String", "description": "Name of the course (e.g., 'ریاضی', 'فیزیک')" },
+          { "name": "data.schoolCode", "type": "String", "description": "School code the course is associated with" },
+          { "name": "data.grade", "type": "String", "enum":["1","2","3","4","5","6","7","8","9","10","11","12"], "description": "Grade level for this course 'پایه' (e.g., '10')" },
+          { "name": "data.units", "type": "Number", "description": "Academic units/credits for this course" },
+          { "name": "data.isActive", "type": "Boolean", "description": "Whether the course is currently active/offered" },
+         
+        ],
+        "relationships": [
+          { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each course belongs to a single school" },
+          { "with": "classes", "type": "manyToMany", "joinField": "data.courseCode", "targetField": "data.teachers[].courseCode", "description": "A course can be taught in multiple classes" }
+                 ]
+      },
+
+
+    {
+      "name": "classes",
+      "description": "Represents classes/groups within schools. Contains nested teacher and student data and weeklySchedule .",
+      "fields": [
+        { "name": "data", "type": "Object", "description": "Container object for class data with nested fields" },
+        { "name": "data.classCode", "type": "String", "description": "Unique code identifying the class (e.g., '232', '200')" },
+        { "name": "data.className", "type": "String", "description": "Name of the class (e.g., 'دوم سیب')" },
+        { "name": "data.grade", "type": "String","enum":["1","2","3","4","5","6","7","8","9","10","11","12"], "description": "Grade level of the class (e.g., '7', '11')" },
+        { "name": "data.schoolCode", "type": "String", "description": "Reference to the school this class belongs to" },
+        { "name": "data.major", "type": "String", "description": "Major or specialization code for the class (e.g., '16000')" },
+        { "name": "data.teachers", "type": "Array", "description": "Array of teacher-course assignments for this class" },
+        { "name": "data.teachers[].teacherCode", "type": "String", "description": "Reference to teacher code (e.g., 'we', '102')" },
+        { "name": "data.teachers[].courseCode", "type": "String", "description": "Reference to course code (e.g., '710', '11131')" },
+        { "name": "data.teachers[].weeklySchedule", "type": "Array", "description": "Array of scheduled time slots" },
+        { "name": "data.teachers[].weeklySchedule[].day", "type": "String", "enum":["شنبه","یکشنبه","دوشنبه","سه شنبه","چهارشنبه","پنج شنبه","جمعه"], "description": "Day of the week in Persian (e.g., 'یکشنبه', 'سه شنبه')" },
+        { "name": "data.teachers[].weeklySchedule[].timeSlot", "type": "String", "description": "Time slot number (زنگ) (e.g., '8', '9')" },
+        { "name": "data.students", "type": "Array", "description": "Array of student data for this class" },
+        { "name": "data.students[].studentCode", "type": "String", "description": "Student code (e.g., '2095845241')" }
+      ],
+      "relationships": [
+        { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each class belongs to a single school" },
+        { "with": "teachers", "type": "manyToMany", "joinField": "data.teachers[].teacherCode", "targetField": "data.teacherCode", "description": "A class has many teachers" },
+        { "with": "students", "type": "oneToMany", "joinField": "data.students[].studentCode", "targetField": "data.studentCode", "description": "A class has many students" },
+        { "with": "courses", "type": "manyToMany", "joinField": "data.teachers[].courseCode", "targetField": "data.courseCode", "description": "A class offers many courses" }
+      ]
+    },
+   
+    
+    
+    {
+      "name": "classsheet",
+      "description": "Contains  student grades[],presence status,note,assessments[],descriptiveStatus information  for a students in a specific schoolcode/date/courseCode/timeSlot.",
+      "fields": [
+
+        { "name": "schoolCode", "type": "String", "description": "School code this information belongs to" },
+        { "name": "studentCode", "type": "String", "description": "Student code this information belongs to" },
+        { "name": "courseCode", "type": "String", "description": "Course code this information is for" },
+        { "name": "classCode", "type": "String", "description": "Class code where this information was earned" },
+        { "name": "teacherCode", "type": "String", "description": "Teacher code who assigned this information" },
+        { "name": "timeSlot", "type": "String", "description": "Time slot number (زنگ) (e.g., '8', '9') this information belongs to" },
+        { "name": "presenceStatus", "type": "String", "enum":["present","absent","late"], "description": "Presence status of the student in this time slot (حاظر/غیبت/تاخیر)" },
+        { "name": "note", "type": "String",  "description": "Note for this information" },
+        { "name": "date", "type": "String",  "description": "Date of this information in this format : 2025-03-31" },
+        { "name": "persianDate", "type": "String",  "description": "Date of this information in this format : ۱۴۰۴/۰۳/۳۱" },
+        { "name": "persianMonth", "type": "String", "enum":["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"], "description": "persian month name  this format  مهر آبان" },
+      
+        { "name": "grades", "type": "Array", "description": "Array of daily grades for this student in this course in this class in this time slot" },
+        { "name": "grades[].value", "type": "String", "description": "Grade value (e.g., '18', '19')" },
+        { "name": "grades[].description", "type": "String",  "description": "Description of the grade (e.g., 'نمره امتحان میانترم')" },
+        { "name": "grades[].totalPoints", "type": "String",  "description": "Total points for this grade (e.g., '20')" },
+
+        { "name": "assessments", "type": "Array", "description": "Array of assessments for this student in this course in this class in this time slot" },
+        { "name": "assessments[].title", "type": "String", "description": "descriptive Assessment title (e.g., 'نمره امتحان میانترم')" },
+        { "name": "assessments[].value", "type": "String",  "description": "descriptive Assessment value (e.g., 'خوب', 'بد')" },
+        { "name": "descriptiveStatus", "type": "String", "enum":["خیلی خوب","خوب","قابل قبول","نیازمند تلاش بیشتر"], "description": "descriptive Assessment for schools with maghta==1 value (e.g., 'خوب', 'بد')" }
+       
+        
+
+      ],
+      "relationships": [
+        { "with": "schools", "type": "manyToOne", "joinField": "schoolCode", "targetField": "data.schoolCode", "description": "Each information belongs to a specific school" },
+        { "with": "students", "type": "manyToOne", "joinField": "studentCode", "targetField": "data.studentCode", "description": "Each information belongs to a specific student" },
+        { "with": "courses", "type": "manyToOne", "joinField": "courseCode", "targetField": "data.courseCode", "description": "Each information is for a specific course" },
+        { "with": "classes", "type": "manyToOne", "joinField": "classCode", "targetField": "data.classCode", "description": "Each information was earned in a specific class" },
+        { "with": "teachers", "type": "manyToOne", "joinField": "teacherCode", "targetField": "data.teacherCode", "description": "Each information was assigned by a specific teacher" }
+
+      ]
+    }
+  ],
+  "common_query_examples": [
+    {
+      "farsi_query": "لیست تمام مدارس",
+      "mongo_query": {
+        "collection": "schools",
+        "operation": "find",
+        "query": {}
+      }
+    }
+   
+  ]
+} 
