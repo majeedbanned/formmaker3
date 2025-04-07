@@ -141,6 +141,8 @@ type CellData = {
   presenceStatus: PresenceStatus | null;
   descriptiveStatus?: string;
   assessments?: AssessmentEntry[]; // New field for assessment pairs
+  persianDate?: string; // Optional Persian date
+  persianMonth?: string; // Optional Persian month name
 };
 
 type ClassData = {
@@ -758,6 +760,19 @@ const ClassSheet = ({
       // Use the column's date with consistent formatting
       const formattedDate = column.date.toISOString().split("T")[0];
 
+      // Get Persian date components
+      const [jYear, jMonth, jDay] = gregorian_to_jalali(
+        column.date.getFullYear(),
+        column.date.getMonth() + 1,
+        column.date.getDate()
+      );
+
+      // Get Persian month name
+      const persianMonth = getPersianMonthName(jMonth);
+
+      // Format Persian date
+      const persianDate = formatJalaliDate(column.date);
+
       const cellData = {
         classCode: selectedClassDocument.data.classCode,
         studentCode: selectedCell.studentCode,
@@ -771,6 +786,8 @@ const ClassSheet = ({
         presenceStatus: presenceStatus || null, // Don't default to present
         descriptiveStatus: descriptiveStatus,
         assessments: assessments,
+        persianDate: persianDate, // Add Persian date
+        persianMonth: persianMonth, // Add Persian month name
       };
 
       //   console.log("Saving cell data:", cellData);
@@ -1780,6 +1797,19 @@ const ClassSheet = ({
         // Ensure consistent date format for saving
         const formattedDate = selectedColumn.date.toISOString().split("T")[0];
 
+        // Get Persian date components
+        const [jYear, jMonth, jDay] = gregorian_to_jalali(
+          selectedColumn.date.getFullYear(),
+          selectedColumn.date.getMonth() + 1,
+          selectedColumn.date.getDate()
+        );
+
+        // Get Persian month name
+        const persianMonth = getPersianMonthName(jMonth);
+
+        // Format Persian date
+        const persianDate = formatJalaliDate(selectedColumn.date);
+
         // Prepare cell data with bulk values
         const cellData = {
           classCode: selectedClassDocument.data.classCode,
@@ -1794,6 +1824,8 @@ const ClassSheet = ({
           presenceStatus: bulkPresenceStatus || null, // Don't default to present
           descriptiveStatus: bulkDescriptiveStatus,
           assessments: existingCell?.assessments || [],
+          persianDate: persianDate, // Add Persian date
+          persianMonth: persianMonth, // Add Persian month name
         };
 
         // Add the bulk grade if value > 0

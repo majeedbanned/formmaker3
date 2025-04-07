@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
       grades, 
       presenceStatus, 
       descriptiveStatus, 
-      assessments 
+      assessments,
+      persianDate,
+      persianMonth
     } = body;
 
     // Get domain from request headers
@@ -31,7 +33,9 @@ export async function POST(request: NextRequest) {
       descriptiveStatus: descriptiveStatus || 'None',
       gradeCount: grades?.length || 0,
       assessmentCount: assessments?.length || 0,
-      hasNote: note ? 'Yes' : 'No' 
+      hasNote: note ? 'Yes' : 'No',
+      persianDate: persianDate || 'Not provided',
+      persianMonth: persianMonth || 'Not provided'
     });
 
     // Validate required fields
@@ -80,6 +84,8 @@ export async function POST(request: NextRequest) {
             presenceStatus,
             descriptiveStatus: descriptiveStatus || "",
             assessments: assessments || [],
+            persianDate: persianDate || "",
+            persianMonth: persianMonth || "",
             updatedAt: new Date(),
           },
           $setOnInsert: {
@@ -105,9 +111,9 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    logger.error("Error saving classsheet data:", error);
+    logger.error("Error in classsheet save API:", error);
     return NextResponse.json(
-      { error: "Failed to save classsheet data" },
+      { error: "Server error" },
       { status: 500 }
     );
   }
