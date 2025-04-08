@@ -14,7 +14,9 @@
     "When you want to return student name it should be name and family.",
     "When appropriate, format complex results as HTML tables for better readability.",
     "If you want to search for specific classname, studentname, teachername, coursename consider that fields should contain that name.",
-    "Try to return coursename, teachername, studentname, classname instead of their code."
+    "Try to return coursename, teachername, studentname, classname instead of their code.",
+    "studentCode in student collection have string type while in classshet is number. consider type casting whenever needed",
+  "When returning grades, use a $group stage to ensure each grade (based on course, description, and date) is shown only once to avoid duplicate entries. Group by studentCode, courseName, gradeDescription, and persianDate."
   ],
   "schema": {
     "collections": [
@@ -432,12 +434,19 @@
                     }
                   },
                   {
+                    "$addFields": {
+                      "studentCodeAsNumber": {
+                        "$toLong": "$studentCode"
+                      }
+                    }
+                  },
+                  {
                     "$unwind": "$grades"
                   },
                   {
                     "$lookup": {
                       "from": "students",
-                      "localField": "studentCode",
+                      "localField": "studentCodeAsNumber",
                       "foreignField": "data.studentCode",
                       "as": "student"
                     }
@@ -496,6 +505,209 @@
                 ]
               }
               
+              
+              },
+              {
+                "persianQuery":"لیست نمرات فروردین ماه محمود قادری را بده",
+                "query":{
+                  "collection": "classsheet",
+                  "operation": "aggregate",
+                  "query": [
+                    {
+                      "$match": {
+                        "persianMonth": {
+                          "$regex": "فروردین",
+                          "$options": "i"
+                        }
+                      }
+                    },
+                    {
+                      "$addFields": {
+                        "studentCodeAsNumber": {
+                          "$toLong": "$studentCode"
+                        }
+                      }
+                    },
+                    {
+                      "$lookup": {
+                        "from": "students",
+                        "localField": "studentCodeAsNumber",
+                        "foreignField": "data.studentCode",
+                        "as": "student"
+                      }
+                    },
+                    {
+                      "$unwind": "$student"
+                    },
+                    {
+                      "$match": {
+                        "$or": [
+                          { "student.data.studentName": { "$regex": "رضا", "$options": "i" } },
+                          { "student.data.studentFamily": { "$regex": "شیری", "$options": "i" } }
+                        ]
+                      }
+                    },
+                    {
+                      "$unwind": "$grades"
+                    },
+                    {
+                      "$lookup": {
+                        "from": "courses",
+                        "localField": "courseCode",
+                        "foreignField": "data.courseCode",
+                        "as": "course"
+                      }
+                    },
+                    {
+                      "$unwind": "$course"
+                    },
+                    {
+                      "$addFields": {
+                        "normalizedGrade": {
+                          "$cond": {
+                            "if": {
+                              "$and": [
+                                { "$ne": ["$grades.totalPoints", null] },
+                                { "$ne": ["$grades.totalPoints", ""] }
+                              ]
+                            },
+                            "then": {
+                              "$multiply": [
+                                { "$divide": [
+                                  { "$toDouble": "$grades.value" },
+                                  { "$toDouble": "$grades.totalPoints" }
+                                ] },
+                                20
+                              ]
+                            },
+                            "else": { "$toDouble": "$grades.value" }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "studentCode": "$student.data.studentCode",
+                          "name": "$student.data.studentName",
+                          "family": "$student.data.studentFamily",
+                          "courseName": "$course.data.courseName",
+                          "gradeValue": "$grades.value",
+                          "gradeDescription": "$grades.description",
+                          "totalPoints": "$grades.totalPoints",
+                          "persianDate": "$persianDate"
+                        },
+                        "normalizedGrade": { "$first": "$normalizedGrade" }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": 0,
+                        "studentCode": "$_id.studentCode",
+                        "name": "$_id.name",
+                        "family": "$_id.family",
+                        "courseName": "$_id.courseName",
+                        "gradeValue": "$_id.gradeValue",
+                        "gradeDescription": "$_id.gradeDescription",
+                        "totalPoints": "$_id.totalPoints",
+                        "persianDate": "$_id.persianDate",
+                        "normalizedGrade": { "$round": ["$normalizedGrade", 2] }
+                      }
+                    }
+                  ]
+                }
+                
+                
+              },
+              {
+                "persianQuery":"میانگین نمرات فروردین ماه محمود قادری را بده",
+                "query":{
+                  "collection": "classsheet",
+                  "operation": "aggregate",
+                  "query": [
+                    {
+                      "$match": {
+                        "persianMonth": {
+                          "$regex": "فروردین",
+                          "$options": "i"
+                        }
+                      }
+                    },
+                    {
+                      "$addFields": {
+                        "studentCodeAsNumber": {
+                          "$toLong": "$studentCode"
+                        }
+                      }
+                    },
+                    {
+                      "$lookup": {
+                        "from": "students",
+                        "localField": "studentCodeAsNumber",
+                        "foreignField": "data.studentCode",
+                        "as": "student"
+                      }
+                    },
+                    {
+                      "$unwind": "$student"
+                    },
+                    {
+                      "$match": {
+                        "$and": [
+                          { "student.data.studentName": { "$regex": "محمود", "$options": "i" } },
+                          { "student.data.studentFamily": { "$regex": "قادری", "$options": "i" } }
+                        ]
+                      }
+                    },
+                    {
+                      "$unwind": "$grades"
+                    },
+                    {
+                      "$addFields": {
+                        "normalizedGrade": {
+                          "$cond": {
+                            "if": {
+                              "$and": [
+                                { "$ne": ["$grades.totalPoints", null] },
+                                { "$ne": ["$grades.totalPoints", ""] }
+                              ]
+                            },
+                            "then": {
+                              "$multiply": [
+                                { "$divide": [
+                                  { "$toDouble": "$grades.value" },
+                                  { "$toDouble": "$grades.totalPoints" }
+                                ] },
+                                20
+                              ]
+                            },
+                            "else": { "$toDouble": "$grades.value" }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "studentCode": "$student.data.studentCode",
+                          "name": "$student.data.studentName",
+                          "family": "$student.data.studentFamily"
+                        },
+                        "averageGrade": { "$avg": "$normalizedGrade" }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": 0,
+                        "studentCode": "$_id.studentCode",
+                        "name": "$_id.name",
+                        "family": "$_id.family",
+                        "averageGrade": { "$round": ["$averageGrade", 2] }
+                      }
+                    }
+                  ]
+                }
+                
               }
       
       

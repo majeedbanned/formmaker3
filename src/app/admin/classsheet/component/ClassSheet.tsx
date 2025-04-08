@@ -107,7 +107,7 @@ type TeacherCourse = {
 };
 
 type Student = {
-  studentCode: number;
+  studentCode: string;
   studentName: string;
   studentlname: string;
   phone: string;
@@ -130,7 +130,7 @@ type AssessmentEntry = {
 
 type CellData = {
   classCode: string;
-  studentCode: number;
+  studentCode: string;
   teacherCode: string;
   courseCode: string;
   schoolCode: string;
@@ -388,7 +388,7 @@ const ClassSheet = ({
   // State for the modal and cell data
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{
-    studentCode: number;
+    studentCode: string;
     columnIndex: number;
   } | null>(null);
   const [noteText, setNoteText] = useState("");
@@ -482,7 +482,7 @@ const ClassSheet = ({
   const [hasFetchedData, setHasFetchedData] = useState(false);
 
   // Create a unique key for each cell
-  const getCellKey = (studentCode: number, column: Column) => {
+  const getCellKey = (studentCode: string, column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
     const dateStr = column.date.toISOString().split("T")[0];
 
@@ -607,7 +607,7 @@ const ClassSheet = ({
 
   // Handle cell click and display
   const getCellContent = (
-    studentCode: number,
+    studentCode: string,
     column: Column
   ): CellData | null => {
     // Get the standard cell key
@@ -652,7 +652,7 @@ const ClassSheet = ({
 
   // Handle cell click
   const handleCellClick = (
-    studentCode: number,
+    studentCode: string,
     columnIndex: number,
     column: Column
   ) => {
