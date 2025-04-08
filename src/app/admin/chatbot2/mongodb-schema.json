@@ -1,25 +1,6 @@
 {
   "collections": [
-    {
-      "name": "schools",
-      "description": "Contains information about educational institutions/schools. Most fields are nested within a 'data' object.",
-      "fields": [
-        { "name": "data", "type": "Object", "description": "Container object for school data with nested fields" },
-        { "name": "data.schoolName", "type": "String", "description": "Name of the school (e.g., 'مدرسه متوسطه دوم رازی')" },
-        { "name": "data.schoolCode", "type": "String", "description": "Unique code identifying the school (e.g., '2295566177')" },
-        { "name": "data.maghta", "type": "String", "enum": ["1", "2", "3"], "description": "Educational level of the school (مقطع تحصیلی) (e.g., '3' for high school)" },
-        { "name": "data.isActive", "type": "Boolean", "description": "Whether the school is currently active" },
-        { "name": "data.username", "type": "String", "description": "Username for school account login (often same as schoolCode)" },
-        { "name": "data.domain", "type": "String", "description": "Custom domain for the school (e.g., 'pars3.farsamooz.ir')" }
-        
-      ],
-      "relationships": [
-        { "with": "classes", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school has many classes" },
-        { "with": "teachers", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school employs many teachers" },
-        { "with": "students", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school has many students enrolled" },
-        { "with": "courses", "type": "oneToMany", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "A school offers many courses" }
-      ]
-    },
+
 
     {
         "name": "students",

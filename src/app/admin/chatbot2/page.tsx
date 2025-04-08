@@ -56,7 +56,6 @@ export default function ChatbotV2Page() {
   const [useHardcodedSchema, setUseHardcodedSchema] = useState(true);
 
   // Assistant management
-  const [, setAssistantId] = useState<string>("");
   const [threadId, setThreadId] = useState<string>("");
   const [isAssistantReady, setIsAssistantReady] = useState(false);
 
@@ -110,7 +109,6 @@ export default function ChatbotV2Page() {
         const data = await response.json();
 
         if (data.assistantId) {
-          setAssistantId(data.assistantId);
           setThreadId(data.threadId || "");
           setSchemaFile(data.schemaFile || null);
           setIsAssistantReady(true);
@@ -523,7 +521,7 @@ export default function ChatbotV2Page() {
 
                   {useHardcodedSchema && (
                     <div className="text-xs text-muted-foreground">
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="ml-2">
                         اسکیمای مانگو داخلی فعال است
                       </Badge>
                       <div className="mt-1">

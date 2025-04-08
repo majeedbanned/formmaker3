@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.3",
     "@fontsource/vazirmatn": "^5.2.5",
     "@hassanmojab/react-modern-calendar-datepicker": "^3.1.7",
     "@headlessui/react": "^2.2.0",
@@ -40,6 +41,7 @@
     "@types/lodash": "^4.17.16",
     "@types/react-select": "^5.0.1",
     "@types/recharts": "^1.8.29",
+    "@uiw/react-codemirror": "^4.23.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
