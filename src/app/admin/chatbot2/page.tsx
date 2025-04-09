@@ -34,6 +34,15 @@ interface SchemaFile {
   uploadedAt: Date;
 }
 
+interface MentionSuggestion {
+  label: string;
+  value: string;
+  type: "student" | "teacher" | "month" | "weekday";
+}
+
+// Add global CSS classes for RTL input support
+const rtlInputClasses = "text-right dir-rtl";
+
 export default function ChatbotV2Page() {
   // Toast for notifications
   const { toast } = useToast();
@@ -50,6 +59,15 @@ export default function ChatbotV2Page() {
       timestamp: new Date(),
     },
   ]);
+
+  // Mention system state
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSuggestions, setMentionSuggestions] = useState<
+    MentionSuggestion[]
+  >([]);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Schema management
   const [schemaFile] = useState<SchemaFile | null>(null);
@@ -289,6 +307,179 @@ export default function ChatbotV2Page() {
     }
   };
 
+  // Persian months and weekdays for quick suggestions
+  const PERSIAN_MONTHS: MentionSuggestion[] = [
+    { label: "فروردین", value: "فروردین", type: "month" },
+    { label: "اردیبهشت", value: "اردیبهشت", type: "month" },
+    { label: "خرداد", value: "خرداد", type: "month" },
+    { label: "تیر", value: "تیر", type: "month" },
+    { label: "مرداد", value: "مرداد", type: "month" },
+    { label: "شهریور", value: "شهریور", type: "month" },
+    { label: "مهر", value: "مهر", type: "month" },
+    { label: "آبان", value: "آبان", type: "month" },
+    { label: "آذر", value: "آذر", type: "month" },
+    { label: "دی", value: "دی", type: "month" },
+    { label: "بهمن", value: "بهمن", type: "month" },
+    { label: "اسفند", value: "اسفند", type: "month" },
+  ];
+
+  const PERSIAN_WEEKDAYS: MentionSuggestion[] = [
+    { label: "شنبه", value: "شنبه", type: "weekday" },
+    { label: "یکشنبه", value: "یکشنبه", type: "weekday" },
+    { label: "دوشنبه", value: "دوشنبه", type: "weekday" },
+    { label: "سه شنبه", value: "سه شنبه", type: "weekday" },
+    { label: "چهارشنبه", value: "چهارشنبه", type: "weekday" },
+    { label: "پنج شنبه", value: "پنج شنبه", type: "weekday" },
+    { label: "جمعه", value: "جمعه", type: "weekday" },
+  ];
+
+  // Handle mention input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    const cursorPos = e.target.selectionStart || 0;
+    setCursorPosition(cursorPos);
+
+    // Find the '@' before cursor position
+    const textUpToCursor = value.substring(0, cursorPos);
+    const atSymbolIndex = textUpToCursor.lastIndexOf("@");
+
+    if (atSymbolIndex !== -1 && atSymbolIndex < cursorPos) {
+      // Get the text between '@' and cursor
+      const searchText = textUpToCursor.substring(atSymbolIndex + 1).trim();
+
+      if (searchText === "") {
+        // Just show default suggestions (months and weekdays) when @ is typed
+        setMentionSuggestions([...PERSIAN_MONTHS, ...PERSIAN_WEEKDAYS]);
+        setShowMentions(true);
+        setMentionLoading(false);
+        return;
+      }
+
+      setShowMentions(true);
+      fetchMentionSuggestions(searchText);
+    } else {
+      setShowMentions(false);
+    }
+  };
+
+  // Fetch mention suggestions with debounce
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchMentionSuggestions = (query: string) => {
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Set loading state
+    setMentionLoading(true);
+
+    // Add debounce to prevent too many requests
+    debounceTimeout.current = setTimeout(async () => {
+      try {
+        // Filter local data (months and weekdays) first
+        const filteredMonths = PERSIAN_MONTHS.filter(
+          (month) => month.label.includes(query) || month.value.includes(query)
+        );
+
+        const filteredWeekdays = PERSIAN_WEEKDAYS.filter(
+          (day) => day.label.includes(query) || day.value.includes(query)
+        );
+
+        // Fetch student suggestions
+        const studentResponse = await fetch(
+          `/api/dropdown-options/students?labelField=studentName&valueField=studentCode&query=${query}&customLabel={studentName} {studentFamily}`,
+          {
+            headers: { "x-domain": "parsamooz" },
+          }
+        );
+
+        // Fetch teacher suggestions
+        const teacherResponse = await fetch(
+          `/api/dropdown-options/teachers?labelField=teacherName&valueField=teacherCode&query=${query}`,
+          {
+            headers: { "x-domain": "parsamooz" },
+          }
+        );
+
+        const studentData = await studentResponse.json();
+        const teacherData = await teacherResponse.json();
+
+        // Format student data
+        const studentSuggestions = studentData
+          .map((student: { label: string; value: string }) => ({
+            label: student.label,
+            value: student.value,
+            type: "student" as const,
+          }))
+          .slice(0, 5); // Limit to 5 student suggestions
+
+        // Format teacher data
+        const teacherSuggestions = teacherData
+          .map((teacher: { label: string; value: string }) => ({
+            label: teacher.label,
+            value: teacher.value,
+            type: "teacher" as const,
+          }))
+          .slice(0, 5); // Limit to 5 teacher suggestions
+
+        // Combine all suggestions
+        const allSuggestions: MentionSuggestion[] = [
+          ...filteredMonths,
+          ...filteredWeekdays,
+          ...studentSuggestions,
+          ...teacherSuggestions,
+        ];
+
+        setMentionSuggestions(allSuggestions);
+      } catch (error) {
+        console.error("Error fetching mention suggestions:", error);
+        // If error, still show local data
+        const filteredSuggestions = [
+          ...PERSIAN_MONTHS,
+          ...PERSIAN_WEEKDAYS,
+        ].filter(
+          (item) => item.label.includes(query) || item.value.includes(query)
+        );
+        setMentionSuggestions(filteredSuggestions);
+      } finally {
+        setMentionLoading(false);
+      }
+    }, 300); // 300ms debounce
+  };
+
+  // Handle selecting a mention
+  const handleSelectMention = (suggestion: MentionSuggestion) => {
+    // Find the position of the '@' before cursor
+    const textUpToCursor = query.substring(0, cursorPosition);
+    const atSymbolIndex = textUpToCursor.lastIndexOf("@");
+
+    if (atSymbolIndex !== -1) {
+      // Replace the text between '@' and cursor with the selected suggestion
+      const textBeforeMention = query.substring(0, atSymbolIndex);
+      const textAfterCursor = query.substring(cursorPosition);
+
+      // Create the new query - ensure proper spacing for RTL
+      const newQuery = `${textBeforeMention}@${suggestion.label} ${textAfterCursor}`;
+
+      setQuery(newQuery);
+      setShowMentions(false);
+
+      // Set focus back to input with proper cursor position
+      // New cursor position should be after the inserted suggestion and space
+      const newCursorPos = atSymbolIndex + suggestion.label.length + 2; // +2 for '@' and space
+
+      // Use setTimeout to ensure the DOM has updated
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    }
+  };
+
   // Handle form submission (sending a query)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -475,13 +666,76 @@ export default function ChatbotV2Page() {
               <CardFooter className="border-t pt-4">
                 <form onSubmit={handleSubmit} className="w-full">
                   <div className="flex space-x-2 rtl:space-x-reverse">
-                    <Input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="سوال خود را به فارسی بنویسید..."
-                      disabled={status === "processing" || !isAssistantReady}
-                      className="flex-grow"
-                    />
+                    <div className="relative flex-grow">
+                      <Input
+                        ref={inputRef}
+                        value={query}
+                        onChange={handleInputChange}
+                        placeholder="سوال خود را به فارسی بنویسید... (از @ برای منشن استفاده کنید)"
+                        disabled={status === "processing" || !isAssistantReady}
+                        className={`flex-grow ${rtlInputClasses}`}
+                        dir="rtl"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setShowMentions(false);
+                          }
+                        }}
+                      />
+
+                      {showMentions && (
+                        <div className="absolute z-10 w-full bg-background shadow-lg border rounded-md mt-1 max-h-56 overflow-y-auto right-0">
+                          <div className="p-1 text-xs text-muted-foreground border-b text-right">
+                            {mentionLoading ? "در حال جستجو..." : "نتایج جستجو"}
+                          </div>
+                          {mentionSuggestions.length === 0 ? (
+                            <div className="p-2 text-sm text-center text-muted-foreground">
+                              {mentionLoading ? (
+                                <div className="flex justify-center items-center py-2">
+                                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                                  در حال بارگذاری...
+                                </div>
+                              ) : (
+                                "نتیجه‌ای یافت نشد"
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-right">
+                              {mentionSuggestions.map((suggestion, idx) => (
+                                <div
+                                  key={`${suggestion.type}-${suggestion.value}-${idx}`}
+                                  className="flex items-center p-2 hover:bg-accent cursor-pointer justify-between"
+                                  onClick={() =>
+                                    handleSelectMention(suggestion)
+                                  }
+                                >
+                                  <span>{suggestion.label}</span>
+                                  <Badge
+                                    variant="outline"
+                                    className={`${
+                                      suggestion.type === "student"
+                                        ? "bg-blue-100"
+                                        : suggestion.type === "teacher"
+                                        ? "bg-green-100"
+                                        : suggestion.type === "month"
+                                        ? "bg-yellow-100"
+                                        : "bg-purple-100"
+                                    }`}
+                                  >
+                                    {suggestion.type === "student"
+                                      ? "دانش‌آموز"
+                                      : suggestion.type === "teacher"
+                                      ? "معلم"
+                                      : suggestion.type === "month"
+                                      ? "ماه"
+                                      : "روز هفته"}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <Button
                       type="submit"
                       disabled={status === "processing" || !isAssistantReady}
