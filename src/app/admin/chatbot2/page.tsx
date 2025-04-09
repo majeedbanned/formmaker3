@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Send, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
 
 type QueryStatus = "idle" | "processing" | "complete" | "error";
 
@@ -51,13 +52,16 @@ export default function ChatbotV2Page() {
   ]);
 
   // Schema management
-  const [schemaFile, setSchemaFile] = useState<SchemaFile | null>(null);
+  const [schemaFile] = useState<SchemaFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [useHardcodedSchema, setUseHardcodedSchema] = useState(true);
 
   // Assistant management
   const [threadId, setThreadId] = useState<string>("");
   const [isAssistantReady, setIsAssistantReady] = useState(false);
+  const [userId] = useState<string>(
+    `user_${Math.random().toString(36).substring(2, 10)}`
+  );
 
   // Debug options
   const [debugMode, setDebugMode] = useState(false);
@@ -94,24 +98,44 @@ export default function ChatbotV2Page() {
   useEffect(() => {
     const loadAssistantData = async () => {
       try {
-        const response = await fetch("/api/chatbot2/assistant", {
+        const response = await fetch("/api/chatbot2/config", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             "x-domain": "parsamooz",
+            "x-user-id": userId,
           },
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to load assistant data");
-        }
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.assistant) {
+            setIsAssistantReady(true);
 
-        const data = await response.json();
+            // Get current thread if user has one
+            const threadResponse = await fetch(
+              `/api/chatbot2/thread?userId=${userId}`,
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-domain": "parsamooz",
+                  "x-user-id": userId,
+                },
+              }
+            );
 
-        if (data.assistantId) {
-          setThreadId(data.threadId || "");
-          setSchemaFile(data.schemaFile || null);
-          setIsAssistantReady(true);
+            if (threadResponse.ok) {
+              const threadData = await threadResponse.json();
+              if (threadData.success && threadData.threads?.length > 0) {
+                setThreadId(threadData.threads[0].threadId);
+              }
+            }
+          }
+        } else {
+          console.log(
+            "No assistant config found, system will create default one on first use"
+          );
         }
       } catch (err) {
         console.error("Error loading assistant data:", err);
@@ -124,7 +148,7 @@ export default function ChatbotV2Page() {
     };
 
     loadAssistantData();
-  }, [toast]);
+  }, [toast, userId]);
 
   // Load hardcoded schema when selected
   useEffect(() => {
@@ -164,8 +188,8 @@ export default function ChatbotV2Page() {
     }
   }, [useHardcodedSchema, toast]);
 
-  // Handle schema file upload
-  const handleSchemaUpload = async () => {
+  // Handle schema file upload - Update to upload combined config file
+  const handleConfigUpload = async () => {
     if (fileInputRef.current?.files?.length) {
       const file = fileInputRef.current.files[0];
 
@@ -181,36 +205,79 @@ export default function ChatbotV2Page() {
       try {
         setIsUploading(true);
 
-        const formData = new FormData();
-        formData.append("schemaFile", file);
+        // Read the file content
+        const fileContent = await file.text();
+        let configData;
 
-        const response = await fetch("/api/chatbot2/schema", {
+        try {
+          configData = JSON.parse(fileContent);
+        } catch {
+          toast({
+            title: "فایل JSON نامعتبر",
+            description:
+              "فایل انتخاب شده قابل پردازش نیست. لطفاً یک فایل JSON معتبر انتخاب کنید.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+
+        // Validate the config structure
+        if (
+          !configData.name ||
+          !configData.instructions ||
+          !configData.dbSchema
+        ) {
+          toast({
+            title: "ساختار فایل ناقص است",
+            description:
+              "فایل باید شامل فیلدهای name، instructions و dbSchema باشد.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+
+        // Upload the configuration
+        const response = await fetch("/api/chatbot2/config", {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             "x-domain": "parsamooz",
           },
-          body: formData,
+          body: JSON.stringify(configData),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to upload schema file");
+          throw new Error("Failed to upload configuration");
         }
 
-        const data = await response.json();
-
-        setSchemaFile({
-          id: data.id,
-          name: file.name,
-          fileId: data.fileId,
-          uploadedAt: new Date(),
-        });
+        await response.json();
 
         toast({
           title: "آپلود موفق",
-          description: "فایل اسکیما با موفقیت آپلود شد.",
+          description: "تنظیمات دستیار با موفقیت بارگذاری شد.",
         });
+
+        setIsAssistantReady(true);
+
+        // Create a new thread with this assistant
+        const threadResponse = await fetch("/api/chatbot2/thread", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-domain": "parsamooz",
+            "x-user-id": userId,
+          },
+          body: JSON.stringify({ userId }),
+        });
+
+        if (threadResponse.ok) {
+          const threadData = await threadResponse.json();
+          setThreadId(threadData.threadId);
+        }
       } catch (err) {
-        console.error("Error uploading schema file:", err);
+        console.error("Error uploading configuration:", err);
         toast({
           title: "خطا در آپلود فایل",
           description: "لطفاً دوباره تلاش کنید.",
@@ -247,10 +314,12 @@ export default function ChatbotV2Page() {
         headers: {
           "Content-Type": "application/json",
           "x-domain": "parsamooz",
+          "x-user-id": userId,
         },
         body: JSON.stringify({
           query,
           threadId,
+          userId,
           debugMode,
         }),
       });
@@ -261,43 +330,26 @@ export default function ChatbotV2Page() {
 
       const data = await response.json();
 
-      // Save thread ID if it's newly created
-      if (data.threadId && threadId !== data.threadId) {
+      // Update threadId if a new one was created
+      if (data.threadId && !threadId) {
         setThreadId(data.threadId);
       }
 
-      // Save debug info if debug mode is enabled
-      if (debugMode && data.debug) {
-        setDebugInfo({
-          mongoQuery: data.debug.mongoQuery || "",
-          queryResults: data.debug.queryResults || [],
-          executionTime: data.debug.executionTime || 0,
-          tokenUsage: data.debug.tokenUsage || {
-            prompt: 0,
-            completion: 0,
-            total: 0,
-          },
-          aiRequests: {
-            queryGeneration: data.debug.aiRequests?.queryGeneration || "",
-            formatting: data.debug.aiRequests?.formatting || "",
-          },
-          aiResponses: {
-            queryGeneration: data.debug.aiResponses?.queryGeneration || "",
-            formatting: data.debug.aiResponses?.formatting || "",
-          },
-        });
-      }
-
-      // Add assistant response
+      // Add assistant's response
       const assistantMessage: ChatMessage = {
         id: Date.now().toString(),
         role: "assistant",
-        content: data.response,
+        content: data.content,
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
       setStatus("complete");
+
+      // Update debug info if available
+      if (debugMode && data.debug) {
+        setDebugInfo(data.debug);
+      }
     } catch (err) {
       console.error("Error processing query:", err);
 
@@ -312,6 +364,12 @@ export default function ChatbotV2Page() {
 
       setMessages((prev) => [...prev, errorMessage]);
       setStatus("error");
+
+      toast({
+        title: "خطا در پردازش درخواست",
+        description: "لطفاً دوباره تلاش کنید.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -463,47 +521,62 @@ export default function ChatbotV2Page() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      استفاده از اسکیمای داخلی
-                    </span>
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <Switch
+                      id="useHardcodedSchema"
                       checked={useHardcodedSchema}
                       onCheckedChange={setUseHardcodedSchema}
-                      aria-label="Toggle hardcoded schema"
                     />
+                    <Label htmlFor="useHardcodedSchema">
+                      استفاده از دستیار پیش‌فرض
+                    </Label>
                   </div>
 
                   {!useHardcodedSchema && (
-                    <>
-                      <h3 className="text-sm font-medium">آپلود فایل اسکیما</h3>
-                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <div className="space-y-2">
+                      <Label htmlFor="configFile">
+                        آپلود فایل تنظیمات دستیار (JSON)
+                      </Label>
+                      <div className="flex items-center gap-2">
                         <Input
+                          id="configFile"
                           type="file"
                           ref={fileInputRef}
-                          accept="application/json"
+                          accept=".json"
                           disabled={isUploading}
-                          className="flex-grow"
                         />
                         <Button
+                          type="button"
                           size="sm"
+                          onClick={handleConfigUpload}
                           disabled={isUploading}
-                          onClick={handleSchemaUpload}
                         >
                           {isUploading ? (
                             <>
-                              <Loader2 className="h-4 w-4 ml-2 rtl:mr-2 rtl:ml-0 animate-spin" />
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               در حال آپلود...
                             </>
                           ) : (
                             <>
-                              <Upload className="h-4 w-4 ml-2 rtl:mr-2 rtl:ml-0" />
+                              <Upload className="mr-2 h-4 w-4" />
                               آپلود
                             </>
                           )}
                         </Button>
                       </div>
-                    </>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <a
+                          href="/admin/chatbot2/config-template.json"
+                          download
+                          className="underline hover:text-primary"
+                        >
+                          دانلود فایل قالب
+                        </a>
+                        {
+                          " - این فایل را دانلود کرده، تغییرات مورد نظر را اعمال کرده و سپس آپلود کنید."
+                        }
+                      </div>
+                    </div>
                   )}
 
                   {schemaFile && !useHardcodedSchema && (

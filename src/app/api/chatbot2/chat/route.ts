@@ -3,27 +3,12 @@ import { logger } from "@/lib/logger";
 import { OpenAI } from "openai";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Document } from "mongodb";
+import { getAssistantModel, getThreadModel, IAssistant } from "../models/assistant";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-// Assistant data storage
-interface StoredAssistant {
-  assistantId: string;
-  threadId?: string;
-  schemaFile?: {
-    id: string;
-    name: string;
-    fileId: string;
-    uploadedAt: Date;
-  };
-  createdAt: Date;
-}
-
-// In a production environment, this should be stored in a database
-let storedAssistant: StoredAssistant | null = null;
 
 // MongoDB query interface
 interface MongoQuery {
@@ -69,7 +54,7 @@ export async function POST(request: NextRequest) {
     
     // Get request body
     const body = await request.json();
-    const { query, threadId: existingThreadId, debugMode } = body;
+    const { query, threadId: existingThreadId, userId = "anonymous", debugMode } = body;
     
     // Validate inputs
     if (!query) {
@@ -99,45 +84,62 @@ export async function POST(request: NextRequest) {
       }
     };
     
-    // Ensure we have an assistant
-    if (!storedAssistant?.assistantId) {
-      // Try to fetch the assistant info first
-      const assistantResponse = await fetch("/api/chatbot2/assistant", {
-        method: "GET",
-        headers: {
-          "x-domain": domain,
-        },
-      });
-      
-      if (!assistantResponse.ok) {
-        throw new Error("No assistant available");
-      }
-      
-      storedAssistant = await assistantResponse.json();
+    // Connect to database and get models
+    const connection = await connectToDatabase(domain);
+    const AssistantModel = getAssistantModel(connection);
+    const ThreadModel = getThreadModel(connection);
+    
+    // Get the active assistant for this domain
+    const assistant = await AssistantModel.findOne({
+      domain,
+      isActive: true,
+    }).lean() as IAssistant | null;
+    
+    if (!assistant) {
+      throw new Error("No active assistant found for this domain");
     }
     
-    if (!storedAssistant) {
-      throw new Error("Failed to initialize assistant");
-    }
-    
-    const assistantId = storedAssistant.assistantId;
+    const assistantId = assistant.assistantId;
     
     // Get or create thread
     let threadId = existingThreadId;
+    let threadDoc;
+    
     if (!threadId) {
-      const threadResponse = await fetch("/api/chatbot2/thread", {
-        method: "POST",
-        headers: {
-          "x-domain": domain,
-        },
+      // Create a new thread
+      const thread = await openai.beta.threads.create();
+      threadId = thread.id;
+      
+      // Store thread in database
+      threadDoc = new ThreadModel({
+        threadId,
+        userId,
+        assistantId,
+        domain,
+        isActive: true,
+        lastUsed: new Date(),
+        createdAt: new Date(),
       });
       
-      if (!threadResponse.ok) {
-        throw new Error("Failed to create a new thread");
+      await threadDoc.save();
+    } else {
+      // Verify thread exists and belongs to this user and assistant
+      threadDoc = await ThreadModel.findOne({
+        threadId,
+        userId,
+        assistantId,
+        domain,
+      });
+      
+      if (!threadDoc) {
+        throw new Error("Thread not found or not accessible by this user");
       }
       
-      const threadData = await threadResponse.json();
-      threadId = threadData.threadId;
+      // Update lastUsed timestamp
+      await ThreadModel.updateOne(
+        { _id: threadDoc._id },
+        { $set: { lastUsed: new Date() } }
+      );
     }
     
     logger.info(`Processing query on thread ${threadId}: "${query.substring(0, 50)}..."`);
@@ -148,52 +150,34 @@ export async function POST(request: NextRequest) {
       content: query
     });
     
-    // Step 2: Run the assistant to generate a MongoDB query
-    const run = await openai.beta.threads.runs.create(threadId, {
+    // Step 2: Run the assistant
+    // Note: No need to pass schema separately as it's already in the assistant's instructions
+    const runOptions: OpenAI.Beta.Threads.Runs.RunCreateParams = {
       assistant_id: assistantId,
-      instructions: "Generate a MongoDB query based on the user's Farsi question. Use the MongoDB schema to understand the database structure. Return ONLY a valid JSON object with 'collection', 'operation', and 'query' fields. Do not include any explanations or markdown formatting."
-    });
+    };
     
-    // Get the MongoDB schema to include in the instructions
-    try {
-      // Fetch the MongoDB schema from our hardcoded endpoint
-      const schemaResponse = await fetch(`${request.nextUrl.origin}/api/chatbot2/mongodb-schema`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "x-domain": domain,
-        },
-      });
+    // For the first message in a thread, we need to include the schema
+    // This ensures the assistant has context but we only send it once per thread
+    const messages = await openai.beta.threads.messages.list(threadId);
+    
+    // If this is the first or second message (first from user + first from assistant)
+    if (messages.data.length <= 2 && assistant.dbSchema) {
+      runOptions.instructions = `Use the following MongoDB schema information to help understand the database structure:\n\n${JSON.stringify(assistant.dbSchema, null, 2)}\n\nRemember to generate valid MongoDB queries based on the user's question.`;
       
-      if (schemaResponse.ok) {
-        const schemaData = await schemaResponse.json();
-        if (schemaData.schema) {
-          // Create the query generation request content
-          const queryGenerationRequest = `MongoDB Schema Information: ${JSON.stringify(schemaData.schema, null, 2)}\n\nUser Query: ${query}\n\nPlease use this schema information when generating MongoDB queries. Pay special attention to the relationships between collections and field paths.`;
-          
-          // Save for debug mode
-          if (debugMode) {
-            debugInfo.aiRequests.queryGeneration = queryGenerationRequest;
-          }
-          
-          // Create a user message with the schema information
-          await openai.beta.threads.messages.create(threadId, {
-            role: "user",
-            content: queryGenerationRequest
-          });
-        }
+      // In debug mode, save the schema instructions
+      if (debugMode) {
+        debugInfo.aiRequests.queryGeneration = runOptions.instructions;
       }
-    } catch (error) {
-      logger.warn("Could not fetch MongoDB schema:", error);
-      // Continue without schema info
     }
+    
+    const run = await openai.beta.threads.runs.create(threadId, runOptions);
     
     // Wait for the assistant to generate a response
     await waitForRunCompletion(threadId, run.id);
     
     // Step 3: Retrieve the assistant's response (MongoDB query)
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const lastAssistantMessage = messages.data
+    const updatedMessages = await openai.beta.threads.messages.list(threadId);
+    const lastAssistantMessage = updatedMessages.data
       .filter(msg => msg.role === "assistant")
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
     
@@ -243,134 +227,82 @@ export async function POST(request: NextRequest) {
     // Step 4: Execute the MongoDB query
     const queryStartTime = Date.now();
     
-    // Connect to database
-    const connection = await connectToDatabase(domain);
-    
-    if (!connection.db) {
-      throw new Error("Database connection failed");
-    }
-    
-    // Get the collection
-    const coll = connection.db.collection(mongoQuery.collection);
+    // Get the dynamic model for the collection
+    const model = connection.collection(mongoQuery.collection);
     
     // Execute the query
     let results: Document[] = [];
-    
     if (mongoQuery.operation === "find") {
-      // For find operations
-      const findQuery = mongoQuery.query as Record<string, unknown>;
-      const cursor = coll.find(findQuery);
-      
-      // Apply limit to prevent excessive data retrieval
-      const limitedCursor = cursor.limit(50);
-      
-      // Convert cursor to array
-      results = await limitedCursor.toArray();
-    } else {
-      // For aggregate operations
-      const aggregateQuery = mongoQuery.query as Array<Record<string, unknown>>;
-      
-      // Apply limit to prevent excessive data retrieval if not already present
-      let hasLimit = false;
-      let queryToExecute = [...aggregateQuery];
-      
-      for (const stage of aggregateQuery) {
-        if (stage.$limit !== undefined) {
-          hasLimit = true;
-          break;
-        }
-      }
-      
-      if (!hasLimit) {
-        // Add a $limit stage at the end
-        queryToExecute = [...aggregateQuery, { $limit: 50 }];
-      }
-      
-      // Execute the aggregation
-      const cursor = coll.aggregate(queryToExecute);
-      results = await cursor.toArray();
+      results = await model.find(mongoQuery.query as Record<string, unknown>).limit(100).toArray();
+    } else if (mongoQuery.operation === "aggregate") {
+      results = await model.aggregate(mongoQuery.query as Array<Record<string, unknown>>).limit(100).toArray();
     }
     
-    // Calculate execution time
-    const executionTime = Date.now() - queryStartTime;
-    debugInfo.executionTime = executionTime;
-    debugInfo.queryResults = results;
+    // Calculate query execution time
+    debugInfo.executionTime = Date.now() - queryStartTime;
     
-    logger.info(`Query executed in ${executionTime}ms. Results count: ${results.length}`);
-    
-    // Step 5: Format the results for the user using the assistant
-    // Create a new message to add the results for formatting
-    const formattingRequest = `Here are the results of executing your MongoDB query:\n\n${JSON.stringify(results, null, 2)}\n\nPlease format these results in a human-friendly way in Farsi. If there are many results, summarize them effectively.`;
-
-    // Save for debug mode
+    // Store results for debugging
     if (debugMode) {
-      debugInfo.aiRequests.formatting = formattingRequest;
+      debugInfo.queryResults = results;
     }
-
+    
+    // Step 5: Send the results back to the assistant for formatting
+    const resultsMessage = `Query results (${results.length} documents):\n\n${JSON.stringify(results, null, 2)}`;
+    
     await openai.beta.threads.messages.create(threadId, {
       role: "user",
-      content: formattingRequest,
+      content: resultsMessage
     });
-
+    
     // Run the assistant again to format the results
     const formattingRun = await openai.beta.threads.runs.create(threadId, {
       assistant_id: assistantId,
+      instructions: "Format these MongoDB query results into a clear, human-friendly response in Farsi. Use HTML formatting for tables when appropriate. For empty results, provide helpful suggestions."
     });
-
-    // Wait for the assistant to format the results
+    
+    // Wait for formatting completion
     await waitForRunCompletion(threadId, formattingRun.id);
-
-    // Retrieve the assistant's formatted response
+    
+    // Get the formatted response
     const formattedMessages = await openai.beta.threads.messages.list(threadId);
-    const lastFormattedMessage = formattedMessages.data
+    const formattedResponse = formattedMessages.data
       .filter(msg => msg.role === "assistant")
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-    if (!lastFormattedMessage?.content || lastFormattedMessage.content.length === 0) {
+    
+    if (!formattedResponse?.content || formattedResponse.content.length === 0) {
       throw new Error("No formatted response generated by the assistant");
     }
-
-    const formattedContentValue = lastFormattedMessage.content[0];
-    if (formattedContentValue.type !== "text") {
-      throw new Error("Expected text content from assistant for formatting");
+    
+    // Extract the formatted text
+    const formattedContent = formattedResponse.content[0];
+    
+    if (formattedContent.type !== "text") {
+      throw new Error("Expected text content from assistant");
     }
-
-    const formattedResponse = formattedContentValue.text.value;
-
-    // Save the formatted response for debug mode
-    if (debugMode) {
-      debugInfo.aiResponses.formatting = formattedResponse;
-    }
-
+    
+    const formattedText = formattedContent.text.value;
+    
     // Calculate total time
     const totalTime = Date.now() - startTime;
     
-    // Get token usage if available
-    if (formattingRun.usage) {
-      tokenUsage.prompt = (formattingRun.usage.prompt_tokens || 0) + (run.usage?.prompt_tokens || 0);
-      tokenUsage.completion = (formattingRun.usage.completion_tokens || 0) + (run.usage?.completion_tokens || 0);
-      tokenUsage.total = (formattingRun.usage.total_tokens || 0) + (run.usage?.total_tokens || 0);
-      
-      debugInfo.tokenUsage = tokenUsage;
-    }
-    
-    logger.info(`Total processing time: ${totalTime}ms, Token usage: ${tokenUsage.total}`);
-    
-    // Prepare the final response
-    return NextResponse.json({
+    // Build the response
+    const response = {
       success: true,
-      response: formattedResponse,
+      content: formattedText,
+      executionTime: totalTime,
       threadId,
-      debug: debugMode ? debugInfo : undefined,
-    }, { status: 200 });
+      debug: debugMode ? debugInfo : undefined
+    };
+    
+    return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    logger.error("Error processing chat request:", error);
+    logger.error("Error processing query:", error);
     
     return NextResponse.json(
       { 
         success: false, 
-        message: "Failed to process chat request",
-        error: (error as Error).message
+        message: "Failed to process query", 
+        error: (error as Error).message 
       },
       { status: 500 }
     );

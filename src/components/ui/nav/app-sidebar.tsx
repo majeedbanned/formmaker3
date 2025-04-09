@@ -130,7 +130,7 @@ const data = {
         ,
         {
           title: "پرینت",
-          url: "/admin/print",
+          url: "/admin/prints",
           system: "importstudents",
           requiredPermission: "show",
         },

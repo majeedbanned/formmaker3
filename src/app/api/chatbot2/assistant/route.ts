@@ -1,43 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { OpenAI } from "openai";
+import { connectToDatabase } from "@/lib/mongodb";
+import { getAssistantModel, IAssistant } from "../models/assistant";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Assistant data storage
-interface StoredAssistant {
-  assistantId: string;
-  threadId?: string;
-  schemaFile?: {
-    id: string;
-    name: string;
-    fileId: string;
-    uploadedAt: Date;
-  };
-  createdAt: Date;
-}
-
-// In a production environment, this should be stored in a database
-let storedAssistant: StoredAssistant | null = null;
-
 export async function GET(request: NextRequest) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "parsamooz";
     
+    // Connect to the database
+    const connection = await connectToDatabase(domain);
+    const AssistantModel = getAssistantModel(connection);
+    
+    // Find active assistant for this domain
+    const assistant = await AssistantModel.findOne({
+      domain,
+      isActive: true,
+    }).lean() as IAssistant | null;
+    
     // If we have a stored assistant, return it
-    if (storedAssistant) {
-      logger.info(`Returning existing assistant: ${storedAssistant.assistantId}`);
-      return NextResponse.json(storedAssistant, { status: 200 });
+    if (assistant) {
+      logger.info(`Returning existing assistant: ${assistant.assistantId}`);
+      return NextResponse.json({
+        assistantId: assistant.assistantId,
+        createdAt: assistant.createdAt
+      }, { status: 200 });
     }
 
     // If not, create a new assistant
     logger.info("Creating new MongoDB query generator assistant...");
     
-    const assistant = await openai.beta.assistants.create({
+    const newAssistant = await openai.beta.assistants.create({
       name: "MongoDB Query Generator",
       description: "A specialized assistant that converts Farsi user queries into valid MongoDB queries, executes them, and formats the results in a human-friendly way.",
       instructions: `You are a specialized MongoDB query assistant.
@@ -63,15 +62,25 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Store the assistant for future use
-    storedAssistant = {
-      assistantId: assistant.id,
+    // Store the assistant in the database
+    const assistantDoc = new AssistantModel({
+      assistantId: newAssistant.id,
+      name: "MongoDB Query Generator",
+      instructions: newAssistant.instructions,
+      domain,
+      isActive: true,
       createdAt: new Date(),
-    };
-
-    logger.info(`Successfully created assistant with ID: ${assistant.id}`);
+      updatedAt: new Date(),
+    });
     
-    return NextResponse.json(storedAssistant, { status: 200 });
+    await assistantDoc.save();
+
+    logger.info(`Successfully created assistant with ID: ${newAssistant.id}`);
+    
+    return NextResponse.json({
+      assistantId: newAssistant.id,
+      createdAt: new Date()
+    }, { status: 200 });
   } catch (error) {
     logger.error("Error creating or retrieving assistant:", error);
     

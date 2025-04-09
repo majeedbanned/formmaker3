@@ -172,8 +172,8 @@
       ],
     "common_query_examples": [
       {
-      "persianQuery":"تعداد کل کلاس‌ها را بده",
-      "query":{
+      "farsi_query":"تعداد کل کلاس‌ها را بده",
+      "mongo_query":{
         "collection": "classes",
         "operation": "aggregate",
         "query": [
@@ -186,8 +186,8 @@
       
       
       {
-        "persianQuery":"تعداد دانش‌آموزان فعال در هر مدرسه را لیست کن",
-        "query":{
+        "farsi_query":"تعداد دانش‌آموزان فعال در هر مدرسه را لیست کن",
+        "mongo_query":{
           "collection": "students",
           "operation": "aggregate",
           "query": [
@@ -227,8 +227,8 @@
         },
       
       {
-      "persianQuery":"غایبین امروز را نمایش بده",
-      "query":{
+      "farsi_query":"غایبین امروز را نمایش بده",
+      "mongo_query":{
         "collection": "classsheet",
         "operation": "aggregate",
         "query": [
@@ -263,8 +263,8 @@
       
       },
       {
-        "persianQuery":"لیست دانش آموزانی که بیشترین غیبت را داشتند  را نمایش بده",
-        "query":{
+        "farsi_query":"لیست دانش آموزانی که بیشترین غیبت را داشتند  را نمایش بده",
+        "mongo_query":{
           "collection": "classsheet",
           "operation": "aggregate",
           "query": [
@@ -309,8 +309,8 @@
         },
       
         {
-          "persianQuery":"چه کلاسهایی بیشترین غیبت را داشته اند؟",
-          "query":{
+          "farsi_query":"چه کلاسهایی بیشترین غیبت را داشته اند؟",
+          "mongo_query":{
             "collection": "classsheet",
             "operation": "aggregate",
             "query": [
@@ -355,8 +355,8 @@
           
           },
           {
-            "persianQuery":"لیست غایبین این هفته را نشان بده",
-            "query":{
+            "farsi_query":"لیست غایبین این هفته را نشان بده",
+            "mongo_query":{
               "collection": "classsheet",
               "operation": "aggregate",
               "query": [
@@ -420,8 +420,8 @@
             },
       
             {
-              "persianQuery":"لیست نمرات ماه فروردین را بده",
-              "query":{
+              "farsi_query":"لیست نمرات ماه فروردین را بده",
+              "mongo_query":{
                 "collection": "classsheet",
                 "operation": "aggregate",
                 "query": [
@@ -508,8 +508,8 @@
               
               },
               {
-                "persianQuery":"لیست نمرات فروردین ماه محمود قادری را بده",
-                "query":{
+                "farsi_query":"لیست نمرات فروردین ماه محمود قادری را بده",
+                "mongo_query":{
                   "collection": "classsheet",
                   "operation": "aggregate",
                   "query": [
@@ -620,8 +620,8 @@
                 
               },
               {
-                "persianQuery":"میانگین نمرات فروردین ماه محمود قادری را بده",
-                "query":{
+                "farsi_query":"میانگین نمرات فروردین ماه محمود قادری را بده",
+                "mongo_query":{
                   "collection": "classsheet",
                   "operation": "aggregate",
                   "query": [
