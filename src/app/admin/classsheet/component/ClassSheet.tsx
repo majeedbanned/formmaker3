@@ -126,6 +126,7 @@ type AssessmentEntry = {
   title: string;
   value: string;
   date: string;
+  weight?: number; // Add weight property to assessments
 };
 
 type CellData = {
@@ -714,6 +715,12 @@ const ClassSheet = ({
     setGrades(newGrades);
   };
 
+  // Find assessment weight based on value
+  const getAssessmentWeight = (value: string): number => {
+    const assessment = assessmentValues.find((av) => av.value === value);
+    return assessment?.weight || 0;
+  };
+
   // Add a new assessment
   const handleAddAssessment = () => {
     if (!newAssessment.title) {
@@ -726,9 +733,16 @@ const ClassSheet = ({
       return;
     }
 
+    // Get the weight for the selected assessment value
+    const weight = getAssessmentWeight(newAssessment.value);
+
     setAssessments([
       ...assessments,
-      { ...newAssessment, date: new Date().toISOString() },
+      {
+        ...newAssessment,
+        date: new Date().toISOString(),
+        weight: weight, // Add weight to the assessment
+      },
     ]);
     setNewAssessment({
       title: "",
@@ -773,6 +787,18 @@ const ClassSheet = ({
       // Format Persian date
       const persianDate = formatJalaliDate(column.date);
 
+      // Ensure all assessments have weight property
+      const assessmentsWithWeights = assessments.map((assessment) => {
+        // If assessment already has weight, use it; otherwise, get weight from the value
+        if (assessment.weight !== undefined) {
+          return assessment;
+        }
+        return {
+          ...assessment,
+          weight: getAssessmentWeight(assessment.value),
+        };
+      });
+
       const cellData = {
         classCode: selectedClassDocument.data.classCode,
         studentCode: selectedCell.studentCode,
@@ -785,7 +811,7 @@ const ClassSheet = ({
         grades: grades,
         presenceStatus: presenceStatus || null, // Don't default to present
         descriptiveStatus: descriptiveStatus,
-        assessments: assessments,
+        assessments: assessmentsWithWeights,
         persianDate: persianDate, // Add Persian date
         persianMonth: persianMonth, // Add Persian month name
       };
@@ -1066,12 +1092,6 @@ const ClassSheet = ({
         error instanceof Error ? error.message : "خطا در افزودن عنوان ارزیابی"
       );
     }
-  };
-
-  // Find assessment weight based on value
-  const getAssessmentWeight = (value: string): number => {
-    const assessment = assessmentValues.find((av) => av.value === value);
-    return assessment?.weight || 0;
   };
 
   // Handle adding custom assessment value
@@ -1841,9 +1861,13 @@ const ClassSheet = ({
 
         // Add the bulk assessment if both title and value are provided
         if (bulkAssessment.title && bulkAssessment.value) {
+          // Get the weight for the assessment value
+          const weight = getAssessmentWeight(bulkAssessment.value);
+
           cellData.assessments.push({
             ...bulkAssessment,
             date: new Date().toISOString(),
+            weight: weight, // Add weight to the assessment
           });
         }
 
