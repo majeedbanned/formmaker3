@@ -45,7 +45,7 @@ export const connectToDatabase = async (domain: string) => {
   // Check if we already have a connection for this domain
   if (connectionCache[domain]?.isConnected) {
     logger.info(`Using existing MongoDB connection for domain: ${domain}`);
-    console.log('connectionCache[domain]', connectionCache[domain])
+    //console.log('connectionCache[domain]', connectionCache[domain])
     return connectionCache[domain].connection;
   }
 

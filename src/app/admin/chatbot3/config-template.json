@@ -74,11 +74,11 @@
         { "name": "data.teacherCode", "type": "String", "description": "Unique code identifying the teacher (e.g., '102')" },
         { "name": "data.schoolCode", "type": "String", "description": "School code the teacher is associated with" },
         { "name": "data.isActive", "type": "Boolean", "description": "Whether the teacher is currently active" },
-        { "name": "data.phoneNumber", "type": "String", "description": "Contact phone number" },
+        { "name": "data.phoneNumber", "type": "String", "description": "Contact phone number" }
         ],
         "relationships": [
         { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each teacher belongs to a single school" },
-        { "with": "classes", "type": "manyToMany", "joinField": "data.teacherCode", "targetField": "data.teachers[].teacherCode", "description": "A teacher can teach multiple classes" },
+        { "with": "classes", "type": "manyToMany", "joinField": "data.teacherCode", "targetField": "data.teachers[].teacherCode", "description": "A teacher can teach multiple classes" }
         ]
         },
         
@@ -92,7 +92,7 @@
         { "name": "data.schoolCode", "type": "String", "description": "School code the course is associated with" },
         { "name": "data.grade", "type": "String", "enum":["1","2","3","4","5","6","7","8","9","10","11","12"], "description": "Grade level for this course 'پایه' (e.g., '10')" },
         { "name": "data.units", "type": "Number", "description": "Academic units/credits for this course" },
-        { "name": "data.isActive", "type": "Boolean", "description": "Whether the course is currently active/offered" },
+        { "name": "data.isActive", "type": "Boolean", "description": "Whether the course is currently active/offered" }
         
         ],
         "relationships": [
