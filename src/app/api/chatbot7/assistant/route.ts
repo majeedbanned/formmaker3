@@ -411,8 +411,8 @@ const createAssistant = async (userId: string, domain: string) => {
         {
           name: "MongoDB Query Assistant v7",
           description: "A specialized assistant for generating MongoDB queries from Farsi (Persian) questions",
-          model: "gpt-4o",
-          instructions: configData.instructions.join("\n\n"),
+          model: "gpt-4o-mini",
+          instructions:JSON.stringify(configData),
           tools: [{ type: "code_interpreter" }],
           tool_resources: {
             code_interpreter: {
@@ -445,7 +445,7 @@ const createAssistant = async (userId: string, domain: string) => {
         id: assistantData.id,
         name: "MongoDB Query Assistant v7",
         userId,
-        modelName: "gpt-4o",
+        modelName: "gpt-4o-mini",
         fileIds: [fileId],
         createdAt: new Date(),
       });
