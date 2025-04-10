@@ -19,6 +19,11 @@ interface DebugInfo {
   queryResults: Array<unknown>;
   rawAssistantResponse?: string;
   timings?: Record<string, number>;
+  tokenUsage?: {
+    userMessageTokens?: number;
+    assistantResponseTokens?: number;
+    totalTokens?: number;
+  };
   [key: string]: unknown;
 }
 
@@ -189,6 +194,15 @@ export async function POST(request: NextRequest) {
     
     // 1. Add the user message to the thread
     const messageStartTime = Date.now();
+    
+    // Estimate tokens for the user message (rough approximation - 1 token ~= 4 chars for English, might vary for Farsi)
+    const estimatedUserTokens = Math.ceil(message.length / 4);
+    if (debug) {
+      debugInfo.tokenUsage = {
+        userMessageTokens: estimatedUserTokens
+      };
+    }
+    
     const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: "POST",
       headers: {
@@ -401,6 +415,13 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Estimate tokens for the assistant response
+    if (debug && debugInfo.tokenUsage) {
+      const estimatedResponseTokens = Math.ceil(responseText.length / 4);
+      debugInfo.tokenUsage.assistantResponseTokens = estimatedResponseTokens;
+      debugInfo.tokenUsage.totalTokens = (debugInfo.tokenUsage.userMessageTokens || 0) + estimatedResponseTokens;
+    }
+    
     // Store raw assistant response for debug mode
     if (debug) {
       debugInfo.rawAssistantResponse = JSON.stringify(latestMessage, null, 2);
@@ -425,16 +446,17 @@ export async function POST(request: NextRequest) {
     };
     
     // Update the document with the new messages
+    // Use a type assertion to bypass MongoDB TypeScript limitations
     await threadsCollection.updateOne(
       { threadId },
-      { 
+      {
         $push: { 
           messages: { 
             $each: [userMsg, assistantMsg] 
           } 
-        } as unknown as Record<string, unknown>,
+        },
         $set: { updatedAt: new Date() }
-      }
+      } as object
     );
     
     timings.dbUpdateTime = Date.now() - dbUpdateStartTime;
@@ -454,6 +476,8 @@ export async function POST(request: NextRequest) {
         timings: debugInfo.timings,
         // Include mongoQuery for admin debugging only
         mongoQuery: debugInfo.mongoQuery,
+        // Include token usage information
+        tokenUsage: debugInfo.tokenUsage,
         // Don't include raw results in response for regular users
         // queryResults: debugInfo.queryResults, 
         // Don't include raw assistant response in regular output

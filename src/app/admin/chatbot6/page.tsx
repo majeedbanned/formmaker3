@@ -38,6 +38,11 @@ interface DebugInfo {
   queryResults?: unknown[];
   rawAssistantResponse?: string;
   timings?: Record<string, number>;
+  tokenUsage?: {
+    userMessageTokens?: number;
+    assistantResponseTokens?: number;
+    totalTokens?: number;
+  };
 }
 
 interface ChatMessagesProps {
@@ -110,6 +115,28 @@ function ChatMessages({ messages, showDebug }: ChatMessagesProps) {
                           <pre className="text-xs bg-slate-100 p-2 rounded overflow-auto">
                             {JSON.stringify(message.debug.timings, null, 2)}
                           </pre>
+                        </div>
+                      )}
+
+                      {message.debug.tokenUsage && (
+                        <div className="mt-2">
+                          <h4 className="text-xs font-medium">Token Usage:</h4>
+                          <div className="text-xs p-2 rounded overflow-auto space-y-1">
+                            <p>
+                              User Message:{" "}
+                              {message.debug.tokenUsage.userMessageTokens}{" "}
+                              tokens
+                            </p>
+                            <p>
+                              Assistant Response:{" "}
+                              {message.debug.tokenUsage.assistantResponseTokens}{" "}
+                              tokens
+                            </p>
+                            <p className="font-semibold">
+                              Total: {message.debug.tokenUsage.totalTokens}{" "}
+                              tokens
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

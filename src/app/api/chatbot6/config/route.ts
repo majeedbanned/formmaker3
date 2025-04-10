@@ -52,6 +52,55 @@ export async function POST(request: NextRequest) {
       // Update the existing assistant
       assistantId = existingAssistant.assistantId;
       
+      // 1. First, upload the schema as a file to reduce token usage
+      logger.info("Uploading schema as a file to OpenAI for assistant update...");
+      
+      // Create the schema content as JSON
+      const schemaContent = JSON.stringify(config.schema, null, 2);
+      
+      // Write schema to a temporary file
+      const tempFilePath = path.join(process.cwd(), 'temp_schema.json');
+      fs.writeFileSync(tempFilePath, schemaContent);
+      
+      // Use a simple multipart/form-data approach with fetch
+      const fileBuffer = fs.readFileSync(tempFilePath);
+      const boundary = `----FormBoundary${Math.random().toString(16).slice(2)}`;
+      
+      const fileUploadBody = Buffer.concat([
+        // Purpose field
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="purpose"\r\n\r\nassistants\r\n`),
+        // File field
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="db_schema.json"\r\nContent-Type: application/json\r\n\r\n`),
+        fileBuffer,
+        Buffer.from(`\r\n--${boundary}--\r\n`)
+      ]);
+      
+      const fileUploadResponse = await fetch("https://api.openai.com/v1/files", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": `multipart/form-data; boundary=${boundary}`
+        },
+        body: fileUploadBody
+      });
+      
+      if (!fileUploadResponse.ok) {
+        const errorText = await fileUploadResponse.text();
+        logger.error(`Failed to upload schema file for update. Status: ${fileUploadResponse.status}, Text: ${errorText}`);
+        throw new Error(`Failed to upload schema file: ${fileUploadResponse.statusText}. Details: ${errorText}`);
+      }
+      
+      const fileData = await fileUploadResponse.json();
+      const fileId = fileData.id;
+      
+      // Clean up the temporary file
+      fs.unlinkSync(tempFilePath);
+      
+      // 2. Create instructions pointing to the file
+      const instructions = config.instructions.join("\n") + 
+        "\n\nA database schema file is attached to this assistant. Use it to understand the database structure and generate appropriate MongoDB queries.";
+      
+      // 3. Update the assistant with the file reference
       const response = await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
         method: "POST",
         headers: {
@@ -60,7 +109,7 @@ export async function POST(request: NextRequest) {
           "OpenAI-Beta": "assistants=v2"
         },
         body: JSON.stringify({
-          instructions: config.instructions.join("\n") + "\n\nDatabase Schema:\n" + JSON.stringify(config.schema, null, 2),
+          instructions: instructions,
           tools: [
             {
               type: "function",
@@ -87,8 +136,12 @@ export async function POST(request: NextRequest) {
                   required: ["collection", "operation", "query"]
                 }
               }
+            },
+            {
+              type: "retrieval" // Enable file search capability
             }
           ],
+          file_ids: [fileId], // Attach the uploaded schema file
           metadata: {
             type: "chatbot6",
             updatedAt: new Date().toISOString()
@@ -102,7 +155,18 @@ export async function POST(request: NextRequest) {
         logger.warn(`Failed to update assistant: ${response.statusText}. Error details: ${errorText}. Creating a new one.`);
         assistantId = await createNewAssistant(config, assistantsCollection);
       } else {
-        logger.info(`Updated assistant with ID: ${assistantId}`);
+        // Update the database with the file ID
+        await assistantsCollection.updateOne(
+          { assistantId: assistantId },
+          { 
+            $set: { 
+              fileId: fileId,
+              updatedAt: new Date()
+            } 
+          }
+        );
+        
+        logger.info(`Updated assistant with ID: ${assistantId} and new file ID: ${fileId}`);
       }
     } else {
       // Create a new assistant
@@ -136,10 +200,58 @@ async function createNewAssistant(config: AssistantConfig, collection: Collectio
       throw new Error("Invalid assistant configuration: missing instructions");
     }
 
-    // Create a simpler request body to avoid potential issues
+    // 1. First, upload the schema as a file to reduce token usage
+    logger.info("Uploading schema as a file to OpenAI...");
+    
+    // Create the schema content as JSON
+    const schemaContent = JSON.stringify(config.schema, null, 2);
+    
+    // Write schema to a temporary file
+    const tempFilePath = path.join(process.cwd(), 'temp_schema.json');
+    fs.writeFileSync(tempFilePath, schemaContent);
+    
+    // Use a simple multipart/form-data approach with fetch
+    const fileBuffer = fs.readFileSync(tempFilePath);
+    const boundary = `----FormBoundary${Math.random().toString(16).slice(2)}`;
+    
+    const fileUploadBody = Buffer.concat([
+      // Purpose field
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="purpose"\r\n\r\nassistants\r\n`),
+      // File field
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="db_schema.json"\r\nContent-Type: application/json\r\n\r\n`),
+      fileBuffer,
+      Buffer.from(`\r\n--${boundary}--\r\n`)
+    ]);
+    
+    const fileUploadResponse = await fetch("https://api.openai.com/v1/files", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": `multipart/form-data; boundary=${boundary}`
+      },
+      body: fileUploadBody
+    });
+    
+    if (!fileUploadResponse.ok) {
+      const errorText = await fileUploadResponse.text();
+      logger.error(`Failed to upload schema file. Status: ${fileUploadResponse.status}, Text: ${errorText}`);
+      throw new Error(`Failed to upload schema file: ${fileUploadResponse.statusText}. Details: ${errorText}`);
+    }
+    
+    const fileData = await fileUploadResponse.json();
+    const fileId = fileData.id;
+    
+    // Clean up the temporary file
+    fs.unlinkSync(tempFilePath);
+    
+    // 2. Create the assistant with the file attached
+    const instructions = config.instructions.join("\n") + 
+      "\n\nA database schema file is attached to this assistant. Use it to understand the database structure and generate appropriate MongoDB queries.";
+    
+    // Create request body with file attachment
     const requestBody = {
       name: "MongoDB Query Assistant",
-      instructions: config.instructions.join("\n") + "\n\nDatabase Schema:\n" + JSON.stringify(config.schema, null, 2),
+      instructions: instructions,
       tools: [
         {
           type: "function",
@@ -166,15 +278,19 @@ async function createNewAssistant(config: AssistantConfig, collection: Collectio
               required: ["collection", "operation", "query"]
             }
           }
+        },
+        {
+          type: "retrieval" // Enable file search capability
         }
       ],
       model: "gpt-4o",
+      file_ids: [fileId], // Attach the uploaded schema file
       metadata: {
         type: "chatbot6"
       }
     };
 
-    logger.info("Creating new assistant with configuration:", JSON.stringify(requestBody, null, 2));
+    logger.info("Creating new assistant with file-based schema, file ID:", fileId);
 
     const response = await fetch("https://api.openai.com/v1/assistants", {
       method: "POST",
@@ -195,10 +311,18 @@ async function createNewAssistant(config: AssistantConfig, collection: Collectio
     const assistantData = await response.json();
     const assistantId = assistantData.id;
     
-    // Store the assistant ID in the database
+    // Store the assistant details in MongoDB
     await collection.updateOne(
       { type: "chatbot6" },
-      { $set: { assistantId, createdAt: new Date() } },
+      { 
+        $set: { 
+          assistantId: assistantData.id,
+          isActive: true,
+          fileId: fileId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } 
+      },
       { upsert: true }
     );
     
