@@ -147,6 +147,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "پیامک",
+          url: "/admin/sms",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
