@@ -25,6 +25,7 @@ jobs:
             # git reset --hard origin/master
             # git config user.name "majeedbanned"
             # git config user.email "majeed.ghasemi@gail.com"
+            git stash
             git pull origin master
             #rm -rf node_modules
             #rm package-lock.json
