@@ -1,8 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { logger } from "@/lib/logger";
-import { connectToDatabase } from "@/lib/mongodb";
-import path from "path";
-import fs from "fs";
+import {  NextResponse } from "next/server";
+
 
 // Real database schema based on actual MongoDB collections
 
@@ -653,7 +650,7 @@ const detailedSchema = {
         { "name": "data.date", "type": "String", "description": "Date the grade was recorded in Persian format" },
         { "name": "createdAt", "type": "Date", "description": "When the record was created" },
         { "name": "updatedAt", "type": "Date", "description": "When the record was last updated" }
-      ],
+      ]},
       { "relationships": [
         { "with": "students", "type": "manyToOne", "joinField": "data.studentCode", "targetField": "data.studentCode", "description": "Each grade belongs to a specific student" },
         { "with": "courses", "type": "manyToOne", "joinField": "data.courseCode", "targetField": "data.courseCode", "description": "Each grade is for a specific course" },
