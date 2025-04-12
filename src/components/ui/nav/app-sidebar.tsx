@@ -117,7 +117,7 @@ const data = {
         },
         {
           title: "گزارش نمرات سالانه",
-          url: "/admin/monthgradeall",
+          url: "/admin/monthlygradeoverall",
           system: "importstudents",
           requiredPermission: "show",
         },
