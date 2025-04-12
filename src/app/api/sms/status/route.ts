@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const status = await smsApi.getStatus(messageId);
     console.log('status', status);
     console.log('messageId', messageId);
-   // const arr = JSON.parse(status.replace(/'/g, '"'));
+   // const arr = JSON.parse    (status.replace(/'/g, '"'));
 
     // Step 2: Access the first element (index 0)
    // const value = arr[0];
