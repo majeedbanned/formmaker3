@@ -141,6 +141,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "هوش مصنوعی",
+          url: "/admin/chatbot7",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

@@ -48,6 +48,12 @@
         "fields": [
         { "name": "data", "type": "Object", "description": "Container object for student data with nested fields" },
         { "name": "data.studentName", "type": "String", "description": "Student's first name (e.g., 'محمد')" },
+        
+        { "name": "data.phones", "type": "Array", "description": "Array of students phone numbers" },
+        { "name": "data.phones[].number", "type": "String", "description": "phone number (e.g., '09175231560')" },
+        { "name": "data.phones[].owner", "type": "String", "enum":["پدر","مادر","دانش آموز"], "description": "phone owner (e.g., 'پدر', 'مادر', 'دانش آموز')" },
+
+        
         { "name": "data.studentFamily", "type": "String", "description": "Student's Family (e.g., 'قایدی')" },
         { "name": "data.studentCode", "type": "Number", "description": "Unique code identifying the student (شماره دانش آموز/شناسه دانش آموز/نام کاربری/کد ملی) (e.g., 3362214521)" },
         { "name": "data.schoolCode", "type": "String", "description": "School code the student belongs to" },
