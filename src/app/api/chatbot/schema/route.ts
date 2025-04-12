@@ -503,7 +503,7 @@ const hardcodedSchemaReal = [
 const detailedSchema = {
   "collections": [
     {
-      "name": "schools",
+      "name": "schools ",
       "description": "Contains information about educational institutions/schools. Most fields are nested within a 'data' object.",
       "fields": [
         { "name": "_id", "type": "ObjectId", "description": "Unique identifier for the school" },
