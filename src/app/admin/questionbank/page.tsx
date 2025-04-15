@@ -559,8 +559,37 @@ export default function QuestionBankPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-md">
+                          {/* Category breadcrumb */}
+                          <div className="flex items-center flex-wrap text-[9px] text-gray-500 mb-1 gap-1">
+                            {question.cat && (
+                              <>
+                                <span>{question.cat}</span>
+                                <span>›</span>
+                              </>
+                            )}
+                            {question.cat1 && (
+                              <>
+                                <span>{question.cat1}</span>
+                                {question.cat2 && <span>›</span>}
+                              </>
+                            )}
+                            {question.cat2 && (
+                              <>
+                                <span>{question.cat2}</span>
+                                {question.cat3 && <span>›</span>}
+                              </>
+                            )}
+                            {question.cat3 && (
+                              <>
+                                <span>{question.cat3}</span>
+                                {question.cat4 && <span>›</span>}
+                              </>
+                            )}
+                            {question.cat4 && <span>{question.cat4}</span>}
+                          </div>
+
                           <div
-                            className="line-clamp-2 text-xs"
+                            className="line-clamp-2 text-sm"
                             dangerouslySetInnerHTML={renderHTML(
                               question.question
                             )}
@@ -569,11 +598,21 @@ export default function QuestionBankPage() {
                             <div className="mt-1 grid grid-cols-2 gap-1">
                               {question.option1 && (
                                 <div className="text-[10px] text-gray-600 flex items-start">
-                                  <span className="min-w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] ml-1">
+                                  <span
+                                    className={`min-w-4 h-4 rounded-full ${
+                                      question.correctoption === 1
+                                        ? "bg-green-600/70"
+                                        : "bg-primary/20"
+                                    } ${
+                                      question.correctoption === 1
+                                        ? "text-white"
+                                        : "text-primary"
+                                    } flex items-center justify-center text-[10px] ml-1`}
+                                  >
                                     ۱
                                   </span>
                                   <div
-                                    className="truncate max-w-[90%]"
+                                    className="truncate max-w-[90%] text-xs"
                                     dangerouslySetInnerHTML={renderHTML(
                                       question.option1
                                     )}
@@ -582,11 +621,21 @@ export default function QuestionBankPage() {
                               )}
                               {question.option2 && (
                                 <div className="text-[10px] text-gray-600 flex items-start">
-                                  <span className="min-w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] ml-1">
+                                  <span
+                                    className={`min-w-4 h-4 rounded-full ${
+                                      question.correctoption === 2
+                                        ? "bg-green-600/70"
+                                        : "bg-primary/20"
+                                    } ${
+                                      question.correctoption === 2
+                                        ? "text-white"
+                                        : "text-primary"
+                                    } flex items-center justify-center text-[10px] ml-1`}
+                                  >
                                     ۲
                                   </span>
                                   <div
-                                    className="truncate max-w-[90%]"
+                                    className="truncate max-w-[90%] text-xs"
                                     dangerouslySetInnerHTML={renderHTML(
                                       question.option2
                                     )}
@@ -595,11 +644,21 @@ export default function QuestionBankPage() {
                               )}
                               {question.option3 && (
                                 <div className="text-[10px] text-gray-600 flex items-start">
-                                  <span className="min-w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] ml-1">
+                                  <span
+                                    className={`min-w-4 h-4 rounded-full ${
+                                      question.correctoption === 3
+                                        ? "bg-green-600/70"
+                                        : "bg-primary/20"
+                                    } ${
+                                      question.correctoption === 3
+                                        ? "text-white"
+                                        : "text-primary"
+                                    } flex items-center justify-center text-[10px] ml-1`}
+                                  >
                                     ۳
                                   </span>
                                   <div
-                                    className="truncate max-w-[90%]"
+                                    className="truncate max-w-[90%] text-xs"
                                     dangerouslySetInnerHTML={renderHTML(
                                       question.option3
                                     )}
@@ -608,11 +667,21 @@ export default function QuestionBankPage() {
                               )}
                               {question.option4 && (
                                 <div className="text-[10px] text-gray-600 flex items-start">
-                                  <span className="min-w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] ml-1">
+                                  <span
+                                    className={`min-w-4 h-4 rounded-full ${
+                                      question.correctoption === 4
+                                        ? "bg-green-600/70"
+                                        : "bg-primary/20"
+                                    } ${
+                                      question.correctoption === 4
+                                        ? "text-white"
+                                        : "text-primary"
+                                    } flex items-center justify-center text-[10px] ml-1`}
+                                  >
                                     ۴
                                   </span>
                                   <div
-                                    className="truncate max-w-[90%]"
+                                    className="truncate max-w-[90%] text-xs"
                                     dangerouslySetInnerHTML={renderHTML(
                                       question.option4
                                     )}
@@ -680,12 +749,9 @@ export default function QuestionBankPage() {
 
       {/* Question Detail Dialog */}
       <Dialog open={showQuestionDetail} onOpenChange={setShowQuestionDetail}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle
-              dir="rtl"
-              className="text-lg font-bold flex items-center justify-between"
-            >
+            <DialogTitle className="text-lg font-bold flex items-center justify-between">
               <span>
                 سوال شماره{" "}
                 {selectedQuestion && toPersianNumber(selectedQuestion.id)}
@@ -702,7 +768,7 @@ export default function QuestionBankPage() {
                 {selectedQuestion?.difficulty}
               </Badge>
             </DialogTitle>
-            <DialogDescription dir="rtl" className="text-sm">
+            <DialogDescription className="text-sm">
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div>
                   <span className="font-semibold">پایه:</span>{" "}
@@ -736,11 +802,55 @@ export default function QuestionBankPage() {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Category breadcrumb path */}
+          {selectedQuestion && (
+            <div className="flex items-center flex-wrap text-sm text-gray-500 mb-4">
+              {selectedQuestion.cat && (
+                <>
+                  <span className="bg-gray-100 px-2 py-1 rounded">
+                    {selectedQuestion.cat}
+                  </span>
+                  <span className="mx-1">›</span>
+                </>
+              )}
+              {selectedQuestion.cat1 && (
+                <>
+                  <span className="bg-gray-100 px-2 py-1 rounded">
+                    {selectedQuestion.cat1}
+                  </span>
+                  {selectedQuestion.cat2 && <span className="mx-1">›</span>}
+                </>
+              )}
+              {selectedQuestion.cat2 && (
+                <>
+                  <span className="bg-gray-100 px-2 py-1 rounded">
+                    {selectedQuestion.cat2}
+                  </span>
+                  {selectedQuestion.cat3 && <span className="mx-1">›</span>}
+                </>
+              )}
+              {selectedQuestion.cat3 && (
+                <>
+                  <span className="bg-gray-100 px-2 py-1 rounded">
+                    {selectedQuestion.cat3}
+                  </span>
+                  {selectedQuestion.cat4 && <span className="mx-1">›</span>}
+                </>
+              )}
+              {selectedQuestion.cat4 && (
+                <span className="bg-gray-100 px-2 py-1 rounded">
+                  {selectedQuestion.cat4}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="mt-4">
             <div className="text-sm font-semibold mb-2">متن سوال:</div>
             <div className="p-4 border rounded-md bg-slate-50">
               {selectedQuestion && (
                 <div
+                  className="text-base"
                   dangerouslySetInnerHTML={renderHTML(
                     selectedQuestion.question
                   )}
@@ -770,6 +880,7 @@ export default function QuestionBankPage() {
                         ۱
                       </span>
                       <div
+                        className="text-base"
                         dangerouslySetInnerHTML={renderHTML(
                           selectedQuestion.option1
                         )}
@@ -806,6 +917,7 @@ export default function QuestionBankPage() {
                         ۲
                       </span>
                       <div
+                        className="text-base"
                         dangerouslySetInnerHTML={renderHTML(
                           selectedQuestion.option2
                         )}
@@ -842,6 +954,7 @@ export default function QuestionBankPage() {
                         ۳
                       </span>
                       <div
+                        className="text-base"
                         dangerouslySetInnerHTML={renderHTML(
                           selectedQuestion.option3
                         )}
@@ -878,6 +991,7 @@ export default function QuestionBankPage() {
                         ۴
                       </span>
                       <div
+                        className="text-base"
                         dangerouslySetInnerHTML={renderHTML(
                           selectedQuestion.option4
                         )}
@@ -903,6 +1017,7 @@ export default function QuestionBankPage() {
               <div className="text-sm font-semibold mb-2">پاسخ سوال:</div>
               <div className="p-4 border rounded-md bg-slate-50">
                 <div
+                  className="text-base"
                   dangerouslySetInnerHTML={renderHTML(
                     selectedQuestion.questionkey
                   )}
