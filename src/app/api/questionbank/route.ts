@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
     const cat2 = searchParams.get('cat2');
     const cat3 = searchParams.get('cat3');
     const cat4 = searchParams.get('cat4');
+    const difficulty = searchParams.get('difficulty');
+    const type = searchParams.get('type');
     
     // Build query filter - omit empty filters for better performance
     const filter: Record<string, unknown> = {};
@@ -26,6 +28,8 @@ export async function GET(request: NextRequest) {
     if (cat2 && cat2.trim() !== '') filter.cat2 = cat2;
     if (cat3 && cat3.trim() !== '') filter.cat3 = cat3;
     if (cat4 && cat4.trim() !== '') filter.cat4 = cat4;
+    if (difficulty && difficulty.trim() !== '') filter.difficulty = difficulty;
+    if (type && type.trim() !== '') filter.type = type;
 
     // Connect to the master database
     const db = await connectToMasterDb();

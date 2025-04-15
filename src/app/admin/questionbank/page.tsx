@@ -115,6 +115,8 @@ export default function QuestionBankPage() {
     cat2: "",
     cat3: "",
     cat4: "",
+    difficulty: "",
+    type: "",
   });
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
     null
@@ -133,11 +135,21 @@ export default function QuestionBankPage() {
     const cat2 = searchParams.get("cat2") || "";
     const cat3 = searchParams.get("cat3") || "";
     const cat4 = searchParams.get("cat4") || "";
+    const difficulty = searchParams.get("difficulty") || "";
+    const type = searchParams.get("type") || "";
 
-    setFilters({ grade, cat1, cat2, cat3, cat4 });
+    setFilters({ grade, cat1, cat2, cat3, cat4, difficulty, type });
 
-    fetchQuestions(parseInt(page, 10), { grade, cat1, cat2, cat3, cat4 });
-    fetchCategories({ grade, cat1, cat2, cat3, cat4 });
+    fetchQuestions(parseInt(page, 10), {
+      grade,
+      cat1,
+      cat2,
+      cat3,
+      cat4,
+      difficulty,
+      type,
+    });
+    fetchCategories({ grade, cat1, cat2, cat3, cat4, difficulty, type });
   }, [searchParams]);
 
   // Fetch questions with pagination and filters
@@ -154,6 +166,9 @@ export default function QuestionBankPage() {
       if (filterParams.cat2) queryParams.append("cat2", filterParams.cat2);
       if (filterParams.cat3) queryParams.append("cat3", filterParams.cat3);
       if (filterParams.cat4) queryParams.append("cat4", filterParams.cat4);
+      if (filterParams.difficulty)
+        queryParams.append("difficulty", filterParams.difficulty);
+      if (filterParams.type) queryParams.append("type", filterParams.type);
 
       const response = await fetch(
         `/api/questionbank?${queryParams.toString()}`
@@ -184,6 +199,9 @@ export default function QuestionBankPage() {
       if (filterParams.cat2) queryParams.append("cat2", filterParams.cat2);
       if (filterParams.cat3) queryParams.append("cat3", filterParams.cat3);
       if (filterParams.cat4) queryParams.append("cat4", filterParams.cat4);
+      if (filterParams.difficulty)
+        queryParams.append("difficulty", filterParams.difficulty);
+      if (filterParams.type) queryParams.append("type", filterParams.type);
 
       const response = await fetch(
         `/api/questionbank/categories?${queryParams.toString()}`
@@ -211,6 +229,9 @@ export default function QuestionBankPage() {
     if (filters.cat2) queryParams.append("cat2", filters.cat2);
     if (filters.cat3) queryParams.append("cat3", filters.cat3);
     if (filters.cat4) queryParams.append("cat4", filters.cat4);
+    if (filters.difficulty)
+      queryParams.append("difficulty", filters.difficulty);
+    if (filters.type) queryParams.append("type", filters.type);
 
     // Update URL and trigger data fetch
     router.push(`/admin/questionbank?${queryParams.toString()}`);
@@ -224,6 +245,8 @@ export default function QuestionBankPage() {
       cat2: "",
       cat3: "",
       cat4: "",
+      difficulty: "",
+      type: "",
     });
 
     router.push("/admin/questionbank");
@@ -390,7 +413,7 @@ export default function QuestionBankPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-4">
             {/* Grade Filter */}
             <div className="space-y-1">
               <label className="text-sm font-medium">پایه تحصیلی</label>
@@ -496,6 +519,45 @@ export default function QuestionBankPage() {
                       {cat}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Difficulty Filter */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">سطح سختی</label>
+              <Select
+                value={filters.difficulty || ""}
+                onValueChange={(value) =>
+                  handleFilterChange("difficulty", value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب سختی" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value=" ">همه</SelectItem>
+                  <SelectItem value=" آسان ">آسان</SelectItem>
+                  <SelectItem value=" متوسط ">متوسط</SelectItem>
+                  <SelectItem value=" سخت ">سخت</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Type Filter */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">نوع سوال</label>
+              <Select
+                value={filters.type || ""}
+                onValueChange={(value) => handleFilterChange("type", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب نوع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value=" ">همه</SelectItem>
+                  <SelectItem value=" تستی ">تستی</SelectItem>
+                  <SelectItem value=" تشریحی ">تشریحی</SelectItem>
                 </SelectContent>
               </Select>
             </div>
