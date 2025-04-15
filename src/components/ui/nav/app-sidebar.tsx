@@ -153,6 +153,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "بانک سوالات",
+          url: "/admin/questionbank",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
