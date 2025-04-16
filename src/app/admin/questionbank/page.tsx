@@ -97,7 +97,7 @@ const getImagePath = (path: string) => {
   // For debugging
   console.log("Original image path:", path);
 
-  // If already contains the public/questions prefix, return as is
+  // If already contains the public/questions     prefix, return as is
   if (path.startsWith("/questions/")) {
     return path;
   }
