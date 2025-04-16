@@ -97,16 +97,16 @@ const getImagePath = (path: string) => {
   // For debugging
   console.log("Original image path:", path);
 
-  // If already contains the public/questions     prefix, return as is
-  if (path.startsWith("/questions/")) {
+  // If already contains the prefix, return as is
+  if (path.startsWith("https://file.farsamooz.ir/q/")) {
     return path;
   }
 
   // Remove any leading slash if present
   const cleanPath = path.startsWith("/") ? path.substring(1) : path;
 
-  // Add the public/questions prefix
-  const result = `/questions/${cleanPath}`;
+  // Add the prefix
+  const result = `https://file.farsamooz.ir/q/${cleanPath}`;
 
   return result;
 };
@@ -125,11 +125,11 @@ const renderHTML = (html: string | undefined) => {
       console.log(`Found image with src='${src}'`);
 
       // Don't add prefix if it already has it
-      if (src.startsWith("/questions/")) {
+      if (src.startsWith("https://file.farsamooz.ir/q/")) {
         return match;
       }
 
-      return `<img${before} src='/questions/${src}'${after}>`;
+      return `<img${before} src='https://file.farsamooz.ir/q/${src}'${after}>`;
     }
   );
 
@@ -140,11 +140,11 @@ const renderHTML = (html: string | undefined) => {
       console.log(`Found image with src="${src}"`);
 
       // Don't add prefix if it already has it
-      if (src.startsWith("/questions/")) {
+      if (src.startsWith("https://file.farsamooz.ir/q/")) {
         return match;
       }
 
-      return `<img${before} src="/questions/${src}"${after}>`;
+      return `<img${before} src="https://file.farsamooz.ir/q/${src}"${after}>`;
     }
   );
 
