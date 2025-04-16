@@ -14,7 +14,7 @@
 
 # production
 /build
-
+/public/questions
 # misc
 .DS_Store
 *.pem

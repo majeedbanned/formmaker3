@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -92,7 +92,83 @@ const toPersianNumber = (num: number): string => {
     .replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
 };
 
+// Add a utility function to handle image paths
+const getImagePath = (path: string) => {
+  // For debugging
+  console.log("Original image path:", path);
+
+  // If already contains the public/questions prefix, return as is
+  if (path.startsWith("/questions/")) {
+    return path;
+  }
+
+  // Remove any leading slash if present
+  const cleanPath = path.startsWith("/") ? path.substring(1) : path;
+
+  // Add the public/questions prefix
+  const result = `/questions/${cleanPath}`;
+
+  return result;
+};
+
+// Function to safely render HTML with image path prefixing
+const renderHTML = (html: string | undefined) => {
+  if (!html) return { __html: "" };
+
+  // Logging original content for debugging
+  console.log("Processing HTML content");
+
+  // First pattern: Match img tags with src attribute in single quotes
+  let processed = html.replace(
+    /<img([^>]*)\ssrc='([^']+)'([^>]*)>/g,
+    (match, before, src, after) => {
+      console.log(`Found image with src='${src}'`);
+
+      // Don't add prefix if it already has it
+      if (src.startsWith("/questions/")) {
+        return match;
+      }
+
+      return `<img${before} src='/questions/${src}'${after}>`;
+    }
+  );
+
+  // Second pattern: Match img tags with src attribute in double quotes
+  processed = processed.replace(
+    /<img([^>]*)\ssrc="([^"]+)"([^>]*)>/g,
+    (match, before, src, after) => {
+      console.log(`Found image with src="${src}"`);
+
+      // Don't add prefix if it already has it
+      if (src.startsWith("/questions/")) {
+        return match;
+      }
+
+      return `<img${before} src="/questions/${src}"${after}>`;
+    }
+  );
+
+  return { __html: processed };
+};
+
 export default function QuestionBankPage() {
+  return (
+    <Suspense
+      fallback={
+        <div dir="rtl" className="container mx-auto p-6">
+          <div className="flex justify-center items-center py-32">
+            <RefreshCw className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        </div>
+      }
+    >
+      <QuestionBankContent />
+    </Suspense>
+  );
+}
+
+// Separate client component
+function QuestionBankContent() {
   // State
   const [questions, setQuestions] = useState<Question[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -381,11 +457,6 @@ export default function QuestionBankPage() {
     );
 
     return items;
-  };
-
-  // Render HTML content safely
-  const renderHTML = (html: string) => {
-    return { __html: html };
   };
 
   // Add a function to handle row click to show question details
@@ -951,7 +1022,7 @@ export default function QuestionBankPage() {
                     {selectedQuestion.option1image && (
                       <div className="mt-2">
                         <img
-                          src={selectedQuestion.option1image}
+                          src={getImagePath(selectedQuestion.option1image)}
                           alt="گزینه 1"
                           className="max-h-20 rounded"
                         />
@@ -988,7 +1059,7 @@ export default function QuestionBankPage() {
                     {selectedQuestion.option2image && (
                       <div className="mt-2">
                         <img
-                          src={selectedQuestion.option2image}
+                          src={getImagePath(selectedQuestion.option2image)}
                           alt="گزینه 2"
                           className="max-h-20 rounded"
                         />
@@ -1025,7 +1096,7 @@ export default function QuestionBankPage() {
                     {selectedQuestion.option3image && (
                       <div className="mt-2">
                         <img
-                          src={selectedQuestion.option3image}
+                          src={getImagePath(selectedQuestion.option3image)}
                           alt="گزینه 3"
                           className="max-h-20 rounded"
                         />
@@ -1062,7 +1133,7 @@ export default function QuestionBankPage() {
                     {selectedQuestion.option4image && (
                       <div className="mt-2">
                         <img
-                          src={selectedQuestion.option4image}
+                          src={getImagePath(selectedQuestion.option4image)}
                           alt="گزینه 4"
                           className="max-h-20 rounded"
                         />
