@@ -172,7 +172,9 @@ export default function CRUDComponent({
       } else {
         if (!permissions.canAdd) return;
         entity = await createEntity(data);
-        onAfterAdd?.(entity);
+        console.log("entity", entity);
+        console.log("data", data);
+        onAfterAdd?.(data);
       }
       setIsModalOpen(false);
       setEditingId(null);
