@@ -46,6 +46,9 @@ export default function Dashboard() {
           <p>
             <span className="font-semibold">Role:</span> {user.role}
           </p>
+          <p>
+            <span className="font-semibold">name:</span> {user.name}
+          </p>
         </div>
       </div>
 

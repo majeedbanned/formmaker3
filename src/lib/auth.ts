@@ -72,7 +72,7 @@ export async function authenticateUser(
       userType,
       schoolCode,
       username,
-      name: userData.name,
+      name:userType === "student" ? userData.studentName+ ' ' + userData.studentFamily : userType==="teacher" ? userData.teacherName : userType==="school" ? userData.schoolName : "",
       role: userType,
       permissions: userData.premisions || userData.permissions || [],
       ...(userType === 'school' ? {
@@ -90,7 +90,7 @@ export async function authenticateUser(
         userType,
         schoolCode,
         username,
-        name: userData.name,
+        name: "salam",//userData.name,
         role: userType,
         permissions: userData.premisions || userData.permissions || [],
         ...(userType === 'school' ? {
