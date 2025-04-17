@@ -43,7 +43,19 @@ const layout: LayoutSettings = {
 
 function StudentsPageContent() {
   const { initialFilter } = useInitialFilter();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  console.log("user", user);
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
   const shareWithFilters = (rowId: string) => {
     const filter = { _id: rowId };
     const encryptedFilter = encryptFilter(filter);
@@ -51,6 +63,22 @@ function StudentsPageContent() {
     navigator.clipboard.writeText(url);
   };
   const sampleFormStructure: FormField[] = [
+    {
+      name: "sender",
+      title: "ارسال کننده",
+      type: "text",
+      isShowInList: true,
+      isSearchable: true,
+      required: true,
+      enabled: true,
+      visible: true,
+      readonly: true,
+      listLabelColor: "#2563eb",
+      defaultValue: "",
+      validation: {
+        requiredMessage: "ارسال کننده الزامی است",
+      },
+    },
     {
       name: "title",
       title: "عنوان پیام",

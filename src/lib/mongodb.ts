@@ -148,7 +148,7 @@ export const getDynamicModel = (connection: mongoose.Connection, collectionName:
     // Add indexes for better query performance
     schema.index({ 'data.schoolCode': 1 });
     schema.index({ 'data.username': 1 });
-
+    //console.log("collectionName", collectionName);
     return connection.model(collectionName, schema);
   }
 }; 

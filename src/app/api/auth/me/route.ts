@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyJWT } from "@/lib/jwt";
 import { JWTPayload } from "jose";
-import { getDynamicModel } from "@/lib/mongodb";
+import { getDynamicModel, connectToDatabase } from "@/lib/mongodb";
 import type { Model } from "mongoose";
 
 // Set runtime to nodejs
@@ -84,7 +84,9 @@ export async function GET() {
     // For teachers and students, fetch maghta from their school
     else if (payload.userType === 'teacher' || payload.userType === 'student') {
       // console.log(`User is a ${payload.userType}, fetching maghta from school`);
-      const SchoolModel = getDynamicModel('schools') as Model<School>;
+      const domain = process.env.NEXT_PUBLIC_DOMAIN || 'localhost:3000';
+      const connection = await connectToDatabase(domain);
+      const SchoolModel = getDynamicModel(connection, 'schools') as Model<School>;
       const school = await SchoolModel.findOne({ 'data.schoolCode': payload.schoolCode });
       
       if (school) {
