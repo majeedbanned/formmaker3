@@ -166,7 +166,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "پیام ها",
+          title: "ارسال پیام",
           url: "/admin/messages",
           system: "importstudents",
           requiredPermission: "show",

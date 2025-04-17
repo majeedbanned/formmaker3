@@ -527,28 +527,18 @@ const FormField = ({
             const options = await response.json();
             setDynamicOptions(options);
 
-            // Clear the field value if it's not in the new options
-            if (fieldValue) {
-              // Handle array values for checkbox or shadcnmultiselect with isMultiple
-              if (
-                (field.type === "checkbox" ||
-                  field.type === "shadcnmultiselect") &&
-                field.isMultiple &&
-                Array.isArray(fieldValue)
-              ) {
-                const validValues = fieldValue.filter((value) =>
-                  options.some((opt: { value: unknown }) => opt.value === value)
-                );
-                setValue(field.name, validValues, { shouldValidate: true });
-              } else {
-                // For single values (dropdown or single checkbox)
-                const isValueValid = options.some(
-                  (opt: { value: unknown }) => opt.value === fieldValue
-                );
-                if (!isValueValid) {
-                  setValue(field.name, "", { shouldValidate: true });
-                }
-              }
+            // Clear options and value when dependencies are invalid
+            setDynamicOptions([]);
+            // Set appropriate empty value based on field type
+            if (field.type === "shadcnmultiselect") {
+              // For shadcnmultiselect, always use empty array (even when not isMultiple)
+              setValue(field.name, [], { shouldValidate: true });
+            } else if (field.type === "checkbox" && field.isMultiple) {
+              // For multi checkboxes, use empty array
+              setValue(field.name, [], { shouldValidate: true });
+            } else {
+              // For other field types, use empty string
+              setValue(field.name, "", { shouldValidate: true });
             }
           } else {
             // Clear options and value when dependencies are invalid
@@ -728,6 +718,15 @@ const FormField = ({
       ? [fieldValue]
       : [];
 
+    // Extract just the values for the MultiSelect component
+    const selectedValues = Array.isArray(currentValue)
+      ? currentValue.map((item) =>
+          typeof item === "object" && item !== null && "value" in item
+            ? item.value
+            : item
+        )
+      : [];
+
     return (
       <div className="space-y-2 border-0  ">
         <label
@@ -747,13 +746,19 @@ const FormField = ({
         <div className="relative  ">
           <MultiSelect
             options={options}
-            selected={currentValue}
+            selected={selectedValues}
             onChange={(values) => {
-              setValue(field.name, values, { shouldValidate: true });
+              // Create an array of objects with both label and value
+              const valuesWithLabels = values.map((value) => {
+                const option = options.find((opt) => opt.value === value);
+                return {
+                  label: option ? option.label : String(value),
+                  value: value,
+                };
+              });
+              setValue(field.name, valuesWithLabels, { shouldValidate: true });
             }}
-            placeholder={
-              layout.texts?.selectPlaceholder || "Select options...1"
-            }
+            placeholder={layout.texts?.selectPlaceholder || "Select options..."}
             disabled={isDisabled}
             emptyMessage={isLoadingOptions ? "" : "No options available"}
             loading={isLoadingOptions}

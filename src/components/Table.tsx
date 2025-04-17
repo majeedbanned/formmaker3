@@ -14,6 +14,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   EllipsisVerticalIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { TableProps, Entity, FormField, UploadedFile } from "../types/crud";
 import {
@@ -43,6 +44,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import Link from "next/link";
 import { useState } from "react";
 import { getFileIcon, formatFileSize } from "@/utils/fileUpload";
+import { Badge } from "./ui/badge";
 
 const formatNestedValue = (value: unknown, field: FormField): string => {
   if (!value) return "";
@@ -101,19 +103,55 @@ const NestedValueDisplay = ({
   layout: TableProps["layout"];
 }): React.ReactElement => {
   if (!field.fields) {
+    // Handle shadcnmultiselect fields - display comma-separated labels
+    if (field.type === "shadcnmultiselect") {
+      if (Array.isArray(value)) {
+        return (
+          <Badge variant="outline">
+            <span dir={layout?.direction}>
+              {value
+                .map((item) =>
+                  typeof item === "object" && item !== null && "label" in item
+                    ? String(item.label)
+                    : String(item)
+                )
+                .join(", ")}
+            </span>
+          </Badge>
+        );
+      } else if (
+        typeof value === "object" &&
+        value !== null &&
+        "label" in value
+      ) {
+        return (
+          <Badge variant="outline">
+            <span dir={layout?.direction}>{String(value.label)}</span>
+          </Badge>
+        );
+      }
+      return (
+        <Badge variant="outline">
+          <span dir={layout?.direction}>{String(value)}</span>
+        </Badge>
+      );
+    }
+
     // Handle autoCompleteText fields specifically - display with slash separator
     if (field.type === "autoCompleteText") {
       if (Array.isArray(value)) {
         return (
-          <span dir={layout?.direction}>
-            {value
-              .map((item) =>
-                typeof item === "object" && item !== null && "label" in item
-                  ? String(item.label)
-                  : String(item)
-              )
-              .join(" / ")}
-          </span>
+          <Badge variant="outline">
+            <span dir={layout?.direction}>
+              {value
+                .map((item) =>
+                  typeof item === "object" && item !== null && "label" in item
+                    ? String(item.label)
+                    : String(item)
+                )
+                .join(" / ")}
+            </span>
+          </Badge>
         );
       } else if (
         typeof value === "object" &&
@@ -254,15 +292,16 @@ const renderCellContent = (
                 type="button"
                 className="flex items-center gap-2 cursor-help"
               >
-                <span>{files.length} files</span>
+                <span>{files.length} فایل</span>
                 <span className="text-xs text-gray-500">
-                  (Click to view details)
+                  {/* (برای مشاهده جزئیات کلیک کنید) */}
+                  <EyeIcon className="w-4 h-4" />
                 </span>
               </button>
             </HoverCardTrigger>
             <HoverCardContent className="w-80">
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                <h4 className="text-sm font-semibold"> فایل ها</h4>
                 <div className="flex flex-col gap-2">
                   {files.map((file) => (
                     <a
@@ -310,14 +349,14 @@ const renderCellContent = (
             {value
               .map((v) => {
                 const option = field.options?.find((opt) => opt.value === v);
-                return option?.label || v;
+                return option?.label || String(v);
               })
               .join(", ")}
           </span>
         );
       }
       const option = field.options?.find((opt) => opt.value === value);
-      return <span>{option?.label || value}</span>;
+      return <span>{option?.label || String(value)}</span>;
 
     case "radio":
     case "togglegroup":
@@ -334,7 +373,7 @@ const renderCellContent = (
         );
       }
       const radioOption = field.options?.find((opt) => opt.value === value);
-      return <span>{radioOption?.label || value}</span>;
+      return <span>{radioOption?.label || String(value)}</span>;
 
     case "datepicker":
       if (field.displayFormat) {
@@ -361,7 +400,7 @@ const renderCellContent = (
         );
       }
       const autoOption = field.options?.find((opt) => opt.value === value);
-      return <span>{autoOption?.label || value}</span>;
+      return <span>{autoOption?.label || String(value)}</span>;
 
     case "richtextbox":
       // For rich text, strip HTML tags and truncate text for display
@@ -371,7 +410,7 @@ const renderCellContent = (
         .replace(/\s+/g, " ")
         .trim();
       const truncatedText =
-        plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText;
+        plainText.length > 80 ? plainText.substring(0, 5) + "..." : plainText;
 
       return (
         <HoverCard>
@@ -422,35 +461,40 @@ const renderCellContent = (
           <NestedValueDisplay value={value} field={field} layout={layout} />
         );
       }
-      return <span>{String(value)}</span>;
+      return (
+        <Badge variant="outline">
+          <span>{String(value)}</span>
+        </Badge>
+      );
   }
 };
 
 const renderMultiValue = (value: unknown): React.ReactNode => {
   if (!value) return "-";
 
-  // Handle array values
+  // For array values, extract just the labels and display as comma-separated list
   if (Array.isArray(value)) {
+    const labels = value
+      .map((item) =>
+        typeof item === "object" && item !== null && "label" in item
+          ? String(item.label)
+          : String(item)
+      )
+      .join(", ");
+
     return (
-      <div className="flex flex-wrap gap-1">
-        {value.map((item, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground"
-          >
-            {typeof item === "object" && item !== null && "label" in item
-              ? String(item.label)
-              : String(item)}
-          </span>
-        ))}
-      </div>
+      <Badge variant="outline">
+        <span>{labels}</span>
+      </Badge>
     );
   }
 
-  // Handle single value
+  // For single value objects with label property
   if (typeof value === "object" && value !== null && "label" in value) {
     return <span>{String(value.label)}</span>;
   }
+
+  // Fallback for simple values
   return <span>{String(value)}</span>;
 };
 
@@ -743,7 +787,10 @@ export default function Table({
                       }
                     >
                       {field ? (
-                        field.type === "file" || field.fields ? (
+                        field.type === "file" ||
+                        field.type === "shadcnmultiselect" ||
+                        field.type === "richtextbox" ||
+                        field.fields ? (
                           renderCellContent(field, value, layout)
                         ) : (
                           <NestedValueDisplay

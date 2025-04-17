@@ -228,63 +228,61 @@ function StudentsPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          مدیریت دانش آموزان
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">ارسال پیام</h1>
 
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="messages"
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
-          importFunction={{
-            active: true,
-            title: "وارد کردن اطلاعات دانش‌آموزان",
-            nameBinding: [
-              {
-                label: "کد دانش آموز",
-                name: "studentCode",
-                type: "number",
-                isUnique: true,
-              },
-              {
-                label: "نام دانش آموز",
-                name: "studentName",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "نام خانوادگی",
-                name: "studentFamily",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "شماره تلفن",
-                name: "phone",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "کد مدرسه",
-                name: "schoolCode",
-                type: "number",
-                defaultValue: "2295566177",
-              },
-            ],
-          }}
-          rowActions={[
-            {
-              label: "مشاهده سند",
-              link: "/document",
-              icon: DocumentIcon,
-            },
-            {
-              label: "اشتراک",
-              action: shareWithFilters,
-              icon: ShareIcon,
-            },
-          ]}
+          // importFunction={{
+          //   active: true,
+          //   title: "وارد کردن اطلاعات دانش‌آموزان",
+          //   nameBinding: [
+          //     {
+          //       label: "کد دانش آموز",
+          //       name: "studentCode",
+          //       type: "number",
+          //       isUnique: true,
+          //     },
+          //     {
+          //       label: "نام دانش آموز",
+          //       name: "studentName",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "نام خانوادگی",
+          //       name: "studentFamily",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "شماره تلفن",
+          //       name: "phone",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "کد مدرسه",
+          //       name: "schoolCode",
+          //       type: "number",
+          //       defaultValue: "2295566177",
+          //     },
+          //   ],
+          // }}
+          // rowActions={[
+          //   {
+          //     label: "مشاهده سند",
+          //     link: "/document",
+          //     icon: DocumentIcon,
+          //   },
+          //   {
+          //     label: "اشتراک",
+          //     action: shareWithFilters,
+          //     icon: ShareIcon,
+          //   },
+          // ]}
           onAfterAdd={(entity) => {
             console.log("Entity added:", entity);
           }}
