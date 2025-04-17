@@ -239,7 +239,26 @@ function StudentsPageContent() {
       orientation: "horizontal",
       isOpen: true,
     },
-
+    {
+      name: "avatar",
+      title: "تصویر",
+      type: "file",
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      fileConfig: {
+        allowedTypes: ["image/*"],
+        maxSize: 5 * 1024 * 1024, // 5MB
+        directory: "avatars",
+        multiple: false,
+      },
+      validation: {
+        requiredMessage: "لطفا یک تصویر آپلود کنید",
+      },
+    },
     {
       enabled: true,
       visible: true,

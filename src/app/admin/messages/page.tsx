@@ -123,7 +123,7 @@ function StudentsPageContent() {
       },
     },
     {
-      name: "students2",
+      name: "students",
       title: "دانش آموزان",
       type: "autoCompleteText",
       isShowInList: true,
@@ -143,6 +143,29 @@ function StudentsPageContent() {
         // dependsOn: ["Grade", "major"],
       },
     },
+
+    {
+      name: "teachers",
+      title: "مدرسان",
+      type: "autoCompleteText",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      isMultiple: true,
+
+      dataSource: {
+        collectionName: "teachers",
+        labelField: "teacherName",
+        valueField: "teacherCode",
+        sortField: "teacherCode",
+        sortOrder: "asc",
+        filterQuery: { schoolCode: "2295566177" },
+        // dependsOn: ["Grade", "major"],
+      },
+    },
+
     {
       name: "message",
       title: "متن پیام",
@@ -157,6 +180,31 @@ function StudentsPageContent() {
       },
       placeholder: "متن پیام را وارد کنید...",
       className: "min-h-[200px]",
+    },
+    {
+      name: "attachments",
+      title: "فایل ها",
+      type: "file",
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      isMultiple: true,
+      fileConfig: {
+        allowedTypes: [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+        maxSize: 10 * 1024 * 1024, // 10MB
+        directory: "documents",
+        multiple: true,
+      },
+      validation: {
+        requiredMessage: "Please upload at least one document",
+      },
     },
 
     {
