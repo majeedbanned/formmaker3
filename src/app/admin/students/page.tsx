@@ -127,6 +127,33 @@ function StudentsPageContent() {
         // dependsOn: ["Grade", "major"],
       },
     },
+    {
+      name: "groupCode",
+      title: "گروه",
+      type: "shadcnmultiselect",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      isMultiple: true,
+      // options: [
+      //   { label: "علی محمدی", value: "student1" },
+      //   { label: "رضا احمدی", value: "student2" },
+      //   { label: "فاطمه حسینی", value: "student3" },
+      //   { label: "زهرا کریمی", value: "student4" },
+      //   { label: "محمد رضایی", value: "student5" },
+      // ],
+      dataSource: {
+        collectionName: "studentsgroups",
+        labelField: "groupName",
+        valueField: "groupCode",
+        sortField: "groupCode",
+        sortOrder: "asc",
+        filterQuery: { schoolCode: "2295566177" },
+        // dependsOn: ["Grade", "major"],
+      },
+    },
 
     {
       name: "schoolCode",

@@ -159,6 +159,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "گروه ها",
+          url: "/admin/studentsgroups",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

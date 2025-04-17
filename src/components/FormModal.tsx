@@ -728,7 +728,7 @@ const FormField = ({
       : [];
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 border-0">
         <label
           htmlFor={field.name}
           className={`block text-sm font-medium text-${
@@ -743,19 +743,27 @@ const FormField = ({
             </span>
           )}
         </label>
-        <MultiSelect
-          options={options}
-          selected={currentValue}
-          onChange={(values) => {
-            setValue(field.name, values, { shouldValidate: true });
-          }}
-          placeholder={layout.texts?.selectPlaceholder || "Select options..."}
-          disabled={isDisabled}
-          emptyMessage={isLoadingOptions ? "" : "No options available"}
-          loading={isLoadingOptions}
-          loadingMessage={layout.texts?.loadingMessage || "Loading options..."}
-          className={layout.direction === "rtl" ? "text-right" : "text-left"}
-        />
+        <div className="relative z-50 ">
+          <MultiSelect
+            options={options}
+            selected={currentValue}
+            onChange={(values) => {
+              setValue(field.name, values, { shouldValidate: true });
+            }}
+            placeholder={
+              layout.texts?.selectPlaceholder || "Select options...1"
+            }
+            disabled={isDisabled}
+            emptyMessage={isLoadingOptions ? "" : "No options available"}
+            loading={isLoadingOptions}
+            loadingMessage={
+              layout.texts?.loadingMessage || "Loading options..."
+            }
+            className={
+              layout.direction === "rtl" ? "text-right z-50" : "text-left z-50"
+            }
+          />
+        </div>
         <input type="hidden" {...register(field.name, validationRules)} />
         {errors[field.name] && (
           <p className="text-sm text-destructive mt-1">
