@@ -17,6 +17,8 @@ export interface FieldValidation {
 export interface DropdownDataSource {
   collectionName: string;  // Name of the collection to fetch options from
   labelField: string;     // Field to use as label (can be dot notation for nested fields)
+  labelField2?: string;   // Secondary field for composite labels
+  labelField3?: string;   // Third field for composite labels  
   valueField: string;     // Field to use as value (can be dot notation for nested fields)
   filterQuery?: Record<string, unknown>;  // MongoDB query to filter options
   sortField?: string;     // Field to sort by
@@ -199,6 +201,8 @@ export interface FormField extends Omit<FormFieldMinimal, 'required'> {
   dataSource?: {
     collectionName: string;
     labelField: string;
+    labelField2?: string;
+    labelField3?: string;
     valueField: string;
     filterQuery?: Record<string, unknown>;
     dependsOn?: string | string[];

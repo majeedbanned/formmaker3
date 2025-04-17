@@ -136,6 +136,8 @@ function StudentsPageContent() {
       dataSource: {
         collectionName: "students",
         labelField: "studentName",
+        labelField2: "studentFamily",
+        // labelField3: "studentCode",
         valueField: "studentCode",
         sortField: "studentCode",
         sortOrder: "asc",

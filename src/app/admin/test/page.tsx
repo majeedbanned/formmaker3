@@ -81,8 +81,8 @@ const sampleFormStructure: FormField[] = [
     },
   },
   {
-    name: "students2",
-    title: "دانش آموزان",
+    name: "studentsMultiLabel",
+    title: "دانش آموزان (با نام خانوادگی و کد)",
     type: "autoCompleteText",
     isShowInList: true,
     isSearchable: true,
@@ -94,6 +94,8 @@ const sampleFormStructure: FormField[] = [
     dataSource: {
       collectionName: "students",
       labelField: "studentName",
+      labelField2: "studentFamily",
+      labelField3: "studentCode",
       valueField: "studentCode",
       sortField: "studentCode",
       sortOrder: "asc",
@@ -101,17 +103,9 @@ const sampleFormStructure: FormField[] = [
       // dependsOn: ["Grade", "major"],
     },
 
-    // Static options as fallback in case the datasource fails
-    options: [
-      { label: "زبان فارسی", value: "10110" },
-      { label: "زبان عربی", value: "10150" },
-      { label: "زبان انگلیسی", value: "10170" },
-      { label: "ریاضی", value: "10210" },
-      { label: "فیزیک", value: "10410" },
-    ],
     autoCompleteStyle: {
       allowNew: false,
-      maxTags: 2,
+      maxTags: 5,
       minLength: 2, // Only start searching after 2 characters are typed
     },
   },

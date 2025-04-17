@@ -1235,6 +1235,12 @@ const FormField = ({
 
           // Add common parameters for dropdown options endpoint
           params.append("labelField", field.dataSource.labelField);
+          if (field.dataSource.labelField2) {
+            params.append("labelField2", field.dataSource.labelField2);
+          }
+          if (field.dataSource.labelField3) {
+            params.append("labelField3", field.dataSource.labelField3);
+          }
           params.append("valueField", field.dataSource.valueField);
 
           // Add dependent field values if any

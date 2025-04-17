@@ -285,7 +285,7 @@ export function AutocompleteTags({
               <div className="py-4 px-2 text-center">
                 {!showOptions ? (
                   <p className="text-sm text-muted-foreground">
-                    Type at least {minSearchLength} characters to search
+                    حداقل {minSearchLength} کاراکتر را برای جستجو وارد کنید
                   </p>
                 ) : allowCustomValues && inputValue ? (
                   <div>

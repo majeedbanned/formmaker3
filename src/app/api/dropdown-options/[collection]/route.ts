@@ -20,6 +20,8 @@ export async function GET(
 
     const searchParams = request.nextUrl.searchParams;
     const labelField = searchParams.get("labelField") || "_id";
+    const labelField2 = searchParams.get("labelField2") || null;
+    const labelField3 = searchParams.get("labelField3") || null;
     const valueField = searchParams.get("valueField") || "_id";
     const filterQuery = searchParams.get("filterQuery");
     const sortField = searchParams.get("sortField");
@@ -61,10 +63,37 @@ export async function GET(
 
       // Add text search condition if query parameter is provided
       if (searchQuery && searchQuery.trim() !== '') {
-        // Create a case-insensitive regex search on the labelField
+        // Create a case-insensitive regex search pattern
         const searchRegex = new RegExp(searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
-        query[`data.${labelField}`] = searchRegex;
-        logger.debug(`Added text search for "${searchQuery}" on field data.${labelField}`, { domain: connectionDomain });
+        
+        // Search across all provided label fields
+        const searchConditions = [];
+        
+        // Always search in the primary label field
+        searchConditions.push({ [`data.${labelField}`]: searchRegex });
+        
+        // Add secondary label field to search if provided
+        if (labelField2) {
+          searchConditions.push({ [`data.${labelField2}`]: searchRegex });
+        }
+        
+        // Add third label field to search if provided
+        if (labelField3) {
+          searchConditions.push({ [`data.${labelField3}`]: searchRegex });
+        }
+        
+        // Use $or operator to match any of the conditions
+        if (searchConditions.length > 1) {
+          query.$or = searchConditions;
+        } else {
+          // If only one field, use simple condition
+          query[`data.${labelField}`] = searchRegex;
+        }
+        
+        logger.debug(`Added text search for "${searchQuery}" across label fields`, { 
+          searchFields: [labelField, labelField2, labelField3].filter(Boolean),
+          domain: connectionDomain 
+        });
       }
 
       // Build the sort object to work with the data Map
@@ -87,6 +116,8 @@ export async function GET(
         });
       } else {
         fields.add(labelField);
+        if (labelField2) fields.add(labelField2);
+        if (labelField3) fields.add(labelField3);
       }
       
       // Add value field
@@ -159,7 +190,24 @@ export async function GET(
               return getValue(field);
             });
           } else {
+            // Get the primary label value
             label = getValue(labelField);
+            
+            // Append secondary label if provided
+            if (labelField2) {
+              const label2Value = getValue(labelField2);
+              if (label2Value) {
+                label = `${label} - ${label2Value}`;
+              }
+            }
+            
+            // Append third label if provided
+            if (labelField3) {
+              const label3Value = getValue(labelField3);
+              if (label3Value) {
+                label = `${label} - ${label3Value}`;
+              }
+            }
           }
 
           const value = getValue(valueField);
