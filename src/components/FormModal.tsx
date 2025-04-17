@@ -728,7 +728,7 @@ const FormField = ({
       : [];
 
     return (
-      <div className="space-y-2 border-0">
+      <div className="space-y-2 border-0  ">
         <label
           htmlFor={field.name}
           className={`block text-sm font-medium text-${
@@ -743,7 +743,7 @@ const FormField = ({
             </span>
           )}
         </label>
-        <div className="relative z-50 ">
+        <div className="relative  ">
           <MultiSelect
             options={options}
             selected={currentValue}
@@ -760,7 +760,7 @@ const FormField = ({
               layout.texts?.loadingMessage || "Loading options..."
             }
             className={
-              layout.direction === "rtl" ? "text-right z-50" : "text-left z-50"
+              layout.direction === "rtl" ? "text-right " : "text-left "
             }
           />
         </div>

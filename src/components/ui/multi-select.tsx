@@ -9,11 +9,6 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 
 export type Option = {
@@ -47,6 +42,27 @@ export function MultiSelect({
   loadingMessage = "Loading options...",
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close dropdown
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        open &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
   const handleUnselect = (value: unknown) => {
     onChange(selected.filter((item) => item !== value));
@@ -70,94 +86,91 @@ export function MultiSelect({
   };
 
   return (
-    <div className="relative z-50">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn(
-              "w-full justify-between",
-              selected.length > 0 ? "h-auto min-h-10" : "h-10",
-              className
-            )}
-            onClick={() => setOpen(!open)}
-            disabled={disabled}
-            title="Click to select options"
-            aria-haspopup="listbox"
-          >
-            <div className="flex flex-wrap gap-1 p-1">
-              {selected.length > 0 ? (
-                selected.map((value) => (
-                  <Badge
-                    key={String(value)}
-                    variant="secondary"
-                    className="flex items-center gap-1 px-2 py-1"
-                  >
-                    {getLabel(value)}
-                    <button
-                      className="rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUnselect(value);
-                      }}
-                    >
-                      <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-muted-foreground">{placeholder}</span>
-              )}
-            </div>
-            {/* <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" /> */}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-full p-0 border-4 z-[999999]"
-          align="start"
-          side="bottom"
-          sideOffset={4}
+    <div className="relative " ref={containerRef}>
+      <div className="flex flex-col gap-1.5">
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "w-full justify-between",
+            selected.length > 0 ? "h-auto min-h-10" : "h-10",
+            className
+          )}
+          onClick={() => setOpen(!open)}
+          disabled={disabled}
         >
-          <Command className="w-full">
-            <CommandInput placeholder={searchPlaceholder} autoFocus />
-            <CommandEmpty>
-              {loading ? loadingMessage : emptyMessage}
-            </CommandEmpty>
-            <CommandGroup className="max-h-64 overflow-y-auto">
-              {loading ? (
-                <div className="flex justify-center items-center py-2">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                </div>
-              ) : (
-                options.map((option) => (
-                  <CommandItem
-                    key={String(option.value)}
-                    value={String(option.value)}
-                    onSelect={() => {
-                      handleSelect(option.value);
+          <div className="flex flex-wrap gap-1 p-1">
+            {selected.length > 0 ? (
+              selected.map((value) => (
+                <Badge
+                  key={String(value)}
+                  variant="secondary"
+                  className="flex items-center gap-1 px-2 py-1"
+                >
+                  {getLabel(value)}
+                  <button
+                    type="button"
+                    className="rounded-full outline-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnselect(value);
                     }}
-                    className="flex items-center gap-2 cursor-pointer"
                   >
-                    <div
-                      className={cn(
-                        "mr-2 flex h-5 w-5 items-center justify-center rounded-sm border-2 border-primary",
-                        selected.includes(option.value)
-                          ? "bg-primary text-primary-foreground"
-                          : "opacity-50 [&_svg]:invisible"
-                      )}
+                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                  </button>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </div>
+        </Button>
+
+        {open && (
+          <div
+            ref={dropdownRef}
+            className="absolute top-full w-full z-50 bg-popover rounded-md border shadow-md"
+          >
+            <Command className="w-full">
+              <CommandInput placeholder={searchPlaceholder} autoFocus />
+              <CommandEmpty>
+                {loading ? loadingMessage : emptyMessage}
+              </CommandEmpty>
+              <CommandGroup className="max-h-64 overflow-y-auto">
+                {loading ? (
+                  <div className="flex justify-center items-center py-2">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  options.map((option) => (
+                    <CommandItem
+                      key={String(option.value)}
+                      value={String(option.value)}
+                      onSelect={() => handleSelect(option.value)}
+                      className="flex items-center gap-2 cursor-pointer"
                     >
-                      <Check className="h-4 w-4" />
-                    </div>
-                    <span>{option.label}</span>
-                  </CommandItem>
-                ))
-              )}
-            </CommandGroup>
-          </Command>
-        </PopoverContent>
-      </Popover>
+                      <div
+                        className={cn(
+                          "mr-2 flex h-5 w-5 items-center justify-center rounded-sm border-2 border-primary",
+                          selected.includes(option.value)
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Check className="h-4 w-4" />
+                      </div>
+                      <span>{option.label}</span>
+                    </CommandItem>
+                  ))
+                )}
+              </CommandGroup>
+            </Command>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

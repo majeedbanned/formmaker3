@@ -154,7 +154,6 @@ function StudentsPageContent() {
         // dependsOn: ["Grade", "major"],
       },
     },
-
     {
       name: "schoolCode",
       title: "کد مدرسه",
