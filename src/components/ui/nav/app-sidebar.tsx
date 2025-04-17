@@ -165,6 +165,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "پیام ها",
+          url: "/admin/messages",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

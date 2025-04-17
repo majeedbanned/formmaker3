@@ -47,7 +47,7 @@ export interface UploadedFile {
 export interface FormFieldMinimal {
   name: string;
   title: string;
-  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect", "autoCompleteText", "importTextBox"
+  type: string;  // Can be "text", "email", "checkbox", "radio", "dropdown", "textarea", "switch", "togglegroup", "label", "datepicker", "autocomplete", "file", "shadcnmultiselect", "autoCompleteText", "importTextBox", "richtextbox"
   required: boolean;
   defaultValue?: unknown;
   validation?: FieldValidation;
@@ -81,6 +81,7 @@ export interface FormFieldMinimal {
     textAlign?: 'left' | 'center' | 'right';
     textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
   };
+  className?: string; // Additional CSS class name for the field
   switchStyle?: {  // For switch type
     size?: 'sm' | 'md' | 'lg';
     color?: string;
@@ -228,6 +229,7 @@ export interface FormField extends Omit<FormFieldMinimal, 'required'> {
   validator?: (value: unknown) => string | null;
   // Mask function
   mask?: (value: unknown) => string;
+  className?: string; // Additional CSS class name for the field
 }
 
 export interface Entity {

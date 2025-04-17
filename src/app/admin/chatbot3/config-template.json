@@ -58,6 +58,7 @@
         { "name": "data.studentCode", "type": "Number", "description": "Unique code identifying the student (شماره دانش آموز/شناسه دانش آموز/نام کاربری/کد ملی) (e.g., 3362214521)" },
         { "name": "data.schoolCode", "type": "String", "description": "School code the student belongs to" },
         { "name": "data.classCode", "type": "Array<String>", "description": "Array of class codes the student is enrolled in (e.g., ['232', '200'])" },
+        { "name": "data.groups", "type": "Array<String>", "description": " گروه های دانش آموز - Array of group codes the student is enrolled in (e.g., ['232', '200'])" },
         { "name": "data.isActive", "type": "Boolean", "description": "Whether the student is currently active/unactive" },
         { "name": "data.birthdate", "type": "String", "description": "Student's birthdate in Persian date format (e.g., '۱۳۸۰/۰۵/۱۲')" },
         { "name": "data.fatherName", "type": "String", "description": "Student's father's name (e.g., 'علی')" },
@@ -66,9 +67,28 @@
         ],
         "relationships": [
         { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each student belongs to a single school" },
-        { "with": "classes", "type": "manyToMany", "joinField": "data.classCode", "targetField": "data.classCode", "description": "A student can be enrolled in multiple classes" }
-        ]
+        { "with": "classes", "type": "manyToMany", "joinField": "data.classCode", "targetField": "data.classCode", "description": "A student can be enrolled in multiple classes" },
+        { "with": "studentsgroups", "type": "manyToMany", "joinField": "data.groups", "targetField": "data.groupsCode", "description": "A student can be enrolled in multiple groups" }
+      ]
         },
+
+        {
+        "name": "studentsgroups",
+        "description": "Contains information about students groups.",
+        "fields": [
+        { "name": "data", "type": "Object", "description": "Container object for studentsgroups data with nested fields" },
+        { "name": "data.groupName", "type": "String", "description": "Group name (e.g., 'گروه یک')" },
+        { "name": "data.groupCode", "type": "String", "description": "Group code (e.g., '232')" },
+        { "name": "data.schoolCode", "type": "String", "description": "School code this information belongs to" }
+
+        ]
+        ,
+        "relationships": [
+        { "with": "students", "type": "manyToMany", "joinField": "data.groupCode", "targetField": "data.groups", "description": "A student can be enrolled in multiple groups" },
+        { "with": "schools", "type": "manyToOne", "joinField": "data.schoolCode", "targetField": "data.schoolCode", "description": "Each group belongs to a single school" }
+        ]
+        }
+        ,
         
         {
         "name": "teachers",

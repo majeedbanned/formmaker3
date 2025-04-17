@@ -363,6 +363,32 @@ const renderCellContent = (
       const autoOption = field.options?.find((opt) => opt.value === value);
       return <span>{autoOption?.label || value}</span>;
 
+    case "richtextbox":
+      // For rich text, strip HTML tags and truncate text for display
+      const htmlString = String(value);
+      const plainText = htmlString
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const truncatedText =
+        plainText.length > 80 ? plainText.substring(0, 80) + "..." : plainText;
+
+      return (
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <span className="cursor-help" title={plainText}>
+              {truncatedText}
+            </span>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80 max-h-72 overflow-y-auto">
+            <div
+              className="prose prose-sm"
+              dangerouslySetInnerHTML={{ __html: htmlString }}
+            />
+          </HoverCardContent>
+        </HoverCard>
+      );
+
     case "shadcnmultiselect":
       return renderMultiValue(value);
 

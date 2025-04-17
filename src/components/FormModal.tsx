@@ -66,6 +66,7 @@ import { Progress } from "./ui/progress";
 import { MultiSelect } from "./ui/multi-select";
 import { AutocompleteTags } from "@/components/ui/autocomplete-tags";
 import TimePicker from "react-multi-date-picker/plugins/time_picker";
+import RichTextEditor from "./ui/rich-text-editor";
 
 // Add type definitions for window.__EDITING_ENTITY_DATA__
 declare global {
@@ -1818,6 +1819,49 @@ const FormField = ({
               );
             })}
           </div>
+        )}
+      </div>
+    );
+  } else if (field.type === "richtextbox") {
+    const fieldValue = watch(field.name) || "";
+    return (
+      <div
+        className="space-y-2"
+        style={{ display: field.visible ? "block" : "none" }}
+      >
+        <label
+          htmlFor={field.name}
+          className={`block text-sm font-medium text-${
+            layout.direction === "rtl" ? "right" : "left"
+          }`}
+        >
+          {field.title}
+          {field.required && <span className="text-destructive">*</span>}
+          {isDisabled && (
+            <span className="text-muted-foreground text-xs ml-1">
+              (Read-only)
+            </span>
+          )}
+        </label>
+        <RichTextEditor
+          value={fieldValue as string}
+          onChange={(value) =>
+            setValue(field.name, value, { shouldValidate: true })
+          }
+          readOnly={isDisabled || field.readonly}
+          dir={layout.direction}
+          placeholder={field.placeholder || "Start writing..."}
+          className={field.className}
+        />
+        <input type="hidden" {...register(field.name, validationRules)} />
+        {errors[field.name] && (
+          <p
+            className={`text-destructive text-sm ${
+              layout.direction === "rtl" ? "text-right" : "text-left"
+            }`}
+          >
+            {errors[field.name]?.message as string}
+          </p>
         )}
       </div>
     );

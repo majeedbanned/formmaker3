@@ -52,8 +52,8 @@ function StudentsPageContent() {
   };
   const sampleFormStructure: FormField[] = [
     {
-      name: "studentName",
-      title: "نام دانش آموز",
+      name: "title",
+      title: "عنوان پیام",
       type: "text",
       isShowInList: true,
       isSearchable: true,
@@ -64,39 +64,7 @@ function StudentsPageContent() {
       listLabelColor: "#2563eb",
       defaultValue: "",
       validation: {
-        requiredMessage: "نام دانش آموز الزامی است",
-      },
-    },
-    {
-      name: "studentFamily",
-      title: "نام خانوادگی دانش آموز",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      listLabelColor: "#2563eb",
-      defaultValue: "",
-      validation: {
-        requiredMessage: "نام خانوادگی دانش آموز الزامی است",
-      },
-    },
-
-    {
-      name: "studentCode",
-      title: "کد دانش آموز",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-
-      groupUniqueness: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      validation: {
-        requiredMessage: "کد دانش آموز الزامی است",
+        requiredMessage: "عنوان پیام الزامی است",
       },
     },
 
@@ -155,6 +123,43 @@ function StudentsPageContent() {
       },
     },
     {
+      name: "students2",
+      title: "دانش آموزان",
+      type: "autoCompleteText",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      isMultiple: true,
+
+      dataSource: {
+        collectionName: "students",
+        labelField: "studentName",
+        valueField: "studentCode",
+        sortField: "studentCode",
+        sortOrder: "asc",
+        filterQuery: { schoolCode: "2295566177" },
+        // dependsOn: ["Grade", "major"],
+      },
+    },
+    {
+      name: "message",
+      title: "متن پیام",
+      type: "richtextbox",
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "متن پیام الزامی است",
+      },
+      placeholder: "متن پیام را وارد کنید...",
+      className: "min-h-[200px]",
+    },
+
+    {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
@@ -171,130 +176,6 @@ function StudentsPageContent() {
         requiredMessage: "کد مدرسه الزامی است",
       },
     },
-
-    {
-      name: "password",
-      title: "رمز عبور",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-
-      required: true,
-      enabled: true,
-      visible: true,
-      validation: {
-        requiredMessage: "رمز عبور الزامی است",
-      },
-    },
-
-    {
-      name: "isActive",
-      title: "فعال/غیرفعال",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-    {
-      enabled: true,
-      visible: true,
-      isShowInList: true,
-      isSearchable: true,
-      name: "phones",
-      title: "شماره تلفن",
-      type: "text",
-      required: false,
-      nestedType: "array",
-      fields: [
-        {
-          enabled: true,
-          visible: true,
-          isSearchable: true,
-          required: true,
-          isShowInList: true,
-          name: "owner",
-          title: "صاحب شماره",
-          type: "dropdown",
-          options: [
-            { label: "پدر", value: "پدر" },
-            { label: "مادر", value: "مادر" },
-            { label: "دانش آموز", value: "دانش آموز" },
-          ],
-        },
-        {
-          name: "number",
-          title: "Number",
-          type: "text",
-          enabled: true,
-          visible: true,
-          isSearchable: true,
-          isShowInList: true,
-          required: false,
-        },
-      ],
-      orientation: "horizontal",
-      isOpen: true,
-    },
-
-    {
-      enabled: true,
-      visible: true,
-      isShowInList: true,
-      isSearchable: true,
-      name: "premisions",
-      title: "مجوزها",
-      type: "text",
-      required: false,
-      nestedType: "array",
-      fields: [
-        {
-          enabled: true,
-          visible: true,
-          isSearchable: true,
-          required: true,
-          isShowInList: true,
-          name: "systems",
-          title: "سیستم",
-          type: "dropdown",
-          options: [
-            { label: "اطلاعات دانش آموزان", value: "student" },
-            { label: "اطلاعات استادان", value: "teacher" },
-            { label: "اطلاعات مدرسه", value: "school" },
-          ],
-        },
-        {
-          name: "access",
-          title: "دسترسی",
-          type: "checkbox",
-          isShowInList: true,
-          isSearchable: true,
-          required: false,
-          enabled: true,
-          visible: true,
-          readonly: false,
-          defaultValue: [],
-          isMultiple: true,
-          options: [
-            { value: "show", label: "نمایش" },
-            { value: "list", label: "لیست" },
-            { value: "create", label: "ایجاد" },
-            { value: "edit", label: "ویرایش" },
-            { value: "delete", label: "حذف" },
-            { value: "groupDelete", label: "حذف گروهی" },
-            { value: "search", label: "جستجو" },
-          ],
-          validation: {
-            requiredMessage: "Please select at least one interest",
-          },
-        },
-      ],
-      orientation: "horizontal",
-      isOpen: false,
-    },
   ] as const;
   return (
     <main className="min-h-screen bg-gray-50 py-8">
@@ -305,7 +186,7 @@ function StudentsPageContent() {
 
         <CRUDComponent
           formStructure={sampleFormStructure}
-          collectionName="students"
+          collectionName="messages"
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           importFunction={{

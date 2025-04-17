@@ -178,6 +178,22 @@ export default function Home() {
       },
     },
 
+    {
+      name: "description",
+      title: "توضیحات کلاس",
+      type: "richtextbox",
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "توضیحات کلاس الزامی است",
+      },
+      placeholder: "توضیحات کلاس را وارد کنید...",
+      className: "min-h-[200px]",
+    },
+
     // Example of shadcnmultiselect field with datasource
 
     {
