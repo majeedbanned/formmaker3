@@ -56,13 +56,60 @@ const formatNestedValue = (value: unknown, field: FormField): string => {
         return field.fields
           .map((nestedField: FormField) => {
             const nestedValue = item[nestedField.name];
+
+            // Handle different field types
             if (nestedField.type === "dropdown") {
               const option = nestedField.options?.find(
                 (opt: { value: unknown; label: string }) =>
                   opt.value === nestedValue
               );
               return option ? option.label : nestedValue;
+            } else if (nestedField.type === "autoCompleteText") {
+              // Handle autoCompleteText fields
+              if (Array.isArray(nestedValue)) {
+                return nestedValue
+                  .map((item: unknown) => {
+                    if (
+                      typeof item === "object" &&
+                      item !== null &&
+                      "label" in item
+                    ) {
+                      return String((item as { label: string }).label);
+                    }
+                    return String(item);
+                  })
+                  .join(" / ");
+              } else if (
+                typeof nestedValue === "object" &&
+                nestedValue !== null &&
+                "label" in nestedValue
+              ) {
+                return String((nestedValue as { label: string }).label);
+              }
+            } else if (nestedField.type === "shadcnmultiselect") {
+              // Handle shadcnmultiselect fields
+              if (Array.isArray(nestedValue)) {
+                return nestedValue
+                  .map((item: unknown) => {
+                    if (
+                      typeof item === "object" &&
+                      item !== null &&
+                      "label" in item
+                    ) {
+                      return String((item as { label: string }).label);
+                    }
+                    return String(item);
+                  })
+                  .join(", ");
+              } else if (
+                typeof nestedValue === "object" &&
+                nestedValue !== null &&
+                "label" in nestedValue
+              ) {
+                return String((nestedValue as { label: string }).label);
+              }
             }
+
             return nestedValue;
           })
           .filter(Boolean)
@@ -77,13 +124,60 @@ const formatNestedValue = (value: unknown, field: FormField): string => {
         const nestedValue = (value as Record<string, unknown>)[
           nestedField.name
         ];
+
+        // Handle different field types
         if (nestedField.type === "dropdown") {
           const option = nestedField.options?.find(
             (opt: { value: unknown; label: string }) =>
               opt.value === nestedValue
           );
           return option ? option.label : nestedValue;
+        } else if (nestedField.type === "autoCompleteText") {
+          // Handle autoCompleteText fields
+          if (Array.isArray(nestedValue)) {
+            return nestedValue
+              .map((item: unknown) => {
+                if (
+                  typeof item === "object" &&
+                  item !== null &&
+                  "label" in item
+                ) {
+                  return String((item as { label: string }).label);
+                }
+                return String(item);
+              })
+              .join(" / ");
+          } else if (
+            typeof nestedValue === "object" &&
+            nestedValue !== null &&
+            "label" in nestedValue
+          ) {
+            return String((nestedValue as { label: string }).label);
+          }
+        } else if (nestedField.type === "shadcnmultiselect") {
+          // Handle shadcnmultiselect fields
+          if (Array.isArray(nestedValue)) {
+            return nestedValue
+              .map((item: unknown) => {
+                if (
+                  typeof item === "object" &&
+                  item !== null &&
+                  "label" in item
+                ) {
+                  return String((item as { label: string }).label);
+                }
+                return String(item);
+              })
+              .join(", ");
+          } else if (
+            typeof nestedValue === "object" &&
+            nestedValue !== null &&
+            "label" in nestedValue
+          ) {
+            return String((nestedValue as { label: string }).label);
+          }
         }
+
         return nestedValue;
       })
       .filter(Boolean)
@@ -221,12 +315,75 @@ const NestedValueDisplay = ({
                   <div className="font-medium">Item {index + 1}</div>
                   {field.fields?.map((nestedField) => {
                     const nestedValue = item[nestedField.name];
-                    const displayValue =
-                      nestedField.type === "dropdown"
-                        ? nestedField.options?.find(
-                            (opt) => opt.value === nestedValue
-                          )?.label
-                        : nestedValue;
+
+                    let displayValue;
+
+                    // Handle different field types appropriately
+                    if (nestedField.type === "dropdown") {
+                      // For dropdown fields, look up the label from options
+                      const option = nestedField.options?.find(
+                        (opt) => opt.value === nestedValue
+                      );
+                      displayValue = option ? option.label : nestedValue;
+                    } else if (nestedField.type === "autoCompleteText") {
+                      // For autoCompleteText fields, extract labels
+                      if (Array.isArray(nestedValue)) {
+                        // Handle array of items
+                        displayValue = nestedValue
+                          .map((item) => {
+                            if (
+                              typeof item === "object" &&
+                              item !== null &&
+                              "label" in item
+                            ) {
+                              return String(item.label);
+                            }
+                            return String(item);
+                          })
+                          .join(" / ");
+                      } else if (
+                        typeof nestedValue === "object" &&
+                        nestedValue !== null &&
+                        "label" in nestedValue
+                      ) {
+                        // Handle single object with label
+                        displayValue = String(nestedValue.label);
+                      } else {
+                        // Fallback
+                        displayValue = nestedValue;
+                      }
+                    } else if (nestedField.type === "shadcnmultiselect") {
+                      // For shadcnmultiselect fields, extract labels
+                      if (Array.isArray(nestedValue)) {
+                        // Handle array of items
+                        displayValue = nestedValue
+                          .map((item) => {
+                            if (
+                              typeof item === "object" &&
+                              item !== null &&
+                              "label" in item
+                            ) {
+                              return String(item.label);
+                            }
+                            return String(item);
+                          })
+                          .join(", ");
+                      } else if (
+                        typeof nestedValue === "object" &&
+                        nestedValue !== null &&
+                        "label" in nestedValue
+                      ) {
+                        // Handle single object with label
+                        displayValue = String(nestedValue.label);
+                      } else {
+                        // Fallback
+                        displayValue = nestedValue;
+                      }
+                    } else {
+                      // Default handling for other field types
+                      displayValue = nestedValue;
+                    }
+
                     return (
                       <div
                         key={nestedField.name}
@@ -235,7 +392,7 @@ const NestedValueDisplay = ({
                         <span className="font-medium">
                           {nestedField.title}:
                         </span>{" "}
-                        {String(displayValue)}
+                        {String(displayValue !== undefined ? displayValue : "")}
                       </div>
                     );
                   })}
@@ -248,19 +405,82 @@ const NestedValueDisplay = ({
                 const nestedValue = (value as Record<string, unknown>)?.[
                   nestedField.name
                 ];
-                const displayValue =
-                  nestedField.type === "dropdown"
-                    ? nestedField.options?.find(
-                        (opt) => opt.value === nestedValue
-                      )?.label
-                    : nestedValue;
+
+                let displayValue;
+
+                // Handle different field types appropriately
+                if (nestedField.type === "dropdown") {
+                  // For dropdown fields, look up the label from options
+                  const option = nestedField.options?.find(
+                    (opt) => opt.value === nestedValue
+                  );
+                  displayValue = option ? option.label : nestedValue;
+                } else if (nestedField.type === "autoCompleteText") {
+                  // For autoCompleteText fields, extract labels
+                  if (Array.isArray(nestedValue)) {
+                    // Handle array of items
+                    displayValue = nestedValue
+                      .map((item) => {
+                        if (
+                          typeof item === "object" &&
+                          item !== null &&
+                          "label" in item
+                        ) {
+                          return String(item.label);
+                        }
+                        return String(item);
+                      })
+                      .join(" / ");
+                  } else if (
+                    typeof nestedValue === "object" &&
+                    nestedValue !== null &&
+                    "label" in nestedValue
+                  ) {
+                    // Handle single object with label
+                    displayValue = String(nestedValue.label);
+                  } else {
+                    // Fallback
+                    displayValue = nestedValue;
+                  }
+                } else if (nestedField.type === "shadcnmultiselect") {
+                  // For shadcnmultiselect fields, extract labels
+                  if (Array.isArray(nestedValue)) {
+                    // Handle array of items
+                    displayValue = nestedValue
+                      .map((item) => {
+                        if (
+                          typeof item === "object" &&
+                          item !== null &&
+                          "label" in item
+                        ) {
+                          return String(item.label);
+                        }
+                        return String(item);
+                      })
+                      .join(", ");
+                  } else if (
+                    typeof nestedValue === "object" &&
+                    nestedValue !== null &&
+                    "label" in nestedValue
+                  ) {
+                    // Handle single object with label
+                    displayValue = String(nestedValue.label);
+                  } else {
+                    // Fallback
+                    displayValue = nestedValue;
+                  }
+                } else {
+                  // Default handling for other field types
+                  displayValue = nestedValue;
+                }
+
                 return (
                   <div
                     key={nestedField.name}
                     className="text-sm text-muted-foreground"
                   >
                     <span className="font-medium">{nestedField.title}:</span>{" "}
-                    {String(displayValue)}
+                    {String(displayValue !== undefined ? displayValue : "")}
                   </div>
                 );
               })}
