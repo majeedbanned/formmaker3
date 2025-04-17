@@ -2,11 +2,6 @@ import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 export type AutocompleteOption = {
   label: string;
@@ -56,23 +51,42 @@ export function AutocompleteTags({
   const [internalSelectedLabels, setInternalSelectedLabels] =
     React.useState<Record<string, string>>(selectedLabels);
 
+  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
   // Sync with external selectedLabels when they change
   React.useEffect(() => {
     setInternalSelectedLabels({ ...selectedLabels });
   }, [selectedLabels]);
 
-  // console.log(
-  //   "AutocompleteTags options:",
-  //   options,
-  //   "selected:",
-  //   selected,
-  //   "showOptions:",
-  //   showOptions,
-  //   "selectedLabels:",
-  //   selectedLabels,
-  //   "internalSelectedLabels:",
-  //   internalSelectedLabels
-  // );
+  // Handle click outside to close dropdown
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        open &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  // Focus the search input when dropdown opens
+  React.useEffect(() => {
+    if (open && dropdownRef.current && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10);
+    }
+  }, [open]);
 
   React.useEffect(() => {
     if (
@@ -109,11 +123,15 @@ export function AutocompleteTags({
       );
       setInputValue("");
       setShowOptions(minSearchLength === 0);
+
+      // Keep focus on the input field after selection
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // console.log("handleKeyDown", e.key, inputValue, allowCustomValues);
     if (e.key === "Enter" && inputValue && allowCustomValues) {
       e.preventDefault();
       if (!selected.includes(inputValue)) {
@@ -130,6 +148,8 @@ export function AutocompleteTags({
         setInputValue("");
         setShowOptions(minSearchLength === 0);
       }
+    } else if (e.key === "Escape") {
+      setOpen(false);
     }
   };
 
@@ -155,73 +175,84 @@ export function AutocompleteTags({
   }, [inputValue, minSearchLength]);
 
   return (
-    <div className={cn("relative w-full", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div
-            className={cn(
-              "flex min-h-10 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-3 py-2 focus-within:ring-1 focus-within:ring-ring",
-              disabled && "opacity-50 pointer-events-none"
-            )}
-            onClick={() => !disabled && setOpen(true)}
-          >
-            {selected.length > 0 ? (
-              <>
-                {selected.map((value) => {
-                  // Find the corresponding option to display label instead of value
-                  // First check internal labels, then selectedLabels, then fall back to searching options
-                  const displayText =
-                    internalSelectedLabels[value] ||
-                    selectedLabels[value] ||
-                    options.find((opt) => opt.value === value)?.label ||
-                    value;
+    <div className={cn("relative w-full", className)} ref={containerRef}>
+      <div
+        ref={triggerRef}
+        className={cn(
+          "flex min-h-10 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-3 py-2 focus-within:ring-1 focus-within:ring-ring",
+          disabled && "opacity-50 pointer-events-none"
+        )}
+        onClick={() => {
+          if (!disabled) {
+            setOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 10);
+          }
+        }}
+      >
+        {selected.length > 0 ? (
+          <>
+            {selected.map((value) => {
+              // Find the corresponding option to display label instead of value
+              // First check internal labels, then selectedLabels, then fall back to searching options
+              const displayText =
+                internalSelectedLabels[value] ||
+                selectedLabels[value] ||
+                options.find((opt) => opt.value === value)?.label ||
+                value;
 
-                  return (
-                    <Badge
-                      key={value}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {displayText}
-                      <button
-                        type="button"
-                        className="ml-1 rounded-full outline-none ring-offset-background hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUnselect(value);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Remove {displayText}</span>
-                      </button>
-                    </Badge>
-                  );
-                })}
-                <input
-                  value={inputValue}
-                  disabled={disabled}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-20"
-                  placeholder={inputPlaceholder}
-                />
-              </>
-            ) : (
-              <input
-                value={inputValue}
-                disabled={disabled}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-                placeholder={placeholder}
-              />
-            )}
-          </div>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+              return (
+                <Badge
+                  key={value}
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  {displayText}
+                  <button
+                    type="button"
+                    className="ml-1 rounded-full outline-none ring-offset-background hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnselect(value);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                    <span className="sr-only">Remove {displayText}</span>
+                  </button>
+                </Badge>
+              );
+            })}
+            <input
+              ref={inputRef}
+              value={inputValue}
+              disabled={disabled}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-20"
+              placeholder={inputPlaceholder}
+            />
+          </>
+        ) : (
+          <input
+            ref={inputRef}
+            value={inputValue}
+            disabled={disabled}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            placeholder={placeholder}
+          />
+        )}
+      </div>
+
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="absolute top-full mt-1 w-full z-50 bg-popover rounded-md border shadow-md overflow-hidden"
+        >
           <div className="w-full flex flex-col">
             <div className="p-2 border-b">
               <input
+                ref={inputRef}
                 value={inputValue}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -233,8 +264,10 @@ export function AutocompleteTags({
                     onSearch(value);
                   }
                 }}
+                onKeyDown={handleKeyDown}
                 placeholder={inputPlaceholder}
                 className="w-full h-9 px-3 rounded-md border-0 focus:outline-none focus:ring-0 text-sm"
+                autoFocus
               />
             </div>
 
@@ -264,7 +297,6 @@ export function AutocompleteTags({
                       onClick={() => {
                         if (inputValue && !selected.includes(inputValue)) {
                           handleSelect(inputValue);
-                          setOpen(false);
                         }
                       }}
                     >
@@ -286,7 +318,6 @@ export function AutocompleteTags({
                       key={option.value}
                       onClick={() => {
                         handleSelect(option.value);
-                        setOpen(false);
                       }}
                       className="flex items-center gap-2 py-2 px-3 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     >
@@ -296,8 +327,8 @@ export function AutocompleteTags({
               </div>
             )}
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </div>
   );
 }
