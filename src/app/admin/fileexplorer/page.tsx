@@ -12,6 +12,7 @@ import {
   TrashIcon,
   FolderArrowDownIcon,
   XMarkIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -203,6 +204,90 @@ function DeleteConfirmModal({
   );
 }
 
+// Rename modal component
+function RenameModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  item,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (newName: string) => void;
+  item: ExplorerItem | null;
+}) {
+  const [newName, setNewName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current && item) {
+      setNewName(item.name);
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isOpen, item]);
+
+  // Only show modal for folders
+  if (!isOpen || !item || item.type !== "folder") return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">تغییر نام پوشه</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <label
+            htmlFor="newName"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            نام جدید
+          </label>
+          <input
+            ref={inputRef}
+            id="newName"
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={() => {
+              if (newName.trim() && newName !== item.name) {
+                onConfirm(newName);
+                onClose();
+              }
+            }}
+            disabled={!newName.trim() || newName === item.name}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            تغییر نام
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FileExplorerPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<ExplorerItem[]>([]);
@@ -211,6 +296,7 @@ export default function FileExplorerPage() {
   const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExplorerItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -297,6 +383,43 @@ export default function FileExplorerPage() {
       console.error(`Error deleting ${selectedItem.type}:`, error);
       toast.error(
         `خطا در حذف ${selectedItem.type === "folder" ? "پوشه" : "فایل"}`
+      );
+    }
+  };
+
+  // Rename file or folder
+  const renameItem = async (newName: string) => {
+    if (!selectedItem || !newName.trim()) return;
+
+    try {
+      const endpoint =
+        selectedItem.type === "folder"
+          ? "/api/fileexplorer/folder/rename"
+          : "/api/fileexplorer/file/rename";
+
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedItem._id,
+          newName: newName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to rename ${selectedItem.type}`);
+      }
+
+      toast.success(
+        `نام ${
+          selectedItem.type === "folder" ? "پوشه" : "فایل"
+        } با موفقیت تغییر کرد`
+      );
+      fetchItems(); // Refresh the file list
+    } catch (error) {
+      console.error(`Error renaming ${selectedItem.type}:`, error);
+      toast.error(
+        `خطا در تغییر نام ${selectedItem.type === "folder" ? "پوشه" : "فایل"}`
       );
     }
   };
@@ -697,13 +820,25 @@ export default function FileExplorerPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
-                          <button
-                            onClick={() => confirmDelete(folder)}
-                            className="text-red-600 hover:text-red-900"
-                            title="حذف"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                          <div className="flex gap-3 justify-end">
+                            <button
+                              onClick={() => {
+                                setSelectedItem(folder);
+                                setShowRenameModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="تغییر نام"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(folder)}
+                              className="text-red-600 hover:text-red-900"
+                              title="حذف"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -778,6 +913,14 @@ export default function FileExplorerPage() {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={deleteItem}
+        item={selectedItem}
+      />
+
+      {/* Rename modal */}
+      <RenameModal
+        isOpen={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        onConfirm={renameItem}
         item={selectedItem}
       />
     </main>
