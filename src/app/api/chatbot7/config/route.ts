@@ -47,6 +47,8 @@ export async function getCurrentUser() {
       userType: string;
       schoolCode: string;
       username: string;
+      name: string;
+      role: string;
     };
 
     return {
@@ -54,6 +56,8 @@ export async function getCurrentUser() {
       userType: payload.userType,
       schoolCode: payload.schoolCode,
       username: payload.username,
+      name: payload.name,
+      role: payload.role,
     };
   } catch (error) {
     console.error("Error verifying token:", error);

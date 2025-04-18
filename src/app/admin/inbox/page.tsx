@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   EnvelopeIcon,
@@ -9,9 +9,12 @@ import {
   DocumentTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArrowUturnLeftIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { toast } from "sonner";
+import { getPersianDate } from "@/utils/dateUtils";
 
 // Message interface
 interface Message {
@@ -26,9 +29,222 @@ interface Message {
     receivercode: string;
     files: string[];
     isRead: boolean;
+    readTime?: string;
+    readPersianDate?: string;
     isFavorite?: boolean;
     createdAt: string;
   };
+}
+
+// Confirmation dialog component
+function ConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="mb-6 text-gray-600">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            تایید
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Reply dialog component
+function ReplyDialog({
+  isOpen,
+  onClose,
+  onSend,
+  originalMessage,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSend: (content: string, files: File[]) => void;
+  originalMessage: Message | null;
+}) {
+  const [replyContent, setReplyContent] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const fileList = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...fileList]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearForm = () => {
+    setReplyContent("");
+    setFiles([]);
+  };
+
+  if (!isOpen || !originalMessage) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">
+            پاسخ به: {originalMessage.data.title}
+          </h3>
+          <button
+            onClick={() => {
+              clearForm();
+              onClose();
+            }}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="bg-gray-50 p-3 rounded-md mb-4 text-sm">
+          <div className="font-bold mb-1">پیام اصلی:</div>
+          <div className="line-clamp-3">
+            {originalMessage.data.message.replace(/<[^>]*>/g, " ")}
+          </div>
+        </div>
+
+        <textarea
+          ref={textareaRef}
+          value={replyContent}
+          onChange={(e) => setReplyContent(e.target.value)}
+          placeholder="متن پاسخ خود را بنویسید..."
+          className="w-full h-40 p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        />
+
+        {/* File upload section */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 flex items-center gap-1 text-sm"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+              افزودن فایل
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <span className="text-xs text-gray-500">
+              {files.length > 0
+                ? `${files.length} فایل انتخاب شده`
+                : "حداکثر اندازه هر فایل: ۱۰ مگابایت"}
+            </span>
+          </div>
+
+          {files.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {files.map((file, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <DocumentTextIcon className="h-4 w-4 text-blue-500" />
+                    <span className="truncate max-w-xs">{file.name}</span>
+                    <span className="text-gray-500 text-xs">
+                      ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeFile(idx)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 mt-4">
+          <button
+            onClick={() => {
+              clearForm();
+              onClose();
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={() => {
+              if (replyContent.trim()) {
+                onSend(replyContent, files);
+                clearForm();
+                onClose();
+              }
+            }}
+            disabled={!replyContent.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+          >
+            ارسال پاسخ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function InboxPage() {
@@ -40,6 +256,11 @@ export default function InboxPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+
+  // State for dialogs
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [showReplyDialog, setShowReplyDialog] = useState(false);
 
   // Fetch messages
   const fetchMessages = async () => {
@@ -68,10 +289,19 @@ export default function InboxPage() {
   // Mark message as read
   const markAsRead = async (messageId: string) => {
     try {
+      // Get current time for read timestamp
+      const now = new Date();
+      const persianDate = getPersianDate();
+      const readTime = now.toISOString();
+
       const response = await fetch("/api/messages/mark-as-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId }),
+        body: JSON.stringify({
+          messageId,
+          readTime,
+          readPersianDate: persianDate,
+        }),
       });
 
       if (!response.ok) {
@@ -82,7 +312,15 @@ export default function InboxPage() {
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg._id === messageId
-            ? { ...msg, data: { ...msg.data, isRead: true } }
+            ? {
+                ...msg,
+                data: {
+                  ...msg.data,
+                  isRead: true,
+                  readTime,
+                  readPersianDate: persianDate,
+                },
+              }
             : msg
         )
       );
@@ -92,7 +330,12 @@ export default function InboxPage() {
           prev
             ? {
                 ...prev,
-                data: { ...prev.data, isRead: true },
+                data: {
+                  ...prev.data,
+                  isRead: true,
+                  readTime,
+                  readPersianDate: persianDate,
+                },
               }
             : null
         );
@@ -140,24 +383,28 @@ export default function InboxPage() {
         );
       }
 
-      toast.success(
-        currentStatus
-          ? "پیام از نشان‌شده‌ها حذف شد"
-          : "پیام به نشان‌شده‌ها اضافه شد"
-      );
+      // Removed toast notification for favorites
     } catch (error) {
       console.error("Error toggling favorite status:", error);
       toast.error("خطا در بروزرسانی وضعیت نشان");
     }
   };
 
-  // Delete message
-  const deleteMessage = async (messageId: string) => {
+  // Prepare message for deletion with confirmation
+  const confirmDeleteMessage = (messageId: string) => {
+    setMessageToDelete(messageId);
+    setShowDeleteConfirm(true);
+  };
+
+  // Delete message after confirmation
+  const deleteMessage = async () => {
+    if (!messageToDelete) return;
+
     try {
       const response = await fetch("/api/messages/delete-message", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId }),
+        body: JSON.stringify({ messageId: messageToDelete }),
       });
 
       if (!response.ok) {
@@ -166,10 +413,10 @@ export default function InboxPage() {
 
       // Update local state
       setMessages((prevMessages) =>
-        prevMessages.filter((msg) => msg._id !== messageId)
+        prevMessages.filter((msg) => msg._id !== messageToDelete)
       );
 
-      if (selectedMessage && selectedMessage._id === messageId) {
+      if (selectedMessage && selectedMessage._id === messageToDelete) {
         setSelectedMessage(null);
         setViewMode("list");
       }
@@ -178,6 +425,64 @@ export default function InboxPage() {
     } catch (error) {
       console.error("Error deleting message:", error);
       toast.error("خطا در حذف پیام");
+    } finally {
+      setMessageToDelete(null);
+    }
+  };
+
+  // Reply to a message
+  const sendReply = async (content: string, files: File[]) => {
+    if (!selectedMessage || !user) return;
+
+    try {
+      // Create reply message object
+      const replyMessage = {
+        originalMessageId: selectedMessage._id,
+        title: `پاسخ: ${selectedMessage.data.title}`,
+        message: content.replace(/\n/g, "<br>"),
+        receivercode: selectedMessage.data.sendercode,
+        isRead: false,
+        mailId: selectedMessage.data.mailId,
+      };
+
+      // If we have files, use FormData
+      if (files.length > 0) {
+        const formData = new FormData();
+        formData.append("message", JSON.stringify(replyMessage));
+
+        // Append each file
+        files.forEach((file, index) => {
+          formData.append(`file${index}`, file);
+        });
+
+        const response = await fetch("/api/messages/reply", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send reply");
+        }
+      } else {
+        // No files, just send JSON
+        const response = await fetch("/api/messages/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: replyMessage }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send reply");
+        }
+      }
+
+      toast.success("پاسخ شما با موفقیت ارسال شد");
+
+      // Refresh messages after sending reply
+      fetchMessages();
+    } catch (error) {
+      console.error("Error sending reply:", error);
+      toast.error("خطا در ارسال پاسخ");
     }
   };
 
@@ -233,7 +538,14 @@ export default function InboxPage() {
             <ChevronRightIcon className="h-5 w-5" />
             بازگشت به لیست
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowReplyDialog(true)}
+              className="text-blue-500 hover:text-blue-600 flex items-center gap-1"
+            >
+              <ArrowUturnLeftIcon className="h-5 w-5" />
+              <span>پاسخ</span>
+            </button>
             <button
               onClick={() => toggleFavorite(selectedMessage._id)}
               className="text-yellow-500 hover:text-yellow-600"
@@ -245,7 +557,7 @@ export default function InboxPage() {
               )}
             </button>
             <button
-              onClick={() => deleteMessage(selectedMessage._id)}
+              onClick={() => confirmDeleteMessage(selectedMessage._id)}
               className="text-red-500 hover:text-red-600"
             >
               <TrashIcon className="h-6 w-6" />
@@ -261,6 +573,11 @@ export default function InboxPage() {
             <span>فرستنده: {selectedMessage.data.sendername}</span>
             <span>تاریخ: {selectedMessage.data.persiandate}</span>
           </div>
+          {selectedMessage.data.readTime && (
+            <div className="text-xs text-gray-500 mt-1">
+              خوانده شده در: {selectedMessage.data.readPersianDate}
+            </div>
+          )}
         </div>
 
         <div className="mb-6">
@@ -364,7 +681,7 @@ export default function InboxPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteMessage(message._id);
+                      confirmDeleteMessage(message._id);
                     }}
                     className="text-gray-400 hover:text-red-500"
                   >
@@ -479,6 +796,23 @@ export default function InboxPage() {
         </div>
 
         {viewMode === "list" ? renderMessageList() : renderMessageDetail()}
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={deleteMessage}
+          title="حذف پیام"
+          message="آیا از حذف این پیام اطمینان دارید؟ این عملیات قابل بازگشت نیست."
+        />
+
+        {/* Reply Dialog */}
+        <ReplyDialog
+          isOpen={showReplyDialog}
+          onClose={() => setShowReplyDialog(false)}
+          onSend={sendReply}
+          originalMessage={selectedMessage}
+        />
       </div>
     </main>
   );
