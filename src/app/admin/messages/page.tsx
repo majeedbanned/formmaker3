@@ -454,12 +454,14 @@ function StudentsPageContent() {
               // Create a base message object with common fields
               const baseMessage = {
                 mailId: entity.recordId,
+
                 sendername: entity.sender,
                 sendercode: entity.senderCode,
                 title: entity.title,
                 persiandate: persianDate,
                 message: entity.message,
                 role: user?.role === "teacher" ? "teacher" : "student",
+
                 files: entity.attachments || [],
               };
 
@@ -544,9 +546,8 @@ function StudentsPageContent() {
                       receivercode: studentCode,
                     })
                   );
-
                   allRecipients = [...allRecipients, ...classStudentRecipients];
-                  // Remove duplicate recipients based on receivercode
+
                   allRecipients = Array.from(
                     new Map(
                       allRecipients.map((item) => [item.receivercode, item])
@@ -589,11 +590,59 @@ function StudentsPageContent() {
           onAfterEdit={(entity) => {
             console.log("Entity updated:", entity);
           }}
-          onAfterDelete={(id) => {
+          onAfterDelete={async (id) => {
             console.log("Entity deleted:", id);
+            try {
+              // Delete all associated messages from messagelist collection
+              const deleteResponse = await fetch(
+                "/api/messages/delete-by-mail-id",
+                {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ mailId: id }),
+                }
+              );
+
+              if (deleteResponse.ok) {
+                const result = await deleteResponse.json();
+                console.log(
+                  `Deleted ${result.deletedCount} messages from messagelist`
+                );
+              } else {
+                console.error(
+                  "Failed to delete associated messages from messagelist"
+                );
+              }
+            } catch (error) {
+              console.error("Error deleting associated messages:", error);
+            }
           }}
-          onAfterGroupDelete={(ids) => {
+          onAfterGroupDelete={async (ids) => {
             console.log("Entities deleted:", ids);
+            try {
+              // Delete all associated messages from messagelist collection for each id in the array
+              const deleteResponse = await fetch(
+                "/api/messages/delete-by-mail-ids",
+                {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ mailIds: ids }),
+                }
+              );
+
+              if (deleteResponse.ok) {
+                const result = await deleteResponse.json();
+                console.log(
+                  `Deleted ${result.deletedCount} messages from messagelist`
+                );
+              } else {
+                console.error(
+                  "Failed to delete associated messages from messagelist"
+                );
+              }
+            } catch (error) {
+              console.error("Error deleting associated messages:", error);
+            }
           }}
         />
       </div>
