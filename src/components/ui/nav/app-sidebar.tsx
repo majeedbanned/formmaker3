@@ -171,6 +171,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "صندوق پیام",
+          url: "/admin/inbox",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

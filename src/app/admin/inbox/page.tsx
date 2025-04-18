@@ -250,17 +250,33 @@ function ReplyDialog({
 export default function InboxPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  const [showStarredOnly, setShowStarredOnly] = useState(false);
 
   // State for dialogs
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const [showReplyDialog, setShowReplyDialog] = useState(false);
+
+  // Apply filters to messages
+  useEffect(() => {
+    if (showStarredOnly) {
+      setFilteredMessages(messages.filter((msg) => msg.data.isFavorite));
+    } else {
+      setFilteredMessages(messages);
+    }
+  }, [messages, showStarredOnly]);
+
+  // Reset to page 1 when toggling starred filter
+  useEffect(() => {
+    setPage(1);
+  }, [showStarredOnly]);
 
   // Fetch messages
   const fetchMessages = async () => {
@@ -622,11 +638,15 @@ export default function InboxPage() {
       );
     }
 
-    if (messages.length === 0) {
+    if (filteredMessages.length === 0) {
       return (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <EnvelopeIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-          <p className="text-xl text-gray-600">هیچ پیامی وجود ندارد.</p>
+          <p className="text-xl text-gray-600">
+            {showStarredOnly
+              ? "هیچ پیام نشان شده‌ای وجود ندارد."
+              : "هیچ پیامی وجود ندارد."}
+          </p>
         </div>
       );
     }
@@ -634,37 +654,14 @@ export default function InboxPage() {
     return (
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <ul className="divide-y divide-gray-200">
-          {messages.map((message) => (
+          {filteredMessages.map((message) => (
             <li key={message._id} className="hover:bg-gray-50">
               <div
                 className="flex items-start px-4 py-4 sm:px-6 cursor-pointer"
                 onClick={() => handleMessageSelect(message)}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between">
-                    <h3
-                      className={`text-base ${
-                        !message.data.isRead
-                          ? "font-bold"
-                          : "font-medium text-gray-400"
-                      } `}
-                    >
-                      {message.data.title}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {message.data.isFavorite && (
-                        <StarIconSolid className="h-5 w-5 text-yellow-500" />
-                      )}
-                      <span className="text-sm text-gray-500">
-                        {message.data.persiandate}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-600 truncate">
-                    {message.data.sendername}
-                  </p>
-                </div>
-                <div className="flex shrink-0 ml-4 gap-2">
+                {/* Star icon on the right (first in RTL) */}
+                <div className="flex shrink-0 ml-4">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -678,6 +675,35 @@ export default function InboxPage() {
                       <StarIcon className="h-5 w-5" />
                     )}
                   </button>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex justify-between">
+                    <h3
+                      className={`text-base ${
+                        !message.data.isRead
+                          ? "font-bold"
+                          : "font-medium text-gray-400"
+                      } `}
+                    >
+                      {message.data.title}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">
+                        {message.data.persiandate}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600 truncate">
+                    {message.data.sendername}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 ml-4 gap-2">
+                  {/* Show attachment icon if message has files */}
+                  {message.data.files && message.data.files.length > 0 && (
+                    <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -782,7 +808,26 @@ export default function InboxPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">صندوق پیام‌ها</h1>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
+            {/* Filter for starred messages */}
+            <button
+              onClick={() => setShowStarredOnly(!showStarredOnly)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-md border ${
+                showStarredOnly
+                  ? "bg-yellow-50 border-yellow-300 text-yellow-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {showStarredOnly ? (
+                <StarIconSolid className="h-5 w-5 text-yellow-500" />
+              ) : (
+                <StarIcon className="h-5 w-5" />
+              )}
+              <span>
+                {showStarredOnly ? "همه پیام‌ها" : "پیام‌های نشان شده"}
+              </span>
+            </button>
+
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
