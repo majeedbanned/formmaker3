@@ -15,6 +15,7 @@ import {
   PencilIcon,
   EyeSlashIcon,
   EyeIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -992,6 +993,12 @@ export default function FileExplorerPage() {
                             <div className="mr-3">
                               <div className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center">
                                 {folder.name}
+                                {(folder as FolderItem).password && (
+                                  <LockClosedIcon
+                                    className="h-4 w-4 text-gray-600 ml-1"
+                                    title="پوشه محافظت شده با رمز عبور"
+                                  />
+                                )}
                                 <ChevronRightIcon className="inline-block h-4 w-4 text-gray-400 transform rotate-180 mr-1" />
                               </div>
                             </div>
