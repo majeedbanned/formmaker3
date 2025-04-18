@@ -16,6 +16,8 @@ import {
   EyeSlashIcon,
   EyeIcon,
   LockClosedIcon,
+  ShareIcon,
+  ClipboardDocumentIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -432,6 +434,227 @@ function PasswordModal({
   );
 }
 
+// Share modal component
+function ShareModal({
+  isOpen,
+  onClose,
+  file,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  file: FileItem | null;
+}) {
+  const [shareLink, setShareLink] = useState<string>("");
+  const [expiresIn, setExpiresIn] = useState<string>("7d"); // Default 7 days
+  const [isPasswordProtected, setIsPasswordProtected] =
+    useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLinkGenerated, setIsLinkGenerated] = useState<boolean>(false);
+  const linkRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShareLink("");
+      setExpiresIn("7d");
+      setIsPasswordProtected(false);
+      setPassword("");
+      setIsLinkGenerated(false);
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
+  const generateLink = async () => {
+    if (!file) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/fileexplorer/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: file._id,
+          expiresIn,
+          isPasswordProtected,
+          password: isPasswordProtected ? password : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate share link");
+      }
+
+      const data = await response.json();
+      const fullUrl = `${window.location.origin}/shared-file/${data.shareId}`;
+      setShareLink(fullUrl);
+      setIsLinkGenerated(true);
+    } catch (error) {
+      console.error("Error generating share link:", error);
+      toast.error("خطا در ایجاد لینک اشتراک‌گذاری");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (linkRef.current) {
+      linkRef.current.select();
+      document.execCommand("copy");
+      toast.success("لینک کپی شد");
+    }
+  };
+
+  if (!isOpen || !file) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">اشتراک‌گذاری فایل</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 mb-3">
+            فایل: <span className="font-bold">{file.name}</span>
+          </p>
+
+          {isLinkGenerated ? (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                لینک اشتراک‌گذاری
+              </label>
+              <div className="flex">
+                <input
+                  ref={linkRef}
+                  type="text"
+                  readOnly
+                  value={shareLink}
+                  className="flex-1 p-2 border border-gray-300 rounded-r-none rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  onClick={copyToClipboard}
+                  className="bg-gray-100 px-3 py-2 border border-gray-300 border-r-0 rounded-l-md hover:bg-gray-200"
+                  title="کپی کردن لینک"
+                >
+                  <ClipboardDocumentIcon className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  مدت زمان اعتبار
+                </label>
+                <select
+                  value={expiresIn}
+                  onChange={(e) => setExpiresIn(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="1h">۱ ساعت</option>
+                  <option value="1d">۱ روز</option>
+                  <option value="7d">۷ روز</option>
+                  <option value="30d">۳۰ روز</option>
+                  <option value="never">بدون محدودیت زمانی</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center">
+                  <input
+                    id="password-protection"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    checked={isPasswordProtected}
+                    onChange={(e) => setIsPasswordProtected(e.target.checked)}
+                  />
+                  <label
+                    htmlFor="password-protection"
+                    className="mr-2 block text-sm text-gray-700"
+                  >
+                    محافظت با رمز عبور
+                  </label>
+                </div>
+
+                {isPasswordProtected && (
+                  <div className="mt-2 relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="رمز عبور برای دسترسی به فایل"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 left-0 px-3 flex items-center"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            بستن
+          </button>
+
+          {!isLinkGenerated ? (
+            <button
+              onClick={generateLink}
+              disabled={(isPasswordProtected && !password.trim()) || isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+              {isLoading ? (
+                <>
+                  <ArrowPathIcon className="h-5 w-5 ml-1.5 animate-spin" />
+                  در حال ایجاد لینک...
+                </>
+              ) : (
+                <>
+                  <ShareIcon className="h-5 w-5 ml-1.5" />
+                  ایجاد لینک اشتراک‌گذاری
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setIsLinkGenerated(false);
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              ایجاد لینک جدید
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FileExplorerPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<ExplorerItem[]>([]);
@@ -442,6 +665,7 @@ export default function FileExplorerPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExplorerItem | null>(null);
   const [totalSize, setTotalSize] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1079,6 +1303,16 @@ export default function FileExplorerPage() {
                               <FolderArrowDownIcon className="h-5 w-5" />
                             </button>
                             <button
+                              onClick={() => {
+                                setSelectedItem(file);
+                                setShowShareModal(true);
+                              }}
+                              className="text-green-600 hover:text-green-900"
+                              title="اشتراک‌گذاری"
+                            >
+                              <ShareIcon className="h-5 w-5" />
+                            </button>
+                            <button
                               onClick={() => confirmDelete(file)}
                               className="text-red-600 hover:text-red-900"
                               title="حذف"
@@ -1126,6 +1360,13 @@ export default function FileExplorerPage() {
         onClose={() => setShowPasswordModal(false)}
         onConfirm={verifyFolderPassword}
         folderName={selectedItem?.name || ""}
+      />
+
+      {/* Share modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        file={selectedItem?.type === "file" ? (selectedItem as FileItem) : null}
       />
     </main>
   );
