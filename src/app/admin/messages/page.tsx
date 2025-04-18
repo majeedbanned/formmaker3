@@ -587,8 +587,174 @@ function StudentsPageContent() {
               toast.error("خطا در ارسال پیام");
             }
           }}
-          onAfterEdit={(entity) => {
+          onAfterEdit={async (entity) => {
             console.log("Entity updated:", entity);
+
+            try {
+              // Delete all associated messages from messagelist collection
+              const deleteResponse = await fetch(
+                "/api/messages/delete-by-mail-id",
+                {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ mailId: entity.recordId }),
+                }
+              );
+
+              if (deleteResponse.ok) {
+                const result = await deleteResponse.json();
+                console.log(
+                  `Deleted ${result.deletedCount} messages from messagelist`
+                );
+              } else {
+                console.error(
+                  "Failed to delete associated messages from messagelist"
+                );
+              }
+            } catch (error) {
+              console.error("Error deleting associated messages:", error);
+            }
+
+            ///
+            try {
+              // Get the current Persian date
+              const persianDate = getPersianDate();
+
+              // Create a base message object with common fields
+              const baseMessage = {
+                mailId: entity.recordId,
+
+                sendername: entity.sender,
+                sendercode: entity.senderCode,
+                title: entity.title,
+                persiandate: persianDate,
+                message: entity.message,
+                role: user?.role === "teacher" ? "teacher" : "student",
+
+                files: entity.attachments || [],
+              };
+
+              // Array to collect all recipient codes
+              let allRecipients = [];
+
+              // 1. Add direct student recipients
+              if (entity.recipients?.students?.length > 0) {
+                const studentRecipients = entity.recipients.students.map(
+                  (student: any) => ({
+                    ...baseMessage,
+                    receivercode: student.value,
+                  })
+                );
+                allRecipients = [...allRecipients, ...studentRecipients];
+              }
+
+              // 2. Add teacher recipients
+              if (entity.recipients?.teachers?.length > 0) {
+                const teacherRecipients = entity.recipients.teachers.map(
+                  (teacher: any) => ({
+                    ...baseMessage,
+                    receivercode: teacher.value,
+                  })
+                );
+                allRecipients = [...allRecipients, ...teacherRecipients];
+              }
+
+              // 3. Process group recipients - fetch student codes for each group
+              if (entity.recipients?.groups?.length > 0) {
+                // Call an API endpoint to get students in these groups
+                const groupCodes = entity.recipients.groups.map(
+                  (group: any) => group.value
+                );
+                const groupResponse = await fetch(
+                  "/api/messages/student-groups",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      groupCodes,
+                      schoolCode: entity.schoolCode,
+                    }),
+                  }
+                );
+
+                if (groupResponse.ok) {
+                  const { students } = await groupResponse.json();
+                  const groupStudentRecipients = students.map(
+                    (studentCode: string) => ({
+                      ...baseMessage,
+                      receivercode: studentCode,
+                    })
+                  );
+                  allRecipients = [...allRecipients, ...groupStudentRecipients];
+                }
+              }
+
+              // 4. Process class recipients - fetch student codes for each class
+              if (entity.recipients?.classCode?.length > 0) {
+                // Call an API endpoint to get students in these classes
+                const classCodes = entity.recipients.classCode.map(
+                  (classItem: any) => classItem.value
+                );
+                const classResponse = await fetch(
+                  "/api/messages/class-students",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      classCodes,
+                      schoolCode: entity.schoolCode,
+                    }),
+                  }
+                );
+
+                if (classResponse.ok) {
+                  const { students } = await classResponse.json();
+                  const classStudentRecipients = students.map(
+                    (studentCode: string) => ({
+                      ...baseMessage,
+                      receivercode: studentCode,
+                    })
+                  );
+                  allRecipients = [...allRecipients, ...classStudentRecipients];
+
+                  allRecipients = Array.from(
+                    new Map(
+                      allRecipients.map((item) => [item.receivercode, item])
+                    ).values()
+                  );
+
+                  console.log(
+                    `Removed duplicates. Final recipient count: ${allRecipients.length}`
+                  );
+                }
+              }
+
+              // 5. Insert all recipients to messagelist collection
+              if (allRecipients.length > 0) {
+                const insertResponse = await fetch(
+                  "/api/messages/insert-message-list",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ messages: allRecipients }),
+                  }
+                );
+
+                if (insertResponse.ok) {
+                  const result = await insertResponse.json();
+                  toast.success(
+                    `پیام با موفقیت برای ${result.count} گیرنده ارسال شد`
+                  );
+                } else {
+                  throw new Error("خطا در ارسال پیام");
+                }
+              } else {
+                toast.error("هیچ گیرنده‌ای برای پیام انتخاب نشده است");
+              }
+            } catch (error) {
+              console.error("Error processing message recipients:", error);
+              toast.error("خطا در ارسال پیام");
+            }
           }}
           onAfterDelete={async (id) => {
             console.log("Entity deleted:", id);
