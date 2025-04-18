@@ -13,6 +13,8 @@ import {
   FolderArrowDownIcon,
   XMarkIcon,
   PencilIcon,
+  EyeSlashIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -34,6 +36,7 @@ interface FolderItem {
   name: string;
   path: string;
   createdAt: string;
+  password?: string;
 }
 
 type ExplorerItem = FileItem | FolderItem;
@@ -47,10 +50,12 @@ function CreateFolderModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (name: string) => void;
+  onConfirm: (name: string, password?: string) => void;
   currentPath: string;
 }) {
   const [folderName, setFolderName] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -58,6 +63,8 @@ function CreateFolderModal({
       inputRef.current.focus();
     }
     setFolderName("");
+    setPassword("");
+    setShowPassword(false);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -114,6 +121,36 @@ function CreateFolderModal({
               </div>
             )}
           </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              رمز عبور پوشه (اختیاری)
+            </label>
+            <div className="relative">
+              <input
+                id="folderPassword"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="رمز عبور برای محدود کردن دسترسی به پوشه"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 left-0 px-3 flex items-center"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              در صورت تعیین رمز عبور، برای دسترسی به این پوشه باید رمز وارد شود
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3">
@@ -126,7 +163,7 @@ function CreateFolderModal({
           <button
             onClick={() => {
               if (folderName.trim()) {
-                onConfirm(folderName);
+                onConfirm(folderName, password || undefined);
                 onClose();
               }
             }}
@@ -288,6 +325,112 @@ function RenameModal({
   );
 }
 
+// Password modal component
+function PasswordModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  folderName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (password: string) => void;
+  folderName: string;
+}) {
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+      setPassword("");
+      setError("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-900">
+            ورود به پوشه محافظت شده
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-700 mb-3">
+            پوشه <span className="font-bold text-blue-600">{folderName}</span>{" "}
+            با رمز عبور محافظت شده است. لطفاً رمز عبور را وارد کنید.
+          </p>
+
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError("");
+              }}
+              className={`w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                error ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="رمز عبور پوشه را وارد کنید"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 left-0 px-3 flex items-center"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+              ) : (
+                <EyeIcon className="h-5 w-5 text-gray-400" />
+              )}
+            </button>
+          </div>
+
+          {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={() => {
+              if (!password.trim()) {
+                setError("لطفاً رمز عبور را وارد کنید");
+                return;
+              }
+              onConfirm(password);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            ورود
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FileExplorerPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<ExplorerItem[]>([]);
@@ -297,7 +440,9 @@ export default function FileExplorerPage() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExplorerItem | null>(null);
+  const [totalSize, setTotalSize] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -318,6 +463,16 @@ export default function FileExplorerPage() {
 
       const data = await response.json();
       setItems(data.items);
+
+      // Calculate total size of files
+      const files = data.items.filter(
+        (item: ExplorerItem) => item.type === "file"
+      ) as FileItem[];
+      const total = files.reduce(
+        (sum: number, file: FileItem) => sum + (file.size || 0),
+        0
+      );
+      setTotalSize(total);
     } catch (error) {
       console.error("Error fetching file explorer items:", error);
       toast.error("خطا در بارگیری فایل‌ها و پوشه‌ها");
@@ -327,7 +482,7 @@ export default function FileExplorerPage() {
   };
 
   // Create a new folder
-  const createFolder = async (folderName: string) => {
+  const createFolder = async (folderName: string, password?: string) => {
     if (!user?.schoolCode || !folderName.trim()) return;
 
     try {
@@ -337,6 +492,7 @@ export default function FileExplorerPage() {
         body: JSON.stringify({
           name: folderName.trim(),
           path: currentPath,
+          password: password,
         }),
       });
 
@@ -426,9 +582,39 @@ export default function FileExplorerPage() {
 
   // Handle folder navigation
   const navigateToFolder = (folder: FolderItem) => {
+    // Check if folder has a password
+    if (folder.password) {
+      setSelectedItem(folder);
+      setShowPasswordModal(true);
+      return;
+    }
+
+    // No password, proceed with navigation
+    enterFolder(folder);
+  };
+
+  // Enter a folder after password validation if needed
+  const enterFolder = (folder: FolderItem) => {
     setPathHistory([...pathHistory, currentPath]);
     const newPath = folder.path ? `${folder.path}/${folder.name}` : folder.name;
     setCurrentPath(newPath);
+  };
+
+  // Verify folder password
+  const verifyFolderPassword = (password: string) => {
+    if (!selectedItem || selectedItem.type !== "folder") return;
+
+    const folder = selectedItem as FolderItem;
+
+    // Simple comparison - password is stored as plain text
+    if (password === folder.password) {
+      // Password is correct, enter the folder
+      enterFolder(folder);
+      setShowPasswordModal(false);
+    } else {
+      // Wrong password, show error via the password modal's state
+      toast.error("رمز عبور اشتباه است");
+    }
   };
 
   // Handle navigation back
@@ -674,9 +860,12 @@ export default function FileExplorerPage() {
             <div className="text-gray-600">{renderBreadcrumbs()}</div>
           </div>
           <div className="flex items-center">
-            <div className="ml-2 text-xs text-gray-500 hidden sm:block">
-              <span title="راهنما">
+            <div className="ml-2 text-xs text-gray-500 hidden sm:block flex items-center">
+              <span title="راهنما" className="ml-3">
                 برای ورود به پوشه‌ها، روی نام پوشه کلیک کنید
+              </span>
+              <span className="mx-3 text-blue-600 font-semibold">
+                مجموع: {formatFileSize(totalSize)}
               </span>
             </div>
             <button
@@ -922,6 +1111,14 @@ export default function FileExplorerPage() {
         onClose={() => setShowRenameModal(false)}
         onConfirm={renameItem}
         item={selectedItem}
+      />
+
+      {/* Password modal */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onConfirm={verifyFolderPassword}
+        folderName={selectedItem?.name || ""}
       />
     </main>
   );

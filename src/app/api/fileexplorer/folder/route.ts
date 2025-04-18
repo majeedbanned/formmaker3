@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const folderCollection = connection.collection("Folder");
 
     // Get data from request body
-    const { name, path: rawPath } = await request.json();
+    const { name, path: rawPath, password } = await request.json();
     const path = normalizePath(rawPath || "");
 
     // Validate required fields
@@ -94,13 +94,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create new folder
+    // Create new folder with password if provided
     const folder = {
       name,
       path: path || "",
       schoolCode,
       username,
-      createdAt: new Date()
+      createdAt: new Date(),
+      password: password || undefined // Add password if provided
     };
 
     const result = await folderCollection.insertOne(folder);
