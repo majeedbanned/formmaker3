@@ -177,6 +177,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "فایل من",
+          url: "/admin/fileexplorer",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
