@@ -453,6 +453,7 @@ function StudentsPageContent() {
 
               // Create a base message object with common fields
               const baseMessage = {
+                mailId: entity.recordId,
                 sendername: entity.sender,
                 sendercode: entity.senderCode,
                 title: entity.title,

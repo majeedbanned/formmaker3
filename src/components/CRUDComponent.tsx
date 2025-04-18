@@ -168,13 +168,22 @@ export default function CRUDComponent({
       if (editingId) {
         if (!permissions.canEdit) return;
         entity = await updateEntity(editingId, data);
-        onAfterEdit?.(entity);
+
+        const updateddata = {
+          ...data,
+          recordId: editingId,
+        };
+        onAfterEdit?.(updateddata);
       } else {
         if (!permissions.canAdd) return;
         entity = await createEntity(data);
         console.log("entity", entity);
         console.log("data", data);
-        onAfterAdd?.(data);
+        const addeddata = {
+          ...data,
+          recordId: entity._id,
+        };
+        onAfterAdd?.(addeddata);
       }
       setIsModalOpen(false);
       setEditingId(null);
