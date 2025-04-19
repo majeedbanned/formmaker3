@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, ChatMessage, Chatroom } from "../types";
+import { User, ChatMessage, Chatroom, FileAttachment } from "../types";
 import { getSocket } from "../lib/socket";
+import { uploadFile } from "../services/api";
+import { toast } from "sonner";
+import {
+  PaperClipIcon,
+  ArrowDownTrayIcon,
+  DocumentIcon,
+  PhotoIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 interface ChatWindowProps {
   user: User;
@@ -17,9 +26,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileAttachment, setFileAttachment] = useState<FileAttachment | null>(
+    null
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -47,10 +61,66 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     )}`;
   };
 
+  const handleFileInputChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+
+    // Check file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حداکثر حجم فایل 10 مگابایت است");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      toast.info(`در حال آپلود فایل: ${file.name}`);
+      console.log("Uploading file:", file.name, file.type, file.size);
+
+      const { fileAttachment } = await uploadFile(file);
+      console.log("File uploaded successfully:", fileAttachment);
+      setFileAttachment(fileAttachment);
+      toast.success("فایل با موفقیت آپلود شد");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error(
+        `خطا در آپلود فایل: ${
+          error instanceof Error ? error.message : "خطای ناشناخته"
+        }`
+      );
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleOpenFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearFileAttachment = () => {
+    setFileAttachment(null);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    else return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!messageInput.trim() || !selectedChatroom || isSending) return;
+    if (
+      (!messageInput.trim() && !fileAttachment) ||
+      !selectedChatroom ||
+      isSending
+    )
+      return;
 
     setIsSending(true);
 
@@ -58,25 +128,38 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!socket) {
       console.error("Socket not connected");
       setIsSending(false);
+      toast.error("خطا در اتصال به سرور گفتگو");
       return;
     }
 
+    // Prepare message data
+    const messageData = {
+      chatroomId: selectedChatroom._id,
+      content: messageInput.trim(),
+      fileAttachment,
+    };
+
+    console.log("Sending message:", JSON.stringify(messageData, null, 2));
+
     socket.emit(
       "send-message",
-      {
-        chatroomId: selectedChatroom._id,
-        content: messageInput.trim(),
-      },
-      (response: { success: boolean; error?: string }) => {
+      messageData,
+      (response: {
+        success: boolean;
+        error?: string;
+        message?: ChatMessage;
+      }) => {
         setIsSending(false);
 
         if (response.success) {
+          console.log("Message sent successfully:", response.message);
           setMessageInput("");
+          setFileAttachment(null);
           // Focus input after sending
           inputRef.current?.focus();
         } else {
           console.error("Error sending message:", response.error);
-          // You might want to show an error notification here
+          toast.error(response.error || "خطا در ارسال پیام");
         }
       }
     );
@@ -84,6 +167,51 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const isMyMessage = (senderId: string) => {
     return senderId === user.id;
+  };
+
+  const renderFileAttachment = (file: FileAttachment) => {
+    if (file.isImage) {
+      return (
+        <div className="mt-2 relative">
+          <div className="relative rounded-lg overflow-hidden border border-gray-200">
+            <img
+              src={`${process.env.NEXT_PUBLIC_CHAT_SERVER_URL}${file.url}`}
+              alt={file.originalName}
+              className="max-w-full max-h-48 object-contain"
+            />
+          </div>
+          <div className="mt-1 text-xs text-gray-500 flex justify-between">
+            <span>{file.originalName}</span>
+            <span>{formatFileSize(file.size)}</span>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <div className="flex items-center">
+            <DocumentIcon className="h-8 w-8 text-blue-500 mr-2" />
+            <div className="flex-1 overflow-hidden">
+              <div className="text-sm font-medium truncate">
+                {file.originalName}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formatFileSize(file.size)}
+              </div>
+            </div>
+            <a
+              href={`${process.env.NEXT_PUBLIC_CHAT_SERVER_URL}${file.url}`}
+              download={file.originalName}
+              className="ml-2 p-1 text-blue-500 hover:text-blue-700"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+            </a>
+          </div>
+        </div>
+      );
+    }
   };
 
   if (!selectedChatroom) {
@@ -185,6 +313,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <div className="text-right whitespace-pre-wrap">
                     {message.content}
                   </div>
+
+                  {/* File attachment */}
+                  {message.fileAttachment &&
+                    renderFileAttachment(message.fileAttachment)}
+
                   <div
                     className={`text-xs mt-1 flex ${
                       isMyMessage(message.sender.id)
@@ -202,50 +335,107 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
       </div>
 
+      {/* File attachment preview */}
+      {fileAttachment && (
+        <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse rtl">
+              {fileAttachment.isImage ? (
+                <PhotoIcon className="h-5 w-5 text-blue-500" />
+              ) : (
+                <DocumentIcon className="h-5 w-5 text-blue-500" />
+              )}
+              <div
+                className="text-sm text-gray-900 truncate max-w-[240px]"
+                dir="rtl"
+              >
+                {fileAttachment.originalName}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formatFileSize(fileAttachment.size)}
+              </div>
+            </div>
+            <button
+              onClick={clearFileAttachment}
+              className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+              aria-label="حذف فایل"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Message input */}
       <div className="border-t border-gray-200 p-4 bg-white">
-        <form onSubmit={handleSendMessage} className="flex">
-          <button
-            type="submit"
-            className={`px-4 py-2 bg-blue-500 text-white rounded-l-md flex items-center justify-center min-w-[80px] ${
-              isSending || !messageInput.trim()
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-blue-600"
-            }`}
-            disabled={isSending || !messageInput.trim()}
-          >
-            {isSending ? (
-              <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-            ) : (
-              <span className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 ml-1 transform rotate-180"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-                ارسال
-              </span>
-            )}
-          </button>
-          <input
-            type="text"
-            ref={inputRef}
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            placeholder="پیام خود را بنویسید..."
-            className="flex-1 p-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-            disabled={isSending}
-            dir="rtl"
-          />
+        <form onSubmit={handleSendMessage} className="flex flex-col">
+          <div className="flex">
+            <button
+              type="submit"
+              className={`px-4 py-2 bg-blue-500 text-white rounded-l-md flex items-center justify-center min-w-[80px] ${
+                isSending || (!messageInput.trim() && !fileAttachment)
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-blue-600"
+              }`}
+              disabled={isSending || (!messageInput.trim() && !fileAttachment)}
+            >
+              {isSending ? (
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              ) : (
+                <span className="flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 ml-1 transform rotate-180"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
+                  </svg>
+                  ارسال
+                </span>
+              )}
+            </button>
+            <input
+              type="text"
+              ref={inputRef}
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="پیام خود را بنویسید..."
+              className="flex-1 p-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+              disabled={isSending}
+              dir="rtl"
+            />
+            <button
+              type="button"
+              onClick={handleOpenFileDialog}
+              className={`p-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md text-gray-600 hover:bg-gray-200 ${
+                isUploading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-gray-500 border-t-transparent"></div>
+              ) : (
+                <PaperClipIcon className="h-5 w-5" />
+              )}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              className="hidden"
+              accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+            />
+          </div>
+          <div className="text-xs text-gray-500 mt-1 text-right">
+            حداکثر حجم فایل: 10 مگابایت
+          </div>
         </form>
       </div>
     </div>

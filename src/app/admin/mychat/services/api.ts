@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { Chatroom, ChatMessage } from '../types';
+import { Chatroom, ChatMessage, FileAttachment } from '../types';
 
 // Chat server URL
 const CHAT_SERVER_URL = process.env.NEXT_PUBLIC_CHAT_SERVER_URL || 'http://localhost:3001';
 
-// Create axios instance
+// Create Axios instance for chat API
 const chatApi = axios.create({
   baseURL: CHAT_SERVER_URL,
   headers: {
@@ -12,52 +12,70 @@ const chatApi = axios.create({
   },
 });
 
+// Global auth token
+let authToken: string | null = null;
+
 /**
- * Set auth token for API requests
+ * Set the auth token for API requests
  * @param token JWT token
  */
-export const setAuthToken = (token: string): void => {
+export function setAuthToken(token: string): void {
+  authToken = token;
   chatApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-};
+}
 
 /**
- * Fetch all chatrooms for the current user
- * @param domain Domain name for database connection
- * @returns Promise with chatrooms array
+ * Get the current auth token
+ * @returns Current auth token
  */
-export const fetchChatrooms = async (domain: string = 'localhost:3000'): Promise<Chatroom[]> => {
-  try {
-    const response = await chatApi.get('/api/chatrooms', {
-      headers: {
-        'x-domain': domain,
-      },
-    });
-    return response.data.chatrooms;
-  } catch (error) {
-    console.error('Error fetching chatrooms:', error);
-    return [];
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
+/**
+ * Upload a file to the server
+ * @param file File to upload
+ * @returns Response containing file attachment data
+ */
+export async function uploadFile(file: File): Promise<{ fileAttachment: FileAttachment }> {
+  if (!authToken) {
+    throw new Error('Authentication required');
   }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${CHAT_SERVER_URL}/api/upload`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${authToken}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to upload file');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get chatrooms for the current user
+ * @returns List of chatrooms
+ */
+export const getChatrooms = async (): Promise<Chatroom[]> => {
+  const response = await chatApi.get('/api/chatrooms');
+  return response.data.chatrooms;
 };
 
 /**
- * Fetch messages for a specific chatroom
+ * Get messages for a specific chatroom
  * @param chatroomId Chatroom ID
- * @param domain Domain name for database connection
- * @returns Promise with messages array
+ * @returns List of messages
  */
-export const fetchMessages = async (
-  chatroomId: string,
-  domain: string = 'localhost:3000'
-): Promise<ChatMessage[]> => {
-  try {
-    const response = await chatApi.get(`/api/messages/${chatroomId}`, {
-      headers: {
-        'x-domain': domain,
-      },
-    });
-    return response.data.messages;
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    return [];
-  }
+export const getMessages = async (chatroomId: string): Promise<ChatMessage[]> => {
+  const response = await chatApi.get(`/api/messages/${chatroomId}`);
+  return response.data.messages;
 }; 

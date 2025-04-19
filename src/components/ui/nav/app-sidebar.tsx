@@ -201,6 +201,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: " چت",
+          url: "/admin/mychat",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

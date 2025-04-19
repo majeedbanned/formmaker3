@@ -26,6 +26,16 @@ export interface Chatroom {
   updatedAt?: string;
 }
 
+export interface FileAttachment {
+  filename: string;
+  originalName: string;
+  path: string;
+  size: number;
+  type: string;
+  url: string;
+  isImage: boolean;
+}
+
 export interface ChatMessage {
   _id: string;
   chatroomId: string;
@@ -41,4 +51,5 @@ export interface ChatMessage {
   read: boolean;
   createdAt?: string;
   updatedAt?: string;
+  fileAttachment?: FileAttachment;
 } 
