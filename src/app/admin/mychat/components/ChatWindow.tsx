@@ -13,6 +13,8 @@ import {
   FaceSmileIcon,
   TrashIcon,
   EllipsisHorizontalIcon,
+  PencilIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 
 interface ChatWindowProps {
@@ -47,6 +49,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [messageMenuOpen, setMessageMenuOpen] = useState<string | null>(null);
   const [isDeletingMessage, setIsDeletingMessage] = useState(false);
   const messageMenuRef = useRef<HTMLDivElement>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState("");
+  const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -93,6 +99,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Focus on the edit textarea when entering edit mode
+  useEffect(() => {
+    if (editingMessageId && editInputRef.current) {
+      editInputRef.current.focus();
+      // Place cursor at end of text
+      const textLength = editInputRef.current.value.length;
+      editInputRef.current.setSelectionRange(textLength, textLength);
+    }
+  }, [editingMessageId]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -317,6 +333,63 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const startEditingMessage = (message: ChatMessage) => {
+    setEditingMessageId(message._id);
+    setEditedContent(message.content);
+    setMessageMenuOpen(null);
+  };
+
+  const cancelEditingMessage = () => {
+    setEditingMessageId(null);
+    setEditedContent("");
+  };
+
+  const handleEditMessage = async () => {
+    if (
+      !selectedChatroom ||
+      !editingMessageId ||
+      isEditingMessage ||
+      !editedContent.trim()
+    ) {
+      return;
+    }
+
+    setIsEditingMessage(true);
+
+    const socket = getSocket();
+    if (!socket) {
+      console.error("Socket not connected");
+      setIsEditingMessage(false);
+      toast.error("خطا در اتصال به سرور گفتگو");
+      return;
+    }
+
+    socket.emit(
+      "edit-message",
+      {
+        messageId: editingMessageId,
+        chatroomId: selectedChatroom._id,
+        newContent: editedContent.trim(),
+      },
+      (response: {
+        success: boolean;
+        error?: string;
+        updatedMessage?: ChatMessage;
+      }) => {
+        setIsEditingMessage(false);
+
+        if (response.success) {
+          toast.success("پیام با موفقیت ویرایش شد");
+          setEditingMessageId(null);
+          setEditedContent("");
+        } else {
+          console.error("Error editing message:", response.error);
+          toast.error(response.error || "خطا در ویرایش پیام");
+        }
+      }
+    );
+  };
+
   if (!selectedChatroom) {
     return (
       <div className="h-full flex items-center justify-center bg-white rounded-lg shadow-md">
@@ -414,9 +487,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         {message.sender.name}
                       </div>
                     )}
-                    <div className="text-right whitespace-pre-wrap">
-                      {message.content}
-                    </div>
+
+                    {editingMessageId === message._id ? (
+                      // Editing mode
+                      <div className="flex flex-col">
+                        <textarea
+                          ref={editInputRef}
+                          value={editedContent}
+                          onChange={(e) => setEditedContent(e.target.value)}
+                          className="w-full p-2 mb-2 rounded text-gray-800 bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-right"
+                          dir="rtl"
+                          rows={3}
+                        />
+                        <div className="flex justify-between">
+                          <button
+                            onClick={cancelEditingMessage}
+                            className="px-2 py-1 bg-gray-200 text-gray-800 rounded"
+                            disabled={isEditingMessage}
+                          >
+                            انصراف
+                          </button>
+                          <button
+                            onClick={handleEditMessage}
+                            className={`px-2 py-1 bg-blue-600 text-white rounded flex items-center ${
+                              isEditingMessage || !editedContent.trim()
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:bg-blue-700"
+                            }`}
+                            disabled={isEditingMessage || !editedContent.trim()}
+                          >
+                            {isEditingMessage ? (
+                              <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent ml-1"></div>
+                            ) : (
+                              <CheckIcon className="h-4 w-4 ml-1" />
+                            )}
+                            ذخیره
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Normal display mode
+                      <div className="text-right whitespace-pre-wrap">
+                        {message.content}
+                      </div>
+                    )}
 
                     {/* File attachment */}
                     {message.fileAttachment &&
@@ -429,10 +543,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           : "text-gray-500 justify-between"
                       }`}
                     >
-                      <span>{formatTimestamp(message.timestamp)}</span>
+                      <div className="flex items-center">
+                        <span>{formatTimestamp(message.timestamp)}</span>
+                        {message.edited && (
+                          <span className="ml-1">(ویرایش شده)</span>
+                        )}
+                      </div>
 
-                      {/* Delete message button (only for own messages) */}
-                      {isMyMessage && (
+                      {/* Message actions (only for own messages) */}
+                      {isMyMessage && !editingMessageId && (
                         <div className="relative">
                           <button
                             onClick={() => toggleMessageMenu(message._id)}
@@ -450,6 +569,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                               ref={messageMenuRef}
                               className="absolute bottom-6 left-0 bg-white shadow-lg rounded-md py-1 text-gray-800 min-w-[120px] z-20"
                             >
+                              <button
+                                onClick={() => startEditingMessage(message)}
+                                className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-blue-600"
+                              >
+                                <PencilIcon className="h-4 w-4 ml-2" />
+                                <span>ویرایش پیام</span>
+                              </button>
                               <button
                                 onClick={() => handleDeleteMessage(message._id)}
                                 disabled={isDeletingMessage}

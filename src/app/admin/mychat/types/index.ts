@@ -52,4 +52,6 @@ export interface ChatMessage {
   createdAt?: string;
   updatedAt?: string;
   fileAttachment?: FileAttachment;
+  edited?: boolean;
+  editedAt?: string;
 } 

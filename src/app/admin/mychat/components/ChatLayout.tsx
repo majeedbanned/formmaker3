@@ -91,12 +91,35 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
       }
     };
 
+    const handleMessageEdited = (data: {
+      messageId: string;
+      newContent: string;
+      editedAt: string;
+    }) => {
+      if (selectedChatroomId) {
+        setMessages((prevMessages) =>
+          prevMessages.map((message) =>
+            message._id === data.messageId
+              ? {
+                  ...message,
+                  content: data.newContent,
+                  edited: true,
+                  editedAt: data.editedAt,
+                }
+              : message
+          )
+        );
+      }
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("message-deleted", handleMessageDeleted);
+    socket.on("message-edited", handleMessageEdited);
 
     return () => {
       socket.off("new-message", handleNewMessage);
       socket.off("message-deleted", handleMessageDeleted);
+      socket.off("message-edited", handleMessageEdited);
     };
   }, [selectedChatroomId]);
 
