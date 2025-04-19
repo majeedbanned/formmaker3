@@ -83,10 +83,20 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
       }
     };
 
+    const handleMessageDeleted = (data: { messageId: string }) => {
+      if (selectedChatroomId) {
+        setMessages((prevMessages) =>
+          prevMessages.filter((message) => message._id !== data.messageId)
+        );
+      }
+    };
+
     socket.on("new-message", handleNewMessage);
+    socket.on("message-deleted", handleMessageDeleted);
 
     return () => {
       socket.off("new-message", handleNewMessage);
+      socket.off("message-deleted", handleMessageDeleted);
     };
   }, [selectedChatroomId]);
 

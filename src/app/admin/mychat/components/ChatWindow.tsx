@@ -11,6 +11,8 @@ import {
   PhotoIcon,
   XMarkIcon,
   FaceSmileIcon,
+  TrashIcon,
+  EllipsisHorizontalIcon,
 } from "@heroicons/react/24/outline";
 
 interface ChatWindowProps {
@@ -42,6 +44,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const [messageMenuOpen, setMessageMenuOpen] = useState<string | null>(null);
+  const [isDeletingMessage, setIsDeletingMessage] = useState(false);
+  const messageMenuRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -63,6 +68,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         !emojiPickerRef.current.contains(event.target as Node)
       ) {
         setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Close message menu when clicked outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        messageMenuRef.current &&
+        !messageMenuRef.current.contains(event.target as Node)
+      ) {
+        setMessageMenuOpen(null);
       }
     };
 
@@ -196,10 +218,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   };
 
-  const isMyMessage = (senderId: string) => {
-    return senderId === user.id;
-  };
-
   const openImagePreview = (imageUrl: string, alt: string) => {
     setPreviewImage({ url: imageUrl, alt });
   };
@@ -255,6 +273,47 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       );
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedChatroom || isDeletingMessage) return;
+
+    setIsDeletingMessage(true);
+    setMessageMenuOpen(null);
+
+    const socket = getSocket();
+    if (!socket) {
+      console.error("Socket not connected");
+      setIsDeletingMessage(false);
+      toast.error("خطا در اتصال به سرور گفتگو");
+      return;
+    }
+
+    socket.emit(
+      "delete-message",
+      {
+        messageId,
+        chatroomId: selectedChatroom._id,
+      },
+      (response: { success: boolean; error?: string }) => {
+        setIsDeletingMessage(false);
+
+        if (response.success) {
+          toast.success("پیام با موفقیت حذف شد");
+        } else {
+          console.error("Error deleting message:", response.error);
+          toast.error(response.error || "خطا در حذف پیام");
+        }
+      }
+    );
+  };
+
+  const toggleMessageMenu = (messageId: string) => {
+    if (messageMenuOpen === messageId) {
+      setMessageMenuOpen(null);
+    } else {
+      setMessageMenuOpen(messageId);
     }
   };
 
@@ -333,47 +392,81 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message._id}
-                className={`flex ${
-                  isMyMessage(message.sender.id)
-                    ? "justify-start"
-                    : "justify-end"
-                }`}
-              >
+            {messages.map((message) => {
+              const isMyMessage = message.sender.id === user.id;
+
+              return (
                 <div
-                  className={`max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 shadow-sm ${
-                    isMyMessage(message.sender.id)
-                      ? "bg-blue-500 text-white rounded-tl-none"
-                      : "bg-white text-gray-800 rounded-tr-none border border-gray-200"
+                  key={message._id}
+                  className={`flex ${
+                    isMyMessage ? "justify-start" : "justify-end"
                   }`}
                 >
-                  {!isMyMessage(message.sender.id) && (
-                    <div className="font-medium text-sm mb-1 text-left text-blue-600">
-                      {message.sender.name}
-                    </div>
-                  )}
-                  <div className="text-right whitespace-pre-wrap">
-                    {message.content}
-                  </div>
-
-                  {/* File attachment */}
-                  {message.fileAttachment &&
-                    renderFileAttachment(message.fileAttachment)}
-
                   <div
-                    className={`text-xs mt-1 flex ${
-                      isMyMessage(message.sender.id)
-                        ? "text-blue-100 justify-end"
-                        : "text-gray-500 justify-start"
+                    className={`relative max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 shadow-sm ${
+                      isMyMessage
+                        ? "bg-blue-500 text-white rounded-tl-none"
+                        : "bg-white text-gray-800 rounded-tr-none border border-gray-200"
                     }`}
                   >
-                    {formatTimestamp(message.timestamp)}
+                    {!isMyMessage && (
+                      <div className="font-medium text-sm mb-1 text-left text-blue-600">
+                        {message.sender.name}
+                      </div>
+                    )}
+                    <div className="text-right whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+
+                    {/* File attachment */}
+                    {message.fileAttachment &&
+                      renderFileAttachment(message.fileAttachment)}
+
+                    <div
+                      className={`text-xs mt-1 flex items-center ${
+                        isMyMessage
+                          ? "text-blue-100 justify-between"
+                          : "text-gray-500 justify-between"
+                      }`}
+                    >
+                      <span>{formatTimestamp(message.timestamp)}</span>
+
+                      {/* Delete message button (only for own messages) */}
+                      {isMyMessage && (
+                        <div className="relative">
+                          <button
+                            onClick={() => toggleMessageMenu(message._id)}
+                            className={`ml-1 p-1 rounded-full hover:bg-blue-400 transition-colors ${
+                              messageMenuOpen === message._id
+                                ? "bg-blue-400"
+                                : ""
+                            }`}
+                          >
+                            <EllipsisHorizontalIcon className="h-4 w-4" />
+                          </button>
+
+                          {messageMenuOpen === message._id && (
+                            <div
+                              ref={messageMenuRef}
+                              className="absolute bottom-6 left-0 bg-white shadow-lg rounded-md py-1 text-gray-800 min-w-[120px] z-20"
+                            >
+                              <button
+                                onClick={() => handleDeleteMessage(message._id)}
+                                disabled={isDeletingMessage}
+                                className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-red-600"
+                              >
+                                <TrashIcon className="h-4 w-4 ml-2" />
+                                <span>حذف پیام</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
