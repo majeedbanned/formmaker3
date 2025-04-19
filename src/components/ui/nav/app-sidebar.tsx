@@ -195,6 +195,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "گفتگوی آنلاین",
+          url: "/admin/chatrooms",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
