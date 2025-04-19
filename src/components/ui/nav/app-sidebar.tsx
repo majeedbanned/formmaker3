@@ -189,6 +189,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "کلاس های من",
+          url: "/admin/myclass",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
