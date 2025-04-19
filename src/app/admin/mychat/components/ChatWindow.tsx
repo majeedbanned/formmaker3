@@ -70,7 +70,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const isMyMessage = (senderId: string) => {
-    return senderId === user.username;
+    return senderId === user.id;
   };
 
   if (!selectedChatroom) {
@@ -113,19 +113,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div
                 key={message._id}
                 className={`flex ${
-                  isMyMessage(message.sender.username)
+                  isMyMessage(message.sender.id)
                     ? "justify-end"
                     : "justify-start"
                 }`}
               >
                 <div
                   className={`max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 ${
-                    isMyMessage(message.sender.username)
+                    isMyMessage(message.sender.id)
                       ? "bg-blue-500 text-white rounded-tr-none"
                       : "bg-gray-200 text-gray-800 rounded-tl-none"
                   }`}
                 >
-                  {!isMyMessage(message.sender.username) && (
+                  {!isMyMessage(message.sender.id) && (
                     <div className="font-medium text-sm mb-1 rtl:text-right">
                       {message.sender.name}
                     </div>
@@ -135,7 +135,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   </div>
                   <div
                     className={`text-xs mt-1 ${
-                      isMyMessage(message.sender.username)
+                      isMyMessage(message.sender.id)
                         ? "text-blue-100 text-left"
                         : "text-gray-500 text-right"
                     }`}

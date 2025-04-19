@@ -44,6 +44,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
         const data = await response.json();
         const token = data.token;
 
+        // console.log("token", token);
+
         if (!token) {
           toast.error("توکن احراز هویت یافت نشد");
           return;
