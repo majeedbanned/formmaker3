@@ -44,6 +44,16 @@ export interface Reaction {
   }[];
 }
 
+export interface ReferencedMessage {
+  id: string;
+  content: string;
+  sender: {
+    id: string;
+    name: string;
+  };
+  hasAttachment: boolean;
+}
+
 export interface ChatMessage {
   _id: string;
   chatroomId: string;
@@ -63,4 +73,5 @@ export interface ChatMessage {
   edited?: boolean;
   editedAt?: string;
   reactions?: Record<string, Reaction>;
+  replyTo?: ReferencedMessage;
 } 

@@ -5,6 +5,7 @@ import {
   Chatroom,
   FileAttachment,
   Reaction,
+  ReferencedMessage,
 } from "../types";
 import { getSocket } from "../lib/socket";
 import { uploadFile } from "../services/api";
@@ -22,6 +23,9 @@ import {
   PencilIcon,
   CheckIcon,
   FaceSmileIcon as FaceSmileOutline,
+  ArrowUturnLeftIcon,
+  XCircleIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 
 // Array of popular emoji for quick reactions
@@ -67,6 +71,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     string | null
   >(null);
   const reactionPickerRef = useRef<HTMLDivElement>(null);
+  const [replyingTo, setReplyingTo] = useState<ReferencedMessage | null>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -140,6 +145,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Focus input when starting to reply
+  useEffect(() => {
+    if (replyingTo && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [replyingTo]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -237,6 +249,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       chatroomId: selectedChatroom._id,
       content: messageInput.trim(),
       fileAttachment,
+      replyTo: replyingTo,
     };
 
     console.log("Sending message:", JSON.stringify(messageData, null, 2));
@@ -255,6 +268,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           console.log("Message sent successfully:", response.message);
           setMessageInput("");
           setFileAttachment(null);
+          setReplyingTo(null); // Clear reply state after sending
           // Focus input after sending
           inputRef.current?.focus();
         } else {
@@ -534,6 +548,54 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   };
 
+  const startReplyingToMessage = (message: ChatMessage) => {
+    setReplyingTo({
+      id: message._id,
+      content: message.content,
+      sender: {
+        id: message.sender.id,
+        name: message.sender.name,
+      },
+      hasAttachment: !!message.fileAttachment,
+    });
+    setMessageMenuOpen(null);
+    inputRef.current?.focus();
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  // Function to render a reply reference
+  const renderReplyReference = (replyTo: ReferencedMessage) => {
+    // Find the original message if it exists in our messages array
+    const originalMessage = messages.find((m) => m._id === replyTo.id);
+
+    // Use either the live message content or the saved reply content
+    const content = originalMessage ? originalMessage.content : replyTo.content;
+    const isDeleted = !originalMessage && replyTo.id;
+
+    return (
+      <div className="border-r-2 border-blue-400 pr-2 mb-2 text-xs">
+        <div className="text-blue-600 font-medium mb-1">
+          {isDeleted ? "پیام حذف شده" : `پاسخ به ${replyTo.sender.name}`}
+        </div>
+        <div className="text-gray-600 truncate">
+          {isDeleted
+            ? "این پیام دیگر در دسترس نیست"
+            : content.length > 50
+            ? content.substring(0, 50) + "..."
+            : content}
+          {replyTo.hasAttachment && (
+            <span className="ml-1 text-gray-500">
+              <PaperClipIcon className="inline-block h-3 w-3" /> فایل پیوست
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!selectedChatroom) {
     return (
       <div className="h-full flex items-center justify-center bg-white rounded-lg shadow-md">
@@ -651,6 +713,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
+                    {/* Show reply reference if this message is a reply */}
+                    {message.replyTo && (
+                      <div className={isMyMessage ? "text-blue-100" : ""}>
+                        {renderReplyReference(message.replyTo)}
+                      </div>
+                    )}
+
                     {editingMessageId === message._id ? (
                       // Editing mode
                       <div className="flex flex-col">
@@ -719,6 +788,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       {/* Message actions */}
                       {!editingMessageId && (
                         <div className="flex">
+                          {/* Reply button */}
+                          <button
+                            onClick={() => startReplyingToMessage(message)}
+                            className={`ml-1 p-1 rounded-full ${
+                              isMyMessage
+                                ? "hover:bg-blue-400 transition-colors"
+                                : "hover:bg-gray-200 transition-colors text-gray-600"
+                            }`}
+                          >
+                            <ChatBubbleOvalLeftEllipsisIcon className="h-4 w-4" />
+                          </button>
+
                           {/* Reaction button */}
                           <div className="relative">
                             <button
@@ -827,6 +908,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
       </div>
 
+      {/* Reply preview */}
+      {replyingTo && (
+        <div className="border-t border-gray-200 p-2 bg-blue-50 flex justify-between items-center">
+          <div className="flex items-center overflow-hidden">
+            <ArrowUturnLeftIcon className="h-5 w-5 text-blue-500 ml-2 shrink-0" />
+            <div className="overflow-hidden">
+              <div className="text-sm font-medium text-blue-700">
+                پاسخ به {replyingTo.sender.name}
+              </div>
+              <div className="text-xs text-gray-600 truncate">
+                {replyingTo.content.length > 60
+                  ? replyingTo.content.substring(0, 60) + "..."
+                  : replyingTo.content}
+                {replyingTo.hasAttachment && (
+                  <span className="ml-1 text-gray-500">
+                    <PaperClipIcon className="inline-block h-3 w-3" /> فایل
+                    پیوست
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={cancelReply}
+            className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+          >
+            <XCircleIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       {/* File attachment preview */}
       {fileAttachment && (
         <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
@@ -898,7 +1010,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               ref={inputRef}
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="پیام خود را بنویسید..."
+              placeholder={
+                replyingTo ? "پاسخ خود را بنویسید..." : "پیام خود را بنویسید..."
+              }
               className="flex-1 p-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
               disabled={isSending}
               dir="rtl"
