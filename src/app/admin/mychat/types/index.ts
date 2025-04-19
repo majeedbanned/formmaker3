@@ -16,10 +16,12 @@ export interface ChatroomRecipient {
 
 export interface Chatroom {
   _id: string;
+  data: {
   chatroomCode: string;
   chatroomName: string;
   schoolCode: string;
   recipients?: ChatroomRecipient;
+  }
   createdAt?: string;
   updatedAt?: string;
 }

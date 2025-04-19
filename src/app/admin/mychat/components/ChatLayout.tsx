@@ -44,8 +44,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
         const data = await response.json();
         const token = data.token;
 
-        // console.log("token", token);
-
         if (!token) {
           toast.error("توکن احراز هویت یافت نشد");
           return;
@@ -153,9 +151,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 h-[calc(100vh-150px)]">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 h-[calc(100vh-150px)] rtl overflow-hidden">
       {/* Chatroom list (right column) */}
-      <div className="md:col-span-1 order-2 md:order-1 h-full">
+      <div className="md:col-span-1 h-full overflow-hidden flex flex-col">
         <ChatroomList
           chatrooms={chatrooms}
           selectedChatroomId={selectedChatroomId}
@@ -165,7 +163,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
       </div>
 
       {/* Chat window (left column) */}
-      <div className="md:col-span-2 order-1 md:order-2 h-full">
+      <div className="md:col-span-2 h-full overflow-hidden flex flex-col">
         <ChatWindow
           user={user}
           selectedChatroom={selectedChatroom}
