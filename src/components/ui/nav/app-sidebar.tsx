@@ -183,6 +183,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "کلاس های آنلاین",
+          url: "/admin/onlineclasses",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

@@ -1107,12 +1107,13 @@ const FormField = ({
           plugins={[
             // Add TimePicker plugin if timePicker is enabled in the field config
             ...(field.datepickerStyle?.timePicker
-              ? [<TimePicker position="bottom" />]
+              ? [<TimePicker hideSeconds position="bottom" />]
               : []),
             // Add any additional plugins from the field configuration
             ...(field.datepickerStyle?.plugins || []),
           ]}
           // Add other DatePicker props from the configuration
+
           onlyMonthPicker={field.datepickerStyle?.onlyMonthPicker}
           onlyYearPicker={field.datepickerStyle?.onlyYearPicker}
           minDate={field.datepickerStyle?.minDate}
