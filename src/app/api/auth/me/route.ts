@@ -20,6 +20,8 @@ interface User {
   username: string;
   name: string;
   role: string;
+  
+  domain: string;
   permissions: Permission[];
   maghta?: string;
   grade?: string;
@@ -31,6 +33,7 @@ interface AuthPayload extends JWTPayload {
   schoolCode: string;
   username: string;
   name: string;
+  domain: string;
   role: string;
   permissions: Permission[];
   maghta?: string;
@@ -44,6 +47,8 @@ interface School {
 
 export async function GET() {
   try {
+
+    console.log('YYY')
     console.log("GET /api/auth/me request received");
     const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
@@ -67,6 +72,7 @@ export async function GET() {
     
     const user: User = {
       id: payload.userId,
+      domain: payload.domain,
       userType: payload.userType,
       schoolCode: payload.schoolCode,
       username: payload.username,

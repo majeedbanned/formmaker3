@@ -10,7 +10,7 @@ export async function authenticateUser(
   password: string
 ) {
   logger.info(`Authentication attempt for domain: ${domain}`, { userType, schoolCode, username });
-
+  // console.log("xxx", domain);
   try {
     // Connect to the domain-specific database
     const connection = await connectToDatabase(domain);
@@ -25,7 +25,7 @@ export async function authenticateUser(
     // Build query based on user type
     let query: Record<string, string> = {};
     if (userType === "school") {
-      query = { 'data.schoolCode': schoolCode };
+      query = { 'data.schoolCode': schoolCode ,'data.username':username};
     } else if (userType === "teacher") {
       query = {
         'data.schoolCode': schoolCode,
@@ -42,6 +42,8 @@ export async function authenticateUser(
     
     // Find the matching user using the query
     const user = await collection.findOne(query);
+
+    // console.log("user", user);
 
     if (!user) {
       logger.warn('No user found with provided credentials', { domain, userType, schoolCode });
@@ -66,9 +68,12 @@ export async function authenticateUser(
       throw new Error("اطلاعات وارد شده اشتباه است");
     }
 
+    //console.log("user._id", user._id);
+    //console.log("user._id.toString()", user._id.toString());
     // Generate token with user info
     const token = await signJWT({
-      userId: user._id,
+      userId: user._id.toString(),
+      domain:domain,
       userType,
       schoolCode,
       username,
@@ -86,11 +91,13 @@ export async function authenticateUser(
     return { 
       token, 
       user: {
-        id: user._id,
+        id: user._id.toString(),
         userType,
+        domain:domain,
         schoolCode,
         username,
-        name: "salam",//userData.name,
+        name:userType === "student" ? userData.studentName+ ' ' + userData.studentFamily : userType==="teacher" ? userData.teacherName : userType==="school" ? userData.schoolName : "",
+
         role: userType,
         permissions: userData.premisions || userData.permissions || [],
         ...(userType === 'school' ? {
