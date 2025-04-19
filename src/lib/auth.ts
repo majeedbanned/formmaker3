@@ -43,7 +43,7 @@ export async function authenticateUser(
     // Find the matching user using the query
     const user = await collection.findOne(query);
 
-    // console.log("user", user);
+     console.log("user", user);
 
     if (!user) {
       logger.warn('No user found with provided credentials', { domain, userType, schoolCode });
@@ -83,6 +83,10 @@ export async function authenticateUser(
       ...(userType === 'school' ? {
         maghta: userData.maghta,
         grade: userData.Grade
+      } : {}),
+      ...(userType === 'student' ? {
+        classCode: userData.classCode || [],
+        groups: userData.groups || []
       } : {})
     });
 
@@ -97,12 +101,15 @@ export async function authenticateUser(
         schoolCode,
         username,
         name:userType === "student" ? userData.studentName+ ' ' + userData.studentFamily : userType==="teacher" ? userData.teacherName : userType==="school" ? userData.schoolName : "",
-
         role: userType,
         permissions: userData.premisions || userData.permissions || [],
         ...(userType === 'school' ? {
           maghta: userData.maghta,
           grade: userData.Grade
+        } : {}),
+        ...(userType === 'student' ? {
+          classCode: userData.classCode || [],
+          groups: userData.groups || []
         } : {})
       }
     };

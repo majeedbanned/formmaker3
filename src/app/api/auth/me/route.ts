@@ -20,7 +20,8 @@ interface User {
   username: string;
   name: string;
   role: string;
-  
+  classCode: string[];
+  groups: string[];
   domain: string;
   permissions: Permission[];
   maghta?: string;
@@ -34,6 +35,8 @@ interface AuthPayload extends JWTPayload {
   username: string;
   name: string;
   domain: string;
+  classCode: string[];
+  groups: string[];
   role: string;
   permissions: Permission[];
   maghta?: string;
@@ -79,7 +82,10 @@ export async function GET() {
       name: payload.name,
       role: payload.role,
       permissions: payload.permissions,
+      classCode: payload.classCode,
+      groups: payload.groups,
     };
+    console.log("user", user);
 
     // Add maghta and grade for school users
     if (payload.userType === 'school') {
