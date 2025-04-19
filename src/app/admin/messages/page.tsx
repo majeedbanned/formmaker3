@@ -393,7 +393,7 @@ function StudentsPageContent() {
 
         <CRUDComponent
           formStructure={sampleFormStructure}
-          collectionName="messages"
+          collectionName="emessages"
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           // importFunction={{
