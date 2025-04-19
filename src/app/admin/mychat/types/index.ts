@@ -36,6 +36,14 @@ export interface FileAttachment {
   isImage: boolean;
 }
 
+export interface Reaction {
+  emoji: string;
+  users: {
+    id: string;
+    name: string;
+  }[];
+}
+
 export interface ChatMessage {
   _id: string;
   chatroomId: string;
@@ -54,4 +62,5 @@ export interface ChatMessage {
   fileAttachment?: FileAttachment;
   edited?: boolean;
   editedAt?: string;
+  reactions?: Record<string, Reaction>;
 } 

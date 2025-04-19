@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User, ChatMessage, Chatroom, FileAttachment } from "../types";
+import {
+  User,
+  ChatMessage,
+  Chatroom,
+  FileAttachment,
+  Reaction,
+} from "../types";
 import { getSocket } from "../lib/socket";
 import { uploadFile } from "../services/api";
 import { toast } from "sonner";
@@ -15,7 +21,11 @@ import {
   EllipsisHorizontalIcon,
   PencilIcon,
   CheckIcon,
+  FaceSmileIcon as FaceSmileOutline,
 } from "@heroicons/react/24/outline";
+
+// Array of popular emoji for quick reactions
+const POPULAR_EMOJIS = ["👍", "❤️", "😂", "😍", "😮", "😢", "👏", "🔥"];
 
 interface ChatWindowProps {
   user: User;
@@ -53,6 +63,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [editedContent, setEditedContent] = useState("");
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<
+    string | null
+  >(null);
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -109,6 +123,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       editInputRef.current.setSelectionRange(textLength, textLength);
     }
   }, [editingMessageId]);
+
+  // Close reaction picker when clicked outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        reactionPickerRef.current &&
+        !reactionPickerRef.current.contains(event.target as Node)
+      ) {
+        setReactionPickerMessageId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -390,6 +421,119 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   };
 
+  const handleReactionClick = (messageId: string) => {
+    if (reactionPickerMessageId === messageId) {
+      setReactionPickerMessageId(null);
+    } else {
+      setReactionPickerMessageId(messageId);
+    }
+  };
+
+  const toggleReaction = async (messageId: string, emoji: string) => {
+    if (!selectedChatroom) return;
+
+    const socket = getSocket();
+    if (!socket) {
+      console.error("Socket not connected");
+      toast.error("خطا در اتصال به سرور گفتگو");
+      return;
+    }
+
+    // Check if the user is toggling their existing reaction (to remove it)
+    const message = messages.find((m) => m._id === messageId);
+    let isRemovingReaction = false;
+
+    if (message?.reactions) {
+      const existingReaction = Object.values(message.reactions).find(
+        (reaction) => reaction.users.some((u) => u.id === user.id)
+      );
+
+      if (existingReaction && existingReaction.emoji === emoji) {
+        isRemovingReaction = true;
+      }
+    }
+
+    socket.emit(
+      "toggle-reaction",
+      {
+        messageId,
+        chatroomId: selectedChatroom._id,
+        emoji: isRemovingReaction ? "" : emoji, // Send empty string to only remove, without adding
+      },
+      (response: {
+        success: boolean;
+        error?: string;
+        reactions?: Record<string, Reaction>;
+      }) => {
+        if (!response.success) {
+          console.error("Error toggling reaction:", response.error);
+          toast.error("خطا در ثبت واکنش");
+        }
+        // Always close the reaction picker after selecting an emoji
+        setReactionPickerMessageId(null);
+      }
+    );
+  };
+
+  const handleQuickReaction = (messageId: string, emoji: string) => {
+    toggleReaction(messageId, emoji);
+  };
+
+  const handleEmojiReactionSelect = (
+    messageId: string,
+    emojiData: EmojiClickData
+  ) => {
+    toggleReaction(messageId, emojiData.emoji);
+  };
+
+  const getUsersWhoReacted = (reaction: Reaction) => {
+    return reaction.users.map((user) => user.name).join("، ");
+  };
+
+  const getUserReaction = (message: ChatMessage): string | null => {
+    if (!message.reactions) return null;
+
+    const userReaction = Object.values(message.reactions).find((reaction) =>
+      reaction.users.some((u) => u.id === user.id)
+    );
+
+    return userReaction ? userReaction.emoji : null;
+  };
+
+  const renderReactions = (message: ChatMessage) => {
+    if (!message.reactions || Object.keys(message.reactions).length === 0)
+      return null;
+
+    // Get the current user's reaction for this message - we use this to determine styling
+    const userReaction = getUserReaction(message);
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {Object.values(message.reactions).map((reaction) => {
+          // Determine if this is the user's current reaction
+          const isUserCurrentReaction = userReaction === reaction.emoji;
+
+          return (
+            <button
+              key={reaction.emoji}
+              onClick={() => toggleReaction(message._id, reaction.emoji)}
+              className={`emoji-reaction-btn px-1 rounded-full 
+                ${
+                  isUserCurrentReaction
+                    ? "bg-blue-100 border-blue-300"
+                    : "bg-gray-100 hover:bg-gray-200"
+                }`}
+              title={getUsersWhoReacted(reaction)}
+            >
+              <span className="emoji mr-1">{reaction.emoji}</span>
+              <span className="text-xs">{reaction.users.length}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (!selectedChatroom) {
     return (
       <div className="h-full flex items-center justify-center bg-white rounded-lg shadow-md">
@@ -420,6 +564,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Add a style tag for emoji reactions */}
+      <style jsx>{`
+        .emoji-reaction-btn {
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+          font-size: 0.85rem;
+        }
+
+        .emoji-reaction-btn .emoji {
+          font-size: 1.1rem;
+        }
+
+        .emoji-reaction-btn:hover {
+          transform: scale(1.05);
+        }
+      `}</style>
+
       {/* Chat header */}
       <div className="p-4 border-b border-gray-200 bg-gradient-to-l from-blue-50 to-white">
         <h2 className="text-lg font-bold text-gray-800 text-right">
@@ -536,6 +699,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     {message.fileAttachment &&
                       renderFileAttachment(message.fileAttachment)}
 
+                    {/* Message reactions */}
+                    {renderReactions(message)}
+
                     <div
                       className={`text-xs mt-1 flex items-center ${
                         isMyMessage
@@ -550,40 +716,103 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         )}
                       </div>
 
-                      {/* Message actions (only for own messages) */}
-                      {isMyMessage && !editingMessageId && (
-                        <div className="relative">
-                          <button
-                            onClick={() => toggleMessageMenu(message._id)}
-                            className={`ml-1 p-1 rounded-full hover:bg-blue-400 transition-colors ${
-                              messageMenuOpen === message._id
-                                ? "bg-blue-400"
-                                : ""
-                            }`}
-                          >
-                            <EllipsisHorizontalIcon className="h-4 w-4" />
-                          </button>
-
-                          {messageMenuOpen === message._id && (
-                            <div
-                              ref={messageMenuRef}
-                              className="absolute bottom-6 left-0 bg-white shadow-lg rounded-md py-1 text-gray-800 min-w-[120px] z-20"
+                      {/* Message actions */}
+                      {!editingMessageId && (
+                        <div className="flex">
+                          {/* Reaction button */}
+                          <div className="relative">
+                            <button
+                              onClick={() => handleReactionClick(message._id)}
+                              className={`ml-1 p-1 rounded-full ${
+                                isMyMessage
+                                  ? "hover:bg-blue-400 transition-colors"
+                                  : "hover:bg-gray-200 transition-colors text-gray-600"
+                              } ${
+                                reactionPickerMessageId === message._id
+                                  ? isMyMessage
+                                    ? "bg-blue-400"
+                                    : "bg-gray-200"
+                                  : ""
+                              }`}
                             >
-                              <button
-                                onClick={() => startEditingMessage(message)}
-                                className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-blue-600"
+                              <FaceSmileOutline className="h-4 w-4" />
+                            </button>
+
+                            {/* Emoji reaction picker */}
+                            {reactionPickerMessageId === message._id && (
+                              <div
+                                ref={reactionPickerRef}
+                                className="absolute bottom-6 right-0 bg-white shadow-lg rounded-md p-2 z-30"
                               >
-                                <PencilIcon className="h-4 w-4 ml-2" />
-                                <span>ویرایش پیام</span>
-                              </button>
+                                <div className="flex flex-wrap gap-1 mb-2 max-w-[200px]">
+                                  {POPULAR_EMOJIS.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      onClick={() =>
+                                        handleQuickReaction(message._id, emoji)
+                                      }
+                                      className="p-1 hover:bg-gray-100 rounded text-lg"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="border-t border-gray-200 pt-2">
+                                  <EmojiPicker
+                                    onEmojiClick={(emojiData) =>
+                                      handleEmojiReactionSelect(
+                                        message._id,
+                                        emojiData
+                                      )
+                                    }
+                                    width={250}
+                                    height={350}
+                                    lazyLoadEmojis
+                                    searchDisabled
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Message menu (edit, delete) - only for own messages */}
+                          {isMyMessage && (
+                            <div className="relative">
                               <button
-                                onClick={() => handleDeleteMessage(message._id)}
-                                disabled={isDeletingMessage}
-                                className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-red-600"
+                                onClick={() => toggleMessageMenu(message._id)}
+                                className={`ml-1 p-1 rounded-full hover:bg-blue-400 transition-colors ${
+                                  messageMenuOpen === message._id
+                                    ? "bg-blue-400"
+                                    : ""
+                                }`}
                               >
-                                <TrashIcon className="h-4 w-4 ml-2" />
-                                <span>حذف پیام</span>
+                                <EllipsisHorizontalIcon className="h-4 w-4" />
                               </button>
+
+                              {messageMenuOpen === message._id && (
+                                <div
+                                  ref={messageMenuRef}
+                                  className="absolute bottom-6 left-0 bg-white shadow-lg rounded-md py-1 text-gray-800 min-w-[120px] z-20"
+                                >
+                                  <button
+                                    onClick={() => startEditingMessage(message)}
+                                    className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-blue-600"
+                                  >
+                                    <PencilIcon className="h-4 w-4 ml-2" />
+                                    <span>ویرایش پیام</span>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteMessage(message._id)
+                                    }
+                                    disabled={isDeletingMessage}
+                                    className="w-full text-right flex items-center px-3 py-2 hover:bg-gray-100 text-red-600"
+                                  >
+                                    <TrashIcon className="h-4 w-4 ml-2" />
+                                    <span>حذف پیام</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

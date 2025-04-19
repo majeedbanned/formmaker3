@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { User, Chatroom, ChatMessage } from "../types";
+import { User, Chatroom, ChatMessage, Reaction } from "../types";
 import { setAuthToken } from "../services/api";
 import { initializeSocket, getSocket, disconnectSocket } from "../lib/socket";
 import ChatroomList from "./ChatroomList";
@@ -71,7 +71,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
     };
   }, [user]);
 
-  // Handle new messages
+  // Handle new messages, deletions, and edits
   useEffect(() => {
     const socket = getSocket();
 
@@ -112,14 +112,34 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
       }
     };
 
+    const handleReactionUpdated = (data: {
+      messageId: string;
+      reactions: Record<string, Reaction>;
+    }) => {
+      if (selectedChatroomId) {
+        setMessages((prevMessages) =>
+          prevMessages.map((message) =>
+            message._id === data.messageId
+              ? {
+                  ...message,
+                  reactions: data.reactions,
+                }
+              : message
+          )
+        );
+      }
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("message-deleted", handleMessageDeleted);
     socket.on("message-edited", handleMessageEdited);
+    socket.on("message-reaction-updated", handleReactionUpdated);
 
     return () => {
       socket.off("new-message", handleNewMessage);
       socket.off("message-deleted", handleMessageDeleted);
       socket.off("message-edited", handleMessageEdited);
+      socket.off("message-reaction-updated", handleReactionUpdated);
     };
   }, [selectedChatroomId]);
 
