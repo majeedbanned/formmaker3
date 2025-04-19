@@ -3,12 +3,14 @@ import { User, ChatMessage, Chatroom, FileAttachment } from "../types";
 import { getSocket } from "../lib/socket";
 import { uploadFile } from "../services/api";
 import { toast } from "sonner";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import {
   PaperClipIcon,
   ArrowDownTrayIcon,
   DocumentIcon,
   PhotoIcon,
   XMarkIcon,
+  FaceSmileIcon,
 } from "@heroicons/react/24/outline";
 
 interface ChatWindowProps {
@@ -30,10 +32,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [fileAttachment, setFileAttachment] = useState<FileAttachment | null>(
     null
   );
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{
+    url: string;
+    alt: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -47,6 +55,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [selectedChatroom]);
 
+  // Click outside emoji picker handler
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -59,6 +84,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       "fa-IR",
       { hour: "2-digit", minute: "2-digit" }
     )}`;
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setMessageInput((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
   };
 
   const handleFileInputChange = async (
@@ -169,13 +200,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return senderId === user.id;
   };
 
+  const openImagePreview = (imageUrl: string, alt: string) => {
+    setPreviewImage({ url: imageUrl, alt });
+  };
+
+  const closeImagePreview = () => {
+    setPreviewImage(null);
+  };
+
   const renderFileAttachment = (file: FileAttachment) => {
+    const fullImageUrl = `${process.env.NEXT_PUBLIC_CHAT_SERVER_URL}${file.url}`;
+
     if (file.isImage) {
       return (
         <div className="mt-2 relative">
-          <div className="relative rounded-lg overflow-hidden border border-gray-200">
+          <div
+            className="relative rounded-lg overflow-hidden border border-gray-200 cursor-pointer"
+            onClick={() => openImagePreview(fullImageUrl, file.originalName)}
+          >
             <img
-              src={`${process.env.NEXT_PUBLIC_CHAT_SERVER_URL}${file.url}`}
+              src={fullImageUrl}
               alt={file.originalName}
               className="max-w-full max-h-48 object-contain"
             />
@@ -200,7 +244,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
             </div>
             <a
-              href={`${process.env.NEXT_PUBLIC_CHAT_SERVER_URL}${file.url}`}
+              href={fullImageUrl}
               download={file.originalName}
               className="ml-2 p-1 text-blue-500 hover:text-blue-700"
               target="_blank"
@@ -369,7 +413,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Message input */}
       <div className="border-t border-gray-200 p-4 bg-white">
         <form onSubmit={handleSendMessage} className="flex flex-col">
-          <div className="flex">
+          <div className="flex relative">
             <button
               type="submit"
               className={`px-4 py-2 bg-blue-500 text-white rounded-l-md flex items-center justify-center min-w-[80px] ${
@@ -414,8 +458,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={handleOpenFileDialog}
-              className={`p-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md text-gray-600 hover:bg-gray-200 ${
-                isUploading ? "opacity-50 cursor-not-allowed" : ""
+              className={`p-2 border border-gray-300 border-l-0 text-gray-600 hover:bg-gray-200 ${
+                isUploading
+                  ? "opacity-50 cursor-not-allowed bg-gray-100"
+                  : "bg-gray-100"
               }`}
               disabled={isUploading}
             >
@@ -425,6 +471,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <PaperClipIcon className="h-5 w-5" />
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`p-2 border border-gray-300 border-l-0 rounded-r-md text-gray-600 hover:bg-gray-200 ${
+                showEmojiPicker ? "bg-blue-100" : "bg-gray-100"
+              }`}
+              disabled={isSending}
+            >
+              <FaceSmileIcon
+                className={`h-5 w-5 ${showEmojiPicker ? "text-blue-500" : ""}`}
+              />
+            </button>
             <input
               type="file"
               ref={fileInputRef}
@@ -433,11 +491,73 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
             />
           </div>
+
+          {/* Emoji picker */}
+          {showEmojiPicker && (
+            <div
+              ref={emojiPickerRef}
+              className="absolute bottom-16 right-2 z-10 shadow-lg rounded-lg border border-gray-200"
+              style={{ direction: "ltr" }}
+            >
+              <div className="absolute bottom-[-8px] right-[14px] w-4 h-4 bg-white border-r border-b border-gray-200 transform rotate-45"></div>
+              <EmojiPicker
+                onEmojiClick={handleEmojiClick}
+                searchDisabled
+                skinTonesDisabled
+                width={300}
+                height={350}
+                lazyLoadEmojis
+              />
+            </div>
+          )}
+
           <div className="text-xs text-gray-500 mt-1 text-right">
             حداکثر حجم فایل: 10 مگابایت
           </div>
         </form>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={closeImagePreview}
+        >
+          <div
+            className="max-w-4xl max-h-screen overflow-auto bg-white rounded-lg p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-2 p-2">
+              <h3 className="text-lg font-medium">{previewImage.alt}</h3>
+              <button
+                onClick={closeImagePreview}
+                className="p-1 rounded-full hover:bg-gray-200"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="flex items-center justify-center max-h-[70vh]">
+              <img
+                src={previewImage.url}
+                alt={previewImage.alt}
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            </div>
+            <div className="mt-4 flex justify-center">
+              <a
+                href={previewImage.url}
+                download
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+                دانلود تصویر
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
