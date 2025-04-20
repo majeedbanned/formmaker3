@@ -195,6 +195,7 @@ export default function FloatingChatAdmin() {
             if (!mounted) return;
             if (response.success && response.messages) {
               setMessages(response.messages);
+              // Clear the pending messages set when loading initial messages
               pendingMessageIds.current.clear();
             }
           }
@@ -228,6 +229,21 @@ export default function FloatingChatAdmin() {
         setMessages((prev) => prev.filter((msg) => msg._id !== data.messageId));
       });
 
+      // Listen for message read status updates
+      socketInstance.on(
+        "messages-read",
+        (data: { userId: string; messageIds: string[] }) => {
+          if (!mounted) return;
+
+          // Update the read status of messages
+          setMessages((prev) =>
+            prev.map((msg) =>
+              data.messageIds.includes(msg._id) ? { ...msg, read: true } : msg
+            )
+          );
+        }
+      );
+
       setSocket(socketInstance);
       fetchMessages(token);
 
@@ -242,6 +258,24 @@ export default function FloatingChatAdmin() {
       mounted = false;
     };
   }, [isLoading, user]);
+
+  // Add an effect to update the selected user when messages change
+  useEffect(() => {
+    if (selectedUser) {
+      // Calculate new unread count
+      const unreadCount = messages.filter(
+        (msg) => msg.sender.id === selectedUser.id && !msg.read
+      ).length;
+
+      // Only update if the unread count has changed
+      if (unreadCount !== selectedUser.unreadCount) {
+        setSelectedUser({
+          ...selectedUser,
+          unreadCount,
+        });
+      }
+    }
+  }, [messages, selectedUser]);
 
   // Scroll to bottom when filtered messages change
   useEffect(() => {
@@ -280,7 +314,8 @@ export default function FloatingChatAdmin() {
 
     // If in user mode and a user is selected, prepend @username to the message
     if (viewMode === "users" && selectedUser) {
-      finalMessage = `@${selectedUser.name}: ${finalMessage}`;
+      // finalMessage = `@${selectedUser.name}: ${finalMessage}`;
+      finalMessage = ` ${finalMessage}`;
     }
 
     // Send message
@@ -356,10 +391,64 @@ export default function FloatingChatAdmin() {
     }
   };
 
+  // Mark messages from a specific user as read
+  const markUserMessagesAsRead = async (userId: string) => {
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const response = await fetch("/api/floating-chat/mark-user-read", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        // Update local state
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.sender.id === userId ? { ...msg, read: true } : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error marking user messages as read:", error);
+    }
+  };
+
   // Select a user to chat with
   const handleSelectUser = (chatUser: ChatUser) => {
-    setSelectedUser(chatUser);
+    // First update the UI immediately to show selected user and mark messages as read locally
+    setSelectedUser({ ...chatUser, unreadCount: 0 });
     setViewMode("users");
+
+    // Update UI immediately - mark all messages from this user as read locally
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.sender.id === chatUser.id ? { ...msg, read: true } : msg
+      )
+    );
+
+    // Then communicate with the server
+    if (socket && isConnected) {
+      // Emit an event to mark messages from this user as read
+      socket.emit(
+        "mark-floating-user-messages-read",
+        { userId: chatUser.id },
+        (response: { success: boolean }) => {
+          if (!response.success) {
+            // Only try REST API fallback if socket call failed
+            markUserMessagesAsRead(chatUser.id);
+          }
+        }
+      );
+    } else {
+      // Use REST API if socket is not connected
+      markUserMessagesAsRead(chatUser.id);
+    }
   };
 
   // Toggle between 'users' and 'all' view modes
@@ -417,10 +506,10 @@ export default function FloatingChatAdmin() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[70vh]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-10rem)]">
         {/* User list (visible only in 'users' mode) */}
         {viewMode === "users" && (
-          <div className="md:col-span-1 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col">
+          <div className="md:col-span-1 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col h-full">
             <div className="bg-blue-600 text-white p-3 font-bold rtl">
               کاربران
             </div>
@@ -494,7 +583,7 @@ export default function FloatingChatAdmin() {
         <div
           className={`${
             viewMode === "users" ? "md:col-span-2" : "md:col-span-3"
-          } bg-white rounded-lg shadow-md border border-gray-200 flex flex-col`}
+          } bg-white rounded-lg shadow-md border border-gray-200 flex flex-col h-full`}
         >
           <div className="bg-blue-600 text-white p-3 font-bold rounded-t-lg rtl flex justify-between items-center">
             <div>
@@ -506,8 +595,11 @@ export default function FloatingChatAdmin() {
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 rtl">
+          {/* Messages - static height with scrollbar */}
+          <div
+            className="flex-1 overflow-y-auto p-4 rtl"
+            style={{ height: "500px", maxHeight: "calc(100vh - 15rem)" }}
+          >
             {filteredMessages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <p className="text-gray-500">
@@ -572,7 +664,7 @@ export default function FloatingChatAdmin() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
+          {/* Input - fixed at bottom */}
           <form
             onSubmit={handleSendMessage}
             className="border-t border-gray-200 p-3 flex items-center rtl"
