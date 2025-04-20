@@ -207,6 +207,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: " گفتگوی شناور",
+          url: "/admin/floatingchat",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
       ],
     },
   ],
