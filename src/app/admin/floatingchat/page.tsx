@@ -314,8 +314,8 @@ export default function FloatingChatAdmin() {
 
     // If in user mode and a user is selected, prepend @username to the message
     if (viewMode === "users" && selectedUser) {
-      // finalMessage = `@${selectedUser.name}: ${finalMessage}`;
-      finalMessage = ` ${finalMessage}`;
+      finalMessage = `@${selectedUser.name}: ${finalMessage}`;
+      // finalMessage = ` ${finalMessage}`;
     }
 
     // Send message
