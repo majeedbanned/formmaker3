@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
+import FloatingChat from "@/components/FloatingChat";
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic"],
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className={`${vazirmatn.className} font-sans`}>
         {children}
         <Toaster />
+        <FloatingChat />
       </body>
     </html>
   );
