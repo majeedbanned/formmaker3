@@ -3,7 +3,7 @@ import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
 import FloatingChat from "@/components/FloatingChat";
-
+import { MathJaxContext } from "better-react-mathjax";
 const vazirmatn = Vazirmatn({
   subsets: ["arabic"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="fa">
       <body className={`${vazirmatn.className} font-sans`}>
-        {children}
+        <MathJaxContext>{children}</MathJaxContext>
         <Toaster />
         <FloatingChat />
       </body>

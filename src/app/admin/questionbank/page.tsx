@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { MathJax } from "better-react-mathjax";
 
 // Types
 interface Question {
@@ -720,13 +721,15 @@ function QuestionBankContent() {
                             )}
                             {question.cat4 && <span>{question.cat4}</span>}
                           </div>
+                          <MathJax>
+                            <div
+                              className="line-clamp-2 text-sm"
+                              dangerouslySetInnerHTML={renderHTML(
+                                question.question
+                              )}
+                            />
+                          </MathJax>
 
-                          <div
-                            className="line-clamp-2 text-sm"
-                            dangerouslySetInnerHTML={renderHTML(
-                              question.question
-                            )}
-                          />
                           {question.type?.includes("تستی") && (
                             <div className="mt-1 grid grid-cols-2 gap-1">
                               {question.option1 && (
@@ -744,12 +747,14 @@ function QuestionBankContent() {
                                   >
                                     ۱
                                   </span>
-                                  <div
-                                    className="truncate max-w-[90%] text-xs"
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.option1
-                                    )}
-                                  />
+                                  <MathJax>
+                                    <div
+                                      className="truncate max-w-[90%] text-xs"
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.option1
+                                      )}
+                                    />
+                                  </MathJax>
                                 </div>
                               )}
                               {question.option2 && (
@@ -767,12 +772,14 @@ function QuestionBankContent() {
                                   >
                                     ۲
                                   </span>
-                                  <div
-                                    className="truncate max-w-[90%] text-xs"
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.option2
-                                    )}
-                                  />
+                                  <MathJax>
+                                    <div
+                                      className="truncate max-w-[90%] text-xs"
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.option2
+                                      )}
+                                    />
+                                  </MathJax>
                                 </div>
                               )}
                               {question.option3 && (
@@ -790,12 +797,14 @@ function QuestionBankContent() {
                                   >
                                     ۳
                                   </span>
-                                  <div
-                                    className="truncate max-w-[90%] text-xs"
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.option3
-                                    )}
-                                  />
+                                  <MathJax>
+                                    <div
+                                      className="truncate max-w-[90%] text-xs"
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.option3
+                                      )}
+                                    />
+                                  </MathJax>
                                 </div>
                               )}
                               {question.option4 && (
@@ -813,12 +822,14 @@ function QuestionBankContent() {
                                   >
                                     ۴
                                   </span>
-                                  <div
-                                    className="truncate max-w-[90%] text-xs"
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.option4
-                                    )}
-                                  />
+                                  <MathJax>
+                                    <div
+                                      className="truncate max-w-[90%] text-xs"
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.option4
+                                      )}
+                                    />
+                                  </MathJax>
                                 </div>
                               )}
                             </div>
@@ -982,12 +993,14 @@ function QuestionBankContent() {
             <div className="text-sm font-semibold mb-2">متن سوال:</div>
             <div className="p-4 border rounded-md bg-slate-50">
               {selectedQuestion && (
-                <div
-                  className="text-base"
-                  dangerouslySetInnerHTML={renderHTML(
-                    selectedQuestion.question
-                  )}
-                />
+                <MathJax>
+                  <div
+                    className="text-base"
+                    dangerouslySetInnerHTML={renderHTML(
+                      selectedQuestion.question
+                    )}
+                  />
+                </MathJax>
               )}
             </div>
 
@@ -1012,12 +1025,14 @@ function QuestionBankContent() {
                       >
                         ۱
                       </span>
-                      <div
-                        className="text-base"
-                        dangerouslySetInnerHTML={renderHTML(
-                          selectedQuestion.option1
-                        )}
-                      />
+                      <MathJax>
+                        <div
+                          className="text-base"
+                          dangerouslySetInnerHTML={renderHTML(
+                            selectedQuestion.option1
+                          )}
+                        />
+                      </MathJax>
                     </div>
                     {selectedQuestion.option1image && (
                       <div className="mt-2">
@@ -1049,12 +1064,14 @@ function QuestionBankContent() {
                       >
                         ۲
                       </span>
-                      <div
-                        className="text-base"
-                        dangerouslySetInnerHTML={renderHTML(
-                          selectedQuestion.option2
-                        )}
-                      />
+                      <MathJax>
+                        <div
+                          className="text-base"
+                          dangerouslySetInnerHTML={renderHTML(
+                            selectedQuestion.option2
+                          )}
+                        />
+                      </MathJax>
                     </div>
                     {selectedQuestion.option2image && (
                       <div className="mt-2">
@@ -1086,12 +1103,14 @@ function QuestionBankContent() {
                       >
                         ۳
                       </span>
-                      <div
-                        className="text-base"
-                        dangerouslySetInnerHTML={renderHTML(
-                          selectedQuestion.option3
-                        )}
-                      />
+                      <MathJax>
+                        <div
+                          className="text-base"
+                          dangerouslySetInnerHTML={renderHTML(
+                            selectedQuestion.option3
+                          )}
+                        />
+                      </MathJax>
                     </div>
                     {selectedQuestion.option3image && (
                       <div className="mt-2">
@@ -1123,12 +1142,14 @@ function QuestionBankContent() {
                       >
                         ۴
                       </span>
-                      <div
-                        className="text-base"
-                        dangerouslySetInnerHTML={renderHTML(
-                          selectedQuestion.option4
-                        )}
-                      />
+                      <MathJax>
+                        <div
+                          className="text-base"
+                          dangerouslySetInnerHTML={renderHTML(
+                            selectedQuestion.option4
+                          )}
+                        />
+                      </MathJax>
                     </div>
                     {selectedQuestion.option4image && (
                       <div className="mt-2">
@@ -1149,12 +1170,14 @@ function QuestionBankContent() {
             <div className="mt-4">
               <div className="text-sm font-semibold mb-2">پاسخ سوال:</div>
               <div className="p-4 border rounded-md bg-slate-50">
-                <div
-                  className="text-base"
-                  dangerouslySetInnerHTML={renderHTML(
-                    selectedQuestion.questionkey
-                  )}
-                />
+                <MathJax>
+                  <div
+                    className="text-base"
+                    dangerouslySetInnerHTML={renderHTML(
+                      selectedQuestion.questionkey
+                    )}
+                  />
+                </MathJax>
               </div>
             </div>
           )}
