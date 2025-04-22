@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
-import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import React, { useEffect, useRef, useState } from "react";
+import { useEditor, EditorContent, Editor, BubbleMenu } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
+import Highlight from "@tiptap/extension-highlight";
 import { Button } from "@/components/ui/button";
 import {
   Bold,
@@ -22,38 +23,109 @@ import {
   Redo,
   Code,
   Pilcrow,
+  Highlighter,
+  ExternalLink,
+  Trash2,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+
+interface HighlightColor {
+  name: string;
+  color: string;
+}
+
+// Define highlight colors
+const HIGHLIGHT_COLORS: HighlightColor[] = [
+  { name: "yellow", color: "#FEF3C7" },
+  { name: "green", color: "#D1FAE5" },
+  { name: "blue", color: "#DBEAFE" },
+  { name: "red", color: "#FEE2E2" },
+  { name: "purple", color: "#EDE9FE" },
+];
 
 interface MenuBarProps {
   editor: Editor | null;
 }
 
 const MenuBar = ({ editor }: MenuBarProps) => {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [linkUrl, setLinkUrl] = useState<string>("");
+  const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState<boolean>(false);
+
   if (!editor) {
     return null;
   }
 
-  const addImage = () => {
-    const url = window.prompt("Enter the URL of the image:");
-
-    if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+  const setLink = () => {
+    if (editor.isActive("link")) {
+      // Get current link URL
+      const linkAttrs = editor.getAttributes("link");
+      setLinkUrl(linkAttrs.href || "");
+    } else {
+      setLinkUrl("");
     }
+
+    setIsLinkPopoverOpen(true);
   };
 
-  const setLink = () => {
-    const url = window.prompt("URL:");
-
-    if (url === null) {
+  const applyLink = () => {
+    // If no URL is provided, unset the link
+    if (!linkUrl) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      setIsLinkPopoverOpen(false);
       return;
     }
 
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
+    // Add https:// if URL doesn't have a protocol
+    let url = linkUrl;
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
     }
 
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+
+    setIsLinkPopoverOpen(false);
+  };
+
+  const unsetLink = () => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    setIsLinkPopoverOpen(false);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    // Create a FileReader to read the image file
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result && editor) {
+        // Insert the image at the current cursor position
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: event.target.result as string })
+          .run();
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // Clear the input value so the same image can be selected again
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const openImageUploadDialog = () => {
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
+    }
   };
 
   return (
@@ -93,6 +165,56 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       >
         <Strikethrough className="h-4 w-4" />
       </Button>
+
+      {/* Highlight Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="px-2 h-8"
+            data-active={editor.isActive("highlight") ? "true" : "false"}
+          >
+            <Highlighter className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2">
+          <div className="flex gap-1">
+            {HIGHLIGHT_COLORS.map((color) => (
+              <Button
+                key={color.name}
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="w-8 h-8 p-0"
+                onClick={() =>
+                  editor
+                    .chain()
+                    .focus()
+                    .toggleHighlight({ color: color.color })
+                    .run()
+                }
+                style={{
+                  backgroundColor: color.color,
+                  border: editor.isActive("highlight", { color: color.color })
+                    ? "2px solid black"
+                    : "none",
+                }}
+              />
+            ))}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="w-8 h-8 p-0"
+              onClick={() => editor.chain().focus().unsetHighlight().run()}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <div className="w-px h-8 bg-border mx-1" />
 
@@ -207,26 +329,84 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       <div className="w-px h-8 bg-border mx-1" />
 
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="px-2 h-8"
-        onClick={setLink}
-        data-active={editor.isActive("link") ? "true" : "false"}
-      >
-        <LinkIcon className="h-4 w-4" />
-      </Button>
+      {/* Link Popover */}
+      <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="px-2 h-8"
+            onClick={setLink}
+            data-active={editor.isActive("link") ? "true" : "false"}
+          >
+            <LinkIcon className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-3">
+          <div className="flex flex-col gap-2">
+            <Input
+              type="text"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyLink();
+                }
+              }}
+            />
+            <div className="flex gap-2 mt-2">
+              <Button onClick={applyLink} size="sm" className="gap-1">
+                <LinkIcon className="h-3 w-3" />
+                {editor.isActive("link") ? "Update Link" : "Add Link"}
+              </Button>
+              {editor.isActive("link") && (
+                <>
+                  <Button
+                    onClick={() => window.open(linkUrl, "_blank")}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open
+                  </Button>
+                  <Button
+                    onClick={unsetLink}
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Remove
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <Button
         type="button"
         size="sm"
         variant="ghost"
         className="px-2 h-8"
-        onClick={addImage}
+        onClick={openImageUploadDialog}
       >
         <ImageIcon className="h-4 w-4" />
       </Button>
+
+      {/* Hidden file input for image upload */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
 
       <div className="w-px h-8 bg-border mx-1" />
 
@@ -280,13 +460,24 @@ const RichTextEditor = ({
           levels: [1, 2, 3],
         },
       }),
-      Image,
+      Image.configure({
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "mx-auto max-w-full h-auto",
+        },
+      }),
       TextAlign.configure({
         types: ["heading", "paragraph"],
         defaultAlignment: dir === "rtl" ? "right" : "left",
       }),
       Link.configure({
         openOnClick: false,
+        HTMLAttributes: {
+          class: "text-primary underline decoration-primary",
+        },
+      }),
+      Highlight.configure({
+        multicolor: true,
       }),
     ],
     content: value || "",
@@ -310,9 +501,55 @@ const RichTextEditor = ({
     }
   }, [value, editor]);
 
+  // Add bubble menu for links when they are selected
   return (
     <div className={`border rounded-md overflow-hidden ${className}`}>
       {!readOnly && <MenuBar editor={editor} />}
+
+      {/* BubbleMenu for links when selected */}
+      {editor && !readOnly && (
+        <BubbleMenu
+          editor={editor}
+          shouldShow={({ editor }) => editor.isActive("link")}
+          tippyOptions={{ duration: 100, placement: "bottom" }}
+        >
+          <div className="bg-popover text-popover-foreground rounded-md shadow-md p-1 flex gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2"
+              onClick={() => {
+                const attrs = editor.getAttributes("link");
+                window.open(attrs.href, "_blank");
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2"
+              onClick={() => {
+                const attrs = editor.getAttributes("link");
+                // Set up the link popover
+                if (attrs.href) {
+                  // You need to access and set the state in MenuBar component
+                  // For simplicity, we'll just use the editor directly
+                  editor
+                    .chain()
+                    .focus()
+                    .extendMarkRange("link")
+                    .unsetLink()
+                    .run();
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </BubbleMenu>
+      )}
+
       <EditorContent editor={editor} className="prose max-w-none p-2" />
     </div>
   );
