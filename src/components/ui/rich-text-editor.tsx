@@ -5,7 +5,12 @@ import Image from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Bold,
   Italic,
@@ -21,18 +26,24 @@ import {
   Strikethrough,
   Undo,
   Redo,
-  Code,
   Pilcrow,
   Highlighter,
   ExternalLink,
   Trash2,
+  Table2,
+  Plus,
+  Minus,
+  Terminal,
+  ChevronsUpDown,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface HighlightColor {
   name: string;
@@ -48,6 +59,67 @@ const HIGHLIGHT_COLORS: HighlightColor[] = [
   { name: "purple", color: "#EDE9FE" },
 ];
 
+// Define code languages for code block
+const CODE_LANGUAGES = [
+  { name: "Plain Text", value: "text" },
+  { name: "JavaScript", value: "js" },
+  { name: "TypeScript", value: "ts" },
+  { name: "HTML", value: "html" },
+  { name: "CSS", value: "css" },
+  { name: "Python", value: "python" },
+  { name: "PHP", value: "php" },
+  { name: "Bash", value: "bash" },
+  { name: "SQL", value: "sql" },
+  { name: "JSON", value: "json" },
+];
+
+interface PopoverProps {
+  children: React.ReactNode;
+  content: React.ReactNode;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+const Popover = ({ children, content, isOpen, setIsOpen }: PopoverProps) => {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close popover
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isOpen &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, setIsOpen]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <div ref={triggerRef} onClick={() => setIsOpen(!isOpen)}>
+        {children}
+      </div>
+      {isOpen && (
+        <div
+          ref={contentRef}
+          className="absolute top-full mt-1 z-50 bg-popover rounded-md border shadow-md"
+        >
+          {content}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface MenuBarProps {
   editor: Editor | null;
 }
@@ -56,6 +128,12 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [linkUrl, setLinkUrl] = useState<string>("");
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState<boolean>(false);
+  const [isTablePopoverOpen, setIsTablePopoverOpen] = useState<boolean>(false);
+  const [isCodeBlockPopoverOpen, setIsCodeBlockPopoverOpen] =
+    useState<boolean>(false);
+  const [isHighlightPopoverOpen, setIsHighlightPopoverOpen] =
+    useState<boolean>(false);
+  const [codeLanguage, setCodeLanguage] = useState<string>("text");
 
   if (!editor) {
     return null;
@@ -128,6 +206,20 @@ const MenuBar = ({ editor }: MenuBarProps) => {
     }
   };
 
+  const insertTable = () => {
+    editor
+      .chain()
+      .focus()
+      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+      .run();
+    setIsTablePopoverOpen(false);
+  };
+
+  const insertCodeBlock = () => {
+    editor.chain().focus().setCodeBlock({ language: codeLanguage }).run();
+    setIsCodeBlockPopoverOpen(false);
+  };
+
   return (
     <div className="flex flex-wrap gap-1 p-1 mb-2 border rounded-t-md bg-muted/30 border-input rtl:space-x-reverse">
       <Button
@@ -167,53 +259,59 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       </Button>
 
       {/* Highlight Popover */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="px-2 h-8"
-            data-active={editor.isActive("highlight") ? "true" : "false"}
-          >
-            <Highlighter className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-2">
-          <div className="flex gap-1">
-            {HIGHLIGHT_COLORS.map((color) => (
+      <Popover
+        isOpen={isHighlightPopoverOpen}
+        setIsOpen={setIsHighlightPopoverOpen}
+        content={
+          <div className="p-2">
+            <div className="flex gap-1">
+              {HIGHLIGHT_COLORS.map((color) => (
+                <Button
+                  key={color.name}
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="w-8 h-8 p-0"
+                  onClick={() => {
+                    editor
+                      .chain()
+                      .focus()
+                      .toggleHighlight({ color: color.color })
+                      .run();
+                    setIsHighlightPopoverOpen(false);
+                  }}
+                  style={{
+                    backgroundColor: color.color,
+                    border: editor.isActive("highlight", { color: color.color })
+                      ? "2px solid black"
+                      : "none",
+                  }}
+                />
+              ))}
               <Button
-                key={color.name}
                 type="button"
                 size="sm"
                 variant="ghost"
                 className="w-8 h-8 p-0"
-                onClick={() =>
-                  editor
-                    .chain()
-                    .focus()
-                    .toggleHighlight({ color: color.color })
-                    .run()
-                }
-                style={{
-                  backgroundColor: color.color,
-                  border: editor.isActive("highlight", { color: color.color })
-                    ? "2px solid black"
-                    : "none",
+                onClick={() => {
+                  editor.chain().focus().unsetHighlight().run();
+                  setIsHighlightPopoverOpen(false);
                 }}
-              />
-            ))}
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="w-8 h-8 p-0"
-              onClick={() => editor.chain().focus().unsetHighlight().run()}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </PopoverContent>
+        }
+      >
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn("px-2 h-8", editor.isActive("highlight") && "bg-muted")}
+        >
+          <Highlighter className="h-4 w-4" />
+        </Button>
       </Popover>
 
       <div className="w-px h-8 bg-border mx-1" />
@@ -279,16 +377,41 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         <ListOrdered className="h-4 w-4" />
       </Button>
 
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="px-2 h-8"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        data-active={editor.isActive("codeBlock") ? "true" : "false"}
+      {/* Code Block Popover */}
+      <Popover
+        isOpen={isCodeBlockPopoverOpen}
+        setIsOpen={setIsCodeBlockPopoverOpen}
+        content={
+          <div className="p-3 w-64">
+            <div className="flex flex-col gap-2">
+              <Select value={codeLanguage} onValueChange={setCodeLanguage}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CODE_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={insertCodeBlock} size="sm" className="mt-2">
+                Insert Code Block
+              </Button>
+            </div>
+          </div>
+        }
       >
-        <Code className="h-4 w-4" />
-      </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn("px-2 h-8", editor.isActive("codeBlock") && "bg-muted")}
+        >
+          <Terminal className="h-4 w-4" />
+        </Button>
+      </Popover>
 
       <div className="w-px h-8 bg-border mx-1" />
 
@@ -329,64 +452,206 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 
       <div className="w-px h-8 bg-border mx-1" />
 
-      {/* Link Popover */}
-      <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="px-2 h-8"
-            onClick={setLink}
-            data-active={editor.isActive("link") ? "true" : "false"}
-          >
-            <LinkIcon className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-3">
-          <div className="flex flex-col gap-2">
-            <Input
-              type="text"
-              placeholder="https://example.com"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  applyLink();
-                }
-              }}
-            />
-            <div className="flex gap-2 mt-2">
-              <Button onClick={applyLink} size="sm" className="gap-1">
-                <LinkIcon className="h-3 w-3" />
-                {editor.isActive("link") ? "Update Link" : "Add Link"}
-              </Button>
-              {editor.isActive("link") && (
+      {/* Table Popover */}
+      <Popover
+        isOpen={isTablePopoverOpen}
+        setIsOpen={setIsTablePopoverOpen}
+        content={
+          <div className="p-3 w-64">
+            <div className="flex flex-col gap-2">
+              {editor.isActive("table") ? (
                 <>
-                  <Button
-                    onClick={() => window.open(linkUrl, "_blank")}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Open
-                  </Button>
-                  <Button
-                    onClick={unsetLink}
-                    size="sm"
-                    variant="destructive"
-                    className="gap-1"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Remove
+                  <h3 className="font-medium text-sm mb-1">Modify Table</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().addColumnBefore().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Column Before
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().addColumnAfter().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Column After
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().deleteColumn().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      <Minus className="h-3 w-3 mr-1" /> Delete Column
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().addRowBefore().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Row Before
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().addRowAfter().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Row After
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().deleteRow().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      <Minus className="h-3 w-3 mr-1" /> Delete Row
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().mergeCells().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full col-span-1"
+                      disabled={!editor.can().mergeCells()}
+                    >
+                      Merge Cells
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().splitCell().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full col-span-1"
+                      disabled={!editor.can().splitCell()}
+                    >
+                      Split Cell
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().toggleHeaderRow().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <ChevronsUpDown className="h-3 w-3 mr-1" /> Toggle Header
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        editor.chain().focus().deleteTable().run();
+                        setIsTablePopoverOpen(false);
+                      }}
+                      size="sm"
+                      variant="destructive"
+                      className="w-full col-span-1"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" /> Delete Table
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-medium text-sm mb-1">Insert Table</h3>
+                  <Button onClick={insertTable} size="sm">
+                    Insert 3×3 Table
                   </Button>
                 </>
               )}
             </div>
           </div>
-        </PopoverContent>
+        }
+      >
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn("px-2 h-8", editor.isActive("table") && "bg-muted")}
+        >
+          <Table2 className="h-4 w-4" />
+        </Button>
+      </Popover>
+
+      {/* Link Popover */}
+      <Popover
+        isOpen={isLinkPopoverOpen}
+        setIsOpen={setIsLinkPopoverOpen}
+        content={
+          <div className="p-3 w-72">
+            <div className="flex flex-col gap-2">
+              <Input
+                type="text"
+                placeholder="https://example.com"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyLink();
+                  }
+                }}
+              />
+              <div className="flex gap-2 mt-2">
+                <Button onClick={applyLink} size="sm" className="gap-1">
+                  <LinkIcon className="h-3 w-3" />
+                  {editor.isActive("link") ? "Update Link" : "Add Link"}
+                </Button>
+                {editor.isActive("link") && (
+                  <>
+                    <Button
+                      onClick={() => window.open(linkUrl, "_blank")}
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Open
+                    </Button>
+                    <Button
+                      onClick={unsetLink}
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Remove
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        }
+      >
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn("px-2 h-8", editor.isActive("link") && "bg-muted")}
+          onClick={setLink}
+        >
+          <LinkIcon className="h-4 w-4" />
+        </Button>
       </Popover>
 
       <Button
@@ -459,6 +724,11 @@ const RichTextEditor = ({
         heading: {
           levels: [1, 2, 3],
         },
+        codeBlock: {
+          HTMLAttributes: {
+            class: "p-4 rounded-md bg-muted font-mono text-sm",
+          },
+        },
       }),
       Image.configure({
         allowBase64: true,
@@ -478,6 +748,27 @@ const RichTextEditor = ({
       }),
       Highlight.configure({
         multicolor: true,
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: "border-collapse table-auto w-full",
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          class: "border-b border-muted",
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: "border-b border-muted bg-muted font-medium p-2 text-start",
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: "border border-muted p-2",
+        },
       }),
     ],
     content: value || "",
@@ -533,8 +824,6 @@ const RichTextEditor = ({
                 const attrs = editor.getAttributes("link");
                 // Set up the link popover
                 if (attrs.href) {
-                  // You need to access and set the state in MenuBar component
-                  // For simplicity, we'll just use the editor directly
                   editor
                     .chain()
                     .focus()
@@ -546,6 +835,39 @@ const RichTextEditor = ({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+          </div>
+        </BubbleMenu>
+      )}
+
+      {/* BubbleMenu for code blocks when focused */}
+      {editor && !readOnly && (
+        <BubbleMenu
+          editor={editor}
+          shouldShow={({ editor }) => editor.isActive("codeBlock")}
+          tippyOptions={{ duration: 100, placement: "top" }}
+        >
+          <div className="bg-popover text-popover-foreground rounded-md shadow-md p-1">
+            <Select
+              value={editor.getAttributes("codeBlock").language || "text"}
+              onValueChange={(value) => {
+                editor
+                  .chain()
+                  .focus()
+                  .updateAttributes("codeBlock", { language: value })
+                  .run();
+              }}
+            >
+              <SelectTrigger className="h-8 min-w-[150px]">
+                <SelectValue placeholder="Language" />
+              </SelectTrigger>
+              <SelectContent>
+                {CODE_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </BubbleMenu>
       )}
