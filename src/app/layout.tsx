@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { Vazirmatn } from "next/font/google";
+import { vazirmatn } from "@/lib/fonts";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
 import FloatingChat from "@/components/FloatingChat";
 import { MathJaxContext } from "better-react-mathjax";
-const vazirmatn = Vazirmatn({
-  subsets: ["arabic"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-vazirmatn",
-});
 
 export const metadata: Metadata = {
   title: "پارسا موز | سیستم مدیریت آموزش",

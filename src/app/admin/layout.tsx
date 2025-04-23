@@ -15,9 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { Metadata } from "next";
-import "@fontsource/vazirmatn/400.css";
-import "@fontsource/vazirmatn/500.css";
-import "@fontsource/vazirmatn/700.css";
+import { vazirmatn } from "@/lib/fonts";
 import "./../globals.css";
 
 export const metadata: Metadata = {
@@ -32,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-vazirmatn antialiased">
+      <body className={`${vazirmatn.className} antialiased`}>
         <SidebarProvider>
           {/* <AppSidebar /> */}
           <SidebarInset>
