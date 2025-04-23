@@ -110,6 +110,12 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "امتحانات",
+          url: "/admin/exam",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
           title: "گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
           system: "importstudents",
