@@ -206,107 +206,177 @@ function StudentsPageContent() {
     },
 
     {
-      name: "examType",
-      title: "نوع امتحان",
-      type: "compositefields",
-      isShowInList: true,
-      isSearchable: false,
-      required: true,
       enabled: true,
       visible: true,
-      compositeFieldsStyle: {
-        items: [
-          {
-            label: "همه سوالات در یک صفحه",
-            value: "allQuestionsInOnePage",
-            fields: [
-              {
-                name: "questionsOrder",
-                title: "ترتیب سوالات",
-                type: "dropdown",
+      isSearchable: true,
+      isShowInList: true,
+      name: "allQuestionsInOnePage",
+      title: "همه سوالات در یک صفحه",
+      type: "text",
+      required: false,
+      fields: [
+        {
+          name: "isActive",
+          title: "فعال/غیرفعال",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
 
-                required: true,
-
-                // groupUniqueness: true,
-                options: [
-                  { label: "اول تستی", value: "firstTest" },
-                  { label: "اول تشریحی", value: "firstEssay" },
-                  { label: "درهم تستی و تشریحی", value: "mixed" },
-                  { label: "به ترتیب افزودن", value: "byAdding" },
-                ],
-              },
-              {
-                name: "examTime",
-                title: "زمان امتحان",
-                type: "number",
-                required: true,
-                defaultValue: 1,
-              },
-            ],
+        {
+          name: "examTime",
+          title: "زمان امتحان",
+          type: "number",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          listLabelColor: "#2563eb",
+          defaultValue: "",
+          validation: {
+            requiredMessage: "زمان امتحان الزامی است",
           },
-          {
-            label: "نمایش سوالات در صفحات مجزا",
-            value: "separatePages",
-            fields: [
-              {
-                name: "questionsOrder",
-                title: "ترتیب سوالات",
-                type: "dropdown",
-
-                required: true,
-
-                // groupUniqueness: true,
-                options: [
-                  { label: "اول تستی", value: "firstTest" },
-                  { label: "اول تشریحی", value: "firstEssay" },
-                  { label: "درهم تستی و تشریحی", value: "mixed" },
-                  { label: "به ترتیب افزودن", value: "byAdding" },
-                ],
-              },
-              {
-                name: "questionTime",
-                title: "زمان هر سوال",
-                type: "number",
-                required: true,
-                defaultValue: 1,
-              },
-            ],
+        },
+        {
+          name: "questionsOrder",
+          title: "ترتیب سوالات",
+          type: "dropdown",
+          isSearchable: true,
+          required: true,
+          isShowInList: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          options: [
+            { label: "اول تستی", value: "firstTest" },
+            { label: "اول تشریحی", value: "firstEssay" },
+            { label: "درهم تستی و تشریحی", value: "mixed" },
+            { label: "به ترتیب افزودن", value: "byAdding" },
+            { label: "به ترتیب تصادفی", value: "randomly" },
+          ],
+          validation: {
+            requiredMessage: "لطفا یک ترتیب سوالات را انتخاب کنید",
           },
-          {
-            label: "آزمون با فایل عکس",
-            value: "imageFile",
-            fields: [
-              {
-                name: "subject",
-                title: "موضوع",
-                type: "text",
-                required: true,
-              },
-              {
-                name: "materials_needed",
-                title: "منابع آموزشی مورد نیاز",
-                type: "checkbox",
-                defaultValue: false,
-              },
-            ],
-          },
-        ],
-        defaultItem: "technical",
+        },
+      ],
+      orientation: "vertical",
+      isOpen: false,
+    },
 
-        // In edit mode, the data for compositefields should be structured as follows:
-        // {
-        //   special_requirements: {
-        //     type: "technical",          // Determines which item is selected
-        //     technical: {                // Contains field values for the selected item
-        //       equipment: "computer",    // Field values match the field names in the selected item
-        //       quantity: 2
-        //     }
-        //   }
-        // }
-        //
-        // When you switch between items, only the fields for the currently selected item are shown
-        // and validated, making the form dynamic based on user selection.
-      },
+    {
+      enabled: true,
+      visible: true,
+      isSearchable: true,
+      isShowInList: true,
+      name: "separatePages",
+      title: "نمایش سوالات در صفحات مجزا",
+      type: "text",
+      required: false,
+      fields: [
+        {
+          name: "isActive",
+          title: "فعال/غیرفعال",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
+
+        {
+          name: "questionTime",
+          title: "زمان هر سوال",
+          type: "number",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          listLabelColor: "#2563eb",
+          defaultValue: "",
+          validation: {
+            requiredMessage: "زمان هر سوال الزامی است",
+          },
+        },
+        {
+          name: "questionsOrder",
+          title: "ترتیب سوالات",
+          type: "dropdown",
+          isSearchable: true,
+          required: true,
+          isShowInList: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          options: [
+            { label: "اول تستی", value: "firstTest" },
+            { label: "اول تشریحی", value: "firstEssay" },
+            { label: "درهم تستی و تشریحی", value: "mixed" },
+            { label: "به ترتیب افزودن", value: "byAdding" },
+            { label: "به ترتیب تصادفی", value: "randomly" },
+          ],
+          validation: {
+            requiredMessage: "لطفا یک ترتیب سوالات را انتخاب کنید",
+          },
+        },
+      ],
+      orientation: "vertical",
+      isOpen: false,
+    },
+
+    {
+      enabled: true,
+      visible: true,
+      isSearchable: true,
+      isShowInList: true,
+      name: "imageFile",
+      title: "آزمون با فایل عکس",
+      type: "text",
+      required: false,
+      orientation: "vertical",
+      isOpen: false,
+      fields: [
+        {
+          name: "isActive",
+          title: "فعال/غیرفعال",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
+
+        {
+          name: "examTime",
+          title: "زمان امتحان",
+          type: "number",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          listLabelColor: "#2563eb",
+          defaultValue: "",
+          validation: {
+            requiredMessage: "زمان امتحان الزامی است",
+          },
+        },
+      ],
     },
 
     // {
@@ -327,151 +397,183 @@ function StudentsPageContent() {
     //     requiredMessage: "لطفا یک نوع امتحان را انتخاب کنید",
     //   },
     // },
-    {
-      name: "startDate",
-      title: "تاریخ و زمان شروع",
-      type: "datepicker",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      displayFormat: (value: string | number | Date) => {
-        if (!value) return "";
-        const date = new Date(value);
-        const formatter = new Intl.DateTimeFormat("fa-IR", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-        return formatter.format(date);
-      },
-      datepickerStyle: {
-        format: "YYYY/MM/DD HH:mm",
-        className: "custom-datepicker",
-        calendar: "persian",
-        locale: "fa",
-        timePicker: true, // Enable time picker plugin
-        calendarPosition: "bottom",
-        weekStartDayIndex: 6,
-        hideWeekDays: false,
-        hideMonth: false,
-        hideYear: false,
-      },
-      validation: {
-        requiredMessage: "لطفا تاریخ شروع را وارد کنید",
-      },
-    },
 
     {
-      name: "endDate",
-      title: "تاریخ و زمان پایان",
-      type: "datepicker",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
       enabled: true,
       visible: true,
-      readonly: false,
-      displayFormat: (value: string | number | Date) => {
-        if (!value) return "";
-        const date = new Date(value);
-        const formatter = new Intl.DateTimeFormat("fa-IR", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-        return formatter.format(date);
-      },
-      datepickerStyle: {
-        format: "YYYY/MM/DD HH:mm",
-        className: "custom-datepicker",
-        calendar: "persian",
-        locale: "fa",
-        calendarPosition: "bottom",
-        weekStartDayIndex: 6,
-        timePicker: true, // Enable time picker plugin
-        hideWeekDays: false,
-        hideMonth: false,
-        hideYear: false,
-      },
-      validation: {
-        requiredMessage: "لطفا تاریخ پایان را وارد کنید",
-      },
-    },
-    {
-      name: "questionsOrder",
-      title: "ترتیب سوالات",
-      type: "dropdown",
       isSearchable: true,
-      required: true,
       isShowInList: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      // groupUniqueness: true,
-      options: [
-        { label: "اول تستی", value: "firstTest" },
-        { label: "اول تشریحی", value: "firstEssay" },
-        { label: "درهم تستی و تشریحی", value: "mixed" },
-        { label: "به ترتیب افزودن", value: "byAdding" },
-      ],
-      validation: {
-        requiredMessage: "لطفا یک ترتیب سوالات را انتخاب کنید",
-      },
-    },
+      name: "dateTime",
+      title: "تاریخ و زمان امتحان",
+      type: "text",
+      required: false,
+      orientation: "vertical",
+      isOpen: false,
+      fields: [
+        {
+          name: "startDate",
+          title: "تاریخ و زمان شروع",
+          type: "datepicker",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          displayFormat: (value: string | number | Date) => {
+            if (!value) return "";
+            const date = new Date(value);
+            const formatter = new Intl.DateTimeFormat("fa-IR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            return formatter.format(date);
+          },
+          datepickerStyle: {
+            format: "YYYY/MM/DD HH:mm",
+            className: "custom-datepicker",
+            calendar: "persian",
+            locale: "fa",
+            timePicker: true, // Enable time picker plugin
+            calendarPosition: "bottom",
+            weekStartDayIndex: 6,
+            hideWeekDays: false,
+            hideMonth: false,
+            hideYear: false,
+          },
+          validation: {
+            requiredMessage: "لطفا تاریخ شروع را وارد کنید",
+          },
+        },
 
-    {
-      name: "questionsDirection",
-      title: "جهت سوالات",
-      type: "dropdown",
-      isSearchable: true,
-      required: true,
-      isShowInList: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      // groupUniqueness: true,
-      options: [
-        { label: "راست به چپ", value: "rightToLeft" },
-        { label: "چپ به راست", value: "leftToRight" },
+        {
+          name: "endDate",
+          title: "تاریخ و زمان پایان",
+          type: "datepicker",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          displayFormat: (value: string | number | Date) => {
+            if (!value) return "";
+            const date = new Date(value);
+            const formatter = new Intl.DateTimeFormat("fa-IR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            return formatter.format(date);
+          },
+          datepickerStyle: {
+            format: "YYYY/MM/DD HH:mm",
+            className: "custom-datepicker",
+            calendar: "persian",
+            locale: "fa",
+            calendarPosition: "bottom",
+            weekStartDayIndex: 6,
+            timePicker: true, // Enable time picker plugin
+            hideWeekDays: false,
+            hideMonth: false,
+            hideYear: false,
+          },
+          validation: {
+            requiredMessage: "لطفا تاریخ پایان را وارد کنید",
+          },
+        },
       ],
-      validation: {
-        requiredMessage: "لطفا یک جهت سوالات را انتخاب کنید",
-      },
     },
     {
-      name: "preexammessage",
-      title: "پیام قبل از امتحان",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
       enabled: true,
       visible: true,
-      readonly: false,
-      listLabelColor: "#2563eb",
-      defaultValue: "",
-      validation: {
-        requiredMessage: "پیام قبل از امتحان الزامی است",
-      },
-    },
-    {
-      name: "postexammessage",
-      title: "پیام پس از امتحان",
-      type: "text",
-      isShowInList: true,
       isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      listLabelColor: "#2563eb",
-      defaultValue: "",
-      validation: {
-        requiredMessage: "پیام قبل از امتحان الزامی است",
-      },
+      isShowInList: true,
+      name: "settings",
+      title: "تنظیمات",
+      type: "text",
+      required: false,
+      orientation: "vertical",
+      isOpen: false,
+      fields: [
+        {
+          name: "questionsDirection",
+          title: "جهت سوالات",
+          type: "dropdown",
+          isSearchable: true,
+          required: true,
+          isShowInList: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          // groupUniqueness: true,
+          options: [
+            { label: "راست به چپ", value: "rightToLeft" },
+            { label: "چپ به راست", value: "leftToRight" },
+          ],
+          validation: {
+            requiredMessage: "لطفا یک جهت سوالات را انتخاب کنید",
+          },
+        },
+        {
+          name: "preexammessage",
+          title: "پیام قبل از امتحان",
+          type: "text",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          listLabelColor: "#2563eb",
+          defaultValue: "",
+          validation: {
+            requiredMessage: "پیام قبل از امتحان الزامی است",
+          },
+        },
+        {
+          name: "postexammessage",
+          title: "پیام پس از امتحان",
+          type: "text",
+          isShowInList: true,
+          isSearchable: true,
+          required: true,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          listLabelColor: "#2563eb",
+          defaultValue: "",
+          validation: {
+            requiredMessage: "پیام قبل از امتحان الزامی است",
+          },
+        },
+
+        {
+          name: "userCanAttachImage",
+          title: "دانش آموزان میتوانند عکس بپیونداند",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
+        {
+          name: "showScoreAfterExam",
+          title: "نمایش نمره بعد از امتحان",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
+      ],
     },
 
     {
