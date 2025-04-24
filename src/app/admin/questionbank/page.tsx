@@ -33,7 +33,15 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Filter, X } from "lucide-react";
+import {
+  RefreshCw,
+  Filter,
+  X,
+  Plus,
+  Edit,
+  Trash2,
+  ClipboardList,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -41,8 +49,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { MathJax } from "better-react-mathjax";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 // Types
 interface Question {
@@ -82,6 +95,19 @@ interface Categories {
   cat2: string[];
   cat3: string[];
   cat4: string[];
+}
+
+interface ExamQuestion {
+  _id: string;
+  examId: string;
+  question: Question;
+  category: string;
+  score: number;
+  responseTime: number;
+  addedBy: string;
+  schoolCode: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // Add a utility function to convert numbers to Persian
@@ -170,6 +196,9 @@ export default function QuestionBankPage() {
 
 // Separate client component
 function QuestionBankContent() {
+  // Get current user
+  const { user } = useAuth();
+
   // State
   const [questions, setQuestions] = useState<Question[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -200,6 +229,36 @@ function QuestionBankContent() {
   );
   const [showQuestionDetail, setShowQuestionDetail] = useState<boolean>(false);
 
+  // New state for exam functionality
+  const [examId, setExamId] = useState<string | null>(null);
+  const [showAddToExamDialog, setShowAddToExamDialog] =
+    useState<boolean>(false);
+  const [addToExamLoading, setAddToExamLoading] = useState<boolean>(false);
+  const [examCategories, setExamCategories] = useState<string[]>([]);
+  const [addToExamData, setAddToExamData] = useState({
+    category: "",
+    score: "1", // Default value
+    responseTime: "60", // Default 60 seconds
+  });
+
+  // New state for added questions view
+  const [showAddedQuestionsDialog, setShowAddedQuestionsDialog] =
+    useState<boolean>(false);
+  const [addedQuestions, setAddedQuestions] = useState<ExamQuestion[]>([]);
+  const [addedQuestionsLoading, setAddedQuestionsLoading] =
+    useState<boolean>(false);
+  const [editQuestionId, setEditQuestionId] = useState<string | null>(null);
+  const [editQuestionData, setEditQuestionData] = useState({
+    category: "",
+    score: "",
+    responseTime: "",
+  });
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(
+    null
+  );
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
   // Router and search params
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -214,6 +273,13 @@ function QuestionBankContent() {
     const cat4 = searchParams.get("cat4") || "";
     const difficulty = searchParams.get("difficulty") || "";
     const type = searchParams.get("type") || "";
+    const examIdParam = searchParams.get("examID");
+
+    if (examIdParam) {
+      setExamId(examIdParam);
+      // Fetch categories for this exam/school
+      fetchExamCategories(examIdParam);
+    }
 
     setFilters({ grade, cat1, cat2, cat3, cat4, difficulty, type });
 
@@ -293,6 +359,167 @@ function QuestionBankContent() {
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
+  };
+
+  // Fetch categories for the exam
+  const fetchExamCategories = async (examId: string) => {
+    try {
+      const response = await fetch(
+        `/api/examcat?examId=${examId}&username=${user?.username || ""}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+
+        // Ensure data is an array and contains objects with categoryName property
+        if (Array.isArray(data)) {
+          const categories = data
+            .filter(
+              (item): item is { categoryName: string } =>
+                typeof item === "object" &&
+                item !== null &&
+                "categoryName" in item &&
+                typeof item.categoryName === "string"
+            )
+            .map((cat) => cat.categoryName);
+
+          // Remove duplicates and sort alphabetically
+          setExamCategories([...new Set(categories)].sort());
+        } else {
+          console.error("Invalid data format from examcat API");
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching exam categories:", error);
+    }
+  };
+
+  // Handle adding a new category
+  const handleAddCategory = async (categoryName: string) => {
+    if (!categoryName.trim() || !examId || !user?.username) return false;
+
+    try {
+      const response = await fetch("/api/examcat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          examId,
+          username: user.username,
+          categoryName: categoryName.trim(),
+          schoolCode: user.schoolCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Fetch updated categories instead of manually updating
+        await fetchExamCategories(examId);
+        return true;
+      } else {
+        toast.error(data.error || "خطا در ذخیره دسته بندی جدید");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+      return false;
+    }
+  };
+
+  // Handle saving question to exam
+  const handleSaveToExam = async () => {
+    if (!selectedQuestion || !examId || !user?.username) return;
+    if (!addToExamData.category.trim()) {
+      toast.error("لطفا یک دسته بندی انتخاب کنید");
+      return;
+    }
+
+    setAddToExamLoading(true);
+
+    try {
+      // Check if this question is already added to this exam
+      const checkResponse = await fetch(
+        `/api/examquestions/check?examId=${examId}&questionId=${selectedQuestion._id}`
+      );
+      if (!checkResponse.ok) {
+        throw new Error("خطا در بررسی وجود سوال در آزمون");
+      }
+
+      const { exists } = await checkResponse.json();
+
+      if (exists) {
+        toast.error("این سوال قبلا به این آزمون اضافه شده است.");
+        setAddToExamLoading(false);
+        return;
+      }
+
+      // Add category if it's a new one
+      const categoryName = addToExamData.category.trim();
+      if (!examCategories.includes(categoryName) && categoryName) {
+        const success = await handleAddCategory(categoryName);
+        if (!success) {
+          // Error is already displayed in handleAddCategory
+          setAddToExamLoading(false);
+          return;
+        }
+      }
+
+      // Save to examquestions collection
+      const saveResponse = await fetch("/api/examquestions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          examId,
+          question: selectedQuestion,
+          category: categoryName,
+          score: parseFloat(addToExamData.score),
+          responseTime: parseInt(addToExamData.responseTime),
+          addedBy: user.username,
+          schoolCode: user.schoolCode,
+        }),
+      });
+
+      if (saveResponse.ok) {
+        toast.success("سوال با موفقیت به آزمون اضافه شد.");
+        // Close dialogs
+        setShowAddToExamDialog(false);
+        // Reset data
+        setAddToExamData({
+          category: "",
+          score: "1",
+          responseTime: "60",
+        });
+      } else {
+        const errorData = await saveResponse.json();
+        toast.error(errorData.error || "خطا در ذخیره سوال.");
+      }
+    } catch (error) {
+      console.error("Error saving question to exam:", error);
+      toast.error("خطایی رخ داد. لطفا دوباره تلاش کنید.");
+    } finally {
+      setAddToExamLoading(false);
+    }
+  };
+
+  // Open add to exam dialog
+  const handleAddToExam = () => {
+    // Refresh categories each time the dialog is opened
+    if (examId) {
+      fetchExamCategories(examId);
+    }
+    setShowAddToExamDialog(true);
+  };
+
+  // Handle change in add to exam form
+  const handleAddToExamChange = (field: string, value: string) => {
+    setAddToExamData({
+      ...addToExamData,
+      [field]: value,
+    });
   };
 
   // Apply filters
@@ -464,6 +691,134 @@ function QuestionBankContent() {
   const handleQuestionClick = (question: Question) => {
     setSelectedQuestion(question);
     setShowQuestionDetail(true);
+  };
+
+  // Fetch questions added to the current exam
+  const fetchAddedQuestions = async () => {
+    if (!examId) return;
+
+    setAddedQuestionsLoading(true);
+    try {
+      const response = await fetch(`/api/examquestions?examId=${examId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAddedQuestions(data);
+      } else {
+        toast.error("خطا در دریافت سوالات افزوده شده");
+      }
+    } catch (error) {
+      console.error("Error fetching added questions:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+    } finally {
+      setAddedQuestionsLoading(false);
+    }
+  };
+
+  // Open added questions dialog
+  const handleViewAddedQuestions = () => {
+    fetchAddedQuestions();
+    // Refresh categories before showing the dialog
+    if (examId) {
+      fetchExamCategories(examId);
+    }
+    setShowAddedQuestionsDialog(true);
+  };
+
+  // Handle edit question button click
+  const handleEditQuestion = (question: ExamQuestion) => {
+    // Refresh categories before editing
+    if (examId) {
+      fetchExamCategories(examId);
+    }
+    setEditQuestionId(question._id);
+    setEditQuestionData({
+      category: question.category,
+      score: question.score.toString(),
+      responseTime: question.responseTime.toString(),
+    });
+  };
+
+  // Handle edit question data change
+  const handleEditQuestionChange = (field: string, value: string) => {
+    setEditQuestionData({
+      ...editQuestionData,
+      [field]: value,
+    });
+  };
+
+  // Save edited question
+  const handleSaveEditedQuestion = async () => {
+    if (!editQuestionId || !examId) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/examquestions/${editQuestionId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category: editQuestionData.category.trim(),
+          score: parseFloat(editQuestionData.score),
+          responseTime: parseInt(editQuestionData.responseTime),
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("سوال با موفقیت ویرایش شد");
+        setEditQuestionId(null);
+        // Refresh the list
+        fetchAddedQuestions();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "خطا در ویرایش سوال");
+      }
+    } catch (error) {
+      console.error("Error updating question:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Handle delete question
+  const handleDeleteQuestion = (questionId: string) => {
+    setDeletingQuestionId(questionId);
+    setDeleteConfirmOpen(true);
+  };
+
+  // Confirm delete question
+  const confirmDeleteQuestion = async () => {
+    if (!deletingQuestionId) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/examquestions/${deletingQuestionId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast.success("سوال با موفقیت حذف شد");
+        // Refresh the list
+        fetchAddedQuestions();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "خطا در حذف سوال");
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+    } finally {
+      setIsUpdating(false);
+      setDeleteConfirmOpen(false);
+      setDeletingQuestionId(null);
+    }
+  };
+
+  // Cancel delete question
+  const cancelDeleteQuestion = () => {
+    setDeleteConfirmOpen(false);
+    setDeletingQuestionId(null);
   };
 
   return (
@@ -651,7 +1006,20 @@ function QuestionBankContent() {
       {/* Questions Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">سوالات</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg">سوالات</CardTitle>
+            {examId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewAddedQuestions}
+                className="flex items-center gap-1"
+              >
+                <ClipboardList className="h-4 w-4 ml-1" />
+                مشاهده سوالات افزوده شده
+              </Button>
+            )}
+          </div>
           <CardDescription>لیست سوالات با امکان مشاهده جزئیات</CardDescription>
         </CardHeader>
         <CardContent>
@@ -900,17 +1268,32 @@ function QuestionBankContent() {
                 سوال شماره{" "}
                 {selectedQuestion && toPersianNumber(selectedQuestion.id)}
               </span>
-              <Badge
-                variant={
-                  selectedQuestion?.difficulty?.includes("سخت")
-                    ? "destructive"
-                    : selectedQuestion?.difficulty?.includes("متوسط")
-                    ? "secondary"
-                    : "outline"
-                }
-              >
-                {selectedQuestion?.difficulty}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    selectedQuestion?.difficulty?.includes("سخت")
+                      ? "destructive"
+                      : selectedQuestion?.difficulty?.includes("متوسط")
+                      ? "secondary"
+                      : "outline"
+                  }
+                >
+                  {selectedQuestion?.difficulty}
+                </Badge>
+
+                {/* Add to Exam button */}
+                {examId && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleAddToExam}
+                    className="flex items-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>افزودن به آزمون</span>
+                  </Button>
+                )}
+              </div>
             </DialogTitle>
             <DialogDescription className="text-sm">
               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1181,6 +1564,411 @@ function QuestionBankContent() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to Exam Dialog */}
+      <Dialog open={showAddToExamDialog} onOpenChange={setShowAddToExamDialog}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>افزودن سوال به آزمون</DialogTitle>
+            <DialogDescription>
+              لطفا اطلاعات مورد نیاز را برای افزودن این سوال به آزمون وارد کنید.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="category">دسته بندی</Label>
+              <Select
+                value={
+                  examCategories.includes(addToExamData.category)
+                    ? addToExamData.category
+                    : ""
+                }
+                onValueChange={(value) =>
+                  handleAddToExamChange("category", value)
+                }
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="انتخاب یا افزودن دسته بندی جدید" />
+                </SelectTrigger>
+                <SelectContent>
+                  {examCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value=" ">+ افزودن دسته بندی جدید</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Show input if "add new category" is selected */}
+              {addToExamData.category === "" ||
+              !examCategories.includes(addToExamData.category) ? (
+                <div className="mt-2">
+                  <Label htmlFor="newCategory">دسته بندی جدید</Label>
+                  <Input
+                    id="newCategory"
+                    placeholder="نام دسته بندی جدید را وارد کنید"
+                    value={
+                      !examCategories.includes(addToExamData.category)
+                        ? addToExamData.category
+                        : ""
+                    }
+                    onChange={(e) =>
+                      handleAddToExamChange("category", e.target.value)
+                    }
+                    className="mt-1"
+                  />
+                  {addToExamData.category.trim() === "" && (
+                    <p className="text-xs text-destructive mt-1">
+                      دسته بندی الزامی است
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="score">نمره</Label>
+              <Select
+                value={addToExamData.score}
+                onValueChange={(value) => handleAddToExamChange("score", value)}
+              >
+                <SelectTrigger id="score">
+                  <SelectValue placeholder="انتخاب نمره" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.25">۰.۲۵</SelectItem>
+                  <SelectItem value="0.5">۰.۵</SelectItem>
+                  <SelectItem value="0.75">۰.۷۵</SelectItem>
+                  <SelectItem value="1">۱</SelectItem>
+                  <SelectItem value="1.25">۱.۲۵</SelectItem>
+                  <SelectItem value="1.5">۱.۵</SelectItem>
+                  <SelectItem value="1.75">۱.۷۵</SelectItem>
+                  <SelectItem value="2">۲</SelectItem>
+                  <SelectItem value="2.5">۲.۵</SelectItem>
+                  <SelectItem value="3">۳</SelectItem>
+                  <SelectItem value="3.5">۳.۵</SelectItem>
+                  <SelectItem value="4">۴</SelectItem>
+                  <SelectItem value="4.5">۴.۵</SelectItem>
+                  <SelectItem value="5">۵</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responseTime">زمان پاسخگویی (ثانیه)</Label>
+              <Input
+                id="responseTime"
+                type="number"
+                min="10"
+                value={addToExamData.responseTime}
+                onChange={(e) =>
+                  handleAddToExamChange("responseTime", e.target.value)
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddToExamDialog(false)}
+            >
+              انصراف
+            </Button>
+            <Button
+              onClick={handleSaveToExam}
+              disabled={
+                addToExamLoading ||
+                !addToExamData.category.trim() ||
+                !addToExamData.score ||
+                !addToExamData.responseTime ||
+                parseInt(addToExamData.responseTime) < 10
+              }
+            >
+              {addToExamLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Added Questions Dialog */}
+      <Dialog
+        open={showAddedQuestionsDialog}
+        onOpenChange={setShowAddedQuestionsDialog}
+      >
+        <DialogContent className="max-w-4xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>سوالات افزوده شده به آزمون</DialogTitle>
+            <DialogDescription>
+              لیست سوالاتی که به این آزمون افزوده شده‌اند. شما می‌توانید
+              دسته‌بندی، نمره و زمان پاسخ را ویرایش کنید یا سوال را حذف کنید.
+            </DialogDescription>
+          </DialogHeader>
+
+          {addedQuestionsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : addedQuestions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              هیچ سوالی به این آزمون افزوده نشده است
+            </div>
+          ) : (
+            <div className="overflow-y-auto max-h-[500px]">
+              {addedQuestions.map((questionData) => (
+                <div
+                  key={questionData._id}
+                  className="border rounded-lg p-4 mb-4 bg-white"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-medium text-sm">
+                        دسته بندی:{" "}
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                          {questionData.category}
+                        </span>
+                      </h3>
+                      <div className="flex gap-4 mt-1">
+                        <span className="text-xs text-gray-600">
+                          نمره: {questionData.score}
+                        </span>
+                        <span className="text-xs text-gray-600">
+                          زمان پاسخ: {questionData.responseTime} ثانیه
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditQuestion(questionData)}
+                        className="h-8 px-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteQuestion(questionData._id)}
+                        className="h-8 px-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Question preview */}
+                  <div className="mt-2 border-t pt-2">
+                    <MathJax>
+                      <div
+                        className="text-sm line-clamp-2"
+                        dangerouslySetInnerHTML={renderHTML(
+                          questionData.question.question
+                        )}
+                      />
+                    </MathJax>
+                  </div>
+
+                  {/* Edit form */}
+                  {editQuestionId === questionData._id && (
+                    <div className="mt-4 border-t pt-4 grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`category-${questionData._id}`}>
+                          دسته بندی
+                        </Label>
+                        <Select
+                          value={
+                            examCategories.includes(editQuestionData.category)
+                              ? editQuestionData.category
+                              : ""
+                          }
+                          onValueChange={(value) =>
+                            handleEditQuestionChange("category", value)
+                          }
+                        >
+                          <SelectTrigger id={`category-${questionData._id}`}>
+                            <SelectValue placeholder="انتخاب یا افزودن دسته بندی جدید" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {examCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value=" ">
+                              + افزودن دسته بندی جدید
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Show input if "add new category" is selected */}
+                        {editQuestionData.category === "" ||
+                        !examCategories.includes(editQuestionData.category) ? (
+                          <div className="mt-2">
+                            <Label htmlFor={`newCategory-${questionData._id}`}>
+                              دسته بندی جدید
+                            </Label>
+                            <Input
+                              id={`newCategory-${questionData._id}`}
+                              placeholder="نام دسته بندی جدید را وارد کنید"
+                              value={
+                                !examCategories.includes(
+                                  editQuestionData.category
+                                )
+                                  ? editQuestionData.category
+                                  : ""
+                              }
+                              onChange={(e) =>
+                                handleEditQuestionChange(
+                                  "category",
+                                  e.target.value
+                                )
+                              }
+                              className="mt-1"
+                            />
+                            {editQuestionData.category.trim() === "" && (
+                              <p className="text-xs text-destructive mt-1">
+                                دسته بندی الزامی است
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`score-${questionData._id}`}>
+                            نمره
+                          </Label>
+                          <Select
+                            value={editQuestionData.score}
+                            onValueChange={(value) =>
+                              handleEditQuestionChange("score", value)
+                            }
+                          >
+                            <SelectTrigger id={`score-${questionData._id}`}>
+                              <SelectValue placeholder="انتخاب نمره" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0.25">۰.۲۵</SelectItem>
+                              <SelectItem value="0.5">۰.۵</SelectItem>
+                              <SelectItem value="0.75">۰.۷۵</SelectItem>
+                              <SelectItem value="1">۱</SelectItem>
+                              <SelectItem value="1.25">۱.۲۵</SelectItem>
+                              <SelectItem value="1.5">۱.۵</SelectItem>
+                              <SelectItem value="1.75">۱.۷۵</SelectItem>
+                              <SelectItem value="2">۲</SelectItem>
+                              <SelectItem value="2.5">۲.۵</SelectItem>
+                              <SelectItem value="3">۳</SelectItem>
+                              <SelectItem value="3.5">۳.۵</SelectItem>
+                              <SelectItem value="4">۴</SelectItem>
+                              <SelectItem value="4.5">۴.۵</SelectItem>
+                              <SelectItem value="5">۵</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`responseTime-${questionData._id}`}>
+                            زمان پاسخگویی (ثانیه)
+                          </Label>
+                          <Input
+                            id={`responseTime-${questionData._id}`}
+                            type="number"
+                            min="10"
+                            value={editQuestionData.responseTime}
+                            onChange={(e) =>
+                              handleEditQuestionChange(
+                                "responseTime",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditQuestionId(null)}
+                        >
+                          انصراف
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveEditedQuestion}
+                          disabled={
+                            isUpdating ||
+                            !editQuestionData.category.trim() ||
+                            !editQuestionData.score ||
+                            !editQuestionData.responseTime ||
+                            parseInt(editQuestionData.responseTime) < 10
+                          }
+                        >
+                          {isUpdating ? (
+                            <>
+                              <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                              در حال ذخیره...
+                            </>
+                          ) : (
+                            "ذخیره تغییرات"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>حذف سوال از آزمون</DialogTitle>
+            <DialogDescription>
+              آیا از حذف این سوال از آزمون اطمینان دارید؟ این عمل قابل بازگشت
+              نیست.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteQuestion}
+              disabled={isUpdating}
+            >
+              انصراف
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteQuestion}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  در حال حذف...
+                </>
+              ) : (
+                "حذف سوال"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
