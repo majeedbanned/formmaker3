@@ -279,6 +279,8 @@ function QuestionBankContent() {
       setExamId(examIdParam);
       // Fetch categories for this exam/school
       fetchExamCategories(examIdParam);
+      // Also fetch added questions on initial load
+      fetchAddedQuestions(examIdParam);
     }
 
     setFilters({ grade, cat1, cat2, cat3, cat4, difficulty, type });
@@ -694,12 +696,12 @@ function QuestionBankContent() {
   };
 
   // Fetch questions added to the current exam
-  const fetchAddedQuestions = async () => {
-    if (!examId) return;
+  const fetchAddedQuestions = async (examIdToUse = examId) => {
+    if (!examIdToUse) return;
 
     setAddedQuestionsLoading(true);
     try {
-      const response = await fetch(`/api/examquestions?examId=${examId}`);
+      const response = await fetch(`/api/examquestions?examId=${examIdToUse}`);
       if (response.ok) {
         const data = await response.json();
         setAddedQuestions(data);
@@ -716,7 +718,8 @@ function QuestionBankContent() {
 
   // Open added questions dialog
   const handleViewAddedQuestions = () => {
-    fetchAddedQuestions();
+    // No need to fetch questions again since we're doing it on page load
+    // and after any modifications
     // Refresh categories before showing the dialog
     if (examId) {
       fetchExamCategories(examId);
@@ -1009,15 +1012,49 @@ function QuestionBankContent() {
           <div className="flex justify-between items-center">
             <CardTitle className="text-lg">سوالات</CardTitle>
             {examId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewAddedQuestions}
-                className="flex items-center gap-1"
-              >
-                <ClipboardList className="h-4 w-4 ml-1" />
-                مشاهده سوالات افزوده شده
-              </Button>
+              <div className="flex items-center gap-3">
+                {addedQuestions.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="flex gap-1">
+                      <span>تعداد سوالات:</span>
+                      <span>{toPersianNumber(addedQuestions.length)}</span>
+                    </Badge>
+                    <Badge variant="outline" className="flex gap-1">
+                      <span>مجموع نمره:</span>
+                      <span>
+                        {toPersianNumber(
+                          Number(
+                            addedQuestions
+                              .reduce((sum, q) => sum + q.score, 0)
+                              .toFixed(2)
+                          )
+                        )}
+                      </span>
+                    </Badge>
+                    <Badge variant="outline" className="flex gap-1">
+                      <span>زمان کل:</span>
+                      <span>
+                        {toPersianNumber(
+                          addedQuestions.reduce(
+                            (sum, q) => sum + q.responseTime,
+                            0
+                          )
+                        )}
+                        <span className="mr-1">ثانیه</span>
+                      </span>
+                    </Badge>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewAddedQuestions}
+                  className="flex items-center gap-1"
+                >
+                  <ClipboardList className="h-4 w-4 ml-1" />
+                  مشاهده سوالات افزوده شده
+                </Button>
+              </div>
             )}
           </div>
           <CardDescription>لیست سوالات با امکان مشاهده جزئیات</CardDescription>
