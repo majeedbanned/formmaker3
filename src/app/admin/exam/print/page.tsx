@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MathJax } from "better-react-mathjax";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface Question {
   _id: string;
@@ -149,6 +149,9 @@ export default function PrintExamPage() {
   const [schoolData, setSchoolData] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAnswers, setShowAnswers] = useState(false);
+  const [printTemplate, setPrintTemplate] = useState<
+    "regular" | "compact" | "dense"
+  >("regular");
 
   useEffect(() => {
     if (!examId) return;
@@ -231,32 +234,72 @@ export default function PrintExamPage() {
   }
 
   return (
-    <div dir="rtl" className="container mx-auto p-6">
-      <div className="non-printable flex justify-between items-center mb-6">
-        <Button onClick={handleGoBack} variant="outline">
-          <ArrowLeft className="h-4 w-4 ml-2" />
-          بازگشت
-        </Button>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            <input
-              type="checkbox"
-              id="show-answers"
-              checked={showAnswers}
-              onChange={(e) => setShowAnswers(e.target.checked)}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <label
-              htmlFor="show-answers"
-              className="text-sm font-medium text-gray-700"
-            >
-              نمایش پاسخ‌ها (نسخه معلم)
-            </label>
-          </div>
-          <Button onClick={handlePrint}>
-            <Printer className="h-4 w-4 ml-2" />
-            چاپ آزمون
+    <div
+      dir="rtl"
+      className={`container mx-auto p-6 print-template-${printTemplate}`}
+    >
+      <div className="non-printable flex flex-col mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <Button onClick={handleGoBack} variant="outline">
+            <ArrowLeft className="h-4 w-4 ml-2" />
+            بازگشت
           </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <input
+                type="checkbox"
+                id="show-answers"
+                checked={showAnswers}
+                onChange={(e) => setShowAnswers(e.target.checked)}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label
+                htmlFor="show-answers"
+                className="text-sm font-medium text-gray-700"
+              >
+                نمایش پاسخ‌ها (نسخه معلم)
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <span className="text-sm font-medium text-gray-700 ml-2">
+                قالب چاپ:
+              </span>
+              <select
+                value={printTemplate}
+                onChange={(e) =>
+                  setPrintTemplate(
+                    e.target.value as "regular" | "compact" | "dense"
+                  )
+                }
+                className="text-sm border border-gray-300 rounded py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="regular">معمولی</option>
+                <option value="compact">فشرده</option>
+                <option value="dense">خیلی فشرده</option>
+              </select>
+            </div>
+
+            <Button onClick={handlePrint}>
+              <Printer className="h-4 w-4 ml-2" />
+              چاپ آزمون
+            </Button>
+          </div>
+        </div>
+
+        <div className="text-xs text-gray-500 mt-1 pr-1">
+          <p className="mb-1">
+            <span className="font-semibold">قالب معمولی:</span> حداکثر ۳ سوال در
+            هر صفحه، خوانایی بالا
+          </p>
+          <p className="mb-1">
+            <span className="font-semibold">قالب فشرده:</span> حداکثر ۵ سوال در
+            هر صفحه، صرفه‌جویی در مصرف کاغذ
+          </p>
+          <p>
+            <span className="font-semibold">قالب خیلی فشرده:</span> حداکثر ۸
+            سوال در هر صفحه، سه ستونی، حداکثر صرفه‌جویی در مصرف کاغذ
+          </p>
         </div>
       </div>
 
@@ -367,7 +410,11 @@ export default function PrintExamPage() {
                 </div>
 
                 {item.question.type?.includes("تستی") && (
-                  <div className="grid grid-cols-2 gap-4 options-container">
+                  <div
+                    className={`grid ${
+                      printTemplate === "dense" ? "grid-cols-3" : "grid-cols-2"
+                    } gap-4 options-container`}
+                  >
                     {item.question.option1 && (
                       <div
                         className={`p-3 border rounded-md ${
@@ -523,8 +570,15 @@ export default function PrintExamPage() {
       <style jsx global>{`
         @media print {
           body {
-            font-size: 12pt;
-            line-height: 1.5;
+            ${printTemplate === "regular"
+              ? "font-size: 12pt; line-height: 1.5;"
+              : ""}
+            ${printTemplate === "compact"
+              ? "font-size: 10pt; line-height: 1.3;"
+              : ""}
+            ${printTemplate === "dense"
+              ? "font-size: 9pt; line-height: 1.2;"
+              : ""}
           }
 
           .non-printable {
@@ -541,18 +595,51 @@ export default function PrintExamPage() {
           .question-item {
             page-break-inside: avoid;
             border: 1px solid #ccc !important;
-            margin-bottom: 20px;
+            margin-bottom: ${printTemplate === "regular"
+              ? "20px"
+              : printTemplate === "compact"
+              ? "12px"
+              : "8px"};
+            padding: ${printTemplate === "regular"
+              ? "16px"
+              : printTemplate === "compact"
+              ? "10px"
+              : "6px"} !important;
           }
 
           .print-header {
-            margin-bottom: 30px;
+            margin-bottom: ${printTemplate === "regular"
+              ? "30px"
+              : printTemplate === "compact"
+              ? "20px"
+              : "15px"};
           }
 
           .question-text img {
             max-width: 100%;
             height: auto;
             display: block;
-            margin: 10px auto;
+            margin: ${printTemplate === "regular"
+              ? "10px auto"
+              : printTemplate === "compact"
+              ? "5px auto"
+              : "3px auto"};
+          }
+
+          .options-container {
+            grid-gap: ${printTemplate === "regular"
+              ? "1rem"
+              : printTemplate === "compact"
+              ? "0.5rem"
+              : "0.25rem"} !important;
+          }
+
+          .options-container > div {
+            padding: ${printTemplate === "regular"
+              ? "0.75rem"
+              : printTemplate === "compact"
+              ? "0.5rem"
+              : "0.25rem"} !important;
           }
 
           .options-container img {
@@ -572,19 +659,44 @@ export default function PrintExamPage() {
             position: absolute;
             bottom: 5px;
             right: 5px;
-            font-size: 8pt;
+            font-size: ${printTemplate === "regular"
+              ? "8pt"
+              : printTemplate === "compact"
+              ? "7pt"
+              : "6pt"};
             color: #22c55e;
             font-weight: bold;
           }
 
           @page {
             size: A4;
-            margin: 1.5cm;
+            margin: ${printTemplate === "regular"
+              ? "1.5cm"
+              : printTemplate === "compact"
+              ? "1cm"
+              : "0.7cm"};
           }
 
           .answer-space {
             display: block;
           }
+
+          /* Essay answer space height varies by template */
+          .answer-space .h-32 {
+            height: ${printTemplate === "regular"
+              ? "8rem"
+              : printTemplate === "compact"
+              ? "5rem"
+              : "3rem"} !important;
+          }
+
+          /* Adjust grid layout based on template */
+          ${printTemplate === "dense"
+            ? `
+          .options-container {
+            grid-template-columns: 1fr 1fr 1fr !important;
+          }`
+            : ""}
         }
 
         @media screen {
@@ -601,6 +713,40 @@ export default function PrintExamPage() {
           /* Make option containers relative for the watermark positioning */
           .options-container > div {
             position: relative;
+          }
+
+          /* Preview styles for different templates */
+          .print-template-compact .question-item {
+            padding: 10px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+          }
+
+          .print-template-compact .options-container {
+            gap: 0.5rem;
+          }
+
+          .print-template-compact .options-container > div {
+            padding: 0.5rem;
+          }
+
+          .print-template-dense .question-item {
+            padding: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            line-height: 1.2;
+          }
+
+          .print-template-dense .options-container {
+            gap: 0.25rem;
+          }
+
+          .print-template-dense .options-container > div {
+            padding: 0.25rem;
+          }
+
+          .print-template-dense .print-header {
+            margin-bottom: 15px;
           }
         }
       `}</style>
