@@ -813,44 +813,47 @@ function QuestionBankContent(): React.ReactElement {
 
   // Handle edit question data change
   const handleEditQuestionChange = (field: string, value: string) => {
-    setEditQuestionData({
-      ...editQuestionData,
+    if (!editingQuestion) return;
+
+    setEditingQuestion({
+      ...editingQuestion,
       [field]: value,
     });
   };
 
   // Save edited question
   const handleSaveEditedQuestion = async () => {
-    if (!editQuestionId || !examId) return;
+    // Check if we have an editing question and user
+    if (!editingQuestion || !user) {
+      toast.error("اطلاعات سوال یا کاربر ناقص است");
+      return;
+    }
 
-    setIsUpdating(true);
     try {
-      const response = await fetch(`/api/examquestions/${editQuestionId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      setIsEditing(true);
+
+      const response = await fetch("/api/questions/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          category: editQuestionData.category.trim(),
-          score: parseFloat(editQuestionData.score),
-          responseTime: parseInt(editQuestionData.responseTime),
+          ...editingQuestion,
+          updatedBy: user.id,
         }),
       });
 
       if (response.ok) {
         toast.success("سوال با موفقیت ویرایش شد");
-        setEditQuestionId(null);
-        // Refresh the list and update statistics
-        await fetchAddedQuestions();
+        setShowEditQuestionDialog(false);
+        setEditingQuestion(null);
+        fetchQuestions(pagination.page);
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "خطا در ویرایش سوال");
+        toast.error("خطا در ویرایش سوال");
       }
     } catch (error) {
-      console.error("Error updating question:", error);
+      console.error("Error editing question:", error);
       toast.error("خطایی در ارتباط با سرور رخ داد");
     } finally {
-      setIsUpdating(false);
+      setIsEditing(false);
     }
   };
 
@@ -1158,6 +1161,58 @@ function QuestionBankContent(): React.ReactElement {
     }
   }, [showNewQuestionDialog]);
 
+  // State
+  const [showEditQuestionDialog, setShowEditQuestionDialog] =
+    useState<boolean>(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  // Handle edit question click
+  const handleEditQuestionClick = (
+    question: Question,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation(); // Prevent row click from showing detail dialog
+    setEditingQuestion(question);
+    setShowEditQuestionDialog(true);
+  };
+
+  // Submit edited question
+  const handleSubmitEditedQuestion = async () => {
+    // Check if we have an editing question and user
+    if (!editingQuestion || !user) {
+      toast.error("اطلاعات سوال یا کاربر ناقص است");
+      return;
+    }
+
+    try {
+      setIsEditing(true);
+
+      const response = await fetch("/api/questions/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editingQuestion,
+          updatedBy: user.id,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("سوال با موفقیت ویرایش شد");
+        setShowEditQuestionDialog(false);
+        setEditingQuestion(null);
+        fetchQuestions(pagination.page);
+      } else {
+        toast.error("خطا در ویرایش سوال");
+      }
+    } catch (error) {
+      console.error("Error editing question:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div dir="rtl" className="container mx-auto p-6">
       <div className="flex justify-between mb-6">
@@ -1427,6 +1482,7 @@ function QuestionBankContent(): React.ReactElement {
                       <TableHead className="w-24">درس</TableHead>
                       <TableHead className="w-20">نوع</TableHead>
                       <TableHead className="w-20">سختی</TableHead>
+                      <TableHead className="w-16">عملیات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1606,6 +1662,18 @@ function QuestionBankContent(): React.ReactElement {
                           >
                             {question.difficulty}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) =>
+                              handleEditQuestionClick(question, e)
+                            }
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2780,6 +2848,333 @@ function QuestionBankContent(): React.ReactElement {
                 </>
               ) : (
                 "ذخیره سوال"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Question Dialog */}
+      <Dialog
+        open={showEditQuestionDialog}
+        onOpenChange={setShowEditQuestionDialog}
+      >
+        <DialogContent className="max-w-4xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>ویرایش سوال</DialogTitle>
+            <DialogDescription>اطلاعات سوال را ویرایش کنید</DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[70vh] pr-2">
+            {editingQuestion && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  {/* Grade */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-grade">پایه تحصیلی</Label>
+                    <Select
+                      value={editingQuestion.grade?.toString() || ""}
+                      onValueChange={(value) =>
+                        handleEditQuestionChange("grade", value)
+                      }
+                    >
+                      <SelectTrigger id="edit-grade">
+                        <SelectValue placeholder="انتخاب پایه" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.grades.map((grade) => (
+                          <SelectItem key={grade} value={grade.toString()}>
+                            پایه {toPersianNumber(grade)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Cat1 - Subject */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cat1">درس</Label>
+                    <Input
+                      id="edit-cat1"
+                      placeholder="نام درس"
+                      value={editingQuestion.cat1 || ""}
+                      onChange={(e) =>
+                        handleEditQuestionChange("cat1", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Cat2 - Chapter */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cat2">فصل</Label>
+                    <Input
+                      id="edit-cat2"
+                      placeholder="عنوان فصل"
+                      value={editingQuestion.cat2 || ""}
+                      onChange={(e) =>
+                        handleEditQuestionChange("cat2", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Cat3 - Section */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cat3">بخش</Label>
+                    <Input
+                      id="edit-cat3"
+                      placeholder="عنوان بخش"
+                      value={editingQuestion.cat3 || ""}
+                      onChange={(e) =>
+                        handleEditQuestionChange("cat3", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Cat4 - Topic */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cat4">موضوع</Label>
+                    <Input
+                      id="edit-cat4"
+                      placeholder="موضوع دقیق"
+                      value={editingQuestion.cat4 || ""}
+                      onChange={(e) =>
+                        handleEditQuestionChange("cat4", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Difficulty */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-difficulty">سطح سختی</Label>
+                    <Select
+                      value={editingQuestion.difficulty || " متوسط "}
+                      onValueChange={(value) =>
+                        handleEditQuestionChange("difficulty", value)
+                      }
+                    >
+                      <SelectTrigger id="edit-difficulty">
+                        <SelectValue placeholder="انتخاب سختی" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=" آسان ">آسان</SelectItem>
+                        <SelectItem value=" متوسط ">متوسط</SelectItem>
+                        <SelectItem value=" سخت ">سخت</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-type">نوع سوال</Label>
+                    <Select
+                      value={editingQuestion.type || " تستی "}
+                      onValueChange={(value) =>
+                        handleEditQuestionChange("type", value)
+                      }
+                    >
+                      <SelectTrigger id="edit-type">
+                        <SelectValue placeholder="انتخاب نوع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=" تستی ">تستی</SelectItem>
+                        <SelectItem value=" تشریحی ">تشریحی</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Question Text */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="edit-question">متن سوال</Label>
+                  <RichTextEditor
+                    value={editingQuestion.question || ""}
+                    onChange={(value) =>
+                      handleEditQuestionChange("question", value)
+                    }
+                    placeholder="متن سوال را وارد کنید"
+                    dir="rtl"
+                  />
+                </div>
+
+                {/* Show options for multiple choice questions */}
+                {editingQuestion.type === " تستی " && (
+                  <div className="space-y-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Option 1 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="edit-option1">گزینه ۱</Label>
+                          <input
+                            type="radio"
+                            id="edit-correctOption1"
+                            name="edit-correctOption"
+                            value="1"
+                            checked={editingQuestion.correctoption === 1}
+                            onChange={() =>
+                              handleEditQuestionChange("correctoption", "1")
+                            }
+                            className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <Label
+                            htmlFor="edit-correctOption1"
+                            className="text-xs"
+                          >
+                            گزینه صحیح
+                          </Label>
+                        </div>
+                        <RichTextEditor
+                          value={editingQuestion.option1 || ""}
+                          onChange={(value) =>
+                            handleEditQuestionChange("option1", value)
+                          }
+                          placeholder="گزینه اول"
+                          dir="rtl"
+                          className="min-h-16"
+                        />
+                      </div>
+
+                      {/* Option 2 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="edit-option2">گزینه ۲</Label>
+                          <input
+                            type="radio"
+                            id="edit-correctOption2"
+                            name="edit-correctOption"
+                            value="2"
+                            checked={editingQuestion.correctoption === 2}
+                            onChange={() =>
+                              handleEditQuestionChange("correctoption", "2")
+                            }
+                            className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <Label
+                            htmlFor="edit-correctOption2"
+                            className="text-xs"
+                          >
+                            گزینه صحیح
+                          </Label>
+                        </div>
+                        <RichTextEditor
+                          value={editingQuestion.option2 || ""}
+                          onChange={(value) =>
+                            handleEditQuestionChange("option2", value)
+                          }
+                          placeholder="گزینه دوم"
+                          dir="rtl"
+                          className="min-h-16"
+                        />
+                      </div>
+
+                      {/* Option 3 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="edit-option3">گزینه ۳</Label>
+                          <input
+                            type="radio"
+                            id="edit-correctOption3"
+                            name="edit-correctOption"
+                            value="3"
+                            checked={editingQuestion.correctoption === 3}
+                            onChange={() =>
+                              handleEditQuestionChange("correctoption", "3")
+                            }
+                            className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <Label
+                            htmlFor="edit-correctOption3"
+                            className="text-xs"
+                          >
+                            گزینه صحیح
+                          </Label>
+                        </div>
+                        <RichTextEditor
+                          value={editingQuestion.option3 || ""}
+                          onChange={(value) =>
+                            handleEditQuestionChange("option3", value)
+                          }
+                          placeholder="گزینه سوم"
+                          dir="rtl"
+                          className="min-h-16"
+                        />
+                      </div>
+
+                      {/* Option 4 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="edit-option4">گزینه ۴</Label>
+                          <input
+                            type="radio"
+                            id="edit-correctOption4"
+                            name="edit-correctOption"
+                            value="4"
+                            checked={editingQuestion.correctoption === 4}
+                            onChange={() =>
+                              handleEditQuestionChange("correctoption", "4")
+                            }
+                            className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <Label
+                            htmlFor="edit-correctOption4"
+                            className="text-xs"
+                          >
+                            گزینه صحیح
+                          </Label>
+                        </div>
+                        <RichTextEditor
+                          value={editingQuestion.option4 || ""}
+                          onChange={(value) =>
+                            handleEditQuestionChange("option4", value)
+                          }
+                          placeholder="گزینه چهارم"
+                          dir="rtl"
+                          className="min-h-16"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Question Answer/Key */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="edit-questionkey">پاسخ تشریحی</Label>
+                  <RichTextEditor
+                    value={editingQuestion.questionkey || ""}
+                    onChange={(value) =>
+                      handleEditQuestionChange("questionkey", value)
+                    }
+                    placeholder="پاسخ تشریحی سوال را وارد کنید"
+                    dir="rtl"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditQuestionDialog(false)}
+              disabled={isEditing}
+            >
+              انصراف
+            </Button>
+            <Button
+              onClick={handleSubmitEditedQuestion}
+              disabled={
+                isEditing ||
+                !editingQuestion?.grade ||
+                !editingQuestion?.cat1 ||
+                !editingQuestion?.question
+              }
+            >
+              {isEditing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره تغییرات"
               )}
             </Button>
           </DialogFooter>
