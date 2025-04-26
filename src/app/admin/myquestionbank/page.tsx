@@ -337,7 +337,7 @@ function QuestionBankContent() {
       if (filterParams.type) queryParams.append("type", filterParams.type);
 
       const response = await fetch(
-        `/api/questionbank?${queryParams.toString()}`
+        `/api/myquestionbank?${queryParams.toString()}`
       );
 
       if (!response.ok) {
@@ -370,7 +370,7 @@ function QuestionBankContent() {
       if (filterParams.type) queryParams.append("type", filterParams.type);
 
       const response = await fetch(
-        `/api/questionbank/categories?${queryParams.toString()}`
+        `/api/myquestionbank/categories?${queryParams.toString()}`
       );
 
       if (!response.ok) {
@@ -388,7 +388,7 @@ function QuestionBankContent() {
   const fetchExamCategories = async (examId: string) => {
     try {
       const response = await fetch(
-        `/api/examcat?examId=${examId}&username=${user?.username || ""}`
+        `/api/myexamcat?examId=${examId}&username=${user?.username || ""}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -421,7 +421,7 @@ function QuestionBankContent() {
     if (!categoryName.trim() || !examId || !user?.username) return false;
 
     try {
-      const response = await fetch("/api/examcat", {
+      const response = await fetch("/api/myexamcat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -508,10 +508,7 @@ function QuestionBankContent() {
 
       if (saveResponse.ok) {
         toast.success("سوال با موفقیت به آزمون اضافه شد.");
-
-        // Refresh the added questions list to update statistics
         await fetchAddedQuestions();
-
         // Close dialogs
         setShowAddToExamDialog(false);
         // Reset data
@@ -827,10 +824,12 @@ function QuestionBankContent() {
 
       if (response.ok) {
         toast.success("سوال با موفقیت حذف شد");
-        // Refresh the list and update statistics
-        await fetchAddedQuestions();
+        // Refresh the list
+        fetchAddedQuestions();
       } else {
         const errorData = await response.json();
+        // Refresh the list and update statistics
+        await fetchAddedQuestions();
         toast.error(errorData.error || "خطا در حذف سوال");
       }
     } catch (error) {
@@ -866,7 +865,7 @@ function QuestionBankContent() {
       // Get the current domain for the API request
       const domain = window.location.host;
 
-      const response = await fetch("/api/questionbank", {
+      const response = await fetch("/api/myquestionbank", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

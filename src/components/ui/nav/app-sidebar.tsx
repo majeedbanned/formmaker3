@@ -166,6 +166,12 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "بانک سوالات من",
+          url: "/admin/myquestionbank",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
           title: "گروه ها",
           url: "/admin/studentsgroups",
           system: "importstudents",

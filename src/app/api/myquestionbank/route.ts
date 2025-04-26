@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToMasterDb } from '@/lib/masterdb';
+import { connectToDatabase } from '@/lib/mongodb';
 
 // API route for fetching paginated and filtered questions
 export async function GET(request: NextRequest) {
@@ -31,8 +31,10 @@ export async function GET(request: NextRequest) {
     if (difficulty && difficulty.trim() !== '') filter.difficulty = difficulty;
     if (type && type.trim() !== '') filter.type = type;
 
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+
     // Connect to the master database
-    const db = await connectToMasterDb();
+    const db = await connectToDatabase(domain);
     
     // Create projection to only return needed fields for better performance
     const projection = {
