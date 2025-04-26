@@ -6,6 +6,7 @@ import { MathJax } from "better-react-mathjax";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft } from "lucide-react";
+import Image from "next/image";
 
 interface Question {
   _id: string;
@@ -46,11 +47,30 @@ interface ExamQuestion {
 
 interface ExamData {
   _id: string;
-  examCode: string;
-  examName: string;
-  startDate: string;
-  endDate: string;
-  schoolCode: string;
+  data: {
+    examCode: string;
+    examName: string;
+    dateTime: {
+      startDate: string;
+      endDate: string;
+    };
+    schoolCode: string;
+    settings: {
+      preexammessage?: string;
+      postexammessage?: string;
+    };
+  };
+}
+
+interface School {
+  _id: string;
+  data: {
+    schoolCode: string;
+    schoolName: string;
+    schoolLogo?: string;
+    address?: string;
+    phone?: string;
+  };
 }
 
 // Helper function to render HTML content safely
@@ -126,6 +146,7 @@ export default function PrintExamPage() {
 
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
   const [examData, setExamData] = useState<ExamData | null>(null);
+  const [schoolData, setSchoolData] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAnswers, setShowAnswers] = useState(false);
 
@@ -140,6 +161,23 @@ export default function PrintExamPage() {
         if (examResponse.ok) {
           const examData = await examResponse.json();
           setExamData(examData);
+
+          // Fetch school information if schoolCode is available
+          if (examData.data.schoolCode) {
+            try {
+              const schoolResponse = await fetch(
+                `/api/schools/${examData.data.schoolCode}`
+              );
+              if (schoolResponse.ok) {
+                const schoolData = await schoolResponse.json();
+                setSchoolData(schoolData);
+              } else {
+                console.error("Error fetching school data");
+              }
+            } catch (error) {
+              console.error("Error fetching school data:", error);
+            }
+          }
         } else {
           toast.error("خطا در دریافت اطلاعات آزمون");
         }
@@ -223,21 +261,75 @@ export default function PrintExamPage() {
       </div>
 
       <div className="print-container">
-        <div className="text-center mb-8 border-b pb-4 print-header">
-          <h1 className="text-2xl font-bold">
-            {examData?.examName || "آزمون"}
-          </h1>
-          <div className="mt-2 text-sm">
-            <p>کد آزمون: {examData?.examCode}</p>
-            <p>
-              تاریخ شروع:{" "}
-              {examData?.startDate ? formatPersianDate(examData.startDate) : ""}
-            </p>
-            <p>
-              تاریخ پایان:{" "}
-              {examData?.endDate ? formatPersianDate(examData.endDate) : ""}
-            </p>
+        <div className="exam-header mb-8 border-b pb-6 print-header">
+          <div className="flex justify-between items-center mb-4">
+            <div className="w-1/3">
+              {schoolData?.data.schoolLogo && (
+                <img
+                  src={schoolData.data.schoolLogo}
+                  alt="School Logo"
+                  className="max-h-24 object-contain"
+                />
+              )}
+            </div>
+            <div className="w-1/3 text-center">
+              <h1 className="text-2xl font-bold mb-1">
+                {examData?.data.examName || "آزمون"}
+              </h1>
+              <p className="text-lg">{schoolData?.data.schoolName || ""}</p>
+            </div>
+            <div className="w-1/3 text-left">
+              <div className="text-sm text-left">
+                <p>تاریخ: {formatPersianDate(new Date().toISOString())}</p>
+              </div>
+            </div>
           </div>
+
+          <div className="exam-info grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="mb-2">
+                <span className="font-semibold ml-2">کد آزمون:</span>{" "}
+                {examData?.data.examCode}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold ml-2">زمان شروع:</span>
+                {examData?.data.dateTime.startDate
+                  ? formatPersianDate(examData.data.dateTime.startDate)
+                  : ""}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold ml-2">زمان پایان:</span>
+                {examData?.data.dateTime.endDate
+                  ? formatPersianDate(examData.data.dateTime.endDate)
+                  : ""}
+              </div>
+            </div>
+            <div>
+              {schoolData?.data.address && (
+                <div className="mb-2">
+                  <span className="font-semibold ml-2">آدرس مدرسه:</span>{" "}
+                  {schoolData.data.address}
+                </div>
+              )}
+              {schoolData?.data.phone && (
+                <div className="mb-2">
+                  <span className="font-semibold ml-2">تلفن مدرسه:</span>{" "}
+                  {schoolData.data.phone}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {examData?.data.settings.preexammessage && (
+            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="font-semibold mb-1">پیام آزمون:</div>
+              <div
+                dangerouslySetInnerHTML={renderHTML(
+                  examData.data.settings.preexammessage
+                )}
+              />
+            </div>
+          )}
         </div>
 
         {examQuestions.length === 0 ? (

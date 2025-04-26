@@ -85,7 +85,7 @@ export async function GET() {
       classCode: payload.classCode,
       groups: payload.groups,
     };
-    console.log("user", user);
+   // console.log("user", user);
 
     // Add maghta and grade for school users
     if (payload.userType === 'school') {

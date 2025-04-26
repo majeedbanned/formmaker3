@@ -4,12 +4,12 @@ import { ObjectId } from 'mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    const { id } = params;
-
+    const { id } = await params;
+   // console.log("id", id);
     if (!id) {
       return NextResponse.json(
         { error: 'Exam ID is required' },
@@ -31,6 +31,8 @@ export async function GET(
 
     // Find the exam
     const exam = await db.collection('exam').findOne(query);
+
+   // console.log("exam", exam);
 
     if (!exam) {
       return NextResponse.json(
