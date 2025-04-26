@@ -266,6 +266,14 @@ function QuestionBankContent(): React.ReactElement {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  // State for deleting questions from the questions collection
+  const [deleteQuestionConfirmOpen, setDeleteQuestionConfirmOpen] =
+    useState<boolean>(false);
+  const [deletingMainQuestionId, setDeletingMainQuestionId] = useState<
+    string | null
+  >(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   // New Question Dialog state
   const [showNewQuestionDialog, setShowNewQuestionDialog] =
     useState<boolean>(false);
@@ -1213,6 +1221,55 @@ function QuestionBankContent(): React.ReactElement {
     }
   };
 
+  // Handle delete main question button click
+  const handleDeleteMainQuestion = (
+    question: Question,
+    event: React.MouseEvent
+  ) => {
+    // Stop event propagation to prevent opening the question detail
+    event.stopPropagation();
+    setDeletingMainQuestionId(question._id);
+    setDeleteQuestionConfirmOpen(true);
+  };
+
+  // Confirm delete main question
+  const confirmDeleteMainQuestion = async () => {
+    if (!deletingMainQuestionId) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `/api/questions/delete?id=${deletingMainQuestionId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data.message || "سوال با موفقیت حذف شد");
+        // Refresh the questions list
+        fetchQuestions(pagination.page);
+      } else {
+        toast.error(data.error || "خطا در حذف سوال");
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      toast.error("خطایی در ارتباط با سرور رخ داد");
+    } finally {
+      setIsDeleting(false);
+      setDeleteQuestionConfirmOpen(false);
+      setDeletingMainQuestionId(null);
+    }
+  };
+
+  // Cancel delete main question
+  const cancelDeleteMainQuestion = () => {
+    setDeleteQuestionConfirmOpen(false);
+    setDeletingMainQuestionId(null);
+  };
+
   return (
     <div dir="rtl" className="container mx-auto p-6">
       <div className="flex justify-between mb-6">
@@ -1664,16 +1721,28 @@ function QuestionBankContent(): React.ReactElement {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) =>
-                              handleEditQuestionClick(question, e)
-                            }
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={(e) =>
+                                handleEditQuestionClick(question, e)
+                              }
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) =>
+                                handleDeleteMainQuestion(question, e)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -3178,6 +3247,45 @@ function QuestionBankContent(): React.ReactElement {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Question Confirmation Dialog */}
+      <Dialog
+        open={deleteQuestionConfirmOpen}
+        onOpenChange={setDeleteQuestionConfirmOpen}
+      >
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>حذف سوال</DialogTitle>
+            <DialogDescription>
+              آیا از حذف این سوال اطمینان دارید؟ این عمل قابل بازگشت نیست و سوال
+              به طور کامل از بانک سوالات حذف می‌شود.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteMainQuestion}
+              disabled={isDeleting}
+            >
+              انصراف
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteMainQuestion}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  در حال حذف...
+                </>
+              ) : (
+                "حذف سوال"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
