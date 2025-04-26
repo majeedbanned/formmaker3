@@ -56,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 
 // Types
 interface Question {
@@ -2600,15 +2601,12 @@ function QuestionBankContent(): React.ReactElement {
             {/* Question Text */}
             <div className="space-y-2 mb-4">
               <Label htmlFor="question">متن سوال</Label>
-              <textarea
-                id="question"
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="متن سوال را وارد کنید"
+              <RichTextEditor
                 value={newQuestionData.question}
-                onChange={(e) =>
-                  handleNewQuestionChange("question", e.target.value)
-                }
-              ></textarea>
+                onChange={(value) => handleNewQuestionChange("question", value)}
+                placeholder="متن سوال را وارد کنید"
+                dir="rtl"
+              />
             </div>
 
             {/* Show options for multiple choice questions */}
@@ -2634,15 +2632,15 @@ function QuestionBankContent(): React.ReactElement {
                         گزینه صحیح
                       </Label>
                     </div>
-                    <textarea
-                      id="option1"
-                      className="min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="گزینه اول"
+                    <RichTextEditor
                       value={newQuestionData.option1}
-                      onChange={(e) =>
-                        handleNewQuestionChange("option1", e.target.value)
+                      onChange={(value) =>
+                        handleNewQuestionChange("option1", value)
                       }
-                    ></textarea>
+                      placeholder="گزینه اول"
+                      dir="rtl"
+                      className="min-h-16"
+                    />
                   </div>
 
                   {/* Option 2 */}
@@ -2664,15 +2662,15 @@ function QuestionBankContent(): React.ReactElement {
                         گزینه صحیح
                       </Label>
                     </div>
-                    <textarea
-                      id="option2"
-                      className="min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="گزینه دوم"
+                    <RichTextEditor
                       value={newQuestionData.option2}
-                      onChange={(e) =>
-                        handleNewQuestionChange("option2", e.target.value)
+                      onChange={(value) =>
+                        handleNewQuestionChange("option2", value)
                       }
-                    ></textarea>
+                      placeholder="گزینه دوم"
+                      dir="rtl"
+                      className="min-h-16"
+                    />
                   </div>
 
                   {/* Option 3 */}
@@ -2694,15 +2692,15 @@ function QuestionBankContent(): React.ReactElement {
                         گزینه صحیح
                       </Label>
                     </div>
-                    <textarea
-                      id="option3"
-                      className="min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="گزینه سوم"
+                    <RichTextEditor
                       value={newQuestionData.option3}
-                      onChange={(e) =>
-                        handleNewQuestionChange("option3", e.target.value)
+                      onChange={(value) =>
+                        handleNewQuestionChange("option3", value)
                       }
-                    ></textarea>
+                      placeholder="گزینه سوم"
+                      dir="rtl"
+                      className="min-h-16"
+                    />
                   </div>
 
                   {/* Option 4 */}
@@ -2724,15 +2722,15 @@ function QuestionBankContent(): React.ReactElement {
                         گزینه صحیح
                       </Label>
                     </div>
-                    <textarea
-                      id="option4"
-                      className="min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="گزینه چهارم"
+                    <RichTextEditor
                       value={newQuestionData.option4}
-                      onChange={(e) =>
-                        handleNewQuestionChange("option4", e.target.value)
+                      onChange={(value) =>
+                        handleNewQuestionChange("option4", value)
                       }
-                    ></textarea>
+                      placeholder="گزینه چهارم"
+                      dir="rtl"
+                      className="min-h-16"
+                    />
                   </div>
                 </div>
               </div>
@@ -2741,15 +2739,14 @@ function QuestionBankContent(): React.ReactElement {
             {/* Question Answer/Key */}
             <div className="space-y-2 mb-4">
               <Label htmlFor="questionkey">پاسخ تشریحی</Label>
-              <textarea
-                id="questionkey"
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="پاسخ تشریحی سوال را وارد کنید"
+              <RichTextEditor
                 value={newQuestionData.questionkey}
-                onChange={(e) =>
-                  handleNewQuestionChange("questionkey", e.target.value)
+                onChange={(value) =>
+                  handleNewQuestionChange("questionkey", value)
                 }
-              ></textarea>
+                placeholder="پاسخ تشریحی سوال را وارد کنید"
+                dir="rtl"
+              />
             </div>
           </div>
 
