@@ -152,8 +152,11 @@ const renderHTML = (html: string | undefined) => {
     (match, before, src, after) => {
       console.log(`Found image with src='${src}'`);
 
-      // Don't add prefix if it already has it
-      if (src.startsWith("https://file.farsamooz.ir/q/")) {
+      // Don't add prefix if it already has the prefix or is a data URL
+      if (
+        src.startsWith("https://file.farsamooz.ir/q/") ||
+        src.startsWith("data:image")
+      ) {
         return match;
       }
 
@@ -167,8 +170,11 @@ const renderHTML = (html: string | undefined) => {
     (match, before, src, after) => {
       console.log(`Found image with src="${src}"`);
 
-      // Don't add prefix if it already has it
-      if (src.startsWith("https://file.farsamooz.ir/q/")) {
+      // Don't add prefix if it already has the prefix or is a data URL
+      if (
+        src.startsWith("https://file.farsamooz.ir/q/") ||
+        src.startsWith("data:image")
+      ) {
         return match;
       }
 
