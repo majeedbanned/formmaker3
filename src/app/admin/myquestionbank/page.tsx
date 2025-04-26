@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -195,7 +195,7 @@ export default function QuestionBankPage() {
 }
 
 // Separate client component
-function QuestionBankContent() {
+function QuestionBankContent(): React.ReactElement {
   // Get current user
   const { user } = useAuth();
 
@@ -279,6 +279,14 @@ function QuestionBankContent() {
     correctoption: "1",
   });
   const [isCreating, setIsCreating] = useState<boolean>(false);
+
+  // Add new state for custom category inputs
+  const [newCategoryInputs, setNewCategoryInputs] = useState({
+    cat1: "",
+    cat2: "",
+    cat3: "",
+    cat4: "",
+  });
 
   // Router and search params
   const router = useRouter();
@@ -413,6 +421,39 @@ function QuestionBankContent() {
       }
     } catch (error) {
       console.error("Error fetching exam categories:", error);
+    }
+  };
+
+  // Function to save new category to database
+  const saveNewCategory = async (categoryData: {
+    grade: number;
+    cat1: string;
+    cat2?: string;
+    cat3?: string;
+    cat4?: string;
+    schoolCode?: string;
+    createdBy?: string;
+  }) => {
+    try {
+      const domain = window.location.host;
+
+      const response = await fetch("/api/myquestionbank/categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": domain,
+        },
+        body: JSON.stringify(categoryData),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to save new category");
+      }
+
+      return response.ok;
+    } catch (error) {
+      console.error("Error saving new category:", error);
+      return false;
     }
   };
 
@@ -856,6 +897,23 @@ function QuestionBankContent() {
       [field]: value,
     };
 
+    // For category fields with "_new_" value, don't update the main state
+    // Instead, update the newCategoryInputs state
+    if (
+      (field === "cat1" ||
+        field === "cat2" ||
+        field === "cat3" ||
+        field === "cat4") &&
+      newQuestionData[field] === "_new_" &&
+      value !== "_new_"
+    ) {
+      setNewCategoryInputs((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+      return;
+    }
+
     // Update the state
     setNewQuestionData(updatedData);
 
@@ -872,6 +930,7 @@ function QuestionBankContent() {
         cat1: field === "cat1" ? value : updatedData.cat1,
         cat2: field === "cat2" ? value : updatedData.cat2,
         cat3: field === "cat3" ? value : updatedData.cat3,
+        cat4: "",
         difficulty: "",
         type: "",
       };
@@ -883,18 +942,39 @@ function QuestionBankContent() {
         updatedData.cat3 = "";
         updatedData.cat4 = "";
         setNewQuestionData(updatedData);
+        setNewCategoryInputs({
+          cat1: "",
+          cat2: "",
+          cat3: "",
+          cat4: "",
+        });
       } else if (field === "cat1") {
         updatedData.cat2 = "";
         updatedData.cat3 = "";
         updatedData.cat4 = "";
         setNewQuestionData(updatedData);
+        setNewCategoryInputs((prev) => ({
+          ...prev,
+          cat2: "",
+          cat3: "",
+          cat4: "",
+        }));
       } else if (field === "cat2") {
         updatedData.cat3 = "";
         updatedData.cat4 = "";
         setNewQuestionData(updatedData);
+        setNewCategoryInputs((prev) => ({
+          ...prev,
+          cat3: "",
+          cat4: "",
+        }));
       } else if (field === "cat3") {
         updatedData.cat4 = "";
         setNewQuestionData(updatedData);
+        setNewCategoryInputs((prev) => ({
+          ...prev,
+          cat4: "",
+        }));
       }
 
       // Fetch categories with the updated filters
@@ -902,12 +982,97 @@ function QuestionBankContent() {
     }
   };
 
+  // Add function to apply custom category values when saving
+  const applyCustomCategories = () => {
+    const updatedData = { ...newQuestionData };
+
+    // Replace "_new_" values with the corresponding custom inputs
+    if (updatedData.cat1 === "_new_" && newCategoryInputs.cat1.trim()) {
+      updatedData.cat1 = newCategoryInputs.cat1.trim();
+    }
+
+    if (updatedData.cat2 === "_new_" && newCategoryInputs.cat2.trim()) {
+      updatedData.cat2 = newCategoryInputs.cat2.trim();
+    }
+
+    if (updatedData.cat3 === "_new_" && newCategoryInputs.cat3.trim()) {
+      updatedData.cat3 = newCategoryInputs.cat3.trim();
+    }
+
+    if (updatedData.cat4 === "_new_" && newCategoryInputs.cat4.trim()) {
+      updatedData.cat4 = newCategoryInputs.cat4.trim();
+    }
+
+    return updatedData;
+  };
+
   // Submit new question
   const handleSubmitNewQuestion = async () => {
     if (!user) return;
 
+    // Check if all required fields are filled
+    if (
+      !newQuestionData.grade ||
+      !newQuestionData.cat1 ||
+      !newQuestionData.question
+    ) {
+      toast.error("لطفا پایه، درس و متن سوال را وارد کنید");
+      return;
+    }
+
+    // Apply any custom category inputs
+    const questionDataToSubmit = applyCustomCategories();
+
+    // Check if any "_new_" values remain without input
+    if (
+      questionDataToSubmit.cat1 === "_new_" ||
+      questionDataToSubmit.cat2 === "_new_" ||
+      questionDataToSubmit.cat3 === "_new_" ||
+      questionDataToSubmit.cat4 === "_new_"
+    ) {
+      toast.error("لطفا برای دسته بندی های جدید، یک مقدار وارد کنید");
+      return;
+    }
+
     setIsCreating(true);
     try {
+      // Save new category combinations if custom values were provided
+      const hasCustomCategories =
+        newQuestionData.cat1 === "_new_" ||
+        newQuestionData.cat2 === "_new_" ||
+        newQuestionData.cat3 === "_new_" ||
+        newQuestionData.cat4 === "_new_";
+
+      if (
+        hasCustomCategories &&
+        questionDataToSubmit.grade &&
+        questionDataToSubmit.cat1
+      ) {
+        try {
+          // Create base category data object
+          const baseCategoryData = {
+            grade: parseInt(questionDataToSubmit.grade),
+            cat1: questionDataToSubmit.cat1,
+            schoolCode: user.schoolCode,
+            createdBy: user.username,
+          };
+
+          // Only add fields that have values
+          if (questionDataToSubmit.cat2) {
+            await saveNewCategory({
+              ...baseCategoryData,
+              cat2: questionDataToSubmit.cat2,
+              cat3: questionDataToSubmit.cat3 || "",
+              cat4: questionDataToSubmit.cat4 || "",
+            });
+          } else {
+            await saveNewCategory(baseCategoryData);
+          }
+        } catch (error) {
+          console.error("Error saving categories:", error);
+        }
+      }
+
       // Get the current domain for the API request
       const domain = window.location.host;
 
@@ -918,10 +1083,10 @@ function QuestionBankContent() {
           "x-domain": domain,
         },
         body: JSON.stringify({
-          ...newQuestionData,
+          ...questionDataToSubmit,
           schoolCode: user.schoolCode,
           createdBy: user.username,
-          correctoption: parseInt(newQuestionData.correctoption),
+          correctoption: parseInt(questionDataToSubmit.correctoption),
         }),
       });
 
@@ -948,6 +1113,14 @@ function QuestionBankContent() {
           correctoption: "1",
         });
 
+        // Reset custom category inputs
+        setNewCategoryInputs({
+          cat1: "",
+          cat2: "",
+          cat3: "",
+          cat4: "",
+        });
+
         // Refresh questions list
         fetchQuestions(pagination.page);
       } else {
@@ -967,6 +1140,14 @@ function QuestionBankContent() {
     if (showNewQuestionDialog) {
       // Only fetch categories if the dialog is open
       fetchCategories();
+    } else {
+      // Reset the inputs when dialog closes
+      setNewCategoryInputs({
+        cat1: "",
+        cat2: "",
+        cat3: "",
+        cat4: "",
+      });
     }
   }, [showNewQuestionDialog]);
 
@@ -2225,8 +2406,26 @@ function QuestionBankContent() {
                         {cat}
                       </SelectItem>
                     ))}
+                    <SelectItem value="_new_">+ افزودن جدید</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Show input field when "_new_" is selected */}
+                {newQuestionData.cat1 === "_new_" && (
+                  <div className="mt-2">
+                    <Input
+                      id="newCat1"
+                      placeholder="نام درس جدید را وارد کنید"
+                      value={newCategoryInputs.cat1}
+                      onChange={(e) =>
+                        setNewCategoryInputs((prev) => ({
+                          ...prev,
+                          cat1: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Cat2 - Chapter - Dropdown */}
@@ -2237,7 +2436,9 @@ function QuestionBankContent() {
                   onValueChange={(value) =>
                     handleNewQuestionChange("cat2", value)
                   }
-                  disabled={!newQuestionData.cat1}
+                  disabled={
+                    !newQuestionData.cat1 || newQuestionData.cat1 === "_new_"
+                  }
                 >
                   <SelectTrigger id="cat2">
                     <SelectValue placeholder="انتخاب فصل" />
@@ -2248,8 +2449,26 @@ function QuestionBankContent() {
                         {cat}
                       </SelectItem>
                     ))}
+                    <SelectItem value="_new_">+ افزودن جدید</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Show input field when "_new_" is selected */}
+                {newQuestionData.cat2 === "_new_" && (
+                  <div className="mt-2">
+                    <Input
+                      id="newCat2"
+                      placeholder="نام فصل جدید را وارد کنید"
+                      value={newCategoryInputs.cat2}
+                      onChange={(e) =>
+                        setNewCategoryInputs((prev) => ({
+                          ...prev,
+                          cat2: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Cat3 - Section - Dropdown */}
@@ -2260,7 +2479,9 @@ function QuestionBankContent() {
                   onValueChange={(value) =>
                     handleNewQuestionChange("cat3", value)
                   }
-                  disabled={!newQuestionData.cat2}
+                  disabled={
+                    !newQuestionData.cat2 || newQuestionData.cat2 === "_new_"
+                  }
                 >
                   <SelectTrigger id="cat3">
                     <SelectValue placeholder="انتخاب بخش" />
@@ -2271,8 +2492,26 @@ function QuestionBankContent() {
                         {cat}
                       </SelectItem>
                     ))}
+                    <SelectItem value="_new_">+ افزودن جدید</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Show input field when "_new_" is selected */}
+                {newQuestionData.cat3 === "_new_" && (
+                  <div className="mt-2">
+                    <Input
+                      id="newCat3"
+                      placeholder="نام بخش جدید را وارد کنید"
+                      value={newCategoryInputs.cat3}
+                      onChange={(e) =>
+                        setNewCategoryInputs((prev) => ({
+                          ...prev,
+                          cat3: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Cat4 - Topic - Dropdown */}
@@ -2284,7 +2523,7 @@ function QuestionBankContent() {
                     handleNewQuestionChange("cat4", value)
                   }
                   disabled={
-                    !newQuestionData.cat3 || categories.cat4.length === 0
+                    !newQuestionData.cat3 || newQuestionData.cat3 === "_new_"
                   }
                 >
                   <SelectTrigger id="cat4">
@@ -2296,8 +2535,26 @@ function QuestionBankContent() {
                         {cat}
                       </SelectItem>
                     ))}
+                    <SelectItem value="_new_">+ افزودن جدید</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Show input field when "_new_" is selected */}
+                {newQuestionData.cat4 === "_new_" && (
+                  <div className="mt-2">
+                    <Input
+                      id="newCat4"
+                      placeholder="نام موضوع جدید را وارد کنید"
+                      value={newCategoryInputs.cat4}
+                      onChange={(e) =>
+                        setNewCategoryInputs((prev) => ({
+                          ...prev,
+                          cat4: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Difficulty */}

@@ -78,4 +78,87 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Define an interface for category document
+interface CategoryDocument {
+  grade: number;
+  cat1: string;
+  cat2: string;
+  cat3: string;
+  cat4: string;
+  schoolCode?: string;
+  createdBy?: string;
+  createdAt?: Date;
+}
+
+// API route for adding new categories
+export async function POST(request: NextRequest) {
+  try {
+    // Connect to the master database
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    const db = await connectToDatabase(domain);
+    
+    // Get category data from request
+    const categoryData = await request.json();
+    
+    // Validate required fields
+    if (!categoryData.grade || typeof categoryData.grade !== 'number') {
+      return NextResponse.json(
+        { error: 'Grade is required and must be a number' },
+        { status: 400 }
+      );
+    }
+    
+    if (!categoryData.cat1 || typeof categoryData.cat1 !== 'string' || !categoryData.cat1.trim()) {
+      return NextResponse.json(
+        { error: 'Category 1 (subject) is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if this exact category combination already exists
+    const filter: CategoryDocument = {
+      grade: categoryData.grade,
+      cat1: categoryData.cat1,
+      cat2: categoryData.cat2 || '',
+      cat3: categoryData.cat3 || '',
+      cat4: categoryData.cat4 || '',
+    };
+    
+    const existingCategory = await db.collection('categories').findOne(filter);
+    
+    // If category already exists, just return success
+    if (existingCategory) {
+      return NextResponse.json({ success: true, message: 'Category already exists' });
+    }
+    
+    // Add schoolCode if available
+    if (categoryData.schoolCode) {
+      filter.schoolCode = categoryData.schoolCode;
+    }
+    
+    // Add createdBy if available
+    if (categoryData.createdBy) {
+      filter.createdBy = categoryData.createdBy;
+    }
+    
+    // Add timestamp
+    filter.createdAt = new Date();
+    
+    // Insert the new category
+    const result = await db.collection('categories').insertOne(filter);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Category added successfully',
+      id: result.insertedId 
+    });
+  } catch (error) {
+    console.error('Error adding category:', error);
+    return NextResponse.json(
+      { error: 'Failed to add category' },
+      { status: 500 }
+    );
+  }
 } 
