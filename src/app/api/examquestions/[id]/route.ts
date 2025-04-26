@@ -92,51 +92,128 @@ export async function PATCH(
   }
 }
 
-// DELETE: Delete a question from an exam
-export async function DELETE(
+// Edit/update a question in an exam
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get authentication token from cookies
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
+    const { id } = await params;
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    const body = await request.json();
+    
+    // Validate id
+    if (!id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+        { error: 'Question ID is required' },
+        { status: 400 }
       );
     }
 
-    // Verify token - we don't need the data but we verify auth is valid
-    await verifyJWT(token);
-
-    const id = params.id;
-    if (!id) {
-      return NextResponse.json({ error: "Question ID is required" }, { status: 400 });
-    }
-
-    // Connect to database
-    // Get domain from request headers or use default
-    const domain = request.headers.get("x-domain") || "localhost:3000";
-    const connection = await connectToDatabase(domain);
+    // Connect to the database
+    const db = await connectToDatabase(domain);
     
-    // Delete the question
-    const result = await connection.collection("examquestions").deleteOne({
+    // Get the original exam question
+    const originalQuestion = await db.collection('examquestions').findOne({
       _id: new ObjectId(id)
     });
 
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Question not found" }, { status: 404 });
+    if (!originalQuestion) {
+      return NextResponse.json(
+        { error: 'Question not found' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Question deleted successfully" 
-    });
+    // Create update operation with metadata fields
+    const updateOperation: any = {
+      $set: {
+        score: body.score,
+        responseTime: body.responseTime,
+        category: body.category,
+        updatedAt: new Date().toISOString(),
+      }
+    };
+
+    // If question content or options are provided, update those as well
+    if (body.question || body.option1 || body.option2 || body.option3 || body.option4 || body.correctoption) {
+      // Start with the existing question
+      const updatedQuestion = { ...originalQuestion.question };
+      
+      // Update the fields that were provided
+      if (body.question) updatedQuestion.question = body.question;
+      if (body.option1) updatedQuestion.option1 = body.option1;
+      if (body.option2) updatedQuestion.option2 = body.option2;
+      if (body.option3) updatedQuestion.option3 = body.option3;
+      if (body.option4) updatedQuestion.option4 = body.option4;
+      if (body.correctoption) updatedQuestion.correctoption = body.correctoption;
+      
+      // Add the updated question to the update operation
+      updateOperation.$set["question"] = updatedQuestion;
+    }
+    
+    // Update the exam question
+    const result = await db.collection('examquestions').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      updateOperation,
+      { returnDocument: 'after' }
+    );
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to update exam question' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Error in examquestions DELETE:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error('Error updating exam question:', error);
+    return NextResponse.json(
+      { error: 'Failed to update exam question' },
+      { status: 500 }
+    );
+  }
+}
+
+// Delete a question from an exam
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    
+    // Validate id
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Question ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Connect to the database
+    const db = await connectToDatabase(domain);
+    
+    // Delete the exam question
+    const result = await db.collection('examquestions').deleteOne({ 
+      _id: new ObjectId(id) 
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'Exam question not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting exam question:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete exam question' },
+      { status: 500 }
+    );
   }
 } 

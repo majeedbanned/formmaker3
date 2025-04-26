@@ -4,9 +4,27 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MathJax } from "better-react-mathjax";
 import { toast } from "sonner";
-import { Printer, ArrowLeft } from "lucide-react";
-import Image from "next/image";
+import { Printer, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 
 interface Question {
   _id: string;
@@ -142,25 +160,43 @@ const formatPersianDate = (dateString: string): string => {
 
 export default function PrintExamPage() {
   const searchParams = useSearchParams();
-  const examId = searchParams.get("examID");
-
-  const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
-  const [examData, setExamData] = useState<ExamData | null>(null);
-  const [schoolData, setSchoolData] = useState<School | null>(null);
+  const examID = searchParams.get("examID");
   const [loading, setLoading] = useState(true);
+  const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
+  const [schoolData, setSchoolData] = useState<School | null>(null);
+  const [examData, setExamData] = useState<ExamData | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
+    null
+  );
+  const [editQuestionData, setEditQuestionData] = useState({
+    score: "",
+    responseTime: "",
+    category: "",
+    question: "",
+    option1: "",
+    option2: "",
+    option3: "",
+    option4: "",
+    correctoption: 1,
+  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(
+    null
+  );
   const [showAnswers, setShowAnswers] = useState(false);
   const [printTemplate, setPrintTemplate] = useState<
     "regular" | "compact" | "dense"
   >("regular");
 
   useEffect(() => {
-    if (!examId) return;
+    if (!examID) return;
 
     const fetchExamQuestions = async () => {
       setLoading(true);
       try {
         // Fetch exam details
-        const examResponse = await fetch(`/api/exam/${examId}`);
+        const examResponse = await fetch(`/api/exam/${examID}`);
         if (examResponse.ok) {
           const examData = await examResponse.json();
           setExamData(examData);
@@ -186,7 +222,7 @@ export default function PrintExamPage() {
         }
 
         // Fetch exam questions
-        const response = await fetch(`/api/examquestions?examId=${examId}`);
+        const response = await fetch(`/api/examquestions?examId=${examID}`);
         if (response.ok) {
           const questions = await response.json();
           setExamQuestions(questions);
@@ -202,7 +238,7 @@ export default function PrintExamPage() {
     };
 
     fetchExamQuestions();
-  }, [examId]);
+  }, [examID]);
 
   const handlePrint = () => {
     window.print();
@@ -210,6 +246,106 @@ export default function PrintExamPage() {
 
   const handleGoBack = () => {
     window.history.back();
+  };
+
+  const handleEditQuestion = (question: ExamQuestion) => {
+    setEditingQuestionId(question._id);
+    setEditQuestionData({
+      score: question.score.toString(),
+      responseTime: question.responseTime.toString(),
+      category: question.category || "",
+      question: question.question.question || "",
+      option1: question.question.option1 || "",
+      option2: question.question.option2 || "",
+      option3: question.question.option3 || "",
+      option4: question.question.option4 || "",
+      correctoption: question.question.correctoption || 1,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditQuestionChange = (field: string, value: string) => {
+    setEditQuestionData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveEditedQuestion = async () => {
+    if (!editingQuestionId) return;
+
+    try {
+      const response = await fetch(`/api/examquestions/${editingQuestionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          score: parseFloat(editQuestionData.score),
+          responseTime: parseInt(editQuestionData.responseTime),
+          category: editQuestionData.category,
+          question: editQuestionData.question,
+          option1: editQuestionData.option1,
+          option2: editQuestionData.option2,
+          option3: editQuestionData.option3,
+          option4: editQuestionData.option4,
+          correctoption: parseInt(editQuestionData.correctoption.toString()),
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+
+        // Update the questions list
+        setExamQuestions((questions) =>
+          questions.map((q) =>
+            q._id === editingQuestionId ? { ...q, ...updatedQuestion } : q
+          )
+        );
+
+        toast.success("سوال با موفقیت ویرایش شد");
+        setEditDialogOpen(false);
+        setEditingQuestionId(null);
+      } else {
+        const error = await response.json();
+        toast.error(`خطا در ویرایش سوال: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating question:", error);
+      toast.error("خطا در ویرایش سوال");
+    }
+  };
+
+  const handleDeleteQuestion = (questionId: string) => {
+    setDeletingQuestionId(questionId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingQuestionId) return;
+
+    try {
+      const response = await fetch(`/api/examquestions/${deletingQuestionId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove the question from the list
+        setExamQuestions((questions) =>
+          questions.filter((q) => q._id !== deletingQuestionId)
+        );
+
+        toast.success("سوال با موفقیت حذف شد");
+        setDeleteDialogOpen(false);
+        setDeletingQuestionId(null);
+      } else {
+        const error = await response.json();
+        toast.error(`خطا در حذف سوال: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      toast.error("خطا در حذف سوال");
+    }
   };
 
   if (loading) {
@@ -220,7 +356,7 @@ export default function PrintExamPage() {
     );
   }
 
-  if (!examId) {
+  if (!examID) {
     return (
       <div className="container mx-auto p-6 text-center">
         <h1 className="text-2xl font-bold mb-4">خطا در بارگیری آزمون</h1>
@@ -390,11 +526,33 @@ export default function PrintExamPage() {
                   <div className="font-bold">
                     سوال {toPersianNumber(index + 1)}
                   </div>
-                  <div className="text-sm">
-                    <span className="ml-4">
-                      نمره: {toPersianNumber(item.score)}
-                    </span>
-                    <span>دسته‌بندی: {item.category}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm ml-4">
+                      <span className="ml-4">
+                        نمره: {toPersianNumber(item.score)}
+                      </span>
+                      <span>دسته‌بندی: {item.category}</span>
+                    </div>
+                    <div className="flex items-center non-printable">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-blue-600"
+                        onClick={() => handleEditQuestion(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">ویرایش</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-red-600"
+                        onClick={() => handleDeleteQuestion(item._id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">حذف</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -750,6 +908,213 @@ export default function PrintExamPage() {
           }
         }
       `}</style>
+
+      {/* Question Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          dir="rtl"
+        >
+          <DialogHeader>
+            <DialogTitle>ویرایش سوال</DialogTitle>
+            <DialogDescription>
+              اطلاعات سوال را ویرایش کنید و دکمه ذخیره را بزنید.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid gap-2">
+                <label
+                  htmlFor="question-category"
+                  className="text-sm font-medium"
+                >
+                  دسته‌بندی
+                </label>
+                <input
+                  id="question-category"
+                  className="border rounded p-2"
+                  value={editQuestionData.category}
+                  onChange={(e) =>
+                    handleEditQuestionChange("category", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="question-score" className="text-sm font-medium">
+                  نمره
+                </label>
+                <input
+                  id="question-score"
+                  type="number"
+                  className="border rounded p-2"
+                  value={editQuestionData.score}
+                  onChange={(e) =>
+                    handleEditQuestionChange("score", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="question-time" className="text-sm font-medium">
+                  زمان پاسخگویی (ثانیه)
+                </label>
+                <input
+                  id="question-time"
+                  type="number"
+                  className="border rounded p-2"
+                  value={editQuestionData.responseTime}
+                  onChange={(e) =>
+                    handleEditQuestionChange("responseTime", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2 mt-2">
+              <label htmlFor="question-text" className="text-sm font-medium">
+                متن سوال
+              </label>
+              <RichTextEditor
+                id="question-text"
+                className="border rounded p-2 min-h-[100px]"
+                value={editQuestionData.question}
+                onChange={(value) =>
+                  handleEditQuestionChange("question", value)
+                }
+              />
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">گزینه‌ها</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="option1"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <span className="rounded-full bg-gray-200 text-gray-800 flex items-center justify-center w-5 h-5 text-xs">
+                      ۱
+                    </span>
+                    <span>گزینه اول</span>
+                  </label>
+                  <RichTextEditor
+                    id="option1"
+                    className="border rounded p-2"
+                    value={editQuestionData.option1}
+                    onChange={(value) =>
+                      handleEditQuestionChange("option1", value)
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="option2"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <span className="rounded-full bg-gray-200 text-gray-800 flex items-center justify-center w-5 h-5 text-xs">
+                      ۲
+                    </span>
+                    <span>گزینه دوم</span>
+                  </label>
+                  <RichTextEditor
+                    id="option2"
+                    className="border rounded p-2"
+                    value={editQuestionData.option2}
+                    onChange={(value) =>
+                      handleEditQuestionChange("option2", value)
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="option3"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <span className="rounded-full bg-gray-200 text-gray-800 flex items-center justify-center w-5 h-5 text-xs">
+                      ۳
+                    </span>
+                    <span>گزینه سوم</span>
+                  </label>
+                  <RichTextEditor
+                    id="option3"
+                    className="border rounded p-2"
+                    value={editQuestionData.option3}
+                    onChange={(value) =>
+                      handleEditQuestionChange("option3", value)
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="option4"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <span className="rounded-full bg-gray-200 text-gray-800 flex items-center justify-center w-5 h-5 text-xs">
+                      ۴
+                    </span>
+                    <span>گزینه چهارم</span>
+                  </label>
+                  <RichTextEditor
+                    id="option4"
+                    className="border rounded p-2"
+                    value={editQuestionData.option4}
+                    onChange={(value) =>
+                      handleEditQuestionChange("option4", value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-2 mt-2">
+              <label htmlFor="correct-option" className="text-sm font-medium">
+                گزینه صحیح (۱ تا ۴)
+              </label>
+              <input
+                id="correct-option"
+                type="number"
+                min="1"
+                max="4"
+                className="border rounded p-2 w-20"
+                value={editQuestionData.correctoption}
+                onChange={(e) =>
+                  handleEditQuestionChange("correctoption", e.target.value)
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-between mt-4">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              انصراف
+            </Button>
+            <Button onClick={handleSaveEditedQuestion}>ذخیره تغییرات</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف سوال</AlertDialogTitle>
+            <AlertDialogDescription>
+              آیا از حذف این سوال اطمینان دارید؟ این عمل قابل بازگشت نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              تایید حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
