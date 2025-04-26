@@ -2,15 +2,10 @@
 
 import { Suspense } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import { DocumentIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
-import { encryptFilter } from "@/utils/encryption";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
-
-// Import to get Persian date
-import { getPersianDate } from "@/utils/dateUtils";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -60,12 +55,6 @@ function StudentsPageContent() {
     );
   }
 
-  const shareWithFilters = (rowId: string) => {
-    const filter = { _id: rowId };
-    const encryptedFilter = encryptFilter(filter);
-    const url = `${window.location.origin}/admin/students?filter=${encryptedFilter}`;
-    navigator.clipboard.writeText(url);
-  };
   const sampleFormStructure: FormField[] = [
     {
       name: "examCode",
@@ -602,6 +591,22 @@ function StudentsPageContent() {
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="exam"
+          rowActions={[
+            {
+              label: "افزودن سوالات ازبانک سوالات",
+              action: (examId) => {
+                window.location.href = `/admin/questionbank?examID=${examId}`;
+              },
+              icon: DocumentIcon,
+            },
+            {
+              label: "افزودن سوالات ازبانک شخصی",
+              action: (examId) => {
+                window.location.href = `/admin/myquestionbank?examID=${examId}`;
+              },
+              icon: DocumentIcon,
+            },
+          ]}
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
         />
