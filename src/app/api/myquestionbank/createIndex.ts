@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToMasterDb } from '@/lib/masterdb';
+// import { connectToMasterDb } from '@/lib/masterdb';
+import { connectToDatabase } from '@/lib/mongodb';
+
 
 // API route for creating indexes on the questions collection
 export async function GET(request: NextRequest) {
   try {
     // Connect to the master database
-    const db = await connectToMasterDb();
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    const db = await connectToDatabase(domain);
     
     // Create indexes to improve query performance
     const results = await Promise.all([

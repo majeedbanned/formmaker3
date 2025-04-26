@@ -850,10 +850,56 @@ function QuestionBankContent() {
 
   // Handle new question data change
   const handleNewQuestionChange = (field: string, value: string) => {
-    setNewQuestionData({
+    // Create new data object with the updated field
+    const updatedData = {
       ...newQuestionData,
       [field]: value,
-    });
+    };
+
+    // Update the state
+    setNewQuestionData(updatedData);
+
+    // For category fields, fetch dependent categories
+    if (
+      field === "grade" ||
+      field === "cat1" ||
+      field === "cat2" ||
+      field === "cat3"
+    ) {
+      // Build filter params based on the updated data
+      const filterParams = {
+        grade: field === "grade" ? value : updatedData.grade,
+        cat1: field === "cat1" ? value : updatedData.cat1,
+        cat2: field === "cat2" ? value : updatedData.cat2,
+        cat3: field === "cat3" ? value : updatedData.cat3,
+        difficulty: "",
+        type: "",
+      };
+
+      // Clear dependent fields when parent changes
+      if (field === "grade") {
+        updatedData.cat1 = "";
+        updatedData.cat2 = "";
+        updatedData.cat3 = "";
+        updatedData.cat4 = "";
+        setNewQuestionData(updatedData);
+      } else if (field === "cat1") {
+        updatedData.cat2 = "";
+        updatedData.cat3 = "";
+        updatedData.cat4 = "";
+        setNewQuestionData(updatedData);
+      } else if (field === "cat2") {
+        updatedData.cat3 = "";
+        updatedData.cat4 = "";
+        setNewQuestionData(updatedData);
+      } else if (field === "cat3") {
+        updatedData.cat4 = "";
+        setNewQuestionData(updatedData);
+      }
+
+      // Fetch categories with the updated filters
+      fetchCategories(filterParams);
+    }
   };
 
   // Submit new question
@@ -915,6 +961,14 @@ function QuestionBankContent() {
       setIsCreating(false);
     }
   };
+
+  // New useEffect to load categories when New Question Dialog opens
+  useEffect(() => {
+    if (showNewQuestionDialog) {
+      // Only fetch categories if the dialog is open
+      fetchCategories();
+    }
+  }, [showNewQuestionDialog]);
 
   return (
     <div dir="rtl" className="container mx-auto p-6">
@@ -2130,7 +2184,7 @@ function QuestionBankContent() {
 
           <div className="overflow-y-auto max-h-[70vh] pr-2">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {/* Grade */}
+              {/* Grade - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="grade">پایه تحصیلی</Label>
                 <Select
@@ -2143,66 +2197,107 @@ function QuestionBankContent() {
                     <SelectValue placeholder="انتخاب پایه" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="7">پایه هفتم</SelectItem>
-                    <SelectItem value="8">پایه هشتم</SelectItem>
-                    <SelectItem value="9">پایه نهم</SelectItem>
-                    <SelectItem value="10">پایه دهم</SelectItem>
-                    <SelectItem value="11">پایه یازدهم</SelectItem>
-                    <SelectItem value="12">پایه دوازدهم</SelectItem>
+                    {categories.grades.map((grade) => (
+                      <SelectItem key={grade} value={grade.toString()}>
+                        پایه {toPersianNumber(grade)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Cat1 - Subject */}
+              {/* Cat1 - Subject - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="cat1">درس</Label>
-                <Input
-                  id="cat1"
-                  placeholder="نام درس"
+                <Select
                   value={newQuestionData.cat1}
-                  onChange={(e) =>
-                    handleNewQuestionChange("cat1", e.target.value)
+                  onValueChange={(value) =>
+                    handleNewQuestionChange("cat1", value)
                   }
-                />
+                  disabled={!newQuestionData.grade}
+                >
+                  <SelectTrigger id="cat1">
+                    <SelectValue placeholder="انتخاب درس" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.cat1.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Cat2 - Chapter */}
+              {/* Cat2 - Chapter - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="cat2">فصل</Label>
-                <Input
-                  id="cat2"
-                  placeholder="عنوان فصل"
+                <Select
                   value={newQuestionData.cat2}
-                  onChange={(e) =>
-                    handleNewQuestionChange("cat2", e.target.value)
+                  onValueChange={(value) =>
+                    handleNewQuestionChange("cat2", value)
                   }
-                />
+                  disabled={!newQuestionData.cat1}
+                >
+                  <SelectTrigger id="cat2">
+                    <SelectValue placeholder="انتخاب فصل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.cat2.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Cat3 - Section */}
+              {/* Cat3 - Section - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="cat3">بخش</Label>
-                <Input
-                  id="cat3"
-                  placeholder="عنوان بخش"
+                <Select
                   value={newQuestionData.cat3}
-                  onChange={(e) =>
-                    handleNewQuestionChange("cat3", e.target.value)
+                  onValueChange={(value) =>
+                    handleNewQuestionChange("cat3", value)
                   }
-                />
+                  disabled={!newQuestionData.cat2}
+                >
+                  <SelectTrigger id="cat3">
+                    <SelectValue placeholder="انتخاب بخش" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.cat3.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Cat4 - Topic */}
+              {/* Cat4 - Topic - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="cat4">موضوع</Label>
-                <Input
-                  id="cat4"
-                  placeholder="موضوع دقیق"
+                <Select
                   value={newQuestionData.cat4}
-                  onChange={(e) =>
-                    handleNewQuestionChange("cat4", e.target.value)
+                  onValueChange={(value) =>
+                    handleNewQuestionChange("cat4", value)
                   }
-                />
+                  disabled={
+                    !newQuestionData.cat3 || categories.cat4.length === 0
+                  }
+                >
+                  <SelectTrigger id="cat4">
+                    <SelectValue placeholder="انتخاب موضوع" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.cat4.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Difficulty */}

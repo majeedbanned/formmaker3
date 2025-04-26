@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToMasterDb } from '@/lib/masterdb';
+import { connectToDatabase } from '@/lib/mongodb';
+
 
 // API route for fetching question categories for filters
 export async function GET(request: NextRequest) {
   try {
     // Connect to the master database
-    const db = await connectToMasterDb();
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+    const db = await connectToDatabase(domain);
     
     // If grade filter is provided, filter subcategories accordingly
     const { searchParams } = new URL(request.url);
