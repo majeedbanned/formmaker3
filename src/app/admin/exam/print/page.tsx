@@ -204,7 +204,18 @@ function PrintExamContent() {
   >("regular");
   const [isAnswerSheetMode, setIsAnswerSheetMode] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
+  const [isMultipleAnswerSheetMode, setIsMultipleAnswerSheetMode] =
+    useState(false);
+  const [studentsToPrint, setStudentsToPrint] = useState<
+    Array<{
+      username: string;
+      name: string;
+      className?: string;
+      role: "student" | "teacher";
+    }>
+  >([]);
   const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
+  const [answerSheetDropdownOpen, setAnswerSheetDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!examID) return;
@@ -218,7 +229,7 @@ function PrintExamContent() {
           const examData = await examResponse.json();
           setExamData(examData);
 
-          // Fetch school information if schoolCode is available
+          // Fetch school information if schoolCode   is available
           console.log("examData34", examData);
           if (examData.data.schoolCode) {
             try {
@@ -301,6 +312,8 @@ function PrintExamContent() {
   const handlePrintAnswerSheet = () => {
     setIsAnswerSheetMode(true);
     setIsPrintMode(true);
+    setIsMultipleAnswerSheetMode(false);
+    setStudentsToPrint([]);
     // Use setTimeout to ensure the state update is processed before printing
     setTimeout(() => {
       window.print();
@@ -310,6 +323,44 @@ function PrintExamContent() {
         setIsPrintMode(false);
       }, 500);
     }, 100);
+  };
+
+  const handlePrintAllRecipientAnswerSheets = () => {
+    // Filter only student users
+    const students = examUsers.filter((user) => user.role === "student");
+
+    if (students.length === 0) {
+      toast.error("هیچ دانش آموزی در لیست شرکت کنندگان وجود ندارد.");
+      return;
+    }
+
+    // Ask for confirmation if there are many students
+    if (students.length > 10) {
+      const shouldProceed = window.confirm(
+        `این عملیات ${students.length} پاسخنامه چاپ خواهد کرد. آیا ادامه می‌دهید؟`
+      );
+      if (!shouldProceed) return;
+    }
+
+    // Set all the required states
+    setIsAnswerSheetMode(true);
+    setIsMultipleAnswerSheetMode(true);
+    setIsPrintMode(true);
+    setStudentsToPrint(students);
+
+    // Use setTimeout to ensure the state update is processed before printing
+    setTimeout(() => {
+      window.print();
+      // Reset to normal mode after printing
+      setTimeout(() => {
+        setIsAnswerSheetMode(false);
+        setIsMultipleAnswerSheetMode(false);
+        setIsPrintMode(false);
+        setStudentsToPrint([]);
+      }, 500);
+    }, 100);
+
+    //toast.success(`${students.length} پاسخنامه آماده‌ی چاپ شد.`);
   };
 
   const handleGoBack = () => {
@@ -545,10 +596,61 @@ function PrintExamContent() {
               چاپ آزمون
             </Button>
 
-            <Button onClick={handlePrintAnswerSheet} variant="secondary">
-              <Printer className="h-4 w-4 ml-2" />
-              چاپ پاسخنامه
-            </Button>
+            <div className="relative">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setAnswerSheetDropdownOpen(!answerSheetDropdownOpen)
+                }
+                className="flex items-center"
+              >
+                <Printer className="h-4 w-4 ml-2" />
+                چاپ پاسخنامه
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  ></path>
+                </svg>
+              </Button>
+
+              {answerSheetDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-64 bg-white shadow-lg rounded-md border border-gray-200 z-10">
+                  <ul className="py-1">
+                    <li>
+                      <button
+                        onClick={() => {
+                          handlePrintAnswerSheet();
+                          setAnswerSheetDropdownOpen(false);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
+                      >
+                        چاپ پاسخنامه ساده
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          handlePrintAllRecipientAnswerSheets();
+                          setAnswerSheetDropdownOpen(false);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
+                      >
+                        چاپ پاسخنامه برای همه شرکت‌کنندگان
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
 
             <Button
               variant="outline"
@@ -580,141 +682,315 @@ function PrintExamContent() {
       {/* Answer Sheet (only visible when printing in answer sheet mode) */}
       {isAnswerSheetMode && (
         <div className="answer-sheet-container">
-          <div className="exam-header mb-8 border-b pb-6 print-header">
-            <div className="flex justify-between items-center mb-4">
-              <div className="w-1/3">
-                {schoolData?.data.schoolLogo && (
-                  <img
-                    src={schoolData.data.schoolLogo}
-                    alt="School Logo"
-                    className="max-h-24 object-contain"
-                  />
-                )}
-              </div>
-              <div className="w-1/3 text-center">
-                <h1 className="text-2xl font-bold mb-1">
-                  پاسخنامه {examData?.data.examName || "آزمون"}
-                </h1>
-                <p className="text-lg">{schoolData?.data.schoolName || ""}</p>
-              </div>
-              <div className="w-1/3 text-left">
-                <div className="text-sm text-left">
-                  <p>تاریخ: {formatPersianDate(new Date().toISOString())}</p>
-                  <p>کد آزمون: {examData?.data.examCode}</p>
-                </div>
-              </div>
-            </div>
+          {isMultipleAnswerSheetMode && studentsToPrint.length > 0 ? (
+            // Multiple student answer sheets
+            studentsToPrint.map((student, index) => (
+              <div
+                key={student.username}
+                className={index > 0 ? "page-break-before" : ""}
+              >
+                <div className="exam-header mb-8 border-b pb-6 print-header">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="w-1/3">
+                      {schoolData?.data.schoolLogo && (
+                        <img
+                          src={schoolData.data.schoolLogo}
+                          alt="School Logo"
+                          className="max-h-24 object-contain"
+                        />
+                      )}
+                    </div>
+                    <div className="w-1/3 text-center">
+                      <h1 className="text-2xl font-bold mb-1">
+                        پاسخنامه {examData?.data.examName || "آزمون"}
+                      </h1>
+                      <p className="text-lg">
+                        {schoolData?.data.schoolName || ""}
+                      </p>
+                    </div>
+                    <div className="w-1/3 text-left">
+                      <div className="text-sm text-left">
+                        <p>
+                          تاریخ: {formatPersianDate(new Date().toISOString())}
+                        </p>
+                        <p>کد آزمون: {examData?.data.examCode}</p>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="student-info mt-6 mb-4">
-              <div className="flex justify-between mb-4">
-                <div className="w-1/2">
-                  <div className="flex items-center mb-3">
-                    <span className="font-semibold ml-2">
-                      نام و نام خانوادگی:
-                    </span>
-                    <div className="border-b border-black w-64 h-6"></div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-semibold ml-2">کلاس:</span>
-                    <div className="border-b border-black w-32 h-6"></div>
-                  </div>
-                </div>
-                <div className="w-1/2">
-                  <div className="flex items-center mb-3">
-                    <span className="font-semibold ml-2">
-                      شماره دانش‌آموزی:
-                    </span>
-                    <div className="border-b border-black w-32 h-6"></div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-semibold ml-2">تاریخ:</span>
-                    <div className="border-b border-black w-32 h-6"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Multiple choice answers section */}
-          <div className="multiple-choice-answers mb-8">
-            <h2 className="text-lg font-bold mb-4">پاسخنامه سوالات تستی</h2>
-            <div className="grid grid-cols-4 gap-4">
-              {examQuestions
-                .filter((q) => q.question.type?.includes("تستی"))
-                .map((item) => {
-                  // Find the original index of this question in the full questions array
-                  const originalIndex = examQuestions.findIndex(
-                    (q) => q._id === item._id
-                  );
-
-                  return (
-                    <div
-                      key={`mc-${item._id}`}
-                      className="answer-item p-3 border rounded-md"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-bold">
-                          سوال {toPersianNumber(originalIndex + 1)}
+                  <div className="student-info mt-6 mb-4">
+                    <div className="flex justify-between mb-4">
+                      <div className="w-1/2">
+                        <div className="flex items-center mb-3">
+                          <span className="font-semibold ml-2">
+                            نام و نام خانوادگی:
+                          </span>
+                          <div className="border-b border-black w-64 h-6 flex items-center">
+                            {student.name}
+                          </div>
                         </div>
-                        <div className="text-sm">
-                          {toPersianNumber(item.score)} نمره
+                        <div className="flex items-center">
+                          <span className="font-semibold ml-2">کلاس:</span>
+                          <div className="border-b border-black w-32 h-6 flex items-center">
+                            {student.className || ""}
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center justify-center border rounded-md p-2">
-                          <span className="text-sm">۱</span>
-                          <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                      <div className="w-1/2">
+                        <div className="flex items-center mb-3">
+                          <span className="font-semibold ml-2">
+                            شماره دانش‌آموزی:
+                          </span>
+                          <div className="border-b border-black w-32 h-6 flex items-center">
+                            {student.username}
+                          </div>
                         </div>
-                        <div className="flex items-center justify-center border rounded-md p-2">
-                          <span className="text-sm">۲</span>
-                          <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
-                        </div>
-                        <div className="flex items-center justify-center border rounded-md p-2">
-                          <span className="text-sm">۳</span>
-                          <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
-                        </div>
-                        <div className="flex items-center justify-center border rounded-md p-2">
-                          <span className="text-sm">۴</span>
-                          <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                        <div className="flex items-center">
+                          <span className="font-semibold ml-2">تاریخ:</span>
+                          <div className="border-b border-black w-32 h-6 flex items-center">
+                            {formatPersianDate(new Date().toISOString())}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-            </div>
-          </div>
+                  </div>
+                </div>
 
-          {/* Descriptive answers section */}
-          <div className="descriptive-answers">
-            <h2 className="text-lg font-bold mb-4">پاسخنامه سوالات تشریحی</h2>
-            <div className="space-y-6">
-              {examQuestions
-                .filter((q) => !q.question.type?.includes("تستی"))
-                .map((item) => {
-                  // Find the original index of this question in the full questions array
-                  const originalIndex = examQuestions.findIndex(
-                    (q) => q._id === item._id
-                  );
+                {/* Multiple choice answers section */}
+                <div className="multiple-choice-answers mb-8">
+                  <h2 className="text-lg font-bold mb-4">
+                    پاسخنامه سوالات تستی
+                  </h2>
+                  <div className="grid grid-cols-4 gap-4">
+                    {examQuestions
+                      .filter((q) => q.question.type?.includes("تستی"))
+                      .map((question) => {
+                        // Find the original index of this question in the full questions array
+                        const originalIndex = examQuestions.findIndex(
+                          (q) => q._id === question._id
+                        );
 
-                  return (
-                    <div
-                      key={`desc-${item._id}`}
-                      className="p-4 border rounded-md"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-bold">
-                          سوال {toPersianNumber(originalIndex + 1)}
-                        </div>
-                        <div className="text-sm">
-                          {toPersianNumber(item.score)} نمره
-                        </div>
-                      </div>
-                      <div className="min-h-32 border-t border-dashed border-gray-300 pt-2"></div>
+                        return (
+                          <div
+                            key={`mc-${question._id}-${student.username}`}
+                            className="answer-item p-3 border rounded-md"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-bold">
+                                سوال {toPersianNumber(originalIndex + 1)}
+                              </div>
+                              <div className="text-sm">
+                                {toPersianNumber(question.score)} نمره
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex items-center justify-center border rounded-md p-2">
+                                <span className="text-sm">۱</span>
+                                <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                              </div>
+                              <div className="flex items-center justify-center border rounded-md p-2">
+                                <span className="text-sm">۲</span>
+                                <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                              </div>
+                              <div className="flex items-center justify-center border rounded-md p-2">
+                                <span className="text-sm">۳</span>
+                                <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                              </div>
+                              <div className="flex items-center justify-center border rounded-md p-2">
+                                <span className="text-sm">۴</span>
+                                <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Descriptive answers section */}
+                <div className="descriptive-answers">
+                  <h2 className="text-lg font-bold mb-4">
+                    پاسخنامه سوالات تشریحی
+                  </h2>
+                  <div className="space-y-6">
+                    {examQuestions
+                      .filter((q) => !q.question.type?.includes("تستی"))
+                      .map((question) => {
+                        // Find the original index of this question in the full questions array
+                        const originalIndex = examQuestions.findIndex(
+                          (q) => q._id === question._id
+                        );
+
+                        return (
+                          <div
+                            key={`desc-${question._id}-${student.username}`}
+                            className="p-4 border rounded-md"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-bold">
+                                سوال {toPersianNumber(originalIndex + 1)}
+                              </div>
+                              <div className="text-sm">
+                                {toPersianNumber(question.score)} نمره
+                              </div>
+                            </div>
+                            <div className="min-h-32 border-t border-dashed border-gray-300 pt-2"></div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Single answer sheet (original implementation)
+            <>
+              <div className="exam-header mb-8 border-b pb-6 print-header">
+                {/* Original answer sheet header content */}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="w-1/3">
+                    {schoolData?.data.schoolLogo && (
+                      <img
+                        src={schoolData.data.schoolLogo}
+                        alt="School Logo"
+                        className="max-h-24 object-contain"
+                      />
+                    )}
+                  </div>
+                  <div className="w-1/3 text-center">
+                    <h1 className="text-2xl font-bold mb-1">
+                      پاسخنامه {examData?.data.examName || "آزمون"}
+                    </h1>
+                    <p className="text-lg">
+                      {schoolData?.data.schoolName || ""}
+                    </p>
+                  </div>
+                  <div className="w-1/3 text-left">
+                    <div className="text-sm text-left">
+                      <p>
+                        تاریخ: {formatPersianDate(new Date().toISOString())}
+                      </p>
+                      <p>کد آزمون: {examData?.data.examCode}</p>
                     </div>
-                  );
-                })}
-            </div>
-          </div>
+                  </div>
+                </div>
+
+                <div className="student-info mt-6 mb-4">
+                  <div className="flex justify-between mb-4">
+                    <div className="w-1/2">
+                      <div className="flex items-center mb-3">
+                        <span className="font-semibold ml-2">
+                          نام و نام خانوادگی:
+                        </span>
+                        <div className="border-b border-black w-64 h-6"></div>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-semibold ml-2">کلاس:</span>
+                        <div className="border-b border-black w-32 h-6"></div>
+                      </div>
+                    </div>
+                    <div className="w-1/2">
+                      <div className="flex items-center mb-3">
+                        <span className="font-semibold ml-2">
+                          شماره دانش‌آموزی:
+                        </span>
+                        <div className="border-b border-black w-32 h-6"></div>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-semibold ml-2">تاریخ:</span>
+                        <div className="border-b border-black w-32 h-6"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Multiple choice answers section */}
+              <div className="multiple-choice-answers mb-8">
+                {/* Original multiple choice content */}
+                <h2 className="text-lg font-bold mb-4">پاسخنامه سوالات تستی</h2>
+                <div className="grid grid-cols-4 gap-4">
+                  {examQuestions
+                    .filter((q) => q.question.type?.includes("تستی"))
+                    .map((question) => {
+                      // Find the original index of this question in the full questions array
+                      const originalIndex = examQuestions.findIndex(
+                        (q) => q._id === question._id
+                      );
+
+                      return (
+                        <div
+                          key={`mc-${question._id}`}
+                          className="answer-item p-3 border rounded-md"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-bold">
+                              سوال {toPersianNumber(originalIndex + 1)}
+                            </div>
+                            <div className="text-sm">
+                              {toPersianNumber(question.score)} نمره
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center justify-center border rounded-md p-2">
+                              <span className="text-sm">۱</span>
+                              <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                            </div>
+                            <div className="flex items-center justify-center border rounded-md p-2">
+                              <span className="text-sm">۲</span>
+                              <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                            </div>
+                            <div className="flex items-center justify-center border rounded-md p-2">
+                              <span className="text-sm">۳</span>
+                              <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                            </div>
+                            <div className="flex items-center justify-center border rounded-md p-2">
+                              <span className="text-sm">۴</span>
+                              <div className="w-5 h-5 border border-black rounded-full ml-1"></div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Descriptive answers section */}
+              <div className="descriptive-answers">
+                {/* Original descriptive answers content */}
+                <h2 className="text-lg font-bold mb-4">
+                  پاسخنامه سوالات تشریحی
+                </h2>
+                <div className="space-y-6">
+                  {examQuestions
+                    .filter((q) => !q.question.type?.includes("تستی"))
+                    .map((question) => {
+                      // Find the original index of this question in the full questions array
+                      const originalIndex = examQuestions.findIndex(
+                        (q) => q._id === question._id
+                      );
+
+                      return (
+                        <div
+                          key={`desc-${question._id}`}
+                          className="p-4 border rounded-md"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-bold">
+                              سوال {toPersianNumber(originalIndex + 1)}
+                            </div>
+                            <div className="text-sm">
+                              {toPersianNumber(question.score)} نمره
+                            </div>
+                          </div>
+                          <div className="min-h-32 border-t border-dashed border-gray-300 pt-2"></div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1158,6 +1434,11 @@ function PrintExamContent() {
             grid-template-columns: 1fr 1fr 1fr !important;
           }`
             : ""}
+
+          /* Page break for multiple answer sheets */
+          .page-break-before {
+            page-break-before: always;
+          }
         }
 
         @media screen {
