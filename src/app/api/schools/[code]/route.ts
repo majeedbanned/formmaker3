@@ -25,7 +25,7 @@ export async function GET(
 
     // Find the school
     const school = await db.collection('schools').findOne({ "data.schoolCode": code });
-    console.log("school33", school);
+   // console.log("school33", school);
     if (!school) {
       return NextResponse.json(
         { error: 'School not found' },

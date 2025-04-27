@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MathJax } from "better-react-mathjax";
 import { toast } from "sonner";
-import { Printer, ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Printer, ArrowLeft, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -76,6 +76,12 @@ interface ExamData {
     settings: {
       preexammessage?: string;
       postexammessage?: string;
+    };
+    recipients?: {
+      students?: { label: string; value: string }[];
+      groups?: { label: string; value: string }[];
+      classCode?: { label: string; value: string }[];
+      teachers?: { label: string; value: string }[];
     };
   };
 }
@@ -165,6 +171,14 @@ export default function PrintExamPage() {
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
   const [schoolData, setSchoolData] = useState<School | null>(null);
   const [examData, setExamData] = useState<ExamData | null>(null);
+  const [examUsers, setExamUsers] = useState<
+    {
+      username: string;
+      name: string;
+      className?: string;
+      role: "student" | "teacher";
+    }[]
+  >([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
     null
@@ -189,6 +203,8 @@ export default function PrintExamPage() {
     "regular" | "compact" | "dense"
   >("regular");
   const [isAnswerSheetMode, setIsAnswerSheetMode] = useState(false);
+  const [isPrintMode, setIsPrintMode] = useState(false);
+  const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!examID) return;
@@ -203,6 +219,7 @@ export default function PrintExamPage() {
           setExamData(examData);
 
           // Fetch school information if schoolCode is available
+          console.log("examData34", examData);
           if (examData.data.schoolCode) {
             try {
               const schoolResponse = await fetch(
@@ -213,6 +230,34 @@ export default function PrintExamPage() {
                 setSchoolData(schoolData);
               } else {
                 console.error("Error fetching school data");
+              }
+
+              // Fetch exam participants if recipients data exists
+              console.log("examData33", examData);
+              if (examData.data.recipients) {
+                try {
+                  // Use the API route instead of the direct function call
+                  const usersResponse = await fetch("/api/exam/users", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      domain: examData.data.schoolCode,
+                      recipients: examData.data.recipients,
+                    }),
+                  });
+
+                  if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    console.log("usersData33", usersData);
+                    setExamUsers(usersData);
+                  } else {
+                    console.error("Error fetching exam participants from API");
+                  }
+                } catch (error) {
+                  console.error("Error fetching exam participants:", error);
+                }
               }
             } catch (error) {
               console.error("Error fetching school data:", error);
@@ -242,17 +287,27 @@ export default function PrintExamPage() {
   }, [examID]);
 
   const handlePrint = () => {
-    window.print();
+    setIsPrintMode(true);
+    // Use setTimeout to ensure the state update is processed before printing
+    setTimeout(() => {
+      window.print();
+      // Reset to normal mode after printing
+      setTimeout(() => {
+        setIsPrintMode(false);
+      }, 500);
+    }, 100);
   };
 
   const handlePrintAnswerSheet = () => {
     setIsAnswerSheetMode(true);
+    setIsPrintMode(true);
     // Use setTimeout to ensure the state update is processed before printing
     setTimeout(() => {
       window.print();
       // Reset to normal mode after printing
       setTimeout(() => {
         setIsAnswerSheetMode(false);
+        setIsPrintMode(false);
       }, 500);
     }, 100);
   };
@@ -361,10 +416,64 @@ export default function PrintExamPage() {
     }
   };
 
+  const renderParticipantsList = () => {
+    if (!examUsers || examUsers.length === 0) {
+      return (
+        <div className="text-center py-4 text-gray-500">
+          هیچ شرکت کننده‌ای برای این آزمون یافت نشد.
+        </div>
+      );
+    }
+
+    // Group by role
+    const students = examUsers.filter((user) => user.role === "student");
+    const teachers = examUsers.filter((user) => user.role === "teacher");
+
+    return (
+      <div className="mt-4">
+        <h3 className="text-lg font-bold mb-2">
+          لیست شرکت کنندگان ({examUsers.length} نفر)
+        </h3>
+        {teachers.length > 0 && (
+          <div className="mb-4">
+            <h4 className="font-semibold mb-1">
+              اساتید ({teachers.length} نفر):
+            </h4>
+            <ul className="list-disc list-inside">
+              {teachers.map((teacher) => (
+                <li key={teacher.username}>{teacher.name}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {students.length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-1">
+              دانش آموزان ({students.length} نفر):
+            </h4>
+            <ul className="list-disc list-inside grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
+              {students.map((student) => (
+                <li key={student.username}>
+                  {student.name}{" "}
+                  {student.className && (
+                    <span className="text-sm text-gray-500">
+                      ({student.className})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent"></div>
+        <span className="mr-2">در حال بارگذاری...</span>
       </div>
     );
   }
@@ -387,7 +496,7 @@ export default function PrintExamPage() {
       dir="rtl"
       className={`container mx-auto p-6 print-template-${printTemplate} ${
         isAnswerSheetMode ? "answer-sheet-mode" : ""
-      }`}
+      } ${isPrintMode ? "print-mode" : ""}`}
     >
       <div className="non-printable flex flex-col mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -439,6 +548,15 @@ export default function PrintExamPage() {
             <Button onClick={handlePrintAnswerSheet} variant="secondary">
               <Printer className="h-4 w-4 ml-2" />
               چاپ پاسخنامه
+            </Button>
+
+            <Button
+              variant="outline"
+              className="print:hidden"
+              onClick={() => setParticipantsDialogOpen(true)}
+            >
+              <Users className="h-4 w-4 ml-2" />
+              شرکت کنندگان
             </Button>
           </div>
         </div>
@@ -1101,9 +1219,40 @@ export default function PrintExamPage() {
         .answer-sheet-mode:not(.print) .answer-sheet-container {
           display: none;
         }
+
+        /* Print mode specific styles */
+        .print-mode .non-printable {
+          display: none;
+        }
       `}</style>
 
-      {/* Question Edit Dialog */}
+      {/* Participants Dialog */}
+      <Dialog
+        open={participantsDialogOpen}
+        onOpenChange={setParticipantsDialogOpen}
+      >
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          dir="rtl"
+        >
+          <DialogHeader>
+            <DialogTitle>شرکت کنندگان آزمون</DialogTitle>
+            <DialogDescription>
+              لیست تمام شرکت کنندگان در این آزمون
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">{renderParticipantsList()}</div>
+
+          <DialogFooter className="flex justify-end mt-4">
+            <Button onClick={() => setParticipantsDialogOpen(false)}>
+              بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Question Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent
           className="max-w-3xl max-h-[90vh] overflow-y-auto"
@@ -1171,11 +1320,10 @@ export default function PrintExamPage() {
                 متن سوال
               </label>
               <RichTextEditor
-                id="question-text"
-                className="border rounded p-2 min-h-[100px]"
+                className="mb-4"
                 value={editQuestionData.question}
                 onChange={(value) =>
-                  handleEditQuestionChange("question", value)
+                  setEditQuestionData({ ...editQuestionData, question: value })
                 }
               />
             </div>
@@ -1194,11 +1342,13 @@ export default function PrintExamPage() {
                     <span>گزینه اول</span>
                   </label>
                   <RichTextEditor
-                    id="option1"
-                    className="border rounded p-2"
+                    className="mb-4"
                     value={editQuestionData.option1}
                     onChange={(value) =>
-                      handleEditQuestionChange("option1", value)
+                      setEditQuestionData({
+                        ...editQuestionData,
+                        option1: value,
+                      })
                     }
                   />
                 </div>
@@ -1214,11 +1364,13 @@ export default function PrintExamPage() {
                     <span>گزینه دوم</span>
                   </label>
                   <RichTextEditor
-                    id="option2"
-                    className="border rounded p-2"
+                    className="mb-4"
                     value={editQuestionData.option2}
                     onChange={(value) =>
-                      handleEditQuestionChange("option2", value)
+                      setEditQuestionData({
+                        ...editQuestionData,
+                        option2: value,
+                      })
                     }
                   />
                 </div>
@@ -1234,11 +1386,13 @@ export default function PrintExamPage() {
                     <span>گزینه سوم</span>
                   </label>
                   <RichTextEditor
-                    id="option3"
-                    className="border rounded p-2"
+                    className="mb-4"
                     value={editQuestionData.option3}
                     onChange={(value) =>
-                      handleEditQuestionChange("option3", value)
+                      setEditQuestionData({
+                        ...editQuestionData,
+                        option3: value,
+                      })
                     }
                   />
                 </div>
@@ -1254,11 +1408,13 @@ export default function PrintExamPage() {
                     <span>گزینه چهارم</span>
                   </label>
                   <RichTextEditor
-                    id="option4"
-                    className="border rounded p-2"
+                    className="mb-4"
                     value={editQuestionData.option4}
                     onChange={(value) =>
-                      handleEditQuestionChange("option4", value)
+                      setEditQuestionData({
+                        ...editQuestionData,
+                        option4: value,
+                      })
                     }
                   />
                 </div>
