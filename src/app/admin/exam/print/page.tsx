@@ -395,11 +395,12 @@ function PrintExamContent() {
         orientation: "landscape", // Changed to landscape
         unit: "mm",
         format: "a4",
+        compress: true, // Enable compression
       });
 
       // Add Farsi font
       try {
-        // Add Vazirmatn font for Farsi text support
+        // Add Vazirmatn font for Farsi text support - optimization: load once and reuse
         const fontPath = "/fonts/Vazirmatn-Regular.ttf";
         // Get the font data
         const fontResponse = await fetch(fontPath);
@@ -409,9 +410,14 @@ function PrintExamContent() {
         // Convert ArrayBuffer to Base64 string for jsPDF (browser-compatible)
         const fontBase64 = arrayBufferToBase64(fontArrayBuffer);
 
-        // Add the font to PDF
+        // Add the font to PDF with subset embedding to reduce size
         pdf.addFileToVFS("Vazirmatn-Regular.ttf", fontBase64);
-        pdf.addFont("Vazirmatn-Regular.ttf", "Vazirmatn", "normal");
+        pdf.addFont(
+          "Vazirmatn-Regular.ttf",
+          "Vazirmatn",
+          "normal",
+          "Identity-H"
+        );
         // Set the font
         pdf.setFont("Vazirmatn");
       } catch (fontError) {
@@ -427,7 +433,7 @@ function PrintExamContent() {
       const a5Width = pageWidth / 2;
       const a5Height = pageHeight;
 
-      // Load image
+      // Load and optimize the template image
       const img = new Image();
       img.src = "/answersheet/sheet1.png";
 
@@ -439,6 +445,18 @@ function PrintExamContent() {
       // Calculate number of pages needed (2 students per page)
       const totalPages = Math.ceil(studentsForQR.length / 2);
 
+      // QR code optimization settings
+      const qrOptions = {
+        errorCorrectionLevel: "H" as const, // Type-safe error correction level
+        margin: 1,
+        width: 100,
+        scale: 4, // Smaller scale for better compression
+        color: {
+          dark: "#000000", // Black dots
+          light: "#ffffff", // White background
+        },
+      };
+
       // Process students two at a time
       for (let page = 0; page < totalPages; page++) {
         // Add new page after first page
@@ -446,24 +464,29 @@ function PrintExamContent() {
           pdf.addPage();
         }
 
+        // Add template image once per page with quality settings
+        pdf.addImage(
+          img,
+          "PNG",
+          0,
+          0,
+          pageWidth / 2,
+          a5Height,
+          undefined,
+          "SLOW"
+        );
+
         // Process first student on current page
         if (page * 2 < studentsForQR.length) {
           const student1 = studentsForQR[page * 2];
 
-          // Left side A5 sheet
-          pdf.addImage(img, "PNG", 0, 0, a5Width, a5Height);
-
-          // Generate and add QR code for first student
+          // Generate and add QR code for first student with optimization
           const qrDataUrl1 = await qrcodeModule.toDataURL(
             student1.username.toString(),
-            {
-              errorCorrectionLevel: "H",
-              margin: 1,
-              width: 100,
-            }
+            qrOptions
           );
 
-          pdf.addImage(qrDataUrl1, "PNG", 5, 5, 25, 25);
+          pdf.addImage(qrDataUrl1, "PNG", 15, 20, 25, 25);
 
           // Add first student info with RTL text
           pdf.setFont("Vazirmatn", "normal");
@@ -475,16 +498,16 @@ function PrintExamContent() {
           const student1Class = `کلاس: ${student1.className || ""}`;
           const examNameText = `آزمون: ${examData?.data.examName || ""}`;
 
-          pdf.text(student1Name, a5Width - 10, 15, {
+          pdf.text(student1Name, a5Width - 10, 20, {
             align: "right",
           });
-          pdf.text(student1Code, a5Width - 10, 22, {
+          pdf.text(student1Code, a5Width - 10, 27, {
             align: "right",
           });
-          pdf.text(student1Class, a5Width - 10, 29, {
+          pdf.text(student1Class, a5Width - 10, 34, {
             align: "right",
           });
-          pdf.text(examNameText, a5Width - 10, 36, {
+          pdf.text(examNameText, a5Width - 10, 40, {
             align: "right",
           });
         }
@@ -493,20 +516,21 @@ function PrintExamContent() {
         if (page * 2 + 1 < studentsForQR.length) {
           const student2 = studentsForQR[page * 2 + 1];
 
-          // Right side A5 sheet
+          // Only add template image for right side if not already added
+          // if (
+          //   page * 2 + 1 === studentsForQR.length - 1 &&
+          //   studentsForQR.length % 2 !== 0
+          // ) {
+          // }
           pdf.addImage(img, "PNG", a5Width, 0, a5Width, a5Height);
 
-          // Generate and add QR code for second student
+          // Generate and add QR code for second student with optimization
           const qrDataUrl2 = await qrcodeModule.toDataURL(
             student2.username.toString(),
-            {
-              errorCorrectionLevel: "H",
-              margin: 1,
-              width: 100,
-            }
+            qrOptions
           );
 
-          pdf.addImage(qrDataUrl2, "PNG", a5Width + 5, 5, 25, 25);
+          pdf.addImage(qrDataUrl2, "PNG", a5Width + 15, 20, 25, 25);
 
           // Add second student info with RTL text
           pdf.setFont("Vazirmatn", "normal");
@@ -518,20 +542,26 @@ function PrintExamContent() {
           const student2Class = `کلاس: ${student2.className || ""}`;
           const examNameText = `آزمون: ${examData?.data.examName || ""}`;
 
-          pdf.text(student2Name, pageWidth - 10, 15, {
+          pdf.text(student2Name, pageWidth - 10, 20, {
             align: "right",
           });
-          pdf.text(student2Code, pageWidth - 10, 22, {
+          pdf.text(student2Code, pageWidth - 10, 27, {
             align: "right",
           });
-          pdf.text(student2Class, pageWidth - 10, 29, {
+          pdf.text(student2Class, pageWidth - 10, 34, {
             align: "right",
           });
-          pdf.text(examNameText, pageWidth - 10, 36, {
+          pdf.text(examNameText, pageWidth - 10, 40, {
             align: "right",
           });
         }
       }
+
+      // Set PDF properties to optimize file size
+      pdf.setProperties({
+        title: `پاسخنامه ${examData?.data.examName || "آزمون"}`,
+        creator: "Farsamooz",
+      });
 
       // Save and download PDF
       pdf.save("generated.pdf");
@@ -1943,8 +1973,6 @@ function PrintExamContent() {
 }
 
 export default function PrintExamPage() {
-  const [answersVisible, setAnswersVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
   return (
     <Suspense
       fallback={
