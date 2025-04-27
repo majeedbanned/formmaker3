@@ -164,6 +164,17 @@ const formatPersianDate = (dateString: string): string => {
   }
 };
 
+// Helper function to convert ArrayBuffer to Base64 string (browser-compatible)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
 function PrintExamContent() {
   const searchParams = useSearchParams();
   const examID = searchParams.get("examID");
@@ -361,6 +372,176 @@ function PrintExamContent() {
     }, 100);
 
     //toast.success(`${students.length} پاسخنامه آماده‌ی چاپ شد.`);
+  };
+
+  const handlePrintQRAnswerSheet = async () => {
+    try {
+      // Filter only student users
+      const studentsForQR = examUsers.filter((user) => user.role === "student");
+
+      if (studentsForQR.length === 0) {
+        toast.error("هیچ دانش آموزی در لیست شرکت کنندگان وجود ندارد.");
+        return;
+      }
+
+      toast.info("در حال ساخت پاسخنامه‌های QR...");
+
+      // Dynamically import libraries
+      const jspdfModule = await import("jspdf");
+      const qrcodeModule = await import("qrcode");
+
+      // Create PDF document in landscape orientation
+      const pdf = new jspdfModule.default({
+        orientation: "landscape", // Changed to landscape
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Add Farsi font
+      try {
+        // Add Vazirmatn font for Farsi text support
+        const fontPath = "/fonts/Vazirmatn-Regular.ttf";
+        // Get the font data
+        const fontResponse = await fetch(fontPath);
+        if (!fontResponse.ok) throw new Error("Could not load font");
+        const fontArrayBuffer = await fontResponse.arrayBuffer();
+
+        // Convert ArrayBuffer to Base64 string for jsPDF (browser-compatible)
+        const fontBase64 = arrayBufferToBase64(fontArrayBuffer);
+
+        // Add the font to PDF
+        pdf.addFileToVFS("Vazirmatn-Regular.ttf", fontBase64);
+        pdf.addFont("Vazirmatn-Regular.ttf", "Vazirmatn", "normal");
+        // Set the font
+        pdf.setFont("Vazirmatn");
+      } catch (fontError) {
+        console.error("Failed to load Farsi font:", fontError);
+        // Continue with default font if can't load Vazirmatn
+      }
+
+      // A4 landscape dimensions (297x210 mm)
+      const pageWidth = 297;
+      const pageHeight = 210;
+
+      // A5 dimensions for side-by-side layout
+      const a5Width = pageWidth / 2;
+      const a5Height = pageHeight;
+
+      // Load image
+      const img = new Image();
+      img.src = "/answersheet/sheet1.png";
+
+      // Wait for image to load
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      // Calculate number of pages needed (2 students per page)
+      const totalPages = Math.ceil(studentsForQR.length / 2);
+
+      // Process students two at a time
+      for (let page = 0; page < totalPages; page++) {
+        // Add new page after first page
+        if (page > 0) {
+          pdf.addPage();
+        }
+
+        // Process first student on current page
+        if (page * 2 < studentsForQR.length) {
+          const student1 = studentsForQR[page * 2];
+
+          // Left side A5 sheet
+          pdf.addImage(img, "PNG", 0, 0, a5Width, a5Height);
+
+          // Generate and add QR code for first student
+          const qrDataUrl1 = await qrcodeModule.toDataURL(
+            student1.username.toString(),
+            {
+              errorCorrectionLevel: "H",
+              margin: 1,
+              width: 100,
+            }
+          );
+
+          pdf.addImage(qrDataUrl1, "PNG", 5, 5, 25, 25);
+
+          // Add first student info with RTL text
+          pdf.setFont("Vazirmatn", "normal");
+          pdf.setFontSize(12);
+
+          // Using right-to-left for Farsi text
+          const student1Name = `نام و نام خانوادگی: ${student1.name}`;
+          const student1Code = `کد دانش آموزی: ${student1.username}`;
+          const student1Class = `کلاس: ${student1.className || ""}`;
+          const examNameText = `آزمون: ${examData?.data.examName || ""}`;
+
+          pdf.text(student1Name, a5Width - 10, 15, {
+            align: "right",
+          });
+          pdf.text(student1Code, a5Width - 10, 22, {
+            align: "right",
+          });
+          pdf.text(student1Class, a5Width - 10, 29, {
+            align: "right",
+          });
+          pdf.text(examNameText, a5Width - 10, 36, {
+            align: "right",
+          });
+        }
+
+        // Process second student on current page
+        if (page * 2 + 1 < studentsForQR.length) {
+          const student2 = studentsForQR[page * 2 + 1];
+
+          // Right side A5 sheet
+          pdf.addImage(img, "PNG", a5Width, 0, a5Width, a5Height);
+
+          // Generate and add QR code for second student
+          const qrDataUrl2 = await qrcodeModule.toDataURL(
+            student2.username.toString(),
+            {
+              errorCorrectionLevel: "H",
+              margin: 1,
+              width: 100,
+            }
+          );
+
+          pdf.addImage(qrDataUrl2, "PNG", a5Width + 5, 5, 25, 25);
+
+          // Add second student info with RTL text
+          pdf.setFont("Vazirmatn", "normal");
+          pdf.setFontSize(12);
+
+          // Using right-to-left for Farsi text
+          const student2Name = `نام و نام خانوادگی: ${student2.name}`;
+          const student2Code = `کد دانش آموزی: ${student2.username}`;
+          const student2Class = `کلاس: ${student2.className || ""}`;
+          const examNameText = `آزمون: ${examData?.data.examName || ""}`;
+
+          pdf.text(student2Name, pageWidth - 10, 15, {
+            align: "right",
+          });
+          pdf.text(student2Code, pageWidth - 10, 22, {
+            align: "right",
+          });
+          pdf.text(student2Class, pageWidth - 10, 29, {
+            align: "right",
+          });
+          pdf.text(examNameText, pageWidth - 10, 36, {
+            align: "right",
+          });
+        }
+      }
+
+      // Save and download PDF
+      pdf.save("generated.pdf");
+      toast.success(
+        `پاسخنامه‌های QR برای ${studentsForQR.length} دانش آموز با موفقیت ساخته شد.`
+      );
+    } catch (error) {
+      console.error("Error generating QR answer sheets:", error);
+      toast.error("خطا در ساخت پاسخنامه‌های QR");
+    }
   };
 
   const handleGoBack = () => {
@@ -645,6 +826,17 @@ function PrintExamContent() {
                         className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
                       >
                         چاپ پاسخنامه برای همه شرکت‌کنندگان
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          handlePrintQRAnswerSheet();
+                          setAnswerSheetDropdownOpen(false);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
+                      >
+                        پاسخنامه QR
                       </button>
                     </li>
                   </ul>
@@ -1751,6 +1943,8 @@ function PrintExamContent() {
 }
 
 export default function PrintExamPage() {
+  const [answersVisible, setAnswersVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
   return (
     <Suspense
       fallback={
