@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { MathJax } from "better-react-mathjax";
 import { toast } from "sonner";
@@ -164,7 +164,7 @@ const formatPersianDate = (dateString: string): string => {
   }
 };
 
-export default function PrintExamPage() {
+function PrintExamContent() {
   const searchParams = useSearchParams();
   const examID = searchParams.get("examID");
   const [loading, setLoading] = useState(true);
@@ -1466,5 +1466,20 @@ export default function PrintExamPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function PrintExamPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent"></div>
+          <span className="mr-2">در حال بارگذاری...</span>
+        </div>
+      }
+    >
+      <PrintExamContent />
+    </Suspense>
   );
 }
