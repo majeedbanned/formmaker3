@@ -178,21 +178,21 @@ export default function Home() {
       },
     },
 
-    {
-      name: "description",
-      title: "توضیحات کلاس",
-      type: "richtextbox",
-      isShowInList: true,
-      isSearchable: false,
-      required: false,
-      enabled: true,
-      visible: true,
-      validation: {
-        requiredMessage: "توضیحات کلاس الزامی است",
-      },
-      placeholder: "توضیحات کلاس را وارد کنید...",
-      className: "min-h-[200px]",
-    },
+    // {
+    //   name: "description",
+    //   title: "توضیحات کلاس",
+    //   type: "richtextbox",
+    //   isShowInList: true,
+    //   isSearchable: false,
+    //   required: false,
+    //   enabled: true,
+    //   visible: true,
+    //   validation: {
+    //     requiredMessage: "توضیحات کلاس الزامی است",
+    //   },
+    //   placeholder: "توضیحات کلاس را وارد کنید...",
+    //   className: "min-h-[200px]",
+    // },
 
     // Example of shadcnmultiselect field with datasource
 
@@ -348,116 +348,116 @@ export default function Home() {
       isOpen: true,
     },
 
-    {
-      name: "special_requirements",
-      title: "نیازمندی‌های ویژه",
-      type: "compositefields",
-      isShowInList: true,
-      isSearchable: false,
-      required: true,
-      enabled: true,
-      visible: true,
-      compositeFieldsStyle: {
-        items: [
-          {
-            label: "نیازمندی فنی",
-            value: "technical",
-            fields: [
-              {
-                name: "equipment",
-                title: "تجهیزات مورد نیاز",
-                type: "dropdown",
-                required: true,
-                options: [
-                  { label: "کامپیوتر", value: "computer" },
-                  { label: "پروژکتور", value: "projector" },
-                  { label: "تخته هوشمند", value: "smart_board" },
-                ],
-              },
-              {
-                name: "quantity",
-                title: "تعداد",
-                type: "number",
-                required: true,
-                defaultValue: 1,
-              },
-            ],
-          },
-          {
-            label: "نیازمندی اداری",
-            value: "administrative",
-            fields: [
-              {
-                name: "document_type",
-                title: "نوع مستندات",
-                type: "text",
-                required: true,
-              },
-              {
-                name: "is_urgent",
-                title: "اولویت اضطراری",
-                type: "switch",
-                defaultValue: false,
-              },
-            ],
-          },
-          {
-            label: "نیازمندی آموزشی",
-            value: "educational",
-            fields: [
-              {
-                name: "subject",
-                title: "موضوع",
-                type: "text",
-                required: true,
-              },
-              {
-                name: "materials_needed",
-                title: "منابع آموزشی مورد نیاز",
-                type: "checkbox",
-                defaultValue: false,
-              },
-            ],
-          },
-        ],
-        defaultItem: "technical",
+    // {
+    //   name: "special_requirements",
+    //   title: "نیازمندی‌های ویژه",
+    //   type: "compositefields",
+    //   isShowInList: true,
+    //   isSearchable: false,
+    //   required: true,
+    //   enabled: true,
+    //   visible: true,
+    //   compositeFieldsStyle: {
+    //     items: [
+    //       {
+    //         label: "نیازمندی فنی",
+    //         value: "technical",
+    //         fields: [
+    //           {
+    //             name: "equipment",
+    //             title: "تجهیزات مورد نیاز",
+    //             type: "dropdown",
+    //             required: true,
+    //             options: [
+    //               { label: "کامپیوتر", value: "computer" },
+    //               { label: "پروژکتور", value: "projector" },
+    //               { label: "تخته هوشمند", value: "smart_board" },
+    //             ],
+    //           },
+    //           {
+    //             name: "quantity",
+    //             title: "تعداد",
+    //             type: "number",
+    //             required: true,
+    //             defaultValue: 1,
+    //           },
+    //         ],
+    //       },
+    //       {
+    //         label: "نیازمندی اداری",
+    //         value: "administrative",
+    //         fields: [
+    //           {
+    //             name: "document_type",
+    //             title: "نوع مستندات",
+    //             type: "text",
+    //             required: true,
+    //           },
+    //           {
+    //             name: "is_urgent",
+    //             title: "اولویت اضطراری",
+    //             type: "switch",
+    //             defaultValue: false,
+    //           },
+    //         ],
+    //       },
+    //       {
+    //         label: "نیازمندی آموزشی",
+    //         value: "educational",
+    //         fields: [
+    //           {
+    //             name: "subject",
+    //             title: "موضوع",
+    //             type: "text",
+    //             required: true,
+    //           },
+    //           {
+    //             name: "materials_needed",
+    //             title: "منابع آموزشی مورد نیاز",
+    //             type: "checkbox",
+    //             defaultValue: false,
+    //           },
+    //         ],
+    //       },
+    //     ],
+    //     defaultItem: "technical",
 
-        // In edit mode, the data for compositefields should be structured as follows:
-        // {
-        //   special_requirements: {
-        //     type: "technical",          // Determines which item is selected
-        //     technical: {                // Contains field values for the selected item
-        //       equipment: "computer",    // Field values match the field names in the selected item
-        //       quantity: 2
-        //     }
-        //   }
-        // }
-        //
-        // When you switch between items, only the fields for the currently selected item are shown
-        // and validated, making the form dynamic based on user selection.
-      },
-    },
+    //     // In edit mode, the data for compositefields should be structured as follows:
+    //     // {
+    //     //   special_requirements: {
+    //     //     type: "technical",          // Determines which item is selected
+    //     //     technical: {                // Contains field values for the selected item
+    //     //       equipment: "computer",    // Field values match the field names in the selected item
+    //     //       quantity: 2
+    //     //     }
+    //     //   }
+    //     // }
+    //     //
+    //     // When you switch between items, only the fields for the currently selected item are shown
+    //     // and validated, making the form dynamic based on user selection.
+    //   },
+    // },
 
-    {
-      name: "schedule_datetime",
-      title: "زمان برگزاری کلاس",
-      type: "datepicker",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      datepickerStyle: {
-        format: "YYYY/MM/DD HH:mm",
-        calendar: "persian",
-        locale: "fa",
-        timePicker: true, // Enable time picker plugin
-        calendarPosition: "bottom-right", // Now this is valid after updating the type
-        className: "custom-datepicker",
-        minDate: new Date(), // Cannot select dates before today
-        weekStartDayIndex: 6, // Week starts on Saturday (for Persian calendar)
-      },
-    },
+    // {
+    //   name: "schedule_datetime",
+    //   title: "زمان برگزاری کلاس",
+    //   type: "datepicker",
+    //   isShowInList: true,
+    //   isSearchable: true,
+    //   required: true,
+    //   enabled: true,
+    //   visible: true,
+    //   datepickerStyle: {
+    //     format: "YYYY/MM/DD HH:mm",
+    //     calendar: "persian",
+    //     locale: "fa",
+    //     timePicker: true, // Enable time picker plugin
+    //     calendarPosition: "bottom-right", // Now this is valid after updating the type
+    //     className: "custom-datepicker",
+    //     minDate: new Date(), // Cannot select dates before today
+    //     weekStartDayIndex: 6, // Week starts on Saturday (for Persian calendar)
+    //   },
+    // },
 
     // Example of importTextBox field for importing student data
   ] as const;

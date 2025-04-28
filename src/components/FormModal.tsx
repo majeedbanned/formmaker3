@@ -479,7 +479,8 @@ const FormField = ({
       (field.type === "dropdown" ||
         field.type === "checkbox" ||
         field.type === "autocomplete" ||
-        field.type === "shadcnmultiselect")
+        field.type === "shadcnmultiselect" ||
+        field.type === "autoCompleteText")
     ) {
       // Handle both single string and array of strings for dependsOn
       const dependentFields = Array.isArray(field.dataSource.dependsOn)
@@ -547,20 +548,6 @@ const FormField = ({
 
             const options = await response.json();
             setDynamicOptions(options);
-
-            // Clear options and value when dependencies are invalid
-            setDynamicOptions([]);
-            // Set appropriate empty value based on field type
-            if (field.type === "shadcnmultiselect") {
-              // For shadcnmultiselect, always use empty array (even when not isMultiple)
-              setValue(field.name, [], { shouldValidate: true });
-            } else if (field.type === "checkbox" && field.isMultiple) {
-              // For multi checkboxes, use empty array
-              setValue(field.name, [], { shouldValidate: true });
-            } else {
-              // For other field types, use empty string
-              setValue(field.name, "", { shouldValidate: true });
-            }
           } else {
             // Clear options and value when dependencies are invalid
             setDynamicOptions([]);
@@ -585,10 +572,23 @@ const FormField = ({
       fetchDependentOptions();
     }
   }, [
-    field,
+    field.type,
+    field.name,
+    field.dataSource?.collectionName,
+    field.dataSource?.labelField,
+    field.dataSource?.valueField,
+    field.dataSource?.filterQuery,
+    field.dataSource?.sortField,
+    field.dataSource?.sortOrder,
+    field.dataSource?.limit,
+    field.dataSource?.customLabel,
+    field.isMultiple,
+    setValue,
     ...(Array.isArray(field.dataSource?.dependsOn)
-      ? field.dataSource.dependsOn.map((fieldName) => watch(fieldName))
-      : [watch(field.dataSource?.dependsOn || "")]),
+      ? field.dataSource?.dependsOn.map((fieldName) => watch(fieldName))
+      : field.dataSource?.dependsOn
+      ? [watch(field.dataSource?.dependsOn)]
+      : []),
   ]);
 
   if (field.fields) {
