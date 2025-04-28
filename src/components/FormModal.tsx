@@ -84,6 +84,15 @@ type FormFieldProps = {
   control: Control<FieldValues>;
   layout: LayoutSettings;
   isDisabled: boolean;
+  uploadProgress?: UploadProgress;
+  handleFileChange?: (
+    event: React.ChangeEvent<HTMLInputElement>,
+    field: FormField
+  ) => Promise<void>;
+  renderCurrentFiles?: (
+    fieldName: string,
+    isMultiple: boolean
+  ) => React.ReactNode;
 };
 
 const getValidationRules = (field: FormField): ValidationRules => {
@@ -132,6 +141,9 @@ const NestedFields = ({
   control,
   layout,
   isDisabled,
+  uploadProgress,
+  handleFileChange,
+  renderCurrentFiles,
 }: FormFieldProps & { parentPath?: string }) => {
   const { fields, append, remove, prepend } = useFieldArray({
     control,
@@ -265,6 +277,9 @@ const NestedFields = ({
                           control={control}
                           layout={layout}
                           isDisabled={isDisabled}
+                          uploadProgress={uploadProgress}
+                          handleFileChange={handleFileChange}
+                          renderCurrentFiles={renderCurrentFiles}
                         />
                       ))}
                     </div>
@@ -297,6 +312,9 @@ const NestedFields = ({
                     control={control}
                     layout={layout}
                     isDisabled={isDisabled}
+                    uploadProgress={uploadProgress}
+                    handleFileChange={handleFileChange}
+                    renderCurrentFiles={renderCurrentFiles}
                   />
                 ))}
               </div>
@@ -353,6 +371,9 @@ const FormField = ({
   control,
   layout,
   isDisabled,
+  uploadProgress,
+  handleFileChange,
+  renderCurrentFiles,
 }: FormFieldProps) => {
   const validationRules = getValidationRules(field);
   const fieldValue = watch(field.name);
@@ -581,6 +602,9 @@ const FormField = ({
         control={control}
         layout={layout}
         isDisabled={isDisabled}
+        uploadProgress={uploadProgress}
+        handleFileChange={handleFileChange}
+        renderCurrentFiles={renderCurrentFiles}
       />
     );
   }
@@ -1136,34 +1160,40 @@ const FormField = ({
     );
   } else if (field.type === "file") {
     return (
-      <div key={field.name} className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+      <div className="space-y-2">
+        <label
+          htmlFor={field.name}
+          className="text-sm font-medium text-gray-700 block"
+        >
           {field.title}
-          {field.required && <span className="text-red-500">*</span>}
+          {field.required && <span className="text-red-500 mr-1">*</span>}
         </label>
         <input
           type="file"
-          onChange={(e) => handleFileChange(e, field)}
+          onChange={(e) =>
+            handleFileChange ? handleFileChange(e, field) : undefined
+          }
           multiple={field.isMultiple}
           accept={field.fileConfig?.allowedTypes?.join(",")}
           className="block w-full text-sm text-gray-500
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-semibold
-            file:bg-primary file:text-white
-            hover:file:bg-primary/90"
-          disabled={!field.enabled || field.readonly}
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100"
+          disabled={isDisabled || field.readonly}
         />
         {/* Show progress bars for this field */}
-        {uploadProgress[field.name] &&
+        {uploadProgress &&
+          uploadProgress[field.name] &&
           Object.entries(uploadProgress[field.name]).map(
-            ([fileId, { progress, fileName }]) => (
+            ([fileId, fileInfo]) => (
               <div key={fileId} className="mt-2">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span className="truncate">{fileName}</span>
-                  <span>{progress}%</span>
+                  <span className="truncate">{fileInfo.fileName}</span>
+                  <span>{fileInfo.progress}%</span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress value={fileInfo.progress} className="h-2" />
               </div>
             )
           )}
@@ -1172,7 +1202,8 @@ const FormField = ({
             {field.validation?.requiredMessage || "This field is required"}
           </span>
         )}
-        {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
+        {renderCurrentFiles &&
+          renderCurrentFiles(field.name, Boolean(field.isMultiple))}
       </div>
     );
   } else if (field.type === "autoCompleteText") {
@@ -2004,6 +2035,9 @@ export default function FormModal({
     formState: { errors },
   } = useForm();
 
+  // Add formSubmitting state variable
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
   // Track uploaded files in state
   const [uploadedFiles, setUploadedFiles] = useState<
     Record<string, UploadedFile | UploadedFile[]>
@@ -2307,15 +2341,35 @@ export default function FormModal({
     }
   };
 
+  // Update the onSubmitWithFiles function to use setFormSubmitting
   const onSubmitWithFiles = async (data: Record<string, unknown>) => {
-    // Merge form data with uploaded files data
-    const formData = {
-      ...data,
-      ...uploadedFiles,
-    };
+    try {
+      // Set form to submitting state
+      setFormSubmitting(true);
 
-    // Call the original onSubmit with the merged data
-    await onSubmit(formData);
+      // ... rest of your existing function ...
+
+      // Process form data with uploaded files
+      const combinedData = {
+        ...data,
+        ...uploadedFiles,
+      };
+
+      // Pass the combined data to onSubmit handler
+      await onSubmit(combinedData);
+
+      // Clear form if submission succeeds and not in edit mode
+      if (!editingId) {
+        reset();
+        setUploadedFiles({});
+        setUploadProgress({});
+      }
+    } catch (error) {
+      console.error("Form submission error:", error);
+    } finally {
+      // Set form back to not submitting state regardless of success/failure
+      setFormSubmitting(false);
+    }
   };
 
   return (
@@ -2339,60 +2393,8 @@ export default function FormModal({
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="flex-1 overflow-y-auto pr-6 -mr-6 pb-6 space-y-4">
-            {formStructure.map((field) => {
-              // if (!field.visible) return null;
-
-              const isDisabled = Boolean(
-                !field.enabled || (editingId && field.readonly)
-              );
-
-              if (field.type === "file") {
-                return (
-                  <div key={field.name} className="mb-4">
-                    <label className="block text-sm font-medium mb-1">
-                      {field.title}
-                      {field.required && (
-                        <span className="text-red-500">*</span>
-                      )}
-                    </label>
-                    <input
-                      type="file"
-                      onChange={(e) => handleFileChange(e, field)}
-                      multiple={field.isMultiple}
-                      accept={field.fileConfig?.allowedTypes?.join(",")}
-                      className="block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-md file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-primary file:text-white
-                        hover:file:bg-primary/90"
-                      disabled={!field.enabled || field.readonly}
-                    />
-                    {/* Show progress bars for this field */}
-                    {uploadProgress[field.name] &&
-                      Object.entries(uploadProgress[field.name]).map(
-                        ([fileId, { progress, fileName }]) => (
-                          <div key={fileId} className="mt-2">
-                            <div className="flex justify-between text-sm text-gray-600 mb-1">
-                              <span className="truncate">{fileName}</span>
-                              <span>{progress}%</span>
-                            </div>
-                            <Progress value={progress} className="h-2" />
-                          </div>
-                        )
-                      )}
-                    {errors[field.name] && (
-                      <span className="text-red-500 text-sm">
-                        {field.validation?.requiredMessage ||
-                          "This field is required"}
-                      </span>
-                    )}
-                    {renderCurrentFiles(field.name, Boolean(field.isMultiple))}
-                  </div>
-                );
-              }
-
-              return (
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6 py-4">
+              {formStructure.map((field) => (
                 <FormField
                   key={field.name}
                   field={field}
@@ -2402,10 +2404,13 @@ export default function FormModal({
                   errors={errors}
                   control={control}
                   layout={layout}
-                  isDisabled={isDisabled}
+                  isDisabled={formSubmitting}
+                  uploadProgress={uploadProgress}
+                  handleFileChange={handleFileChange}
+                  renderCurrentFiles={renderCurrentFiles}
                 />
-              );
-            })}
+              ))}
+            </div>
           </div>
 
           <DialogFooter

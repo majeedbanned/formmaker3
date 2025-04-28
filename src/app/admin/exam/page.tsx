@@ -348,7 +348,27 @@ function StudentsPageContent() {
           readonly: false,
           defaultValue: true,
         },
-
+        {
+          name: "imageFile",
+          title: "فایل عکس",
+          type: "file",
+          isShowInList: true,
+          isSearchable: false,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          isMultiple: true,
+          fileConfig: {
+            allowedTypes: ["image/*"],
+            maxSize: 5 * 1024 * 1024, // 5MB
+            directory: "documents",
+            multiple: true,
+          },
+          validation: {
+            requiredMessage: "Please upload at least one document",
+          },
+        },
         {
           name: "examTime",
           title: "زمان امتحان",
