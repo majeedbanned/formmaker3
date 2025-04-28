@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { ClockIcon, BookOpenIcon, CheckCircleIcon } from "lucide-react";
 
 interface Question {
   _id: string;
@@ -287,15 +288,21 @@ export default function ExamPage({
   if (alreadyParticipated) {
     return (
       <div className="container mx-auto max-w-7xl p-4" dir="rtl">
-        <Card className="shadow-lg">
-          <CardHeader className="bg-yellow-50">
-            <CardTitle className="text-xl text-yellow-800">
+        <Card className="shadow-lg border-orange-300">
+          <CardHeader className="bg-orange-50">
+            <CardTitle className="text-xl text-orange-800 flex items-center">
+              <CheckCircleIcon className="ml-2 h-6 w-6" />
               شما قبلاً در این آزمون شرکت کرده‌اید
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 text-center">
-            <p className="mb-4">امکان شرکت مجدد در این آزمون وجود ندارد.</p>
-            <Button onClick={() => router.push("/admin/onlineexam")}>
+            <p className="mb-4 text-gray-700">
+              امکان شرکت مجدد در این آزمون وجود ندارد.
+            </p>
+            <Button
+              onClick={() => router.push("/admin/onlineexam")}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
               بازگشت به لیست آزمون‌ها
             </Button>
           </CardContent>
@@ -307,15 +314,34 @@ export default function ExamPage({
   if (!exam || questions.length === 0) {
     return (
       <div className="container mx-auto max-w-7xl p-4" dir="rtl">
-        <Card className="shadow-lg">
+        <Card className="shadow-lg border-red-300">
           <CardHeader className="bg-red-50">
-            <CardTitle className="text-xl text-red-800">
+            <CardTitle className="text-xl text-red-800 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="ml-2 h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
               آزمون یافت نشد
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 text-center">
-            <p className="mb-4">اطلاعات آزمون قابل دسترسی نیست.</p>
-            <Button onClick={() => router.push("/admin/onlineexam")}>
+            <p className="mb-4 text-gray-700">
+              اطلاعات آزمون قابل دسترسی نیست.
+            </p>
+            <Button
+              onClick={() => router.push("/admin/onlineexam")}
+              className="bg-red-600 hover:bg-red-700"
+            >
               بازگشت به لیست آزمون‌ها
             </Button>
           </CardContent>
@@ -328,15 +354,34 @@ export default function ExamPage({
   if (!exam.data.allQuestionsInOnePage?.isActive) {
     return (
       <div className="container mx-auto max-w-7xl p-4" dir="rtl">
-        <Card className="shadow-lg">
+        <Card className="shadow-lg border-yellow-300">
           <CardHeader className="bg-yellow-50">
-            <CardTitle className="text-xl text-yellow-800">
+            <CardTitle className="text-xl text-yellow-800 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="ml-2 h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
               این آزمون در حال حاضر فعال نیست
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 text-center">
-            <p className="mb-4">لطفاً با ادمین سیستم تماس بگیرید.</p>
-            <Button onClick={() => router.push("/admin/onlineexam")}>
+            <p className="mb-4 text-gray-700">
+              لطفاً با ادمین سیستم تماس بگیرید.
+            </p>
+            <Button
+              onClick={() => router.push("/admin/onlineexam")}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
               بازگشت به لیست آزمون‌ها
             </Button>
           </CardContent>
@@ -347,34 +392,43 @@ export default function ExamPage({
 
   return (
     <div className="container mx-auto pb-10 rtl" dir="rtl">
-      <Card className="shadow-lg mb-6">
-        <CardHeader className="bg-blue-50 flex flex-row justify-between items-center">
-          <div>
-            <CardTitle className="text-xl text-blue-800">
-              {exam.data.examName}
-            </CardTitle>
-            <p className="text-sm text-blue-600 mt-1">
-              کد آزمون: {exam.data.examCode}
-            </p>
+      <Card className="shadow-lg mb-6 border-blue-200 overflow-hidden">
+        <CardHeader className="bg-gradient-to-l from-blue-50 to-blue-100 flex flex-row justify-between items-center">
+          <div className="flex items-center">
+            <BookOpenIcon className="ml-2 h-6 w-6 text-blue-600" />
+            <div>
+              <CardTitle className="text-xl text-blue-800">
+                {exam.data.examName}
+              </CardTitle>
+              <p className="text-sm text-blue-600 mt-1">
+                کد آزمون: {exam.data.examCode}
+              </p>
+            </div>
           </div>
-          <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-md font-mono text-lg">
+          <div className="bg-white border border-blue-300 shadow-sm text-blue-800 px-4 py-2 rounded-md font-mono text-lg flex items-center">
+            <ClockIcon className="ml-2 h-5 w-5 text-blue-600" />
             {formatTime(timeLeft)}
           </div>
         </CardHeader>
         <CardContent className="p-6">
           {exam.data.settings?.preexammessage && (
-            <div className="bg-blue-50 p-4 rounded-md mb-6 text-blue-800">
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-md mb-6 text-blue-800">
               {exam.data.settings.preexammessage}
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
-            <TabsList className="mb-6 flex flex-wrap">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            dir="rtl"
+            className="border border-gray-100 rounded-lg p-1 bg-gray-50"
+          >
+            <TabsList className="mb-6 flex flex-wrap bg-white w-full p-1 border border-gray-100 rounded-md shadow-sm">
               {categories.map((category) => (
                 <TabsTrigger
                   key={category}
                   value={category}
-                  className="text-sm md:text-base"
+                  className="text-sm md:text-base px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
                 >
                   {category === "test1"
                     ? "سوالات تستی"
@@ -386,23 +440,38 @@ export default function ExamPage({
             </TabsList>
 
             {categories.map((category) => (
-              <TabsContent key={category} value={category}>
+              <TabsContent
+                key={category}
+                value={category}
+                className="p-4 bg-white rounded-lg shadow-sm"
+              >
                 <div className="space-y-8">
                   {questions
                     .filter((q) => q.category === category)
                     .map((question, index) => (
                       <div
                         key={question._id}
-                        className="border rounded-lg p-4 bg-white"
+                        className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow"
                       >
-                        <div className="flex justify-between mb-2">
-                          <h3 className="font-semibold text-lg">
-                            سوال {index + 1}{" "}
-                            {question.score > 0 && `(${question.score} نمره)`}
+                        <div className="flex justify-between mb-4 pb-2 border-b border-gray-100">
+                          <h3 className="font-semibold text-lg text-gray-800 flex items-center">
+                            <span className="flex items-center justify-center rounded-full bg-blue-100 text-blue-800 w-7 h-7 ml-2 text-sm">
+                              {index + 1}
+                            </span>
+                            <span>
+                              {question.score > 0 && (
+                                <span className="text-blue-600 mr-2">
+                                  ({question.score} نمره)
+                                </span>
+                              )}
+                            </span>
                           </h3>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            {question.question.type}
+                          </span>
                         </div>
                         <div
-                          className="mb-4"
+                          className="mb-6 leading-relaxed text-gray-700"
                           dangerouslySetInnerHTML={renderHTML(
                             question.question.question
                           )}
@@ -418,15 +487,15 @@ export default function ExamPage({
                             className="space-y-4"
                           >
                             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                              <div className="flex items-start">
+                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
                                 <RadioGroupItem
                                   value="1"
                                   id={`${question._id}-option1`}
-                                  className="ml-2"
+                                  className="ml-3 mt-1"
                                 />
                                 <Label
                                   htmlFor={`${question._id}-option1`}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer w-full text-gray-700"
                                 >
                                   <div
                                     dangerouslySetInnerHTML={renderHTML(
@@ -435,15 +504,15 @@ export default function ExamPage({
                                   />
                                 </Label>
                               </div>
-                              <div className="flex items-start">
+                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
                                 <RadioGroupItem
                                   value="2"
                                   id={`${question._id}-option2`}
-                                  className="ml-2"
+                                  className="ml-3 mt-1"
                                 />
                                 <Label
                                   htmlFor={`${question._id}-option2`}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer w-full text-gray-700"
                                 >
                                   <div
                                     dangerouslySetInnerHTML={renderHTML(
@@ -452,15 +521,15 @@ export default function ExamPage({
                                   />
                                 </Label>
                               </div>
-                              <div className="flex items-start">
+                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
                                 <RadioGroupItem
                                   value="3"
                                   id={`${question._id}-option3`}
-                                  className="ml-2"
+                                  className="ml-3 mt-1"
                                 />
                                 <Label
                                   htmlFor={`${question._id}-option3`}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer w-full text-gray-700"
                                 >
                                   <div
                                     dangerouslySetInnerHTML={renderHTML(
@@ -469,15 +538,15 @@ export default function ExamPage({
                                   />
                                 </Label>
                               </div>
-                              <div className="flex items-start">
+                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
                                 <RadioGroupItem
                                   value="4"
                                   id={`${question._id}-option4`}
-                                  className="ml-2"
+                                  className="ml-3 mt-1"
                                 />
                                 <Label
                                   htmlFor={`${question._id}-option4`}
-                                  className="cursor-pointer"
+                                  className="cursor-pointer w-full text-gray-700"
                                 >
                                   <div
                                     dangerouslySetInnerHTML={renderHTML(
@@ -494,7 +563,7 @@ export default function ExamPage({
                         {question.question.type === " تشریحی " && (
                           <Textarea
                             placeholder="پاسخ خود را اینجا بنویسید..."
-                            className="min-h-[100px] w-full"
+                            className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200"
                             value={answers[question._id] || ""}
                             onChange={(e) =>
                               handleAnswerChange(question._id, e.target.value)
@@ -510,41 +579,75 @@ export default function ExamPage({
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-4 mt-8">
         <Button
           variant="outline"
           onClick={saveTemporarily}
           disabled={saving}
-          className="border-blue-500 text-blue-500 hover:bg-blue-50"
+          className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-sm"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 ml-2"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
           ذخیره موقت
         </Button>
         <Button
           onClick={() => setShowConfirmFinish(true)}
           disabled={saving}
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 px-6 py-5 rounded-lg shadow-sm"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 ml-2"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
           پایان و ثبت آزمون
         </Button>
       </div>
 
       <AlertDialog open={showConfirmFinish} onOpenChange={setShowConfirmFinish}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent
+          dir="rtl"
+          className="bg-white rounded-lg max-w-md mx-auto"
+        >
           <AlertDialogHeader>
-            <AlertDialogTitle>تایید پایان آزمون</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-xl text-gray-800 font-bold">
+              تایید پایان آزمون
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600">
               آیا از پایان دادن به آزمون اطمینان دارید؟ پس از تایید، امکان
               ویرایش پاسخ‌ها وجود نخواهد داشت.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row-reverse justify-start gap-2">
+          <AlertDialogFooter className="flex flex-row-reverse justify-start gap-2 mt-6">
             <AlertDialogAction
               onClick={finishExam}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-md text-white"
             >
               تایید و پایان آزمون
             </AlertDialogAction>
-            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogCancel className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-md">
+              انصراف
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -68,10 +68,10 @@ export default function OnlineExamPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
 
-  /* ── Tick each second (pause when tab hidden) ──────────────────────── */
+  /* ── Tick each second   (pause when tab hidden) ──────────────────────── */
   useEffect(() => {
     let timer: NodeJS.Timeout;
-
+    const y = "fdg";
     const start = () =>
       (timer = setInterval(() => setCurrentTime(dayjs()), 1_000));
     const stop = () => clearInterval(timer);

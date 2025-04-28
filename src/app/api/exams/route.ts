@@ -16,14 +16,25 @@ export async function GET(req: NextRequest) {
 
     // Connect to MongoDB directly using the utility
     const connection = await connectToDatabase(domain);
+    if (!connection) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    }
     const collection = connection.collection('exam');
-    
+    if (!collection) {
+      return NextResponse.json({ error: 'Collection not found' }, { status: 500 });
+    }
     // Query exams for the user's school
-    const exams = await collection.find({ 
-      'data.schoolCode': user.schoolCode 
-    }).sort({ 
-      'createdAt': -1 
-    }).toArray();
+    console.log('stage xxxxx')
+    // const exams = await collection.find({ 
+    //   'data.schoolCode': user.schoolCode 
+    // }).sort({ 
+    //   'createdAt': -1 
+    // }).toArray();
+
+    const exams = await collection.find(
+      { 'data.schoolCode': user.schoolCode },     // query
+      { sort: { createdAt: -1 } }                 // options
+    ).toArray();
 
     return NextResponse.json(exams);
     

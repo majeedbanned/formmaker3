@@ -60,69 +60,144 @@ export const connectToDatabase = async (domain: string) => {
     throw error;
   }
 
+  // const connectWithRetry = async (): Promise<mongoose.Connection> => {
+  //   try {
+  //     logger.info(`Connecting to MongoDB for domain: ${domain} (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
+      
+  //     // Create a new connection for this domain
+  //     // Using separate mongoose connection to avoid conflicts between domains
+  //     const connection = mongoose.createConnection(connectionString, {
+  //       serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
+  //       socketTimeoutMS: 45000, // Socket timeout
+  //       connectTimeoutMS: 15000, // Connection timeout
+  //       maxPoolSize: 10, // Maximum number of connections in the pool
+  //       minPoolSize: 5, // Minimum number of connections in the pool
+  //       retryWrites: true, // Enable retry for write operations
+  //       retryReads: true, // Enable retry for read operations
+  //       heartbeatFrequencyMS: 10000, // How often to check server status
+  //     });
+
+  //     // Set up connection event handlers
+  //     connection.on('error', (err) => {
+  //       logger.error(`MongoDB connection error for domain ${domain}:`, err);
+  //       if (connectionCache[domain]) {
+  //         connectionCache[domain].isConnected = false;
+  //       }
+  //     });
+
+  //     connection.on('disconnected', () => {
+  //       logger.info(`MongoDB disconnected for domain: ${domain}`);
+  //       if (connectionCache[domain]) {
+  //         connectionCache[domain].isConnected = false;
+  //       }
+  //     });
+
+  //     connection.on('reconnected', () => {
+  //       logger.info(`MongoDB reconnected for domain: ${domain}`);
+  //       if (connectionCache[domain]) {
+  //         connectionCache[domain].isConnected = true;
+  //       }
+  //     });
+
+  //     // Cache the connection
+  //     connectionCache[domain] = {
+  //       connection,
+  //       isConnected: true
+  //     };
+      
+  //     connectionAttempts = 0;
+  //     logger.info(`Successfully connected to MongoDB for domain: ${domain}`);
+      
+  //     return connection;
+  //   } catch (error) {
+  //     logger.error(`Error connecting to MongoDB for domain ${domain}:`, error);
+      
+  //     if (connectionAttempts < MAX_RETRIES) {
+  //       connectionAttempts++;
+  //       logger.info(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
+  //       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+  //       return connectWithRetry();
+  //     }
+      
+  //     throw new Error(`Failed to connect to MongoDB for domain ${domain} after ${MAX_RETRIES} attempts`);
+  //   }
+  // };
+
+
   const connectWithRetry = async (): Promise<mongoose.Connection> => {
     try {
-      logger.info(`Connecting to MongoDB for domain: ${domain} (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`);
-      
-      // Create a new connection for this domain
-      // Using separate mongoose connection to avoid conflicts between domains
+      logger.info(
+        `Connecting to MongoDB for domain: ${domain} (attempt ${connectionAttempts + 1}/${MAX_RETRIES})`
+      );
+  
+      // ────────────────────────────────────────────────────────────────
+      // 1. create the connection
+      // ────────────────────────────────────────────────────────────────
       const connection = mongoose.createConnection(connectionString, {
-        serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
-        socketTimeoutMS: 45000, // Socket timeout
-        connectTimeoutMS: 15000, // Connection timeout
-        maxPoolSize: 10, // Maximum number of connections in the pool
-        minPoolSize: 5, // Minimum number of connections in the pool
-        retryWrites: true, // Enable retry for write operations
-        retryReads: true, // Enable retry for read operations
-        heartbeatFrequencyMS: 10000, // How often to check server status
+        serverSelectionTimeoutMS: 15_000,
+        socketTimeoutMS:          45_000,
+        connectTimeoutMS:         15_000,
+        maxPoolSize:              10,
+        minPoolSize:              5,
+        retryWrites:              true,
+        retryReads:               true,
+        heartbeatFrequencyMS:     10_000,
       });
-
-      // Set up connection event handlers
+  
+      // ────────────────────────────────────────────────────────────────
+      // 2. wait until the driver is *actually* ready
+      //    (Mongoose ≥7.3 exposes .asPromise(); fall back for older)
+      // ────────────────────────────────────────────────────────────────
+      if (typeof (connection as any).asPromise === 'function') {
+        await (connection as any).asPromise();        // resolves on “open”
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          connection.once('open', resolve).once('error', reject);
+        });
+      }
+  
+      // ────────────────────────────────────────────────────────────────
+      // 3. housekeeping listeners
+      // ────────────────────────────────────────────────────────────────
       connection.on('error', (err) => {
         logger.error(`MongoDB connection error for domain ${domain}:`, err);
-        if (connectionCache[domain]) {
-          connectionCache[domain].isConnected = false;
-        }
+        if (connectionCache[domain]) connectionCache[domain].isConnected = false;
       });
-
+  
       connection.on('disconnected', () => {
         logger.info(`MongoDB disconnected for domain: ${domain}`);
-        if (connectionCache[domain]) {
-          connectionCache[domain].isConnected = false;
-        }
+        if (connectionCache[domain]) connectionCache[domain].isConnected = false;
       });
-
+  
       connection.on('reconnected', () => {
         logger.info(`MongoDB reconnected for domain: ${domain}`);
-        if (connectionCache[domain]) {
-          connectionCache[domain].isConnected = true;
-        }
+        if (connectionCache[domain]) connectionCache[domain].isConnected = true;
       });
-
-      // Cache the connection
-      connectionCache[domain] = {
-        connection,
-        isConnected: true
-      };
-      
+  
+      // ────────────────────────────────────────────────────────────────
+      // 4. cache & return
+      // ────────────────────────────────────────────────────────────────
+      connectionCache[domain] = { connection, isConnected: true };
       connectionAttempts = 0;
       logger.info(`Successfully connected to MongoDB for domain: ${domain}`);
-      
+  
       return connection;
-    } catch (error) {
-      logger.error(`Error connecting to MongoDB for domain ${domain}:`, error);
-      
+    } catch (err) {
+      logger.error(`Error connecting to MongoDB for domain ${domain}:`, err);
+  
       if (connectionAttempts < MAX_RETRIES) {
         connectionAttempts++;
-        logger.info(`Retrying connection in ${RETRY_DELAY/1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-        return connectWithRetry();
+        logger.info(`Retrying connection in ${RETRY_DELAY / 1000} seconds…`);
+        await new Promise((res) => setTimeout(res, RETRY_DELAY));
+        return connectWithRetry();            // recursive retry
       }
-      
-      throw new Error(`Failed to connect to MongoDB for domain ${domain} after ${MAX_RETRIES} attempts`);
+  
+      throw new Error(
+        `Failed to connect to MongoDB for domain ${domain} after ${MAX_RETRIES} attempts`
+      );
     }
   };
-
+  
   return connectWithRetry();
 };
 
