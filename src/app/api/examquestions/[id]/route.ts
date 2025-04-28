@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { cookies } from "next/headers";
 import { verifyJWT } from "@/lib/jwt";
 import { ObjectId } from "mongodb";
+import { getCurrentUser } from "@/app/api/chatbot7/config/route";
 
 // Set runtime to nodejs
 export const runtime = 'nodejs';
@@ -213,6 +214,55 @@ export async function DELETE(
     console.error('Error deleting exam question:', error);
     return NextResponse.json(
       { error: 'Failed to delete exam question' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET: Fetch all questions for a specific exam
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Get the exam ID from params
+    const examId = (await params).id;
+    
+    // Get current user and verify authentication
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get school code from user
+    const schoolCode = user.schoolCode;
+    if (!schoolCode) {
+      return NextResponse.json({ message: "School code not found" }, { status: 400 });
+    }
+
+    // Get domain from request headers or use default
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+
+    // Connect to database
+    const connection = await connectToDatabase(domain);
+    
+    // Get collections
+    const examQuestionsCollection = connection.collection("examquestions");
+
+    // Find all questions for this exam
+    const questions = await examQuestionsCollection
+      .find({ 
+        examId,
+        schoolCode
+      })
+      .toArray();
+
+    // Return the questions
+    return NextResponse.json(questions);
+  } catch (error: unknown) {
+    console.error("Error fetching exam questions:", error);
+    return NextResponse.json(
+      { message: "Error fetching exam questions" },
       { status: 500 }
     );
   }
