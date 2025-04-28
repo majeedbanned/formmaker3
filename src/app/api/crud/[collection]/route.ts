@@ -15,12 +15,15 @@ interface MongoQuery {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { collection: string } }
+
+  { params }: { params: Promise<{ collection: string }> }
+
 ) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    logger.info(`Creating document in collection ${params.collection}`, { domain });
+    const params1 = await params;
+    logger.info(`Creating document in collection ${params1.collection}`, { domain });
 
     const { data, formStructure } = await request.json() as {
       data: Record<string, unknown>;
@@ -29,7 +32,7 @@ export async function POST(
 
     // Connect to domain-specific database
     const connection = await connectToDatabase(domain);
-    const collection = connection.collection(params.collection);
+    const collection = connection.collection(params1.collection);
     
     // Check for individual uniqueness constraints
     const uniqueFields = Object.entries(data).filter(([field]) => {
@@ -103,7 +106,7 @@ export async function POST(
     };
     
     await collection.insertOne(document);
-    logger.info(`Document created successfully in ${params.collection}`, { domain });
+    logger.info(`Document created successfully in ${params1.collection}`, { domain });
     return NextResponse.json(document, { status: 201 });
   } catch (err) {
     logger.error('Create error:', err);
@@ -116,12 +119,13 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { collection: string } }
+  { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    logger.info(`Fetching documents from collection ${params.collection}`, { domain });
+    const params1 = await params;
+    logger.info(`Fetching documents from collection ${params1.collection}`, { domain });
 
     const searchParams = new URL(request.url).searchParams;
     const filters = searchParams.get('filters');
@@ -129,7 +133,7 @@ export async function GET(
 
     // Connect to domain-specific database
     const connection = await connectToDatabase(domain);
-    const collection = connection.collection(params.collection);
+    const collection = connection.collection(params1.collection);
 
     // Build the MongoDB query
     const query: MongoQuery = {};
@@ -170,9 +174,9 @@ export async function GET(
     if (conditions.length > 0) {
       query.$and = conditions;
     }
-
+    console.log('>>>>', query)
     const documents = await collection.find(query).sort({ createdAt: -1 }).toArray();
-    logger.info(`Found ${documents.length} documents in ${params.collection}`, { domain });
+    logger.info(`Found ${documents.length} documents in ${params1.collection}`, { domain });
     return NextResponse.json(documents);
   } catch (err) {
     logger.error('Search error:', err);
@@ -185,12 +189,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { collection: string } }
+  { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    logger.info(`Updating document in collection ${params.collection}`, { domain });
+    const params1 = await params;
+    logger.info(`Updating document in collection ${params1.collection}`, { domain });
 
     const { id, data, formStructure } = await request.json() as {
       id: string;
@@ -200,7 +205,7 @@ export async function PUT(
 
     // Connect to domain-specific database
     const connection = await connectToDatabase(domain);
-    const collection = connection.collection(params.collection);
+    const collection = connection.collection(params1.collection);
 
     // Check for individual uniqueness constraints
     const uniqueFields = Object.entries(data).filter(([field]) => {
@@ -279,14 +284,15 @@ export async function PUT(
     //console.log('>>>>><<<', result.data)
 
     if (!result ) {
-      logger.warn(`Document not found for update in ${params.collection}`, { domain, id });
+      const params1 = await params;
+      logger.warn(`Document not found for update in ${params1.collection}`, { domain, id });
       return NextResponse.json(
         { error: 'Document not found3' },
         { status: 404 }
       );
     }
 
-    logger.info(`Document updated successfully in ${params.collection}`, { domain, id });
+    logger.info(`Document updated successfully in ${params1.collection}`, { domain, id });
     return NextResponse.json(result.data);
   } catch (err) {
     logger.error('Update error:', err);
@@ -299,30 +305,32 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { collection: string } }
+  { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    logger.info(`Deleting document from collection ${params.collection}`, { domain });
+    const params1 = await params;
+    logger.info(`Deleting document from collection ${params1.collection}`, { domain });
 
     const { id } = await request.json() as { id: string };
 
     // Connect to domain-specific database
     const connection = await connectToDatabase(domain);
-    const collection = connection.collection(params.collection);
+    const collection = connection.collection(params1.collection);
 
     const result = await collection.deleteOne({ _id: new mongoose.Types.ObjectId(id) });
 
     if (result.deletedCount === 0) {
-      logger.warn(`Document not found for deletion in ${params.collection}`, { domain, id });
+      const params1 = await params;
+      logger.warn(`Document not found for deletion in ${params1.collection}`, { domain, id });
       return NextResponse.json(
         { error: 'Document not found4' },
         { status: 404 }
       );
     }
 
-    logger.info(`Document deleted successfully from ${params.collection}`, { domain, id });
+    logger.info(`Document deleted successfully from ${params1.collection}`, { domain, id });
     return NextResponse.json({ message: 'Document deleted successfully' });
   } catch (err) {
     logger.error('Delete error:', err);
