@@ -528,7 +528,7 @@ export default function ExamPage({
             dir="rtl"
             className="border border-gray-100 rounded-lg p-1 bg-gray-50"
           >
-            <TabsList className="mb-6 flex flex-wrap bg-white w-full p-1 border border-gray-100 rounded-md shadow-sm">
+            <TabsList className="mb-6 flex flex-wrap bg-white h-[75px] gap-1 w-full p-1 border border-gray-100 rounded-md shadow-sm">
               {categories.map((category) => {
                 // Calculate question count and total score for this category
                 const categoryQuestions = questions.filter(
@@ -540,11 +540,16 @@ export default function ExamPage({
                   0
                 );
 
+                // Calculate unanswered questions count
+                const unansweredCount = categoryQuestions.filter(
+                  (q) => !answers[q._id]
+                ).length;
+
                 return (
                   <TabsTrigger
                     key={category}
                     value={category}
-                    className="text-sm md:text-base px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none flex flex-col items-center"
+                    className="text-sm md:text-base border-[.5px] px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none flex flex-col items-center"
                   >
                     <span className="font-medium">
                       {category === "test1"
@@ -584,6 +589,25 @@ export default function ExamPage({
                         </svg>
                         {totalScore} نمره
                       </span>
+                      {unansweredCount > 0 && (
+                        <span className="flex items-center bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3 w-3 ml-1"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                          {unansweredCount} بی‌پاسخ
+                        </span>
+                      )}
                     </div>
                   </TabsTrigger>
                 );
@@ -599,6 +623,11 @@ export default function ExamPage({
                 (sum, q) => sum + (q.score || 0),
                 0
               );
+
+              // Calculate unanswered questions count
+              const unansweredCount = categoryQuestions.filter(
+                (q) => !answers[q._id]
+              ).length;
 
               return (
                 <TabsContent
@@ -645,133 +674,172 @@ export default function ExamPage({
                         </svg>
                         مجموع نمره: {totalScore}
                       </span>
+                      {unansweredCount > 0 && (
+                        <span className="flex items-center text-sm text-amber-700 bg-amber-50 px-3 py-1 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 ml-1"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                          {unansweredCount} سوال بی‌پاسخ
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-8">
-                    {categoryQuestions.map((question, index) => (
-                      <div
-                        key={question._id}
-                        className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex justify-between mb-4 pb-2 border-b border-gray-100">
-                          <h3 className="font-semibold text-lg text-gray-800 flex items-center">
-                            <span className="flex items-center justify-center rounded-full bg-blue-100 text-blue-800 w-7 h-7 ml-2 text-sm">
-                              {index + 1}
-                            </span>
-                            <span>
-                              {question.score > 0 && (
-                                <span className="text-blue-600 mr-2">
-                                  ({question.score} نمره)
+                    {categoryQuestions.map((question, index) => {
+                      // Check if this question is answered
+                      const isAnswered = !!answers[question._id];
+
+                      return (
+                        <div
+                          key={question._id}
+                          className={`border ${
+                            isAnswered ? "border-gray-200" : "border-amber-200"
+                          } rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow ${
+                            isAnswered ? "" : "bg-amber-50/30"
+                          }`}
+                        >
+                          <div className="flex justify-between mb-4 pb-2 border-b border-gray-100">
+                            <h3 className="font-semibold text-lg text-gray-800 flex items-center">
+                              <span
+                                className={`flex items-center justify-center rounded-full ${
+                                  isAnswered
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-amber-100 text-amber-800"
+                                } w-7 h-7 ml-2 text-sm`}
+                              >
+                                {index + 1}
+                              </span>
+                              <span>
+                                {question.score > 0 && (
+                                  <span className="text-blue-600 mr-2">
+                                    ({question.score} نمره)
+                                  </span>
+                                )}
+                              </span>
+                              {!isAnswered && (
+                                <span className="mr-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                  بی‌پاسخ
                                 </span>
                               )}
+                            </h3>
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                              {question.question.type}
                             </span>
-                          </h3>
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                            {question.question.type}
-                          </span>
-                        </div>
-                        <div
-                          className="mb-6 leading-relaxed text-gray-700"
-                          dangerouslySetInnerHTML={renderHTML(
-                            question.question.question
-                          )}
-                        />
-
-                        {/* Multiple choice questions */}
-                        {question.question.type === " تستی " && (
-                          <RadioGroup
-                            value={answers[question._id] || ""}
-                            onValueChange={(value) =>
-                              handleAnswerChange(question._id, value)
-                            }
-                            className="space-y-4"
-                          >
-                            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
-                                <RadioGroupItem
-                                  value="1"
-                                  id={`${question._id}-option1`}
-                                  className="ml-3 mt-1"
-                                />
-                                <Label
-                                  htmlFor={`${question._id}-option1`}
-                                  className="cursor-pointer w-full text-gray-700"
-                                >
-                                  <div
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.question.option1
-                                    )}
-                                  />
-                                </Label>
-                              </div>
-                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
-                                <RadioGroupItem
-                                  value="2"
-                                  id={`${question._id}-option2`}
-                                  className="ml-3 mt-1"
-                                />
-                                <Label
-                                  htmlFor={`${question._id}-option2`}
-                                  className="cursor-pointer w-full text-gray-700"
-                                >
-                                  <div
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.question.option2
-                                    )}
-                                  />
-                                </Label>
-                              </div>
-                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
-                                <RadioGroupItem
-                                  value="3"
-                                  id={`${question._id}-option3`}
-                                  className="ml-3 mt-1"
-                                />
-                                <Label
-                                  htmlFor={`${question._id}-option3`}
-                                  className="cursor-pointer w-full text-gray-700"
-                                >
-                                  <div
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.question.option3
-                                    )}
-                                  />
-                                </Label>
-                              </div>
-                              <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
-                                <RadioGroupItem
-                                  value="4"
-                                  id={`${question._id}-option4`}
-                                  className="ml-3 mt-1"
-                                />
-                                <Label
-                                  htmlFor={`${question._id}-option4`}
-                                  className="cursor-pointer w-full text-gray-700"
-                                >
-                                  <div
-                                    dangerouslySetInnerHTML={renderHTML(
-                                      question.question.option4
-                                    )}
-                                  />
-                                </Label>
-                              </div>
-                            </div>
-                          </RadioGroup>
-                        )}
-
-                        {/* Essay questions */}
-                        {question.question.type === " تشریحی " && (
-                          <Textarea
-                            placeholder="پاسخ خود را اینجا بنویسید..."
-                            className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200"
-                            value={answers[question._id] || ""}
-                            onChange={(e) =>
-                              handleAnswerChange(question._id, e.target.value)
-                            }
+                          </div>
+                          <div
+                            className="mb-6 leading-relaxed text-gray-700"
+                            dangerouslySetInnerHTML={renderHTML(
+                              question.question.question
+                            )}
                           />
-                        )}
-                      </div>
-                    ))}
+
+                          {/* Multiple choice questions */}
+                          {question.question.type === " تستی " && (
+                            <RadioGroup
+                              value={answers[question._id] || ""}
+                              onValueChange={(value) =>
+                                handleAnswerChange(question._id, value)
+                              }
+                              className="space-y-4"
+                            >
+                              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                  <RadioGroupItem
+                                    value="1"
+                                    id={`${question._id}-option1`}
+                                    className="ml-3 mt-1"
+                                  />
+                                  <Label
+                                    htmlFor={`${question._id}-option1`}
+                                    className="cursor-pointer w-full text-gray-700"
+                                  >
+                                    <div
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.question.option1
+                                      )}
+                                    />
+                                  </Label>
+                                </div>
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                  <RadioGroupItem
+                                    value="2"
+                                    id={`${question._id}-option2`}
+                                    className="ml-3 mt-1"
+                                  />
+                                  <Label
+                                    htmlFor={`${question._id}-option2`}
+                                    className="cursor-pointer w-full text-gray-700"
+                                  >
+                                    <div
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.question.option2
+                                      )}
+                                    />
+                                  </Label>
+                                </div>
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                  <RadioGroupItem
+                                    value="3"
+                                    id={`${question._id}-option3`}
+                                    className="ml-3 mt-1"
+                                  />
+                                  <Label
+                                    htmlFor={`${question._id}-option3`}
+                                    className="cursor-pointer w-full text-gray-700"
+                                  >
+                                    <div
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.question.option3
+                                      )}
+                                    />
+                                  </Label>
+                                </div>
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                  <RadioGroupItem
+                                    value="4"
+                                    id={`${question._id}-option4`}
+                                    className="ml-3 mt-1"
+                                  />
+                                  <Label
+                                    htmlFor={`${question._id}-option4`}
+                                    className="cursor-pointer w-full text-gray-700"
+                                  >
+                                    <div
+                                      dangerouslySetInnerHTML={renderHTML(
+                                        question.question.option4
+                                      )}
+                                    />
+                                  </Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          )}
+
+                          {/* Essay questions */}
+                          {question.question.type === " تشریحی " && (
+                            <Textarea
+                              placeholder="پاسخ خود را اینجا بنویسید..."
+                              className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200"
+                              value={answers[question._id] || ""}
+                              onChange={(e) =>
+                                handleAnswerChange(question._id, e.target.value)
+                              }
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </TabsContent>
               );
