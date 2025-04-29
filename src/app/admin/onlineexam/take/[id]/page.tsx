@@ -343,11 +343,6 @@ export default function ExamPage({
         const questionsData: Question[] = await questionsResponse.json();
         setQuestions(questionsData);
 
-        // Start the question timer if in separate pages mode
-        if (examData.data.separatePages?.isActive && questionsData.length > 0) {
-          startQuestionTimer(0);
-        }
-
         // Extract unique categories
         const uniqueCategories = [
           ...new Set(questionsData.map((q) => q.category)),
@@ -357,6 +352,46 @@ export default function ExamPage({
         // Set first category as active tab
         if (uniqueCategories.length > 0) {
           setActiveTab(uniqueCategories[0]);
+        }
+
+        // If in separate pages mode, prepare question navigation
+        if (examData.data.separatePages?.isActive && questionsData.length > 0) {
+          // Set the current question to the first unanswered question
+          if (
+            checkData.participated &&
+            checkData.answers &&
+            checkData.answers.length > 0
+          ) {
+            // Create a map to easily check if a question is answered
+            const answersMap: Record<string, string> = {};
+            checkData.answers.forEach((response: StudentResponse) => {
+              answersMap[response.questionId] = response.answer;
+            });
+
+            // Find the first unanswered question
+            const firstUnansweredIndex = questionsData.findIndex(
+              (q) => !answersMap[q._id] || answersMap[q._id].trim() === ""
+            );
+
+            // If all questions are answered, show the last question
+            // Otherwise show the first unanswered question
+            const indexToShow =
+              firstUnansweredIndex === -1
+                ? questionsData.length - 1
+                : firstUnansweredIndex;
+
+            setCurrentQuestionIndex(indexToShow);
+
+            // Start timer for this question
+            setTimeout(() => {
+              startQuestionTimer(indexToShow);
+            }, 300);
+          } else {
+            // No previous answers, start with the first question
+            setTimeout(() => {
+              startQuestionTimer(0);
+            }, 300);
+          }
         }
       } catch (error) {
         console.error("Error fetching exam data:", error);
@@ -368,6 +403,29 @@ export default function ExamPage({
 
     fetchExamData();
   }, [id]);
+
+  // Ensure question timer starts when exam data and questions are loaded
+  useEffect(() => {
+    if (
+      loading ||
+      !exam?.data.separatePages?.isActive ||
+      questions.length === 0 ||
+      isQuestionTimerActive ||
+      questionTimeLeft > 0
+    ) {
+      return;
+    }
+
+    // Start the timer for the first question if it hasn't started yet
+    startQuestionTimer(currentQuestionIndex);
+  }, [
+    loading,
+    exam,
+    questions,
+    isQuestionTimerActive,
+    questionTimeLeft,
+    currentQuestionIndex,
+  ]);
 
   // Auto-save answers every 30 seconds
   useEffect(() => {
