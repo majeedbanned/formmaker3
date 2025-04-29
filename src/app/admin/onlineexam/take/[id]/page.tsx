@@ -529,31 +529,126 @@ export default function ExamPage({
             className="border border-gray-100 rounded-lg p-1 bg-gray-50"
           >
             <TabsList className="mb-6 flex flex-wrap bg-white w-full p-1 border border-gray-100 rounded-md shadow-sm">
-              {categories.map((category) => (
-                <TabsTrigger
-                  key={category}
-                  value={category}
-                  className="text-sm md:text-base px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
-                >
-                  {category === "test1"
-                    ? "سوالات تستی"
-                    : category === "essay"
-                    ? "سوالات تشریحی"
-                    : category}
-                </TabsTrigger>
-              ))}
+              {categories.map((category) => {
+                // Calculate question count and total score for this category
+                const categoryQuestions = questions.filter(
+                  (q) => q.category === category
+                );
+                const questionCount = categoryQuestions.length;
+                const totalScore = categoryQuestions.reduce(
+                  (sum, q) => sum + (q.score || 0),
+                  0
+                );
+
+                return (
+                  <TabsTrigger
+                    key={category}
+                    value={category}
+                    className="text-sm md:text-base px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none flex flex-col items-center"
+                  >
+                    <span className="font-medium">
+                      {category === "test1"
+                        ? "سوالات تستی"
+                        : category === "essay"
+                        ? "سوالات تشریحی"
+                        : category}
+                    </span>
+                    <div className="flex items-center mt-1 gap-2 text-xs text-gray-500">
+                      <span className="flex items-center bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 ml-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        </svg>
+                        {questionCount} سوال
+                      </span>
+                      <span className="flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 ml-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                        {totalScore} نمره
+                      </span>
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
-            {categories.map((category) => (
-              <TabsContent
-                key={category}
-                value={category}
-                className="p-4 bg-white rounded-lg shadow-sm"
-              >
-                <div className="space-y-8">
-                  {questions
-                    .filter((q) => q.category === category)
-                    .map((question, index) => (
+            {categories.map((category) => {
+              // Get questions for this category and their total score
+              const categoryQuestions = questions.filter(
+                (q) => q.category === category
+              );
+              const totalScore = categoryQuestions.reduce(
+                (sum, q) => sum + (q.score || 0),
+                0
+              );
+
+              return (
+                <TabsContent
+                  key={category}
+                  value={category}
+                  className="p-4 bg-white rounded-lg shadow-sm"
+                >
+                  <div className="mb-4 px-4 py-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <h2 className="font-semibold text-gray-800">
+                      {category === "test1"
+                        ? "سوالات تستی"
+                        : category === "essay"
+                        ? "سوالات تشریحی"
+                        : category}
+                    </h2>
+                    <div className="flex gap-3">
+                      <span className="flex items-center text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-lg">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 ml-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        </svg>
+                        {categoryQuestions.length} سوال
+                      </span>
+                      <span className="flex items-center text-sm text-green-700 bg-green-50 px-3 py-1 rounded-lg">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 ml-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                        مجموع نمره: {totalScore}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-8">
+                    {categoryQuestions.map((question, index) => (
                       <div
                         key={question._id}
                         className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow"
@@ -677,9 +772,10 @@ export default function ExamPage({
                         )}
                       </div>
                     ))}
-                </div>
-              </TabsContent>
-            ))}
+                  </div>
+                </TabsContent>
+              );
+            })}
           </Tabs>
         </CardContent>
       </Card>
