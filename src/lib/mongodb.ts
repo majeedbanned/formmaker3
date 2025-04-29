@@ -135,10 +135,10 @@ export const connectToDatabase = async (domain: string) => {
       // ────────────────────────────────────────────────────────────────
       const connection = mongoose.createConnection(connectionString, {
         serverSelectionTimeoutMS: 15_000,
-        socketTimeoutMS:          45_000,
+        socketTimeoutMS:          60_000,
         connectTimeoutMS:         15_000,
-        maxPoolSize:              10,
-        minPoolSize:              5,
+        maxPoolSize:              50,
+        minPoolSize:              10,
         retryWrites:              true,
         retryReads:               true,
         heartbeatFrequencyMS:     10_000,
