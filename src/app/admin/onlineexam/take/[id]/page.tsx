@@ -487,38 +487,83 @@ export default function ExamPage({
 
   return (
     <div className="container mx-auto pb-10 rtl" dir="rtl">
-      <Card className="shadow-lg mb-6 border-blue-200 overflow-hidden">
-        <CardHeader className="bg-gradient-to-l from-blue-50 to-blue-100 flex flex-row justify-between items-center">
+      <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
+        <CardHeader className="bg-gradient-to-l from-blue-100/80 to-blue-50 flex flex-row justify-between items-center border-b border-blue-100">
           <div className="flex items-center">
-            <BookOpenIcon className="ml-2 h-6 w-6 text-blue-600" />
+            <div className="rounded-full bg-blue-600/10 p-2 mr-2">
+              <BookOpenIcon className="ml-2 h-7 w-7 text-blue-600" />
+            </div>
             <div>
-              <CardTitle className="text-xl text-blue-800">
+              <CardTitle className="text-xl text-blue-800 font-bold">
                 {exam.data.examName}
               </CardTitle>
               <p className="text-sm text-blue-600 mt-1">
                 کد آزمون: {exam.data.examCode}
               </p>
               {persianEntryDateTime && (
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 mt-1 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3 w-3 ml-1"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
                   زمان شروع: {persianEntryDateTime}
                 </p>
               )}
               {lastSaveTime && (
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 mt-1 flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3 w-3 ml-1"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
                   آخرین ذخیره: {lastSaveTime}
                 </p>
               )}
             </div>
           </div>
-          <div className="bg-white border border-blue-300 shadow-sm text-blue-800 px-4 py-2 rounded-md font-mono text-lg flex items-center">
+          <div className="bg-white border border-blue-200 shadow-md text-blue-800 px-5 py-3 rounded-lg font-mono text-lg flex items-center">
             <ClockIcon className="ml-2 h-5 w-5 text-blue-600" />
-            {formatTime(timeLeft)}
+            <span className="font-bold">{formatTime(timeLeft)}</span>
           </div>
         </CardHeader>
         <CardContent className="p-6">
           {exam.data.settings?.preexammessage && (
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-md mb-6 text-blue-800">
-              {exam.data.settings.preexammessage}
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-6 text-blue-800 shadow-inner">
+              <div className="flex items-start">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 ml-2 mt-0.5 flex-shrink-0 text-blue-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="12" y1="16" x2="12" y2="16" />
+                </svg>
+                <p>{exam.data.settings.preexammessage}</p>
+              </div>
             </div>
           )}
 
@@ -526,71 +571,41 @@ export default function ExamPage({
             value={activeTab}
             onValueChange={setActiveTab}
             dir="rtl"
-            className="border border-gray-100 rounded-lg p-1 bg-gray-50"
+            className="border border-gray-100 rounded-xl p-2 bg-gray-50 shadow-sm"
           >
-            <TabsList className="mb-6 flex flex-wrap bg-white h-[75px] gap-1 w-full p-1 border border-gray-100 rounded-md shadow-sm">
-              {categories.map((category) => {
-                // Calculate question count and total score for this category
-                const categoryQuestions = questions.filter(
-                  (q) => q.category === category
-                );
-                const questionCount = categoryQuestions.length;
-                const totalScore = categoryQuestions.reduce(
-                  (sum, q) => sum + (q.score || 0),
-                  0
-                );
+            <div className="overflow-x-auto pb-1 mb-3">
+              <TabsList className="mb-3 flex flex-nowrap bg-white h-[75px] gap-1 w-max min-w-full p-2 border border-gray-100 rounded-lg shadow-sm">
+                {categories.map((category) => {
+                  // Calculate question count and total score for this category
+                  const categoryQuestions = questions.filter(
+                    (q) => q.category === category
+                  );
+                  const questionCount = categoryQuestions.length;
+                  const totalScore = categoryQuestions.reduce(
+                    (sum, q) => sum + (q.score || 0),
+                    0
+                  );
 
-                // Calculate unanswered questions count
-                const unansweredCount = categoryQuestions.filter(
-                  (q) => !answers[q._id]
-                ).length;
+                  // Calculate unanswered questions count
+                  const unansweredCount = categoryQuestions.filter(
+                    (q) => !answers[q._id]
+                  ).length;
 
-                return (
-                  <TabsTrigger
-                    key={category}
-                    value={category}
-                    className="text-sm md:text-base border-[.5px] px-4 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-none flex flex-col items-center"
-                  >
-                    <span className="font-medium">
-                      {category === "test1"
-                        ? "سوالات تستی"
-                        : category === "essay"
-                        ? "سوالات تشریحی"
-                        : category}
-                    </span>
-                    <div className="flex items-center mt-1 gap-2 text-xs text-gray-500">
-                      <span className="flex items-center bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3 w-3 ml-1"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                        </svg>
-                        {questionCount} سوال
+                  return (
+                    <TabsTrigger
+                      key={category}
+                      value={category}
+                      className="text-sm md:text-base border-[.5px] border-gray-200 px-5 py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-md data-[state=active]:border-blue-200 flex flex-col items-center rounded-lg transition-all hover:bg-blue-50 whitespace-nowrap"
+                    >
+                      <span className="font-medium">
+                        {category === "test1"
+                          ? "سوالات تستی"
+                          : category === "essay"
+                          ? "سوالات تشریحی"
+                          : category}
                       </span>
-                      <span className="flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3 w-3 ml-1"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                        {totalScore} نمره
-                      </span>
-                      {unansweredCount > 0 && (
-                        <span className="flex items-center bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                      <div className="flex items-center mt-1.5 gap-2 text-xs text-gray-500">
+                        <span className="flex items-center bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-3 w-3 ml-1"
@@ -601,18 +616,50 @@ export default function ExamPage({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
                           </svg>
-                          {unansweredCount} بی‌پاسخ
+                          {questionCount} سوال
                         </span>
-                      )}
-                    </div>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+                        <span className="flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3 w-3 ml-1"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                          {totalScore} نمره
+                        </span>
+                        {unansweredCount > 0 && (
+                          <span className="flex items-center bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-3 w-3 ml-1"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            {unansweredCount} بی‌پاسخ
+                          </span>
+                        )}
+                      </div>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
 
             {categories.map((category) => {
               // Get questions for this category and their total score
@@ -633,10 +680,44 @@ export default function ExamPage({
                 <TabsContent
                   key={category}
                   value={category}
-                  className="p-4 bg-white rounded-lg shadow-sm"
+                  className="p-5 bg-white rounded-xl shadow-sm"
                 >
-                  <div className="mb-4 px-4 py-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                    <h2 className="font-semibold text-gray-800">
+                  <div className="mb-6 px-5 py-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex justify-between items-center border border-gray-200">
+                    <h2 className="font-semibold text-gray-800 flex items-center">
+                      <span className="flex justify-center items-center rounded-full bg-blue-100 h-8 w-8 mr-2">
+                        {category === "test1" ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-blue-700"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="9 11 12 14 22 4"></polyline>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-blue-700"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                          </svg>
+                        )}
+                      </span>
                       {category === "test1"
                         ? "سوالات تستی"
                         : category === "essay"
@@ -644,7 +725,7 @@ export default function ExamPage({
                         : category}
                     </h2>
                     <div className="flex gap-3">
-                      <span className="flex items-center text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-lg">
+                      <span className="flex items-center text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-lg shadow-sm">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-4 w-4 ml-1"
@@ -659,7 +740,7 @@ export default function ExamPage({
                         </svg>
                         {categoryQuestions.length} سوال
                       </span>
-                      <span className="flex items-center text-sm text-green-700 bg-green-50 px-3 py-1 rounded-lg">
+                      <span className="flex items-center text-sm text-green-700 bg-green-50 px-3 py-1 rounded-lg shadow-sm">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-4 w-4 ml-1"
@@ -675,7 +756,7 @@ export default function ExamPage({
                         مجموع نمره: {totalScore}
                       </span>
                       {unansweredCount > 0 && (
-                        <span className="flex items-center text-sm text-amber-700 bg-amber-50 px-3 py-1 rounded-lg">
+                        <span className="flex items-center text-sm text-amber-700 bg-amber-50 px-3 py-1 rounded-lg shadow-sm">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-4 w-4 ml-1"
@@ -705,35 +786,35 @@ export default function ExamPage({
                           key={question._id}
                           className={`border ${
                             isAnswered ? "border-gray-200" : "border-amber-200"
-                          } rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow ${
+                          } rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-all ${
                             isAnswered ? "" : "bg-amber-50/30"
                           }`}
                         >
-                          <div className="flex justify-between mb-4 pb-2 border-b border-gray-100">
+                          <div className="flex justify-between mb-4 pb-3 border-b border-gray-100">
                             <h3 className="font-semibold text-lg text-gray-800 flex items-center">
                               <span
                                 className={`flex items-center justify-center rounded-full ${
                                   isAnswered
                                     ? "bg-blue-100 text-blue-800"
                                     : "bg-amber-100 text-amber-800"
-                                } w-7 h-7 ml-2 text-sm`}
+                                } w-8 h-8 ml-3 text-sm font-bold`}
                               >
                                 {index + 1}
                               </span>
                               <span>
                                 {question.score > 0 && (
-                                  <span className="text-blue-600 mr-2">
+                                  <span className="text-blue-600 mr-2 font-medium">
                                     ({question.score} نمره)
                                   </span>
                                 )}
                               </span>
                               {!isAnswered && (
-                                <span className="mr-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                <span className="mr-2 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">
                                   بی‌پاسخ
                                 </span>
                               )}
                             </h3>
-                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                            <span className="text-xs font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
                               {question.question.type}
                             </span>
                           </div>
@@ -754,7 +835,7 @@ export default function ExamPage({
                               className="space-y-4"
                             >
                               <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
                                   <RadioGroupItem
                                     value="1"
                                     id={`${question._id}-option1`}
@@ -771,7 +852,7 @@ export default function ExamPage({
                                     />
                                   </Label>
                                 </div>
-                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
                                   <RadioGroupItem
                                     value="2"
                                     id={`${question._id}-option2`}
@@ -788,7 +869,7 @@ export default function ExamPage({
                                     />
                                   </Label>
                                 </div>
-                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
                                   <RadioGroupItem
                                     value="3"
                                     id={`${question._id}-option3`}
@@ -805,7 +886,7 @@ export default function ExamPage({
                                     />
                                   </Label>
                                 </div>
-                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-colors border border-gray-100 hover:border-blue-200">
+                                <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
                                   <RadioGroupItem
                                     value="4"
                                     id={`${question._id}-option4`}
@@ -830,7 +911,7 @@ export default function ExamPage({
                           {question.question.type === " تشریحی " && (
                             <Textarea
                               placeholder="پاسخ خود را اینجا بنویسید..."
-                              className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200"
+                              className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200 rounded-lg"
                               value={answers[question._id] || ""}
                               onChange={(e) =>
                                 handleAnswerChange(question._id, e.target.value)
@@ -853,7 +934,7 @@ export default function ExamPage({
           variant="outline"
           onClick={() => saveTemporarily()}
           disabled={saving}
-          className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-sm"
+          className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -874,7 +955,7 @@ export default function ExamPage({
         <Button
           onClick={() => setShowConfirmFinish(true)}
           disabled={saving}
-          className="bg-green-600 hover:bg-green-700 px-6 py-5 rounded-lg shadow-sm"
+          className="bg-green-600 hover:bg-green-700 px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -896,10 +977,24 @@ export default function ExamPage({
       <AlertDialog open={showConfirmFinish} onOpenChange={setShowConfirmFinish}>
         <AlertDialogContent
           dir="rtl"
-          className="bg-white rounded-lg max-w-md mx-auto"
+          className="bg-white rounded-xl max-w-md mx-auto shadow-2xl border-0"
         >
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl text-gray-800 font-bold">
+            <AlertDialogTitle className="text-xl text-gray-800 font-bold flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 ml-2 text-amber-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
               تایید پایان آزمون
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600">
@@ -907,14 +1002,14 @@ export default function ExamPage({
               ویرایش پاسخ‌ها وجود نخواهد داشت.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row-reverse justify-start gap-2 mt-6">
+          <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
             <AlertDialogAction
               onClick={finishExam}
-              className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-md text-white"
+              className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
             >
               تایید و پایان آزمون
             </AlertDialogAction>
-            <AlertDialogCancel className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-md">
+            <AlertDialogCancel className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-lg transition-colors">
               انصراف
             </AlertDialogCancel>
           </AlertDialogFooter>
