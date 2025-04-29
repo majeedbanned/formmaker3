@@ -60,6 +60,11 @@ interface Exam {
       isActive: boolean;
       questionTime: string;
     };
+    imageFile?: {
+      isActive: boolean;
+      examTime: string;
+      imageFile: string[]; // Array of image URLs
+    };
     settings: {
       questionsDirection: string;
       preexammessage: string;
@@ -113,6 +118,116 @@ const renderHTML = (html: string | undefined) => {
   return { __html: processed };
 };
 
+// Image Popup Component
+const ImagePopup = ({
+  images,
+  currentIndex,
+  onNext,
+  onPrev,
+  onClose,
+}: {
+  images: string[];
+  currentIndex: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onClose: () => void;
+}) => {
+  if (!images || images.length === 0) return null;
+
+  console.log("images", images);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      dir="rtl"
+    >
+      <div className="relative bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 bg-blue-600 text-white flex justify-between items-center">
+          <h3 className="font-bold text-lg">
+            تصویر سوالات ({currentIndex + 1} از {images.length})
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 hover:bg-blue-700 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          <img
+            src={`${images[currentIndex].path}`}
+            alt={`صفحه ${currentIndex + 1}`}
+            className="max-w-full mx-auto"
+          />
+        </div>
+
+        <div className="p-4 border-t border-gray-200 flex justify-between">
+          <button
+            onClick={onPrev}
+            disabled={currentIndex <= 0}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+            صفحه قبلی
+          </button>
+
+          <span className="flex items-center text-gray-600">
+            {currentIndex + 1} از {images.length}
+          </span>
+
+          <button
+            onClick={onNext}
+            disabled={currentIndex >= images.length - 1}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            صفحه بعدی
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ExamPage({
   params,
 }: {
@@ -141,6 +256,11 @@ export default function ExamPage({
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(0);
   const [isQuestionTimerActive, setIsQuestionTimerActive] =
     useState<boolean>(false);
+
+  // For image-based exam mode
+  const [showImagePopup, setShowImagePopup] = useState<boolean>(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [imageExamTimeLeft, setImageExamTimeLeft] = useState<number>(0);
 
   // Convert seconds to mm:ss format
   const formatTime = (totalSeconds: number) => {
@@ -354,6 +474,27 @@ export default function ExamPage({
           }
         }
 
+        // Initialize timer for image-based exam
+        if (
+          examData.data.imageFile?.isActive &&
+          examData.data.imageFile?.examTime
+        ) {
+          const durationMinutes =
+            parseInt(examData.data.imageFile.examTime, 10) || 60;
+
+          if (firstEntryTime) {
+            // Calculate remaining time based on first entry time
+            const remainingSeconds = calculateRemainingTime(
+              firstEntryTime,
+              durationMinutes
+            );
+            setImageExamTimeLeft(remainingSeconds);
+          } else {
+            // Set full duration for new participants
+            setImageExamTimeLeft(durationMinutes * 60);
+          }
+        }
+
         // Fetch questions
         const questionsResponse = await fetch(`/api/examquestions/${id}`);
         if (!questionsResponse.ok) {
@@ -486,7 +627,25 @@ export default function ExamPage({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, exam]);
+  }, [timeLeft, exam?.data.allQuestionsInOnePage?.isActive]);
+
+  // Timer countdown for imageFile mode
+  useEffect(() => {
+    if (imageExamTimeLeft <= 0 || !exam?.data.imageFile?.isActive) return;
+
+    const timer = setInterval(() => {
+      setImageExamTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          saveExam(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [imageExamTimeLeft, exam?.data.imageFile?.isActive]);
 
   // Handle answer changes
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -565,6 +724,26 @@ export default function ExamPage({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Handle image navigation
+  const nextImage = () => {
+    if (!exam?.data.imageFile?.imageFile) return;
+
+    if (currentImageIndex < exam.data.imageFile.imageFile.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
+  // Toggle image popup
+  const toggleImagePopup = () => {
+    setShowImagePopup(!showImagePopup);
   };
 
   if (loading) {
@@ -1012,8 +1191,342 @@ export default function ExamPage({
     );
   }
 
+  // Image-Based Exam Mode
+  if (exam?.data.imageFile?.isActive) {
+    // Make sure we have the image files
+    const imageFiles = exam.data.imageFile.imageFile || [];
+
+    return (
+      <div className="container mx-auto pb-10 rtl" dir="rtl">
+        <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
+          <CardHeader className="bg-gradient-to-l from-blue-100/80 to-blue-50 flex flex-row justify-between items-center border-b border-blue-100">
+            <div className="flex items-center">
+              <div className="rounded-full bg-blue-600/10 p-2 mr-2">
+                <BookOpenIcon className="ml-2 h-7 w-7 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-blue-800 font-bold">
+                  {exam.data.examName}
+                </CardTitle>
+                <p className="text-sm text-blue-600 mt-1">
+                  کد آزمون: {exam.data.examCode}
+                </p>
+                {persianEntryDateTime && (
+                  <p className="text-xs text-gray-600 mt-1 flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 ml-1"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    زمان شروع: {persianEntryDateTime}
+                  </p>
+                )}
+                {lastSaveTime && (
+                  <p className="text-xs text-gray-600 mt-1 flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 ml-1"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    آخرین ذخیره: {lastSaveTime}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="bg-white border border-blue-200 shadow-md text-blue-800 px-5 py-3 rounded-lg font-mono text-lg flex items-center">
+              <ClockIcon className="ml-2 h-5 w-5 text-blue-600" />
+              <span className="font-bold">{formatTime(imageExamTimeLeft)}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {exam.data.settings?.preexammessage && (
+              <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-6 text-blue-800 shadow-inner">
+                <div className="flex items-start">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 ml-2 mt-0.5 flex-shrink-0 text-blue-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="12" y1="16" x2="12" y2="16" />
+                  </svg>
+                  <p>{exam.data.settings.preexammessage}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="mb-6 flex justify-center">
+              <Button
+                onClick={toggleImagePopup}
+                className="bg-blue-600 hover:bg-blue-700 flex items-center px-6 py-3 shadow-md"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 ml-2"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                مشاهده تصاویر سوالات
+              </Button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">
+                پاسخنامه
+              </h3>
+
+              <div className="space-y-8">
+                {questions.map((question, index) => (
+                  <div
+                    key={question._id}
+                    className="border border-gray-200 rounded-xl p-6 bg-white shadow-sm hover:shadow-md transition-all"
+                  >
+                    <div className="flex justify-between mb-4 pb-3 border-b border-gray-100">
+                      <h3 className="font-semibold text-lg text-gray-800 flex items-center">
+                        <span className="flex items-center justify-center rounded-full bg-blue-100 text-blue-800 w-8 h-8 ml-3 text-sm font-bold">
+                          {index + 1}
+                        </span>
+                        <span>
+                          {question.score > 0 && (
+                            <span className="text-blue-600 mr-2 font-medium">
+                              ({question.score} نمره)
+                            </span>
+                          )}
+                        </span>
+                      </h3>
+                      <span className="text-xs font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
+                        {question.category === "test1"
+                          ? "تستی"
+                          : question.category === "essay"
+                          ? "تشریحی"
+                          : question.category}
+                      </span>
+                    </div>
+
+                    {/* Multiple choice questions */}
+                    {question.question.type === " تستی " && (
+                      <RadioGroup
+                        value={answers[question._id] || ""}
+                        onValueChange={(value) =>
+                          handleAnswerChange(question._id, value)
+                        }
+                        className="space-y-4"
+                      >
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                          <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                            <RadioGroupItem
+                              value="1"
+                              id={`${question._id}-option1`}
+                              className="ml-3 mt-1"
+                            />
+                            <Label
+                              htmlFor={`${question._id}-option1`}
+                              className="cursor-pointer w-full text-gray-700"
+                            >
+                              گزینه 1
+                            </Label>
+                          </div>
+                          <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                            <RadioGroupItem
+                              value="2"
+                              id={`${question._id}-option2`}
+                              className="ml-3 mt-1"
+                            />
+                            <Label
+                              htmlFor={`${question._id}-option2`}
+                              className="cursor-pointer w-full text-gray-700"
+                            >
+                              گزینه 2
+                            </Label>
+                          </div>
+                          <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                            <RadioGroupItem
+                              value="3"
+                              id={`${question._id}-option3`}
+                              className="ml-3 mt-1"
+                            />
+                            <Label
+                              htmlFor={`${question._id}-option3`}
+                              className="cursor-pointer w-full text-gray-700"
+                            >
+                              گزینه 3
+                            </Label>
+                          </div>
+                          <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                            <RadioGroupItem
+                              value="4"
+                              id={`${question._id}-option4`}
+                              className="ml-3 mt-1"
+                            />
+                            <Label
+                              htmlFor={`${question._id}-option4`}
+                              className="cursor-pointer w-full text-gray-700"
+                            >
+                              گزینه 4
+                            </Label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    )}
+
+                    {/* Essay questions */}
+                    {question.question.type === " تشریحی " && (
+                      <Textarea
+                        placeholder="پاسخ خود را اینجا بنویسید..."
+                        className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200 rounded-lg"
+                        value={answers[question._id] || ""}
+                        onChange={(e) =>
+                          handleAnswerChange(question._id, e.target.value)
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-between gap-4 mt-8">
+          <Button
+            variant="outline"
+            onClick={() => saveTemporarily()}
+            disabled={saving}
+            className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-2"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            ذخیره موقت
+          </Button>
+          <Button
+            onClick={() => setShowConfirmFinish(true)}
+            disabled={saving}
+            className="bg-green-600 hover:bg-green-700 px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 ml-2"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            پایان و ثبت آزمون
+          </Button>
+        </div>
+
+        {showImagePopup && (
+          <ImagePopup
+            images={imageFiles}
+            currentIndex={currentImageIndex}
+            onNext={nextImage}
+            onPrev={prevImage}
+            onClose={toggleImagePopup}
+          />
+        )}
+
+        <AlertDialog
+          open={showConfirmFinish}
+          onOpenChange={setShowConfirmFinish}
+        >
+          <AlertDialogContent
+            dir="rtl"
+            className="bg-white rounded-xl max-w-md mx-auto shadow-2xl border-0"
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl text-gray-800 font-bold flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 ml-2 text-amber-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                تایید پایان آزمون
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                آیا از پایان دادن به آزمون اطمینان دارید؟ پس از تایید، امکان
+                ویرایش پاسخ‌ها وجود نخواهد داشت.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
+              <AlertDialogAction
+                onClick={finishExam}
+                className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
+              >
+                تایید و پایان آزمون
+              </AlertDialogAction>
+              <AlertDialogCancel className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-lg transition-colors">
+                انصراف
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
   // Only continue if allQuestionsInOnePage is active
-  if (!exam.data.allQuestionsInOnePage?.isActive) {
+  if (
+    !exam.data.allQuestionsInOnePage?.isActive &&
+    !exam.data.separatePages?.isActive &&
+    !exam.data.imageFile?.isActive
+  ) {
     return (
       <div className="container mx-auto max-w-7xl p-4" dir="rtl">
         <Card className="shadow-lg border-yellow-300">
