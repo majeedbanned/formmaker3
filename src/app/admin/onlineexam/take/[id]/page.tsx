@@ -199,7 +199,7 @@ export default function ExamPage({
     // Save the current answer first
     saveTemporarily(false);
 
-    // If we're at the last question, finish the exam
+    // If we're at the last question, show confirmation dialog
     if (currentQuestionIndex >= questions.length - 1) {
       setShowConfirmFinish(true);
       return;
@@ -473,8 +473,12 @@ export default function ExamPage({
       if (isFinished) {
         // Set exam as finished locally
         setExamFinished(true);
+        // Close the confirmation dialog
+        setShowConfirmFinish(false);
         // Redirect back to exams page if finished
-        router.push("/admin/onlineexam");
+        setTimeout(() => {
+          router.push("/admin/onlineexam");
+        }, 500);
       }
     } catch (error) {
       console.error("Error saving exam:", error);
@@ -483,7 +487,6 @@ export default function ExamPage({
       }
     } finally {
       setSaving(false);
-      setShowConfirmFinish(false);
     }
   };
 
@@ -917,10 +920,7 @@ export default function ExamPage({
             </AlertDialogHeader>
             <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
               <AlertDialogAction
-                onClick={() => {
-                  setShowConfirmFinish(false);
-                  finishExam();
-                }}
+                onClick={finishExam}
                 className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
               >
                 تایید و پایان آزمون
@@ -1495,10 +1495,7 @@ export default function ExamPage({
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
             <AlertDialogAction
-              onClick={() => {
-                setShowConfirmFinish(false);
-                finishExam();
-              }}
+              onClick={finishExam}
               className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
             >
               تایید و پایان آزمون
