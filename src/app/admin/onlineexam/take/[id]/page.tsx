@@ -222,17 +222,31 @@ export default function ExamPage({
     )
       return;
 
+    console.log("Question time expired", {
+      currentQuestionIndex,
+      total: questions.length,
+    });
+
     // Time's up for this question
     if (currentQuestionIndex >= questions.length - 1) {
       // If this is the last question, automatically finish the exam
+      console.log("Last question reached, finishing exam");
       saveExam(true);
     } else {
       // Otherwise move to the next question
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      console.log("Moving to next question", currentQuestionIndex + 1);
+
+      // Save current answer first
+      saveTemporarily(false);
+
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      setIsQuestionTimerActive(false);
 
       // Start the timer for the next question after a short delay
       setTimeout(() => {
-        startQuestionTimer(currentQuestionIndex + 1);
+        console.log("Starting timer for next question", nextIndex);
+        startQuestionTimer(nextIndex);
       }, 300);
     }
   }, [
@@ -240,6 +254,7 @@ export default function ExamPage({
     isQuestionTimerActive,
     currentQuestionIndex,
     questions.length,
+    exam?.data.separatePages?.isActive,
   ]);
 
   // Question timer countdown
@@ -262,7 +277,11 @@ export default function ExamPage({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [questionTimeLeft, isQuestionTimerActive, exam]);
+  }, [
+    questionTimeLeft,
+    isQuestionTimerActive,
+    exam?.data.separatePages?.isActive,
+  ]);
 
   // Fetch exam details and questions
   useEffect(() => {
