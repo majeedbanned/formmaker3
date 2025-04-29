@@ -49,7 +49,10 @@ export async function GET(
 
     return NextResponse.json({ 
       participated: !!existingRecord,
-      isFinished: existingRecord?.isFinished || false
+      isFinished: existingRecord?.isFinished || false,
+      answers: existingRecord?.answers || [],
+      entryTime: existingRecord?.entryTime || null,
+      persianEntryDate: existingRecord?.persianEntryDate || null
     });
   } catch (error) {
     console.error("Error checking exam participation:", error);

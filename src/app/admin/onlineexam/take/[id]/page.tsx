@@ -20,6 +20,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ClockIcon, BookOpenIcon, CheckCircleIcon } from "lucide-react";
+import dayjs from "dayjs";
+import jalaliday from "jalaliday";
+import "dayjs/locale/fa";
+
+// Initialize dayjs
+dayjs.extend(jalaliday);
+dayjs.locale("fa");
 
 interface Question {
   _id: string;
@@ -54,6 +61,12 @@ interface Exam {
       postexammessage: string;
     };
   };
+}
+
+interface StudentResponse {
+  questionId: string;
+  answer: string;
+  examId: string;
 }
 
 // Function to safely render HTML with image path prefixing
@@ -111,7 +124,12 @@ export default function ExamPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showConfirmFinish, setShowConfirmFinish] = useState(false);
-  const [alreadyParticipated, setAlreadyParticipated] = useState(false);
+  const [examFinished, setExamFinished] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+  const [firstEntryTime, setFirstEntryTime] = useState<Date | null>(null);
+  const [persianEntryDateTime, setPersianEntryDateTime] = useState<
+    string | null
+  >(null);
 
   // Convert seconds to mm:ss format
   const formatTime = (totalSeconds: number) => {
@@ -123,6 +141,16 @@ export default function ExamPage({
       .padStart(2, "0")}`;
   };
 
+  // Calculate remaining time based on entry time and exam duration
+  const calculateRemainingTime = (entryTime: Date, durationMinutes: number) => {
+    const examEndTime = new Date(
+      entryTime.getTime() + durationMinutes * 60 * 1000
+    );
+    const now = new Date();
+    const diffMs = examEndTime.getTime() - now.getTime();
+    return Math.max(0, Math.floor(diffMs / 1000));
+  };
+
   // Fetch exam details and questions
   useEffect(() => {
     const fetchExamData = async () => {
@@ -132,8 +160,37 @@ export default function ExamPage({
         const checkData = await checkResponse.json();
 
         if (checkData.participated) {
-          setAlreadyParticipated(true);
-          return;
+          if (checkData.isFinished) {
+            setExamFinished(true);
+            return;
+          }
+
+          // Load entry time if available
+          if (checkData.entryTime) {
+            setFirstEntryTime(new Date(checkData.entryTime));
+          }
+
+          // Load Persian date/time if available
+          if (checkData.persianEntryDate) {
+            setPersianEntryDateTime(checkData.persianEntryDate);
+          }
+
+          // Load saved answers if available
+          if (checkData.answers && checkData.answers.length > 0) {
+            const answersMap: Record<string, string> = {};
+            checkData.answers.forEach((response: StudentResponse) => {
+              answersMap[response.questionId] = response.answer;
+            });
+            setAnswers(answersMap);
+
+            setLastSaveTime(dayjs().locale("fa").format("HH:mm:ss"));
+          }
+        } else {
+          // Set current time as first entry time for new participants
+          setFirstEntryTime(new Date());
+          setPersianEntryDateTime(
+            dayjs().locale("fa").format("YYYY/MM/DD HH:mm:ss")
+          );
         }
 
         // Fetch exam details
@@ -144,14 +201,25 @@ export default function ExamPage({
         const examData = await examResponse.json();
         setExam(examData);
 
-        // Initialize timer
+        // Initialize timer based on first entry time if available
         if (
           examData.data.allQuestionsInOnePage?.isActive &&
           examData.data.allQuestionsInOnePage?.examTime
         ) {
-          const minutes =
+          const durationMinutes =
             parseInt(examData.data.allQuestionsInOnePage.examTime, 10) || 60;
-          setTimeLeft(minutes * 60);
+
+          if (firstEntryTime) {
+            // Calculate remaining time based on first entry time
+            const remainingSeconds = calculateRemainingTime(
+              firstEntryTime,
+              durationMinutes
+            );
+            setTimeLeft(remainingSeconds);
+          } else {
+            // Set full duration for new participants
+            setTimeLeft(durationMinutes * 60);
+          }
         }
 
         // Fetch questions
@@ -183,6 +251,19 @@ export default function ExamPage({
     fetchExamData();
   }, [id]);
 
+  // Update timer when firstEntryTime is set
+  useEffect(() => {
+    if (!firstEntryTime || !exam?.data.allQuestionsInOnePage?.isActive) return;
+
+    const durationMinutes =
+      parseInt(exam.data.allQuestionsInOnePage.examTime, 10) || 60;
+    const remainingSeconds = calculateRemainingTime(
+      firstEntryTime,
+      durationMinutes
+    );
+    setTimeLeft(remainingSeconds);
+  }, [firstEntryTime, exam]);
+
   // Timer countdown
   useEffect(() => {
     if (timeLeft <= 0 || !exam?.data.allQuestionsInOnePage?.isActive) return;
@@ -201,6 +282,17 @@ export default function ExamPage({
     return () => clearInterval(timer);
   }, [timeLeft, exam]);
 
+  // Auto-save answers every 30 seconds
+  useEffect(() => {
+    if (!exam || Object.keys(answers).length === 0 || examFinished) return;
+
+    const autoSaveTimer = setInterval(() => {
+      saveTemporarily(false);
+    }, 30000);
+
+    return () => clearInterval(autoSaveTimer);
+  }, [answers, exam, examFinished]);
+
   // Handle answer changes
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((prev) => ({
@@ -210,8 +302,8 @@ export default function ExamPage({
   };
 
   // Save temporarily
-  const saveTemporarily = async () => {
-    await saveExam(false);
+  const saveTemporarily = async (showToast = true) => {
+    await saveExam(false, showToast);
   };
 
   // Finalize exam
@@ -220,7 +312,7 @@ export default function ExamPage({
   };
 
   // Save exam to database
-  const saveExam = async (isFinished: boolean) => {
+  const saveExam = async (isFinished: boolean, showToast = true) => {
     setSaving(true);
     try {
       // Format answers for the database
@@ -230,26 +322,20 @@ export default function ExamPage({
         examId: id,
       }));
 
-      // Save responses
-      const responseResult = await fetch("/api/examstudentsresponse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ responses }),
-      });
+      // Prepare entry time data
+      const entryTimeData = firstEntryTime
+        ? firstEntryTime.toISOString()
+        : new Date().toISOString();
 
-      if (!responseResult.ok) {
-        throw new Error("Failed to save answers");
-      }
-
-      // Save exam info
+      // Save exam info with responses
       const infoResult = await fetch("/api/examstudentsinfo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           examId: id,
-          entryTime: new Date().toISOString(),
-          entryDate: new Date().toISOString(),
+          entryTime: entryTimeData,
           isFinished,
+          responses,
         }),
       });
 
@@ -257,17 +343,26 @@ export default function ExamPage({
         throw new Error("Failed to save exam info");
       }
 
-      toast.success(
-        isFinished ? "آزمون با موفقیت ثبت شد" : "پاسخ‌ها موقتاً ذخیره شدند"
-      );
+      // Update last save time
+      setLastSaveTime(dayjs().locale("fa").format("HH:mm:ss"));
+
+      if (showToast) {
+        toast.success(
+          isFinished ? "آزمون با موفقیت ثبت شد" : "پاسخ‌ها موقتاً ذخیره شدند"
+        );
+      }
 
       if (isFinished) {
+        // Set exam as finished locally
+        setExamFinished(true);
         // Redirect back to exams page if finished
         router.push("/admin/onlineexam");
       }
     } catch (error) {
       console.error("Error saving exam:", error);
-      toast.error("خطا در ذخیره پاسخ‌ها");
+      if (showToast) {
+        toast.error("خطا در ذخیره پاسخ‌ها");
+      }
     } finally {
       setSaving(false);
       setShowConfirmFinish(false);
@@ -285,7 +380,7 @@ export default function ExamPage({
     );
   }
 
-  if (alreadyParticipated) {
+  if (examFinished) {
     return (
       <div className="container mx-auto max-w-7xl p-4" dir="rtl">
         <Card className="shadow-lg border-orange-300">
@@ -403,6 +498,16 @@ export default function ExamPage({
               <p className="text-sm text-blue-600 mt-1">
                 کد آزمون: {exam.data.examCode}
               </p>
+              {persianEntryDateTime && (
+                <p className="text-xs text-gray-600 mt-1">
+                  زمان شروع: {persianEntryDateTime}
+                </p>
+              )}
+              {lastSaveTime && (
+                <p className="text-xs text-gray-600 mt-1">
+                  آخرین ذخیره: {lastSaveTime}
+                </p>
+              )}
             </div>
           </div>
           <div className="bg-white border border-blue-300 shadow-sm text-blue-800 px-4 py-2 rounded-md font-mono text-lg flex items-center">
@@ -582,7 +687,7 @@ export default function ExamPage({
       <div className="flex justify-between gap-4 mt-8">
         <Button
           variant="outline"
-          onClick={saveTemporarily}
+          onClick={() => saveTemporarily()}
           disabled={saving}
           className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-sm"
         >
