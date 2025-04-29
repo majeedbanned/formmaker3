@@ -43,6 +43,7 @@ interface Question {
   };
   category: string;
   score: number;
+  responseTime?: number; // Time in seconds for this question
 }
 
 interface Exam {
@@ -54,6 +55,10 @@ interface Exam {
     allQuestionsInOnePage: {
       examTime: string;
       isActive: boolean;
+    };
+    separatePages?: {
+      isActive: boolean;
+      questionTime: string;
     };
     settings: {
       questionsDirection: string;
@@ -131,6 +136,12 @@ export default function ExamPage({
     string | null
   >(null);
 
+  // For separate pages mode
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(0);
+  const [isQuestionTimerActive, setIsQuestionTimerActive] =
+    useState<boolean>(false);
+
   // Convert seconds to mm:ss format
   const formatTime = (totalSeconds: number) => {
     if (totalSeconds <= 0) return "00:00";
@@ -150,6 +161,108 @@ export default function ExamPage({
     const diffMs = examEndTime.getTime() - now.getTime();
     return Math.max(0, Math.floor(diffMs / 1000));
   };
+
+  // Calculate remaining time for a question
+  const calculateQuestionRemainingTime = (
+    questionResponseTime?: number,
+    defaultTime?: string
+  ) => {
+    // First check if the question has its own response time
+    if (questionResponseTime) {
+      return questionResponseTime;
+    }
+    // Otherwise use the default time from exam settings
+    if (defaultTime) {
+      return parseInt(defaultTime, 10);
+    }
+    // Fallback to 60 seconds
+    return 60;
+  };
+
+  // Start the timer for the current question
+  const startQuestionTimer = (questionIndex: number) => {
+    const currentQuestion = questions[questionIndex];
+    if (!currentQuestion) return;
+
+    const defaultTime = exam?.data.separatePages?.questionTime;
+    const questionTime = calculateQuestionRemainingTime(
+      currentQuestion.responseTime,
+      defaultTime
+    );
+
+    setQuestionTimeLeft(questionTime);
+    setIsQuestionTimerActive(true);
+  };
+
+  // Move to the next question
+  const moveToNextQuestion = () => {
+    // Save the current answer first
+    saveTemporarily(false);
+
+    // If we're at the last question, finish the exam
+    if (currentQuestionIndex >= questions.length - 1) {
+      setShowConfirmFinish(true);
+      return;
+    }
+
+    // Otherwise move to the next question
+    setCurrentQuestionIndex(currentQuestionIndex + 1);
+    setIsQuestionTimerActive(false);
+
+    // Start the timer for the next question
+    startQuestionTimer(currentQuestionIndex + 1);
+  };
+
+  // Auto-move to next question when time expires
+  useEffect(() => {
+    if (
+      !isQuestionTimerActive ||
+      questionTimeLeft > 0 ||
+      !exam?.data.separatePages?.isActive
+    )
+      return;
+
+    // Time's up for this question
+    if (currentQuestionIndex >= questions.length - 1) {
+      // If this is the last question, automatically finish the exam
+      saveExam(true);
+    } else {
+      // Otherwise move to the next question
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+
+      // Start the timer for the next question after a short delay
+      setTimeout(() => {
+        startQuestionTimer(currentQuestionIndex + 1);
+      }, 300);
+    }
+  }, [
+    questionTimeLeft,
+    isQuestionTimerActive,
+    currentQuestionIndex,
+    questions.length,
+  ]);
+
+  // Question timer countdown
+  useEffect(() => {
+    if (
+      !isQuestionTimerActive ||
+      questionTimeLeft <= 0 ||
+      !exam?.data.separatePages?.isActive
+    )
+      return;
+
+    const timer = setInterval(() => {
+      setQuestionTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [questionTimeLeft, isQuestionTimerActive, exam]);
 
   // Fetch exam details and questions
   useEffect(() => {
@@ -230,6 +343,11 @@ export default function ExamPage({
         const questionsData: Question[] = await questionsResponse.json();
         setQuestions(questionsData);
 
+        // Start the question timer if in separate pages mode
+        if (examData.data.separatePages?.isActive && questionsData.length > 0) {
+          startQuestionTimer(0);
+        }
+
         // Extract unique categories
         const uniqueCategories = [
           ...new Set(questionsData.map((q) => q.category)),
@@ -251,7 +369,18 @@ export default function ExamPage({
     fetchExamData();
   }, [id]);
 
-  // Update timer when firstEntryTime is set
+  // Auto-save answers every 30 seconds
+  useEffect(() => {
+    if (!exam || Object.keys(answers).length === 0 || examFinished) return;
+
+    const autoSaveTimer = setInterval(() => {
+      saveTemporarily(false);
+    }, 30000);
+
+    return () => clearInterval(autoSaveTimer);
+  }, [answers, exam, examFinished]);
+
+  // Update timer when firstEntryTime is set for allQuestionsInOnePage mode
   useEffect(() => {
     if (!firstEntryTime || !exam?.data.allQuestionsInOnePage?.isActive) return;
 
@@ -264,7 +393,7 @@ export default function ExamPage({
     setTimeLeft(remainingSeconds);
   }, [firstEntryTime, exam]);
 
-  // Timer countdown
+  // Timer countdown for allQuestionsInOnePage mode
   useEffect(() => {
     if (timeLeft <= 0 || !exam?.data.allQuestionsInOnePage?.isActive) return;
 
@@ -281,17 +410,6 @@ export default function ExamPage({
 
     return () => clearInterval(timer);
   }, [timeLeft, exam]);
-
-  // Auto-save answers every 30 seconds
-  useEffect(() => {
-    if (!exam || Object.keys(answers).length === 0 || examFinished) return;
-
-    const autoSaveTimer = setInterval(() => {
-      saveTemporarily(false);
-    }, 30000);
-
-    return () => clearInterval(autoSaveTimer);
-  }, [answers, exam, examFinished]);
 
   // Handle answer changes
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -445,6 +563,378 @@ export default function ExamPage({
     );
   }
 
+  // Separate Pages Mode
+  if (exam.data.separatePages?.isActive) {
+    const currentQuestion = questions[currentQuestionIndex];
+
+    if (!currentQuestion) {
+      return (
+        <div className="container mx-auto max-w-7xl p-4" dir="rtl">
+          <Card className="shadow-lg border-red-300">
+            <CardHeader className="bg-red-50">
+              <CardTitle className="text-xl text-red-800 flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="ml-2 h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                سوالی یافت نشد
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-center">
+              <p className="mb-4 text-gray-700">
+                هیچ سوالی برای این آزمون تعریف نشده است.
+              </p>
+              <Button
+                onClick={() => router.push("/admin/onlineexam")}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                بازگشت به لیست آزمون‌ها
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return (
+      <div className="container mx-auto pb-10 rtl" dir="rtl">
+        <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
+          <CardHeader className="bg-gradient-to-l from-blue-100/80 to-blue-50 flex flex-row justify-between items-center border-b border-blue-100">
+            <div className="flex items-center">
+              <div className="rounded-full bg-blue-600/10 p-2 mr-2">
+                <BookOpenIcon className="ml-2 h-7 w-7 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl text-blue-800 font-bold">
+                  {exam.data.examName}
+                </CardTitle>
+                <p className="text-sm text-blue-600 mt-1">
+                  کد آزمون: {exam.data.examCode}
+                </p>
+                <div className="flex items-center space-x-2 space-x-reverse mt-1">
+                  <p className="text-xs text-gray-600 flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 ml-1"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                    </svg>
+                    سوال {currentQuestionIndex + 1} از {questions.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white border border-blue-200 shadow-md text-blue-800 px-5 py-3 rounded-lg font-mono text-lg flex items-center">
+              <ClockIcon className="ml-2 h-5 w-5 text-blue-600" />
+              <span className="font-bold">{formatTime(questionTimeLeft)}</span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {exam.data.settings?.preexammessage &&
+              currentQuestionIndex === 0 && (
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-6 text-blue-800 shadow-inner">
+                  <div className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 ml-2 mt-0.5 flex-shrink-0 text-blue-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="16" />
+                      <line x1="12" y1="16" x2="12" y2="16" />
+                    </svg>
+                    <p>{exam.data.settings.preexammessage}</p>
+                  </div>
+                </div>
+              )}
+
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="flex justify-between mb-6 pb-3 border-b border-gray-100">
+                <h3 className="font-semibold text-lg text-gray-800 flex items-center">
+                  <span className="flex items-center justify-center rounded-full bg-blue-100 text-blue-800 w-8 h-8 ml-3 text-sm font-bold">
+                    {currentQuestionIndex + 1}
+                  </span>
+                  <span>
+                    {currentQuestion.score > 0 && (
+                      <span className="text-blue-600 mr-2 font-medium">
+                        ({currentQuestion.score} نمره)
+                      </span>
+                    )}
+                  </span>
+                </h3>
+                <span className="text-xs font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full">
+                  {currentQuestion.category === "test1"
+                    ? "تستی"
+                    : currentQuestion.category === "essay"
+                    ? "تشریحی"
+                    : currentQuestion.category}
+                </span>
+              </div>
+
+              <div
+                className="mb-6 leading-relaxed text-gray-700"
+                dangerouslySetInnerHTML={renderHTML(
+                  currentQuestion.question.question
+                )}
+              />
+
+              {/* Multiple choice questions */}
+              {currentQuestion.question.type === " تستی " && (
+                <RadioGroup
+                  value={answers[currentQuestion._id] || ""}
+                  onValueChange={(value) =>
+                    handleAnswerChange(currentQuestion._id, value)
+                  }
+                  className="space-y-4"
+                >
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                    <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                      <RadioGroupItem
+                        value="1"
+                        id={`${currentQuestion._id}-option1`}
+                        className="ml-3 mt-1"
+                      />
+                      <Label
+                        htmlFor={`${currentQuestion._id}-option1`}
+                        className="cursor-pointer w-full text-gray-700"
+                      >
+                        <div
+                          dangerouslySetInnerHTML={renderHTML(
+                            currentQuestion.question.option1
+                          )}
+                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                      <RadioGroupItem
+                        value="2"
+                        id={`${currentQuestion._id}-option2`}
+                        className="ml-3 mt-1"
+                      />
+                      <Label
+                        htmlFor={`${currentQuestion._id}-option2`}
+                        className="cursor-pointer w-full text-gray-700"
+                      >
+                        <div
+                          dangerouslySetInnerHTML={renderHTML(
+                            currentQuestion.question.option2
+                          )}
+                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                      <RadioGroupItem
+                        value="3"
+                        id={`${currentQuestion._id}-option3`}
+                        className="ml-3 mt-1"
+                      />
+                      <Label
+                        htmlFor={`${currentQuestion._id}-option3`}
+                        className="cursor-pointer w-full text-gray-700"
+                      >
+                        <div
+                          dangerouslySetInnerHTML={renderHTML(
+                            currentQuestion.question.option3
+                          )}
+                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
+                      <RadioGroupItem
+                        value="4"
+                        id={`${currentQuestion._id}-option4`}
+                        className="ml-3 mt-1"
+                      />
+                      <Label
+                        htmlFor={`${currentQuestion._id}-option4`}
+                        className="cursor-pointer w-full text-gray-700"
+                      >
+                        <div
+                          dangerouslySetInnerHTML={renderHTML(
+                            currentQuestion.question.option4
+                          )}
+                        />
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              )}
+
+              {/* Essay questions */}
+              {currentQuestion.question.type === " تشریحی " && (
+                <Textarea
+                  placeholder="پاسخ خود را اینجا بنویسید..."
+                  className="min-h-[150px] w-full border-gray-200 focus:border-blue-300 focus:ring-blue-200 rounded-lg"
+                  value={answers[currentQuestion._id] || ""}
+                  onChange={(e) =>
+                    handleAnswerChange(currentQuestion._id, e.target.value)
+                  }
+                />
+              )}
+
+              <div className="flex justify-between mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => saveTemporarily()}
+                  disabled={saving}
+                  className="border-blue-500 text-blue-600 hover:bg-blue-50 px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 ml-2"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  ذخیره موقت
+                </Button>
+                <Button
+                  onClick={moveToNextQuestion}
+                  disabled={saving}
+                  className={`${
+                    currentQuestionIndex >= questions.length - 1
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } px-6 py-5 rounded-lg shadow-md hover:shadow-lg transition-all`}
+                >
+                  {currentQuestionIndex >= questions.length - 1 ? (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 ml-2"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      پایان و ثبت آزمون
+                    </>
+                  ) : (
+                    <>
+                      سوال بعدی
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                      </svg>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-center mt-6">
+          <div className="flex items-center justify-center w-full max-w-lg bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full"
+                style={{
+                  width: `${
+                    ((currentQuestionIndex + 1) / questions.length) * 100
+                  }%`,
+                }}
+              ></div>
+            </div>
+            <span className="mr-2 text-sm text-gray-600">
+              {currentQuestionIndex + 1} / {questions.length}
+            </span>
+          </div>
+        </div>
+
+        <AlertDialog
+          open={showConfirmFinish}
+          onOpenChange={setShowConfirmFinish}
+        >
+          <AlertDialogContent
+            dir="rtl"
+            className="bg-white rounded-xl max-w-md mx-auto shadow-2xl border-0"
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl text-gray-800 font-bold flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 ml-2 text-amber-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                تایید پایان آزمون
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                آیا از پایان دادن به آزمون اطمینان دارید؟ پس از تایید، امکان
+                ویرایش پاسخ‌ها وجود نخواهد داشت.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
+              <AlertDialogAction
+                onClick={() => {
+                  setShowConfirmFinish(false);
+                  finishExam();
+                }}
+                className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
+              >
+                تایید و پایان آزمون
+              </AlertDialogAction>
+              <AlertDialogCancel className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-5 py-2 rounded-lg transition-colors">
+                انصراف
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
   // Only continue if allQuestionsInOnePage is active
   if (!exam.data.allQuestionsInOnePage?.isActive) {
     return (
@@ -485,6 +975,7 @@ export default function ExamPage({
     );
   }
 
+  // Original All Questions In One Page Mode
   return (
     <div className="container mx-auto pb-10 rtl" dir="rtl">
       <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
@@ -1004,7 +1495,10 @@ export default function ExamPage({
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-row-reverse justify-start gap-3 mt-6">
             <AlertDialogAction
-              onClick={finishExam}
+              onClick={() => {
+                setShowConfirmFinish(false);
+                finishExam();
+              }}
               className="bg-green-600 hover:bg-green-700 px-5 py-2 rounded-lg text-white transition-colors"
             >
               تایید و پایان آزمون
