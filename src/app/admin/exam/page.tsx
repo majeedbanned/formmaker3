@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon } from "@heroicons/react/24/outline";
+import { DocumentIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { useAuth } from "@/hooks/useAuth";
+import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -43,6 +44,9 @@ const layout: LayoutSettings = {
 function StudentsPageContent() {
   const { initialFilter } = useInitialFilter();
   const { user, isLoading } = useAuth();
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [selectedExamId, setSelectedExamId] = useState("");
+
   console.log("user", user);
   if (isLoading) {
     return (
@@ -615,6 +619,7 @@ function StudentsPageContent() {
       },
     },
   ] as const;
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -624,6 +629,14 @@ function StudentsPageContent() {
           formStructure={sampleFormStructure}
           collectionName="exam"
           rowActions={[
+            {
+              label: "مشاهده شرکت‌کنندگان",
+              action: (examId) => {
+                setSelectedExamId(examId);
+                setShowParticipantsModal(true);
+              },
+              icon: UsersIcon,
+            },
             {
               label: "افزودن سوالات ازبانک سوالات",
               action: (examId) => {
@@ -663,6 +676,13 @@ function StudentsPageContent() {
           ]}
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
+        />
+
+        {/* Exam Participants Modal */}
+        <ExamParticipantsModal
+          isOpen={showParticipantsModal}
+          onClose={() => setShowParticipantsModal(false)}
+          examId={selectedExamId}
         />
       </div>
     </main>
