@@ -23,6 +23,7 @@ import { ClockIcon, BookOpenIcon, CheckCircleIcon } from "lucide-react";
 import dayjs from "dayjs";
 import jalaliday from "jalaliday";
 import "dayjs/locale/fa";
+import { MathJax } from "better-react-mathjax";
 
 // Initialize dayjs
 dayjs.extend(jalaliday);
@@ -950,14 +951,14 @@ export default function ExamPage({
                     : currentQuestion.category}
                 </span>
               </div>
-
-              <div
-                className="mb-6 leading-relaxed text-gray-700"
-                dangerouslySetInnerHTML={renderHTML(
-                  currentQuestion.question.question
-                )}
-              />
-
+              <MathJax>
+                <div
+                  className="mb-6 leading-relaxed text-gray-700"
+                  dangerouslySetInnerHTML={renderHTML(
+                    currentQuestion.question.question
+                  )}
+                />
+              </MathJax>
               {/* Multiple choice questions */}
               {currentQuestion.question.type === " تستی " && (
                 <RadioGroup
@@ -978,11 +979,13 @@ export default function ExamPage({
                         htmlFor={`${currentQuestion._id}-option1`}
                         className="cursor-pointer w-full text-gray-700"
                       >
-                        <div
-                          dangerouslySetInnerHTML={renderHTML(
-                            currentQuestion.question.option1
-                          )}
-                        />
+                        <MathJax>
+                          <div
+                            dangerouslySetInnerHTML={renderHTML(
+                              currentQuestion.question.option1
+                            )}
+                          />
+                        </MathJax>
                       </Label>
                     </div>
                     <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
@@ -995,11 +998,13 @@ export default function ExamPage({
                         htmlFor={`${currentQuestion._id}-option2`}
                         className="cursor-pointer w-full text-gray-700"
                       >
-                        <div
-                          dangerouslySetInnerHTML={renderHTML(
-                            currentQuestion.question.option2
-                          )}
-                        />
+                        <MathJax>
+                          <div
+                            dangerouslySetInnerHTML={renderHTML(
+                              currentQuestion.question.option2
+                            )}
+                          />
+                        </MathJax>
                       </Label>
                     </div>
                     <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
@@ -1012,11 +1017,13 @@ export default function ExamPage({
                         htmlFor={`${currentQuestion._id}-option3`}
                         className="cursor-pointer w-full text-gray-700"
                       >
-                        <div
-                          dangerouslySetInnerHTML={renderHTML(
-                            currentQuestion.question.option3
-                          )}
-                        />
+                        <MathJax>
+                          <div
+                            dangerouslySetInnerHTML={renderHTML(
+                              currentQuestion.question.option3
+                            )}
+                          />
+                        </MathJax>
                       </Label>
                     </div>
                     <div className="flex items-start bg-gray-50 hover:bg-blue-50 p-4 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 hover:shadow-sm">
@@ -1029,11 +1036,13 @@ export default function ExamPage({
                         htmlFor={`${currentQuestion._id}-option4`}
                         className="cursor-pointer w-full text-gray-700"
                       >
-                        <div
-                          dangerouslySetInnerHTML={renderHTML(
-                            currentQuestion.question.option4
-                          )}
-                        />
+                        <MathJax>
+                          <div
+                            dangerouslySetInnerHTML={renderHTML(
+                              currentQuestion.question.option4
+                            )}
+                          />
+                        </MathJax>
                       </Label>
                     </div>
                   </div>

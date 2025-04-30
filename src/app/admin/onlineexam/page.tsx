@@ -31,6 +31,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChartBarIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
 /* ───── Day.js config ──────────────────────────────────────────────────── */
@@ -54,6 +55,7 @@ interface ExamData {
     questionsDirection?: string;
     preexammessage?: string;
     postexammessage?: string;
+    showanswersafterexam?: boolean;
   };
   [key: string]: string | number | boolean | object | null | undefined;
 }
@@ -240,6 +242,9 @@ export default function OnlineExamPage() {
                     const canShowResults =
                       userFinished &&
                       data.settings?.showScoreAfterExam === true;
+                    const canShowAnswersheet =
+                      userFinished &&
+                      data.settings?.showanswersafterexam === true;
 
                     return (
                       <TableRow key={_id}>
@@ -291,6 +296,22 @@ export default function OnlineExamPage() {
                                 >
                                   <ChartBarIcon className="h-4 w-4 ml-1" />
                                   مشاهده نتایج
+                                </Button>
+                              </Link>
+                            )}
+
+                            {canShowAnswersheet && (
+                              <Link
+                                href={`/admin/onlineexam/answersheet/${_id}`}
+                                className="mr-2"
+                              >
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="bg-purple-100 text-purple-700 hover:bg-purple-200"
+                                >
+                                  <DocumentTextIcon className="h-4 w-4 ml-1" />
+                                  مشاهده پاسخنامه
                                 </Button>
                               </Link>
                             )}
