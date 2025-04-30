@@ -78,6 +78,38 @@ interface CategoryStats {
   earnedScore: number;
   scorePercentage: number;
   rank?: number;
+  percentile?: number;
+  comparisonToAverage?: number; // Percentage points above/below average
+}
+
+// Add these type extensions to the Participant type
+type DifficultyLevel = "easy" | "medium" | "hard";
+
+type DifficultyAnalysis = Record<
+  DifficultyLevel,
+  {
+    total: number;
+    correct: number;
+    percentage: number;
+  }
+>;
+
+type VisualAnswersByCategory = Record<
+  string,
+  Array<{
+    questionId: string;
+    isCorrect: boolean | null;
+    questionNumber: number;
+    maxScore: number;
+    earnedScore: number;
+  }>
+>;
+
+// In the Participant interface, add these properties at the end
+interface Participant {
+  // ... existing properties ...
+  difficultyAnalysis?: DifficultyAnalysis;
+  visualAnswers?: VisualAnswersByCategory;
 }
 
 export default function PrintExamResults({
@@ -278,19 +310,215 @@ export default function PrintExamResults({
       });
     });
 
+    // Calculate class averages for each category
+    const categoryAverages: Record<
+      string,
+      {
+        avgScore: number;
+        totalParticipants: number;
+        maxPossible: number;
+        scoreDistribution: Record<string, number>; // For percentile calculation
+      }
+    > = {};
+
+    // Initialize averages
+    questions.forEach((question) => {
+      const category = question.category;
+      if (!categoryAverages[category]) {
+        categoryAverages[category] = {
+          avgScore: 0,
+          totalParticipants: 0,
+          maxPossible: 0,
+          scoreDistribution: {},
+        };
+      }
+    });
+
+    // Sum up scores for averages
+    ranked.forEach((participant) => {
+      Object.entries(participant.categoryStats).forEach(([category, stats]) => {
+        if (!categoryAverages[category]) {
+          categoryAverages[category] = {
+            avgScore: 0,
+            totalParticipants: 0,
+            maxPossible: 0,
+            scoreDistribution: {},
+          };
+        }
+
+        categoryAverages[category].avgScore += stats.earnedScore;
+        categoryAverages[category].totalParticipants += 1;
+        categoryAverages[category].maxPossible = stats.maxScore; // All participants have same max possible
+
+        // Record score for percentile calculation
+        const scoreKey = stats.earnedScore.toString();
+        categoryAverages[category].scoreDistribution[scoreKey] =
+          (categoryAverages[category].scoreDistribution[scoreKey] || 0) + 1;
+      });
+    });
+
+    // Calculate final averages
+    Object.keys(categoryAverages).forEach((category) => {
+      const data = categoryAverages[category];
+      if (data.totalParticipants > 0) {
+        data.avgScore = data.avgScore / data.totalParticipants;
+      }
+    });
+
+    // Calculate relative performance and percentiles
+    ranked.forEach((participant) => {
+      Object.entries(participant.categoryStats).forEach(([category, stats]) => {
+        const avgData = categoryAverages[category];
+
+        // Calculate comparison to average (percentage points above/below)
+        if (avgData && avgData.maxPossible > 0) {
+          const participantPercentage =
+            (stats.earnedScore / stats.maxScore) * 100;
+          const avgPercentage = (avgData.avgScore / avgData.maxPossible) * 100;
+          stats.comparisonToAverage = Math.round(
+            participantPercentage - avgPercentage
+          );
+        }
+
+        // Calculate percentile
+        if (avgData && avgData.totalParticipants > 0) {
+          // Count how many scores are below this participant's score
+          let countBelow = 0;
+          Object.entries(avgData.scoreDistribution).forEach(
+            ([scoreStr, count]) => {
+              const score = parseFloat(scoreStr);
+              if (score < stats.earnedScore) {
+                countBelow += count;
+              }
+            }
+          );
+
+          // Calculate percentile (percentage of scores below this one)
+          stats.percentile = Math.round(
+            (countBelow / avgData.totalParticipants) * 100
+          );
+        }
+      });
+    });
+
+    // Calculate performance by difficulty level
+    ranked.forEach((participant) => {
+      // Create difficulty analysis object
+      const difficultyAnalysis: DifficultyAnalysis = {
+        easy: { total: 0, correct: 0, percentage: 0 },
+        medium: { total: 0, correct: 0, percentage: 0 },
+        hard: { total: 0, correct: 0, percentage: 0 },
+      };
+
+      // Analyze each answer
+      participant.answers.forEach((answer) => {
+        const question = questions.find((q) => q._id === answer.questionId);
+        if (question && question.question.difficulty) {
+          // Categorize by difficulty level
+          let difficultyLevel: DifficultyLevel = "medium"; // Default
+
+          // Map the difficulty text to our categories
+          const diffText = question.question.difficulty.toLowerCase();
+          if (
+            diffText.includes("آسان") ||
+            diffText.includes("ساده") ||
+            diffText.includes("easy")
+          ) {
+            difficultyLevel = "easy";
+          } else if (
+            diffText.includes("دشوار") ||
+            diffText.includes("سخت") ||
+            diffText.includes("hard")
+          ) {
+            difficultyLevel = "hard";
+          }
+
+          // Count total and correct answers by difficulty
+          difficultyAnalysis[difficultyLevel].total += 1;
+          if (answer.isCorrect === true) {
+            difficultyAnalysis[difficultyLevel].correct += 1;
+          }
+        }
+      });
+
+      // Calculate percentages
+      Object.keys(difficultyAnalysis).forEach((level) => {
+        const key = level as DifficultyLevel;
+        const data = difficultyAnalysis[key];
+        if (data.total > 0) {
+          data.percentage = Math.round((data.correct / data.total) * 100);
+        }
+      });
+
+      // Add difficulty analysis to participant data
+      participant.difficultyAnalysis = difficultyAnalysis;
+    });
+
+    // Organize answers for visual representation
+    ranked.forEach((participant) => {
+      // Group answers by category for visualization
+      const answersByCategory: Record<
+        string,
+        Array<{
+          questionId: string;
+          isCorrect: boolean | null;
+          questionNumber: number;
+          maxScore: number;
+          earnedScore: number;
+        }>
+      > = {};
+
+      // Initialize categories
+      questions.forEach((question) => {
+        if (!answersByCategory[question.category]) {
+          answersByCategory[question.category] = [];
+        }
+      });
+
+      // Map questions to their sequence numbers
+      const questionSequence: Record<string, number> = {};
+      questions.forEach((question, index) => {
+        questionSequence[question._id] = index + 1;
+      });
+
+      // Organize participant answers by category
+      participant.answers.forEach((answer) => {
+        const question = questions.find((q) => q._id === answer.questionId);
+        if (question) {
+          const category = question.category;
+          if (!answersByCategory[category]) {
+            answersByCategory[category] = [];
+          }
+
+          answersByCategory[category].push({
+            questionId: answer.questionId,
+            isCorrect: answer.isCorrect,
+            questionNumber: questionSequence[answer.questionId],
+            maxScore: answer.maxScore,
+            earnedScore: answer.earnedScore,
+          });
+        }
+      });
+
+      // Sort answers by question number within each category
+      Object.keys(answersByCategory).forEach((category) => {
+        answersByCategory[category].sort(
+          (a, b) => a.questionNumber - b.questionNumber
+        );
+      });
+
+      // Add to participant data
+      participant.visualAnswers = answersByCategory;
+    });
+
     setRankedParticipants(ranked);
   };
 
   const handlePrint = useReactToPrint({
+    // @ts-expect-error - Known issue with react-to-print types in Next.js environment
+    // content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `${examInfo?.data.examName || "Exam"} Results`,
-    // @ts-expect-error - Type definition is outdated, 'content' is a valid property
-    content: () => printRef.current,
-    onBeforeGetContent: () => {
-      return new Promise<void>((resolve) => {
-        resolve();
-      });
-    },
-    onAfterPrint: () => console.log("Printed successfully"),
   });
 
   if (isLoading) {
@@ -389,7 +617,8 @@ export default function PrintExamResults({
             بازگشت
           </Button>
           <Button
-            onClick={handlePrint}
+            //  onClick={handlePrint}
+            onClick={() => handlePrint()}
             className="flex items-center bg-blue-600 hover:bg-blue-700"
           >
             <PrinterIcon className="h-4 w-4 ml-1" />
@@ -542,14 +771,65 @@ export default function PrintExamResults({
                   </div>
                 </div>
 
+                {/* Difficulty Analysis */}
+                {participant.difficultyAnalysis && (
+                  <div className="mb-6">
+                    <h4 className="font-bold mb-2">
+                      تحلیل عملکرد بر اساس سختی سوالات
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="border rounded p-3 text-center bg-green-50">
+                        <p className="text-sm font-semibold text-gray-700">
+                          سوالات آسان
+                        </p>
+                        <p className="text-xl font-bold text-green-600">
+                          {participant.difficultyAnalysis.easy.percentage}%
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {participant.difficultyAnalysis.easy.correct} از{" "}
+                          {participant.difficultyAnalysis.easy.total} صحیح
+                        </p>
+                      </div>
+                      <div className="border rounded p-3 text-center bg-blue-50">
+                        <p className="text-sm font-semibold text-gray-700">
+                          سوالات متوسط
+                        </p>
+                        <p className="text-xl font-bold text-blue-600">
+                          {participant.difficultyAnalysis.medium.percentage}%
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {participant.difficultyAnalysis.medium.correct} از{" "}
+                          {participant.difficultyAnalysis.medium.total} صحیح
+                        </p>
+                      </div>
+                      <div className="border rounded p-3 text-center bg-red-50">
+                        <p className="text-sm font-semibold text-gray-700">
+                          سوالات سخت
+                        </p>
+                        <p className="text-xl font-bold text-red-600">
+                          {participant.difficultyAnalysis.hard.percentage}%
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {participant.difficultyAnalysis.hard.correct} از{" "}
+                          {participant.difficultyAnalysis.hard.total} صحیح
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Category breakdown */}
-                <div>
+                <div className="mb-6">
                   <h4 className="font-bold mb-2">عملکرد بر اساس دسته‌بندی</h4>
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="border p-2 text-right">دسته‌بندی</th>
                         <th className="border p-2 text-center">رتبه</th>
+                        <th className="border p-2 text-center">صدک</th>
+                        <th className="border p-2 text-center">
+                          نسبت به میانگین
+                        </th>
                         <th className="border p-2 text-center">صحیح</th>
                         <th className="border p-2 text-center">اشتباه</th>
                         <th className="border p-2 text-center">بدون پاسخ</th>
@@ -591,6 +871,29 @@ export default function PrintExamResults({
                               "-"
                             )}
                           </td>
+                          <td className="border p-2 text-center">
+                            {stats.percentile !== undefined
+                              ? `${stats.percentile}`
+                              : "-"}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {stats.comparisonToAverage !== undefined ? (
+                              <span
+                                className={
+                                  stats.comparisonToAverage > 0
+                                    ? "text-green-600 font-semibold"
+                                    : stats.comparisonToAverage < 0
+                                    ? "text-red-600 font-semibold"
+                                    : "text-gray-600"
+                                }
+                              >
+                                {stats.comparisonToAverage > 0 ? "+" : ""}
+                                {stats.comparisonToAverage}%
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
                           <td className="border p-2 text-center text-green-600">
                             {stats.correctCount}
                           </td>
@@ -611,6 +914,62 @@ export default function PrintExamResults({
                     </tbody>
                   </table>
                 </div>
+
+                {/* Visual answer representation */}
+                {participant.visualAnswers && (
+                  <div className="mb-6">
+                    <h4 className="font-bold mb-2">نمایش پاسخ‌های سوالات</h4>
+                    {Object.entries(participant.visualAnswers).map(
+                      ([category, answers]) => (
+                        <div key={`visual-${category}`} className="mb-4">
+                          <h5 className="font-medium text-gray-700 mb-2">
+                            {category}
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {answers.map((answer) => (
+                              <div
+                                key={`q-${answer.questionId}`}
+                                className={`
+                                w-10 h-10 rounded-lg border flex items-center justify-center
+                                ${
+                                  answer.isCorrect === true
+                                    ? "bg-green-100 border-green-500 text-green-800"
+                                    : answer.isCorrect === false
+                                    ? "bg-red-100 border-red-500 text-red-800"
+                                    : "bg-gray-100 border-gray-400 text-gray-800"
+                                }
+                              `}
+                                title={`سوال ${answer.questionNumber}: ${
+                                  answer.isCorrect === true
+                                    ? `پاسخ صحیح (${answer.earnedScore} از ${answer.maxScore})`
+                                    : answer.isCorrect === false
+                                    ? "پاسخ اشتباه"
+                                    : "بدون پاسخ"
+                                }`}
+                              >
+                                {answer.questionNumber}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    )}
+                    <div className="flex gap-4 mt-2 text-sm">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
+                        <span>پاسخ صحیح</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
+                        <span>پاسخ اشتباه</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
+                        <span>بدون پاسخ</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Performance chart (visual representation) */}
                 <div className="mt-6">
