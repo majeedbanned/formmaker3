@@ -19,6 +19,7 @@ import {
   MinusCircleIcon,
   ArrowLeftIcon,
   PrinterIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ interface Question {
   correctOptionId: string;
   category?: string;
   maxScore: number;
+  explanation?: string;
 }
 
 interface ExamData {
@@ -339,6 +341,22 @@ export default function ExamAnswersheet({
                       );
                     })}
                   </div>
+
+                  {question.explanation && (
+                    <div className="mt-4 bg-blue-50 p-3 rounded-md">
+                      <div className="flex items-start">
+                        <InformationCircleIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+                        <MathJax>
+                          <div
+                            className="mr-2 text-blue-700 text-sm"
+                            dangerouslySetInnerHTML={renderHTML(
+                              question.explanation
+                            )}
+                          ></div>
+                        </MathJax>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

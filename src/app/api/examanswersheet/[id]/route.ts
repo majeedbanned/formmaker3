@@ -135,6 +135,7 @@ export async function GET(
         correctOptionId: correctOptionId,
         category: category,
         maxScore: q.score || 1, // Use the score from the main document or default to 1
+        explanation: questionData.questionkey || ""
       };
     });
 
