@@ -112,6 +112,16 @@ interface Participant {
   visualAnswers?: VisualAnswersByCategory;
 }
 
+// Helper function to convert numbers to Persian digits
+const toPersianDigits = (text: string | number | undefined): string => {
+  if (text === undefined) return "";
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(text).replace(
+    /[0-9]/g,
+    (match) => persianDigits[parseInt(match)]
+  );
+};
+
 export default function PrintExamResults({
   params,
 }: {
@@ -532,7 +542,7 @@ export default function PrintExamResults({
   if (error) {
     return (
       <div className="container py-8 text-center" dir="rtl">
-        <h1 className="text-2xl  text-red-600">خطا در بارگذاری اطلاعات</h1>
+        <h1 className="text-2xl text-red-600">خطا در بارگذاری اطلاعات</h1>
         <p className="mt-2">{error}</p>
         <Button
           onClick={() => router.back()}
@@ -597,10 +607,11 @@ export default function PrintExamResults({
     <div className="container py-8" dir="rtl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl ">نتایج آزمون - نسخه چاپی</h1>
+          <h1 className="text-2xl">نتایج آزمون - نسخه چاپی</h1>
           {examInfo && (
             <p className="text-gray-500">
-              {examInfo.data.examName} (کد: {examInfo.data.examCode})
+              {examInfo.data.examName} (کد:{" "}
+              {toPersianDigits(examInfo.data.examCode)})
             </p>
           )}
         </div>
@@ -626,43 +637,49 @@ export default function PrintExamResults({
       <div ref={printRef} className="print-container">
         {/* Print-only header */}
         <div className="print-only mb-8 text-center">
-          <h1 className="text-2xl  mb-2">گزارش نتایج آزمون</h1>
+          <h1 className="text-2xl mb-2">گزارش نتایج آزمون</h1>
           {examInfo && (
             <div>
-              <p className="text-xl ">{examInfo.data.examName}</p>
-              <p>کد آزمون: {examInfo.data.examCode}</p>
+              <p className="text-xl">{examInfo.data.examName}</p>
+              <p>کد آزمون: {toPersianDigits(examInfo.data.examCode)}</p>
             </div>
           )}
         </div>
 
         {/* Summary statistics section - visible in both screen and print */}
         <div className="summary-stats mb-8 page-break-after">
-          <h2 className="text-xl  mb-4 border-b pb-2 print-large">
+          <h2 className="text-xl mb-4 border-b pb-2 print-large">
             آمار کلی آزمون
           </h2>
 
           {overallStats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print-grid-compact">
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className=" text-gray-600">تعداد شرکت‌کنندگان</h3>
-                <p className="text-2xl ">{overallStats.totalParticipants}</p>
+                <h3 className="text-gray-600">تعداد شرکت‌کنندگان</h3>
+                <p className="text-2xl">
+                  {toPersianDigits(overallStats.totalParticipants)}
+                </p>
                 <p className="text-sm text-gray-500">
-                  {overallStats.finishedParticipants} نفر تکمیل شده (
-                  {overallStats.finishRate}%)
+                  {toPersianDigits(overallStats.finishedParticipants)} نفر تکمیل
+                  شده ({toPersianDigits(overallStats.finishRate)}%)
                 </p>
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className=" text-gray-600">میانگین نمره</h3>
-                <p className="text-2xl ">{overallStats.averageScore}</p>
+                <h3 className="text-gray-600">میانگین نمره</h3>
+                <p className="text-2xl">
+                  {toPersianDigits(overallStats.averageScore)}
+                </p>
                 <p className="text-sm text-gray-500">
-                  از {participants[0]?.maxScore || 0} نمره
+                  از {toPersianDigits(participants[0]?.maxScore || 0)} نمره
                 </p>
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className=" text-gray-600">بالاترین نمره</h3>
-                <p className="text-2xl ">{overallStats.highestScore}</p>
+                <h3 className="text-gray-600">بالاترین نمره</h3>
+                <p className="text-2xl">
+                  {toPersianDigits(overallStats.highestScore)}
+                </p>
                 {rankedParticipants.length > 0 && (
                   <p className="text-sm text-gray-500">
                     {rankedParticipants[0].userName ||
@@ -672,11 +689,13 @@ export default function PrintExamResults({
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className=" text-gray-600">درصد پاسخ‌های صحیح</h3>
-                <p className="text-2xl ">{overallStats.correctRate}%</p>
+                <h3 className="text-gray-600">درصد پاسخ‌های صحیح</h3>
+                <p className="text-2xl">
+                  {toPersianDigits(overallStats.correctRate)}%
+                </p>
                 <p className="text-sm text-gray-500">
-                  صحیح: {overallStats.correctAnswers} | اشتباه:{" "}
-                  {overallStats.wrongAnswers}
+                  صحیح: {toPersianDigits(overallStats.correctAnswers)} | اشتباه:{" "}
+                  {toPersianDigits(overallStats.wrongAnswers)}
                 </p>
               </div>
             </div>
@@ -696,31 +715,35 @@ export default function PrintExamResults({
                   <div className="flex items-center">
                     <div className="mr-4 flex-shrink-0">
                       <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 border-2 border-blue-500 print-rank-badge">
-                        <span className="text-2xl  text-blue-700">
-                          {participant.rank}
+                        <span className="text-2xl text-blue-700">
+                          {toPersianDigits(participant.rank)}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-lg ">
+                      <h3 className="text-lg">
                         {participant.userName || participant.userId}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        رتبه: {participant.rank} از {rankedParticipants.length}{" "}
-                        شرکت‌کننده
+                        رتبه: {toPersianDigits(participant.rank)} از{" "}
+                        {toPersianDigits(rankedParticipants.length)} شرکت‌کننده
                       </p>
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="text-xl ">
-                      نمره: {participant.sumScore} از {participant.maxScore}
+                    <p className="text-xl">
+                      نمره: {toPersianDigits(participant.sumScore || 0)} از{" "}
+                      {toPersianDigits(participant.maxScore || 0)}
                     </p>
                     {participant.maxScore && (
-                      <p className="text-sm ">
+                      <p className="text-sm">
                         (
-                        {Math.round(
-                          ((participant.sumScore || 0) / participant.maxScore) *
-                            100
+                        {toPersianDigits(
+                          Math.round(
+                            ((participant.sumScore || 0) /
+                              participant.maxScore) *
+                              100
+                          )
                         )}
                         %)
                       </p>
@@ -732,24 +755,24 @@ export default function PrintExamResults({
               {/* Student stats */}
               <div className="p-4 print-compact-body">
                 <div className="mb-4 print-stats-row">
-                  <h4 className=" mb-2 print-section-title">آمار کلی</h4>
+                  <h4 className="mb-2 print-section-title">آمار کلی</h4>
                   <div className="grid grid-cols-3 gap-4 print-grid-compact">
                     <div className="border rounded p-2 text-center bg-green-50 print-stat-box">
                       <p className="text-sm text-gray-600">پاسخ‌های صحیح</p>
-                      <p className="text-lg  text-green-600">
-                        {participant.correctAnswerCount || 0}
+                      <p className="text-lg text-green-600">
+                        {toPersianDigits(participant.correctAnswerCount || 0)}
                       </p>
                     </div>
                     <div className="border rounded p-2 text-center bg-red-50 print-stat-box">
                       <p className="text-sm text-gray-600">پاسخ‌های اشتباه</p>
-                      <p className="text-lg  text-red-600">
-                        {participant.wrongAnswerCount || 0}
+                      <p className="text-lg text-red-600">
+                        {toPersianDigits(participant.wrongAnswerCount || 0)}
                       </p>
                     </div>
                     <div className="border rounded p-2 text-center bg-gray-50 print-stat-box">
                       <p className="text-sm text-gray-600">بدون پاسخ</p>
-                      <p className="text-lg  text-gray-600">
-                        {participant.unansweredCount || 0}
+                      <p className="text-lg text-gray-600">
+                        {toPersianDigits(participant.unansweredCount || 0)}
                       </p>
                     </div>
                   </div>
@@ -758,38 +781,65 @@ export default function PrintExamResults({
                 {/* Difficulty Analysis */}
                 {participant.difficultyAnalysis && (
                   <div className="mb-4 print-stats-row">
-                    <h4 className=" mb-2 print-section-title">
+                    <h4 className="mb-2 print-section-title">
                       تحلیل عملکرد بر اساس سختی سوالات
                     </h4>
                     <div className="grid grid-cols-3 gap-4 print-grid-compact">
                       <div className="border rounded p-3 text-center bg-green-50 print-stat-box">
-                        <p className="text-sm  text-gray-700">سوالات آسان</p>
-                        <p className="text-xl  text-green-600">
-                          {participant.difficultyAnalysis.easy.percentage}%
+                        <p className="text-sm text-gray-700">سوالات آسان</p>
+                        <p className="text-xl text-green-600">
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.easy.percentage
+                          )}
+                          %
                         </p>
                         <p className="text-xs text-gray-500">
-                          {participant.difficultyAnalysis.easy.correct} از{" "}
-                          {participant.difficultyAnalysis.easy.total} صحیح
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.easy.correct
+                          )}{" "}
+                          از{" "}
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.easy.total
+                          )}{" "}
+                          صحیح
                         </p>
                       </div>
                       <div className="border rounded p-3 text-center bg-blue-50 print-stat-box">
-                        <p className="text-sm  text-gray-700">سوالات متوسط</p>
-                        <p className="text-xl  text-blue-600">
-                          {participant.difficultyAnalysis.medium.percentage}%
+                        <p className="text-sm text-gray-700">سوالات متوسط</p>
+                        <p className="text-xl text-blue-600">
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.medium.percentage
+                          )}
+                          %
                         </p>
                         <p className="text-xs text-gray-500">
-                          {participant.difficultyAnalysis.medium.correct} از{" "}
-                          {participant.difficultyAnalysis.medium.total} صحیح
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.medium.correct
+                          )}{" "}
+                          از{" "}
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.medium.total
+                          )}{" "}
+                          صحیح
                         </p>
                       </div>
                       <div className="border rounded p-3 text-center bg-red-50 print-stat-box">
-                        <p className="text-sm  text-gray-700">سوالات سخت</p>
-                        <p className="text-xl  text-red-600">
-                          {participant.difficultyAnalysis.hard.percentage}%
+                        <p className="text-sm text-gray-700">سوالات سخت</p>
+                        <p className="text-xl text-red-600">
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.hard.percentage
+                          )}
+                          %
                         </p>
                         <p className="text-xs text-gray-500">
-                          {participant.difficultyAnalysis.hard.correct} از{" "}
-                          {participant.difficultyAnalysis.hard.total} صحیح
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.hard.correct
+                          )}{" "}
+                          از{" "}
+                          {toPersianDigits(
+                            participant.difficultyAnalysis.hard.total
+                          )}{" "}
+                          صحیح
                         </p>
                       </div>
                     </div>
@@ -798,7 +848,7 @@ export default function PrintExamResults({
 
                 {/* Category breakdown */}
                 <div className="mb-4 print-stats-row">
-                  <h4 className=" mb-2 print-section-title">
+                  <h4 className="mb-2 print-section-title">
                     عملکرد بر اساس دسته‌بندی
                   </h4>
                   <table className="w-full border-collapse print-table-compact">
@@ -836,10 +886,10 @@ export default function PrintExamResults({
                     <tbody>
                       {Object.values(participant.categoryStats).map((stats) => (
                         <tr key={stats.category} className="print-table-row">
-                          <td className="border p-2  print-table-cell">
+                          <td className="border p-2 print-table-cell">
                             {stats.category}
                           </td>
-                          <td className="border p-2 text-center  print-table-cell">
+                          <td className="border p-2 text-center print-table-cell">
                             {stats.rank ? (
                               <div className="inline-flex items-center">
                                 <span
@@ -857,10 +907,11 @@ export default function PrintExamResults({
                                     }
                                   `}
                                 >
-                                  {stats.rank}
+                                  {toPersianDigits(stats.rank)}
                                 </span>
                                 <span className="text-sm text-gray-500 mr-1 print-hide-mobile">
-                                  از {rankedParticipants.length}
+                                  از{" "}
+                                  {toPersianDigits(rankedParticipants.length)}
                                 </span>
                               </div>
                             ) : (
@@ -869,7 +920,7 @@ export default function PrintExamResults({
                           </td>
                           <td className="border p-2 text-center print-table-cell">
                             {stats.percentile !== undefined
-                              ? `${stats.percentile}`
+                              ? toPersianDigits(stats.percentile)
                               : "-"}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
@@ -877,33 +928,34 @@ export default function PrintExamResults({
                               <span
                                 className={
                                   stats.comparisonToAverage > 0
-                                    ? "text-green-600 "
+                                    ? "text-green-600"
                                     : stats.comparisonToAverage < 0
-                                    ? "text-red-600 "
+                                    ? "text-red-600"
                                     : "text-gray-600"
                                 }
                               >
                                 {stats.comparisonToAverage > 0 ? "+" : ""}
-                                {stats.comparisonToAverage}%
+                                {toPersianDigits(stats.comparisonToAverage)}%
                               </span>
                             ) : (
                               "-"
                             )}
                           </td>
                           <td className="border p-2 text-center text-green-600 print-table-cell">
-                            {stats.correctCount}
+                            {toPersianDigits(stats.correctCount)}
                           </td>
                           <td className="border p-2 text-center text-red-600 print-table-cell">
-                            {stats.wrongCount}
+                            {toPersianDigits(stats.wrongCount)}
                           </td>
                           <td className="border p-2 text-center text-gray-600 print-table-cell">
-                            {stats.unansweredCount}
+                            {toPersianDigits(stats.unansweredCount)}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
-                            {stats.earnedScore} از {stats.maxScore}
+                            {toPersianDigits(stats.earnedScore)} از{" "}
+                            {toPersianDigits(stats.maxScore)}
                           </td>
-                          <td className="border p-2 text-center  print-table-cell">
-                            {stats.scorePercentage}%
+                          <td className="border p-2 text-center print-table-cell">
+                            {toPersianDigits(stats.scorePercentage)}%
                           </td>
                         </tr>
                       ))}
@@ -914,7 +966,7 @@ export default function PrintExamResults({
                 {/* Visual answer representation */}
                 {participant.visualAnswers && (
                   <div className="mb-4 print-stats-row print-visual-answers">
-                    <h4 className=" mb-2 print-section-title">
+                    <h4 className="mb-2 print-section-title">
                       نمایش پاسخ‌های سوالات
                     </h4>
                     <div className="grid grid-cols-2 gap-4 print-answers-grid">
@@ -924,7 +976,7 @@ export default function PrintExamResults({
                             key={`visual-${category}`}
                             className="mb-3 print-answer-category"
                           >
-                            <h5 className=" text-gray-700 mb-1 print-category-title">
+                            <h5 className="text-gray-700 mb-1 print-category-title">
                               {category}
                             </h5>
                             <div className="flex flex-wrap gap-1 print-answers-wrap">
@@ -941,15 +993,21 @@ export default function PrintExamResults({
                                     : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
                                 }
                               `}
-                                  title={`سوال ${answer.questionNumber}: ${
+                                  title={`سوال ${toPersianDigits(
+                                    answer.questionNumber
+                                  )}: ${
                                     answer.isCorrect === true
-                                      ? `پاسخ صحیح (${answer.earnedScore} از ${answer.maxScore})`
+                                      ? `پاسخ صحیح (${toPersianDigits(
+                                          answer.earnedScore
+                                        )} از ${toPersianDigits(
+                                          answer.maxScore
+                                        )})`
                                       : answer.isCorrect === false
                                       ? "پاسخ اشتباه"
                                       : "بدون پاسخ"
                                   }`}
                                 >
-                                  {answer.questionNumber}
+                                  {toPersianDigits(answer.questionNumber)}
                                 </div>
                               ))}
                             </div>
@@ -976,7 +1034,7 @@ export default function PrintExamResults({
 
                 {/* Performance chart (visual representation) */}
                 <div className="mt-4 print-stats-row">
-                  <h4 className=" mb-2 print-section-title">نمودار عملکرد</h4>
+                  <h4 className="mb-2 print-section-title">نمودار عملکرد</h4>
                   <div className="space-y-2 print-performance-chart">
                     {Object.values(participant.categoryStats).map((stats) => (
                       <div
@@ -984,9 +1042,9 @@ export default function PrintExamResults({
                         className="performance-bar"
                       >
                         <div className="flex justify-between mb-1 print-chart-header">
-                          <span className="text-sm ">{stats.category}</span>
-                          <span className="text-sm ">
-                            {stats.scorePercentage}%
+                          <span className="text-sm">{stats.category}</span>
+                          <span className="text-sm">
+                            {toPersianDigits(stats.scorePercentage)}%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
