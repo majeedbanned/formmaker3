@@ -176,7 +176,7 @@ export default function ParticipantAnswersheet({
         <Card className="w-full max-w-3xl shadow-lg">
           <CardHeader className="bg-red-50">
             <CardTitle className="text-xl text-red-800 flex items-center">
-              <XCircleIcon className="h-6 w-6 mr-2" />
+              <XCircleIcon className="h-6 w-6 ml-2" />
               خطا در بارگذاری پاسخنامه
             </CardTitle>
           </CardHeader>
@@ -240,7 +240,7 @@ export default function ParticipantAnswersheet({
                 {answersheet.examData.examCode}
               </CardDescription>
             </div>
-            <div className="flex space-x-2 space-x-reverse print:hidden">
+            <div className="flex gap-2 print:hidden">
               <Button
                 variant="outline"
                 className="bg-white text-blue-600 hover:bg-blue-50"
@@ -302,6 +302,7 @@ export default function ParticipantAnswersheet({
               <Tabs
                 defaultValue={activeCategory || categories[0]}
                 onValueChange={setActiveCategory as (value: string) => void}
+                dir="rtl"
               >
                 <TabsList className="mb-6">
                   {categories.map((category) => (
@@ -312,7 +313,7 @@ export default function ParticipantAnswersheet({
                 </TabsList>
 
                 {categories.map((category) => (
-                  <TabsContent key={category} value={category}>
+                  <TabsContent key={category} value={category} dir="rtl">
                     {renderQuestionsSection(
                       questionsByCategory[category],
                       answersheet.answers
@@ -343,6 +344,9 @@ export default function ParticipantAnswersheet({
           body * {
             visibility: visible;
           }
+          body {
+            direction: rtl !important;
+          }
           .print\\:hidden {
             display: none !important;
           }
@@ -369,7 +373,7 @@ export default function ParticipantAnswersheet({
 
   function renderQuestionsSection(questions: Question[], answers: Answer[]) {
     return (
-      <div>
+      <div dir="rtl">
         {questions.map((question, index) => {
           const answer = answers.find((a) => a.questionId === question._id);
 
@@ -377,14 +381,15 @@ export default function ParticipantAnswersheet({
             <div
               key={question._id}
               className="mb-8 pb-6 border-b border-gray-200 last:border-b-0"
+              dir="rtl"
             >
               <div className="flex justify-between items-start mb-2">
                 <h4 className="text-md font-bold flex items-center">
-                  <span className="inline-flex items-center justify-center rounded-full bg-gray-100 h-6 w-6 text-sm font-medium mr-2">
+                  <span className="inline-flex items-center justify-center rounded-full bg-gray-100 h-6 w-6 text-sm font-medium ml-2">
                     {index + 1}
                   </span>
                   {question.category && (
-                    <Badge variant="outline" className="mr-2 bg-gray-50">
+                    <Badge variant="outline" className="ml-2 bg-gray-50">
                       {question.category}
                     </Badge>
                   )}
@@ -392,19 +397,19 @@ export default function ParticipantAnswersheet({
                 <div className="flex items-center">
                   {answer?.isCorrect === true && (
                     <span className="flex items-center text-green-600 text-sm">
-                      <CheckCircleIcon className="h-5 w-5 mr-1" />
+                      <CheckCircleIcon className="h-5 w-5 ml-1" />
                       پاسخ صحیح {answer.earnedScore}/{question.maxScore}
                     </span>
                   )}
                   {answer?.isCorrect === false && (
                     <span className="flex items-center text-red-600 text-sm">
-                      <XCircleIcon className="h-5 w-5 mr-1" />
+                      <XCircleIcon className="h-5 w-5 ml-1" />
                       پاسخ نادرست {answer.earnedScore || 0}/{question.maxScore}
                     </span>
                   )}
                   {answer?.isCorrect === null && (
                     <span className="flex items-center text-gray-500 text-sm">
-                      <MinusCircleIcon className="h-5 w-5 mr-1" />
+                      <MinusCircleIcon className="h-5 w-5 ml-1" />
                       بدون پاسخ 0/{question.maxScore}
                     </span>
                   )}
@@ -415,10 +420,14 @@ export default function ParticipantAnswersheet({
                   <div
                     className="text-gray-800 mb-3"
                     dangerouslySetInnerHTML={renderHTML(question.text)}
+                    dir="rtl"
                   ></div>
                 </div>
               </MathJax>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <div
+                className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3"
+                dir="rtl"
+              >
                 {question.options.map((option) => {
                   const isUserAnswer = answer?.userAnswer === option.id;
                   const isCorrectAnswer =
@@ -434,6 +443,7 @@ export default function ParticipantAnswersheet({
                           ? "bg-red-50 border-red-200"
                           : "border-gray-200"
                       }`}
+                      dir="rtl"
                     >
                       <div className="flex-shrink-0 mt-0.5">
                         {isCorrectAnswer ? (
@@ -445,7 +455,7 @@ export default function ParticipantAnswersheet({
                         )}
                       </div>
                       <MathJax>
-                        <div className="ml-3 mr-2">
+                        <div className="mr-3 ml-2" dir="rtl">
                           <div
                             dangerouslySetInnerHTML={renderHTML(option.text)}
                           ></div>
@@ -457,7 +467,7 @@ export default function ParticipantAnswersheet({
               </div>
 
               {question.explanation && (
-                <div className="mt-4 bg-blue-50 p-3 rounded-md">
+                <div className="mt-4 bg-blue-50 p-3 rounded-md" dir="rtl">
                   <div className="flex items-start">
                     <InformationCircleIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
                     <MathJax>
@@ -466,6 +476,7 @@ export default function ParticipantAnswersheet({
                         dangerouslySetInnerHTML={renderHTML(
                           question.explanation
                         )}
+                        dir="rtl"
                       ></div>
                     </MathJax>
                   </div>
