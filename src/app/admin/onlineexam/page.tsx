@@ -2,7 +2,7 @@
 
 /* ──────────────────────────────────────────────────────────────────────────
    OnlineExamPage – fixed Jalali-parsing version
-   - Parses Persian dates with `{ jalali:true }` so “۶۲۱ سال” bug disappears
+   - Parses Persian dates with `{ jalali:true }` so "۶۲۱ سال" bug disappears
    - Caches parsed dates
    - Inclusive isBetween check
    - Persian-digit → Latin-digit helper
@@ -30,6 +30,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 /* ───── Day.js config ──────────────────────────────────────────────────── */
@@ -48,6 +49,12 @@ interface ExamData {
   examName: string;
   schoolCode: string;
   dateTime: ExamDateTime;
+  settings?: {
+    showScoreAfterExam?: boolean;
+    questionsDirection?: string;
+    preexammessage?: string;
+    postexammessage?: string;
+  };
   [key: string]: string | number | boolean | object | null | undefined;
 }
 interface Exam {
@@ -57,6 +64,11 @@ interface Exam {
   updatedAt: string;
 }
 
+interface StudentExamInfo {
+  participated: boolean;
+  isFinished: boolean;
+}
+
 /* ───── Helpers ───────────────────────────────────────────────────────── */
 /* Persian-digit → Latin-digit converter (۱۴۰۴ → 1404) */
 const toEN = (s: string) =>
@@ -64,6 +76,9 @@ const toEN = (s: string) =>
 
 export default function OnlineExamPage() {
   const [exams, setExams] = useState<Exam[]>([]);
+  const [examStatus, setExamStatus] = useState<Record<string, StudentExamInfo>>(
+    {}
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
@@ -71,7 +86,6 @@ export default function OnlineExamPage() {
   /* ── Tick each second   (pause when tab hidden) ──────────────────────── */
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    const y = "fdg";
     const start = () =>
       (timer = setInterval(() => setCurrentTime(dayjs()), 1_000));
     const stop = () => clearInterval(timer);
@@ -96,7 +110,39 @@ export default function OnlineExamPage() {
           signal: controller.signal,
         });
         if (!res.ok) throw new Error("Failed to fetch exams");
-        setExams(await res.json());
+        const examData = await res.json();
+        setExams(examData);
+
+        // Fetch participation status for each exam
+        const statusPromises = examData.map(async (exam: Exam) => {
+          try {
+            const checkRes = await fetch(
+              `/api/examstudentsinfo/check/${exam._id}`
+            );
+            if (checkRes.ok) {
+              const statusData = await checkRes.json();
+              return { examId: exam._id, status: statusData };
+            }
+            return {
+              examId: exam._id,
+              status: { participated: false, isFinished: false },
+            };
+          } catch (err) {
+            console.error(`Error checking exam ${exam._id} status:`, err);
+            return {
+              examId: exam._id,
+              status: { participated: false, isFinished: false },
+            };
+          }
+        });
+
+        const statusResults = await Promise.all(statusPromises);
+        const statusMap: Record<string, StudentExamInfo> = {};
+        statusResults.forEach((result) => {
+          statusMap[result.examId] = result.status;
+        });
+
+        setExamStatus(statusMap);
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "خطای نامشخص");
@@ -190,6 +236,10 @@ export default function OnlineExamPage() {
                   {parsedExams.map(({ _id, data, start, end }) => {
                     const active = isExamActive(start, end);
                     const upcoming = !!start && currentTime.isBefore(start);
+                    const userFinished = examStatus[_id]?.isFinished || false;
+                    const canShowResults =
+                      userFinished &&
+                      data.settings?.showScoreAfterExam === true;
 
                     return (
                       <TableRow key={_id}>
@@ -212,21 +262,39 @@ export default function OnlineExamPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {active ? (
-                            <Link href={`/admin/onlineexam/take/${_id}`}>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                              >
+                          <div className="flex space-x-2 space-x-reverse">
+                            {active ? (
+                              <Link href={`/admin/onlineexam/take/${_id}`}>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  ورود به آزمون
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Button variant="outline" size="sm" disabled>
                                 ورود به آزمون
                               </Button>
-                            </Link>
-                          ) : (
-                            <Button variant="outline" size="sm" disabled>
-                              ورود به آزمون
-                            </Button>
-                          )}
+                            )}
+
+                            {canShowResults && (
+                              <Link
+                                href={`/admin/onlineexam/results/${_id}`}
+                                className="mr-2"
+                              >
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                >
+                                  <ChartBarIcon className="h-4 w-4 ml-1" />
+                                  مشاهده نتایج
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
