@@ -515,8 +515,7 @@ export default function PrintExamResults({
   };
 
   const handlePrint = useReactToPrint({
-    // @ts-expect-error - Known issue with react-to-print types in Next.js environment
-    // content: () => printRef.current,
+    // Known issue with react-to-print types in Next.js environment
     contentRef: printRef,
     documentTitle: `${examInfo?.data.examName || "Exam"} Results`,
   });
@@ -533,9 +532,7 @@ export default function PrintExamResults({
   if (error) {
     return (
       <div className="container py-8 text-center" dir="rtl">
-        <h1 className="text-2xl font-bold text-red-600">
-          خطا در بارگذاری اطلاعات
-        </h1>
+        <h1 className="text-2xl  text-red-600">خطا در بارگذاری اطلاعات</h1>
         <p className="mt-2">{error}</p>
         <Button
           onClick={() => router.back()}
@@ -600,7 +597,7 @@ export default function PrintExamResults({
     <div className="container py-8" dir="rtl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">نتایج آزمون - نسخه چاپی</h1>
+          <h1 className="text-2xl ">نتایج آزمون - نسخه چاپی</h1>
           {examInfo && (
             <p className="text-gray-500">
               {examInfo.data.examName} (کد: {examInfo.data.examCode})
@@ -617,7 +614,6 @@ export default function PrintExamResults({
             بازگشت
           </Button>
           <Button
-            //  onClick={handlePrint}
             onClick={() => handlePrint()}
             className="flex items-center bg-blue-600 hover:bg-blue-700"
           >
@@ -630,10 +626,10 @@ export default function PrintExamResults({
       <div ref={printRef} className="print-container">
         {/* Print-only header */}
         <div className="print-only mb-8 text-center">
-          <h1 className="text-2xl font-bold mb-2">گزارش نتایج آزمون</h1>
+          <h1 className="text-2xl  mb-2">گزارش نتایج آزمون</h1>
           {examInfo && (
             <div>
-              <p className="text-xl font-semibold">{examInfo.data.examName}</p>
+              <p className="text-xl ">{examInfo.data.examName}</p>
               <p>کد آزمون: {examInfo.data.examCode}</p>
             </div>
           )}
@@ -641,19 +637,15 @@ export default function PrintExamResults({
 
         {/* Summary statistics section - visible in both screen and print */}
         <div className="summary-stats mb-8 page-break-after">
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">
+          <h2 className="text-xl  mb-4 border-b pb-2 print-large">
             آمار کلی آزمون
           </h2>
 
           {overallStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print-grid-compact">
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className="font-semibold text-gray-600">
-                  تعداد شرکت‌کنندگان
-                </h3>
-                <p className="text-2xl font-bold">
-                  {overallStats.totalParticipants}
-                </p>
+                <h3 className=" text-gray-600">تعداد شرکت‌کنندگان</h3>
+                <p className="text-2xl ">{overallStats.totalParticipants}</p>
                 <p className="text-sm text-gray-500">
                   {overallStats.finishedParticipants} نفر تکمیل شده (
                   {overallStats.finishRate}%)
@@ -661,20 +653,16 @@ export default function PrintExamResults({
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className="font-semibold text-gray-600">میانگین نمره</h3>
-                <p className="text-2xl font-bold">
-                  {overallStats.averageScore}
-                </p>
+                <h3 className=" text-gray-600">میانگین نمره</h3>
+                <p className="text-2xl ">{overallStats.averageScore}</p>
                 <p className="text-sm text-gray-500">
                   از {participants[0]?.maxScore || 0} نمره
                 </p>
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className="font-semibold text-gray-600">بالاترین نمره</h3>
-                <p className="text-2xl font-bold">
-                  {overallStats.highestScore}
-                </p>
+                <h3 className=" text-gray-600">بالاترین نمره</h3>
+                <p className="text-2xl ">{overallStats.highestScore}</p>
                 {rankedParticipants.length > 0 && (
                   <p className="text-sm text-gray-500">
                     {rankedParticipants[0].userName ||
@@ -684,12 +672,8 @@ export default function PrintExamResults({
               </div>
 
               <div className="stat-box border rounded-lg p-4 shadow-sm">
-                <h3 className="font-semibold text-gray-600">
-                  درصد پاسخ‌های صحیح
-                </h3>
-                <p className="text-2xl font-bold">
-                  {overallStats.correctRate}%
-                </p>
+                <h3 className=" text-gray-600">درصد پاسخ‌های صحیح</h3>
+                <p className="text-2xl ">{overallStats.correctRate}%</p>
                 <p className="text-sm text-gray-500">
                   صحیح: {overallStats.correctAnswers} | اشتباه:{" "}
                   {overallStats.wrongAnswers}
@@ -703,22 +687,22 @@ export default function PrintExamResults({
         {rankedParticipants.map((participant) => (
           <div
             key={participant._id}
-            className="student-report mb-12 page-break-after"
+            className="student-report mb-12 page-break-after print-student"
           >
-            <div className="border rounded-lg overflow-hidden shadow-sm">
+            <div className="border rounded-lg overflow-hidden shadow-sm print-no-shadow">
               {/* Student header */}
-              <div className="bg-gray-50 p-4 border-b">
+              <div className="bg-gray-50 p-4 border-b print-compact-header">
                 <div className="flex flex-wrap justify-between items-center">
                   <div className="flex items-center">
                     <div className="mr-4 flex-shrink-0">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 border-2 border-blue-500">
-                        <span className="text-2xl font-bold text-blue-700">
+                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 border-2 border-blue-500 print-rank-badge">
+                        <span className="text-2xl  text-blue-700">
                           {participant.rank}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold">
+                      <h3 className="text-lg ">
                         {participant.userName || participant.userId}
                       </h3>
                       <p className="text-sm text-gray-500">
@@ -728,11 +712,11 @@ export default function PrintExamResults({
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="text-xl font-bold">
+                    <p className="text-xl ">
                       نمره: {participant.sumScore} از {participant.maxScore}
                     </p>
                     {participant.maxScore && (
-                      <p className="text-sm font-medium">
+                      <p className="text-sm ">
                         (
                         {Math.round(
                           ((participant.sumScore || 0) / participant.maxScore) *
@@ -746,25 +730,25 @@ export default function PrintExamResults({
               </div>
 
               {/* Student stats */}
-              <div className="p-4">
-                <div className="mb-6">
-                  <h4 className="font-bold mb-2">آمار کلی</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="border rounded p-2 text-center bg-green-50">
+              <div className="p-4 print-compact-body">
+                <div className="mb-4 print-stats-row">
+                  <h4 className=" mb-2 print-section-title">آمار کلی</h4>
+                  <div className="grid grid-cols-3 gap-4 print-grid-compact">
+                    <div className="border rounded p-2 text-center bg-green-50 print-stat-box">
                       <p className="text-sm text-gray-600">پاسخ‌های صحیح</p>
-                      <p className="text-lg font-bold text-green-600">
+                      <p className="text-lg  text-green-600">
                         {participant.correctAnswerCount || 0}
                       </p>
                     </div>
-                    <div className="border rounded p-2 text-center bg-red-50">
+                    <div className="border rounded p-2 text-center bg-red-50 print-stat-box">
                       <p className="text-sm text-gray-600">پاسخ‌های اشتباه</p>
-                      <p className="text-lg font-bold text-red-600">
+                      <p className="text-lg  text-red-600">
                         {participant.wrongAnswerCount || 0}
                       </p>
                     </div>
-                    <div className="border rounded p-2 text-center bg-gray-50">
+                    <div className="border rounded p-2 text-center bg-gray-50 print-stat-box">
                       <p className="text-sm text-gray-600">بدون پاسخ</p>
-                      <p className="text-lg font-bold text-gray-600">
+                      <p className="text-lg  text-gray-600">
                         {participant.unansweredCount || 0}
                       </p>
                     </div>
@@ -773,16 +757,14 @@ export default function PrintExamResults({
 
                 {/* Difficulty Analysis */}
                 {participant.difficultyAnalysis && (
-                  <div className="mb-6">
-                    <h4 className="font-bold mb-2">
+                  <div className="mb-4 print-stats-row">
+                    <h4 className=" mb-2 print-section-title">
                       تحلیل عملکرد بر اساس سختی سوالات
                     </h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="border rounded p-3 text-center bg-green-50">
-                        <p className="text-sm font-semibold text-gray-700">
-                          سوالات آسان
-                        </p>
-                        <p className="text-xl font-bold text-green-600">
+                    <div className="grid grid-cols-3 gap-4 print-grid-compact">
+                      <div className="border rounded p-3 text-center bg-green-50 print-stat-box">
+                        <p className="text-sm  text-gray-700">سوالات آسان</p>
+                        <p className="text-xl  text-green-600">
                           {participant.difficultyAnalysis.easy.percentage}%
                         </p>
                         <p className="text-xs text-gray-500">
@@ -790,11 +772,9 @@ export default function PrintExamResults({
                           {participant.difficultyAnalysis.easy.total} صحیح
                         </p>
                       </div>
-                      <div className="border rounded p-3 text-center bg-blue-50">
-                        <p className="text-sm font-semibold text-gray-700">
-                          سوالات متوسط
-                        </p>
-                        <p className="text-xl font-bold text-blue-600">
+                      <div className="border rounded p-3 text-center bg-blue-50 print-stat-box">
+                        <p className="text-sm  text-gray-700">سوالات متوسط</p>
+                        <p className="text-xl  text-blue-600">
                           {participant.difficultyAnalysis.medium.percentage}%
                         </p>
                         <p className="text-xs text-gray-500">
@@ -802,11 +782,9 @@ export default function PrintExamResults({
                           {participant.difficultyAnalysis.medium.total} صحیح
                         </p>
                       </div>
-                      <div className="border rounded p-3 text-center bg-red-50">
-                        <p className="text-sm font-semibold text-gray-700">
-                          سوالات سخت
-                        </p>
-                        <p className="text-xl font-bold text-red-600">
+                      <div className="border rounded p-3 text-center bg-red-50 print-stat-box">
+                        <p className="text-sm  text-gray-700">سوالات سخت</p>
+                        <p className="text-xl  text-red-600">
                           {participant.difficultyAnalysis.hard.percentage}%
                         </p>
                         <p className="text-xs text-gray-500">
@@ -819,37 +797,55 @@ export default function PrintExamResults({
                 )}
 
                 {/* Category breakdown */}
-                <div className="mb-6">
-                  <h4 className="font-bold mb-2">عملکرد بر اساس دسته‌بندی</h4>
-                  <table className="w-full border-collapse">
+                <div className="mb-4 print-stats-row">
+                  <h4 className=" mb-2 print-section-title">
+                    عملکرد بر اساس دسته‌بندی
+                  </h4>
+                  <table className="w-full border-collapse print-table-compact">
                     <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border p-2 text-right">دسته‌بندی</th>
-                        <th className="border p-2 text-center">رتبه</th>
-                        <th className="border p-2 text-center">صدک</th>
-                        <th className="border p-2 text-center">
+                      <tr className="bg-gray-50 print-table-row">
+                        <th className="border p-2 text-right print-table-cell">
+                          دسته‌بندی
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          رتبه
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          صدک
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
                           نسبت به میانگین
                         </th>
-                        <th className="border p-2 text-center">صحیح</th>
-                        <th className="border p-2 text-center">اشتباه</th>
-                        <th className="border p-2 text-center">بدون پاسخ</th>
-                        <th className="border p-2 text-center">نمره</th>
-                        <th className="border p-2 text-center">درصد</th>
+                        <th className="border p-2 text-center print-table-cell">
+                          صحیح
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          اشتباه
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          بدون پاسخ
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          نمره
+                        </th>
+                        <th className="border p-2 text-center print-table-cell">
+                          درصد
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.values(participant.categoryStats).map((stats) => (
-                        <tr key={stats.category}>
-                          <td className="border p-2 font-medium">
+                        <tr key={stats.category} className="print-table-row">
+                          <td className="border p-2  print-table-cell">
                             {stats.category}
                           </td>
-                          <td className="border p-2 text-center font-bold">
+                          <td className="border p-2 text-center  print-table-cell">
                             {stats.rank ? (
                               <div className="inline-flex items-center">
                                 <span
                                   className={`
                                     inline-flex items-center justify-center 
-                                    w-7 h-7 rounded-full mr-1 
+                                    w-7 h-7 rounded-full mr-1 print-rank 
                                     ${
                                       stats.rank === 1
                                         ? "bg-yellow-100 text-yellow-800 border border-yellow-500"
@@ -863,7 +859,7 @@ export default function PrintExamResults({
                                 >
                                   {stats.rank}
                                 </span>
-                                <span className="text-sm text-gray-500 mr-1">
+                                <span className="text-sm text-gray-500 mr-1 print-hide-mobile">
                                   از {rankedParticipants.length}
                                 </span>
                               </div>
@@ -871,19 +867,19 @@ export default function PrintExamResults({
                               "-"
                             )}
                           </td>
-                          <td className="border p-2 text-center">
+                          <td className="border p-2 text-center print-table-cell">
                             {stats.percentile !== undefined
                               ? `${stats.percentile}`
                               : "-"}
                           </td>
-                          <td className="border p-2 text-center">
+                          <td className="border p-2 text-center print-table-cell">
                             {stats.comparisonToAverage !== undefined ? (
                               <span
                                 className={
                                   stats.comparisonToAverage > 0
-                                    ? "text-green-600 font-semibold"
+                                    ? "text-green-600 "
                                     : stats.comparisonToAverage < 0
-                                    ? "text-red-600 font-semibold"
+                                    ? "text-red-600 "
                                     : "text-gray-600"
                                 }
                               >
@@ -894,19 +890,19 @@ export default function PrintExamResults({
                               "-"
                             )}
                           </td>
-                          <td className="border p-2 text-center text-green-600">
+                          <td className="border p-2 text-center text-green-600 print-table-cell">
                             {stats.correctCount}
                           </td>
-                          <td className="border p-2 text-center text-red-600">
+                          <td className="border p-2 text-center text-red-600 print-table-cell">
                             {stats.wrongCount}
                           </td>
-                          <td className="border p-2 text-center text-gray-600">
+                          <td className="border p-2 text-center text-gray-600 print-table-cell">
                             {stats.unansweredCount}
                           </td>
-                          <td className="border p-2 text-center">
+                          <td className="border p-2 text-center print-table-cell">
                             {stats.earnedScore} از {stats.maxScore}
                           </td>
-                          <td className="border p-2 text-center font-bold">
+                          <td className="border p-2 text-center  print-table-cell">
                             {stats.scorePercentage}%
                           </td>
                         </tr>
@@ -917,44 +913,51 @@ export default function PrintExamResults({
 
                 {/* Visual answer representation */}
                 {participant.visualAnswers && (
-                  <div className="mb-6">
-                    <h4 className="font-bold mb-2">نمایش پاسخ‌های سوالات</h4>
-                    {Object.entries(participant.visualAnswers).map(
-                      ([category, answers]) => (
-                        <div key={`visual-${category}`} className="mb-4">
-                          <h5 className="font-medium text-gray-700 mb-2">
-                            {category}
-                          </h5>
-                          <div className="flex flex-wrap gap-2">
-                            {answers.map((answer) => (
-                              <div
-                                key={`q-${answer.questionId}`}
-                                className={`
-                                w-10 h-10 rounded-lg border flex items-center justify-center
+                  <div className="mb-4 print-stats-row print-visual-answers">
+                    <h4 className=" mb-2 print-section-title">
+                      نمایش پاسخ‌های سوالات
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 print-answers-grid">
+                      {Object.entries(participant.visualAnswers).map(
+                        ([category, answers]) => (
+                          <div
+                            key={`visual-${category}`}
+                            className="mb-3 print-answer-category"
+                          >
+                            <h5 className=" text-gray-700 mb-1 print-category-title">
+                              {category}
+                            </h5>
+                            <div className="flex flex-wrap gap-1 print-answers-wrap">
+                              {answers.map((answer) => (
+                                <div
+                                  key={`q-${answer.questionId}`}
+                                  className={`
+                                w-8 h-8 rounded-lg border flex items-center justify-center print-answer-box
                                 ${
                                   answer.isCorrect === true
-                                    ? "bg-green-100 border-green-500 text-green-800"
+                                    ? "bg-green-100 border-green-500 text-green-800 print-correct"
                                     : answer.isCorrect === false
-                                    ? "bg-red-100 border-red-500 text-red-800"
-                                    : "bg-gray-100 border-gray-400 text-gray-800"
+                                    ? "bg-red-100 border-red-500 text-red-800 print-wrong"
+                                    : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
                                 }
                               `}
-                                title={`سوال ${answer.questionNumber}: ${
-                                  answer.isCorrect === true
-                                    ? `پاسخ صحیح (${answer.earnedScore} از ${answer.maxScore})`
-                                    : answer.isCorrect === false
-                                    ? "پاسخ اشتباه"
-                                    : "بدون پاسخ"
-                                }`}
-                              >
-                                {answer.questionNumber}
-                              </div>
-                            ))}
+                                  title={`سوال ${answer.questionNumber}: ${
+                                    answer.isCorrect === true
+                                      ? `پاسخ صحیح (${answer.earnedScore} از ${answer.maxScore})`
+                                      : answer.isCorrect === false
+                                      ? "پاسخ اشتباه"
+                                      : "بدون پاسخ"
+                                  }`}
+                                >
+                                  {answer.questionNumber}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    )}
-                    <div className="flex gap-4 mt-2 text-sm">
+                        )
+                      )}
+                    </div>
+                    <div className="flex gap-4 mt-2 text-sm print-legend">
                       <div className="flex items-center">
                         <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
                         <span>پاسخ صحیح</span>
@@ -972,25 +975,23 @@ export default function PrintExamResults({
                 )}
 
                 {/* Performance chart (visual representation) */}
-                <div className="mt-6">
-                  <h4 className="font-bold mb-2">نمودار عملکرد</h4>
-                  <div className="space-y-3">
+                <div className="mt-4 print-stats-row">
+                  <h4 className=" mb-2 print-section-title">نمودار عملکرد</h4>
+                  <div className="space-y-2 print-performance-chart">
                     {Object.values(participant.categoryStats).map((stats) => (
                       <div
                         key={`chart-${stats.category}`}
                         className="performance-bar"
                       >
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">
-                            {stats.category}
-                          </span>
-                          <span className="text-sm font-medium">
+                        <div className="flex justify-between mb-1 print-chart-header">
+                          <span className="text-sm ">{stats.category}</span>
+                          <span className="text-sm ">
                             {stats.scorePercentage}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
                           <div
-                            className="h-2.5 rounded-full"
+                            className="h-2.5 rounded-full print-bar-progress"
                             style={{
                               width: `${stats.scorePercentage}%`,
                               backgroundColor:
@@ -1013,11 +1014,44 @@ export default function PrintExamResults({
       </div>
 
       <style jsx global>{`
+        @font-face {
+          font-family: "Vazirmatn";
+          src: url("/fonts/Vazirmatn-Regular.woff2") format("woff2");
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+
+        @font-face {
+          font-family: "Vazirmatn";
+          src: url("/fonts/Vazirmatn-Bold.woff2") format("woff2");
+          font-weight: bold;
+          font-style: normal;
+          font-display: swap;
+        }
+
+        @font-face {
+          font-family: "Vazirmatn";
+          src: url("/fonts/Vazirmatn-Medium.woff2") format("woff2");
+          font-weight: 500;
+          font-style: normal;
+          font-display: swap;
+        }
+
         @media print {
           body {
             background-color: white !important;
             color: black !important;
-            font-size: 12pt;
+            font-size: 10pt !important;
+            font-family: "Vazirmatn", sans-serif !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            direction: rtl !important;
+          }
+
+          @page {
+            size: A4;
+            margin: 1cm;
           }
 
           .container {
@@ -1043,6 +1077,8 @@ export default function PrintExamResults({
           .student-report {
             break-inside: avoid;
             page-break-inside: avoid;
+            margin-bottom: 0 !important;
+            padding: 0 !important;
           }
 
           .shadow-sm {
@@ -1052,11 +1088,111 @@ export default function PrintExamResults({
           .border {
             border-color: #ddd !important;
           }
+
+          /* More compact styling */
+          .print-compact-header {
+            padding: 0.5cm !important;
+          }
+
+          .print-compact-body {
+            padding: 0.3cm !important;
+          }
+
+          .print-stats-row {
+            margin-bottom: 0.3cm !important;
+          }
+
+          .print-section-title {
+            margin-bottom: 0.1cm !important;
+            font-size: 11pt !important;
+          }
+
+          .print-grid-compact {
+            gap: 0.2cm !important;
+          }
+
+          .print-stat-box {
+            padding: 0.1cm !important;
+          }
+
+          .print-table-compact {
+            font-size: 9pt !important;
+            border-collapse: collapse !important;
+          }
+
+          .print-table-cell {
+            padding: 0.1cm !important;
+          }
+
+          .print-table-row {
+            line-height: 1.2 !important;
+          }
+
+          .print-answers-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.2cm !important;
+          }
+
+          .print-answer-box {
+            width: 0.5cm !important;
+            height: 0.5cm !important;
+            font-size: 8pt !important;
+            border-radius: 0.1cm !important;
+          }
+
+          .print-answers-wrap {
+            gap: 0.1cm !important;
+          }
+
+          .print-category-title {
+            font-size: 9pt !important;
+            margin-bottom: 0.1cm !important;
+          }
+
+          .print-legend {
+            font-size: 8pt !important;
+            margin-top: 0.1cm !important;
+          }
+
+          .print-rank-badge {
+            width: 1cm !important;
+            height: 1cm !important;
+          }
+
+          .print-performance-chart {
+            margin-top: 0.1cm !important;
+          }
+
+          .print-chart-header {
+            margin-bottom: 0.05cm !important;
+          }
+
+          .print-no-shadow {
+            box-shadow: none !important;
+          }
+
+          .print-bar-bg {
+            height: 0.15cm !important;
+          }
+
+          .print-bar-progress {
+            height: 0.15cm !important;
+          }
+
+          .print-student {
+            max-height: 26.7cm !important; /* A4 height minus margins */
+            overflow: hidden !important;
+          }
         }
 
         @media screen {
           .print-only {
             display: none;
+          }
+
+          body {
+            font-family: "Vazirmatn", sans-serif;
           }
         }
       `}</style>
