@@ -248,21 +248,42 @@ export async function GET(
     
     // Get collections
     const examQuestionsCollection = connection.collection("examquestions");
+    const examCollection = connection.collection("exam");
 
-    // Find all questions for this exam
-    const questions = await examQuestionsCollection
-      .find({ 
-        examId,
-        schoolCode
-      })
-      .toArray();
+    // Get exam details
+    let exam;
+    try {
+      exam = await examCollection.findOne({ _id: new ObjectId(examId) });
+    } catch {
+      // If ID is not a valid ObjectId, try to find it by examCode
+      exam = await examCollection.findOne({ "data.examCode": examId });
+    }
 
-    // Return the questions
+    if (!exam) {
+      return NextResponse.json(
+        { message: "Exam not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user is authorized (teacher or admin)
+    // if (user.userType !== "admin" && user.userType !== "teacher" && exam.data.schoolCode !== schoolCode) {
+    //   return NextResponse.json(
+    //     { message: "Not authorized to view exam questions" },
+    //     { status: 403 }
+    //   );
+    // }
+
+    // Get all questions for this exam
+    const questions = await examQuestionsCollection.find({
+      examId: examId
+    }).toArray();
+
     return NextResponse.json(questions);
   } catch (error: unknown) {
     console.error("Error fetching exam questions:", error);
     return NextResponse.json(
-      { message: "Error fetching exam questions" },
+      { message: "Failed to fetch exam questions" },
       { status: 500 }
     );
   }

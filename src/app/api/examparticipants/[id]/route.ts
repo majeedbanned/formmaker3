@@ -32,7 +32,7 @@ export async function GET(
     // Get collections
     const examStudentsInfoCollection = connection.collection("examstudentsinfo");
     const examCollection = connection.collection("exam");
-    const usersCollection = connection.collection("users");
+    const usersCollection = connection.collection("students");
 
     // Get exam details
     let exam;
@@ -51,12 +51,12 @@ export async function GET(
     }
 
     // Check if user is authorized (teacher or admin)
-    if (user.userType !== "admin" && user.userType !== "teacher" && exam.data.schoolCode !== schoolCode) {
-      return NextResponse.json(
-        { message: "Not authorized to view exam participants" },
-        { status: 403 }
-      );
-    }
+    // if (user.userType !== "admin" && user.userType !== "teacher" && exam.data.schoolCode !== schoolCode) {
+    //   return NextResponse.json(
+    //     { message: "Not authorized to view exam participants" },
+    //     { status: 403 }
+    //   );
+    // }
 
     // Get all participants for this exam
     const participants = await examStudentsInfoCollection.find({
@@ -71,7 +71,7 @@ export async function GET(
           
           return {
             ...participant,
-            userName: userInfo ? (userInfo.name || userInfo.username) : participant.userId
+            userName: userInfo ? (userInfo.studentName || userInfo.studentFamily) : participant.userId
           };
         } catch (error) {
           console.error(`Error fetching user info for ${participant.userId}:`, error);

@@ -138,6 +138,11 @@ export function ExamParticipantsModal({
     onClose();
   };
 
+  const handleViewStatistics = () => {
+    router.push(`/admin/exam/statistics/${examId}`);
+    onClose();
+  };
+
   const handleDownloadAnswers = async (participantId: string) => {
     try {
       // Implement download functionality
@@ -191,12 +196,23 @@ export function ExamParticipantsModal({
               <div className="text-sm text-gray-500">
                 تعداد شرکت‌کنندگان: {participants.length}
               </div>
-              <Input
-                placeholder="جستجوی شرکت‌کنندگان..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-xs"
-              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewStatistics}
+                  className="flex items-center"
+                >
+                  <ChartBarIcon className="h-4 w-4 ml-1" />
+                  گزارش آماری
+                </Button>
+                <Input
+                  placeholder="جستجوی شرکت‌کنندگان..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
             </div>
 
             {filteredParticipants.length === 0 ? (
