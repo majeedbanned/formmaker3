@@ -116,6 +116,12 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "آزمون های آنلاین",
+          url: "/admin/onlineexam",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
           title: "گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
           system: "importstudents",
