@@ -582,6 +582,18 @@ function StudentsPageContent() {
           readonly: false,
           defaultValue: true,
         },
+        {
+          name: "showanswersafterexam",
+          title: "نمایش پاسخ بعد از امتحان",
+          type: "checkbox",
+          isShowInList: true,
+          isSearchable: true,
+          required: false,
+          enabled: true,
+          visible: true,
+          readonly: false,
+          defaultValue: true,
+        },
       ],
     },
 
