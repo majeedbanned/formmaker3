@@ -7,10 +7,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  //console.log("stage 0");
   try {
     // Get the exam ID from params
     const examId = (await params).id;
-    
+   // console.log("stage 0", examId);
     // Get current user and verify authentication
     const user = await getCurrentUser();
     if (!user) {
@@ -22,7 +23,7 @@ export async function GET(
     if (!schoolCode) {
       return NextResponse.json({ message: "School code not found" }, { status: 400 });
     }
-
+   // console.log("stage 1", schoolCode);
     // Get domain from request headers or use default
     const domain = request.headers.get("x-domain") || "localhost:3000";
 
@@ -36,7 +37,9 @@ export async function GET(
 
     // Get exam details
     let exam;
+   // console.log("examId", examId);
     try {
+     // console.log("examId", examId);
       exam = await examCollection.findOne({ _id: new ObjectId(examId) });
     } catch {
       // If ID is not a valid ObjectId, try to find it by examCode
@@ -87,7 +90,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching exam participants:", error);
     return NextResponse.json(
-      { message: "Failed to fetch exam participants" },
+      { message: "Failed to fetch exam participantsq" },
       { status: 500 }
     );
   }

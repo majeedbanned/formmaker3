@@ -28,9 +28,11 @@ import {
   XCircleIcon,
   ArrowLeftIcon,
   PencilSquareIcon,
+  DocumentTextIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 import { Spinner } from "@/components/ui/spinner";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Participant {
@@ -104,6 +106,9 @@ export default function GradeParticipantAnswers({
   const [comments, setComments] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [examParticipants, setExamParticipants] = useState<Participant[]>([]);
+  const [currentParticipantIndex, setCurrentParticipantIndex] = useState(-1);
+
   const renderHTML = (html: string | undefined) => {
     if (!html) return { __html: "" };
 
@@ -165,6 +170,23 @@ export default function GradeParticipantAnswers({
       const examData = await examResponse.json();
       setExamInfo(examData);
 
+      // Fetch all participants for this exam
+      console.log("xxx", participantData.examId);
+      const allParticipantsResponse = await fetch(
+        `/api/examparticipants/${participantData.examId}`
+      );
+      if (!allParticipantsResponse.ok) {
+        throw new Error("Failed to fetch exam participants6");
+      }
+      const allParticipantsData = await allParticipantsResponse.json();
+      setExamParticipants(allParticipantsData);
+
+      // Find current participant index
+      const currentIndex = allParticipantsData.findIndex(
+        (p: Participant) => p._id === id
+      );
+      setCurrentParticipantIndex(currentIndex);
+
       // Fetch questions
       const questionsResponse = await fetch(
         `/api/examquestions/${participantData.examId}`
@@ -195,6 +217,28 @@ export default function GradeParticipantAnswers({
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Navigation functions
+  const navigateToParticipant = (index: number) => {
+    if (index >= 0 && index < examParticipants.length) {
+      const nextParticipant = examParticipants[index];
+      if (nextParticipant && nextParticipant._id) {
+        router.push(`/admin/exam/participants/grade/${nextParticipant._id}`);
+      }
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentParticipantIndex > 0) {
+      navigateToParticipant(currentParticipantIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentParticipantIndex < examParticipants.length - 1) {
+      navigateToParticipant(currentParticipantIndex + 1);
     }
   };
 
@@ -313,7 +357,7 @@ export default function GradeParticipantAnswers({
         <Card className="w-full max-w-3xl shadow-lg">
           <CardHeader className="bg-red-50">
             <CardTitle className="text-xl text-red-800 flex items-center">
-              <XCircleIcon className="h-6 w-6 mr-2" />
+              <XCircleIcon className="h-6 w-6 ml-2" />
               خطا در بارگذاری اطلاعات
             </CardTitle>
           </CardHeader>
@@ -365,11 +409,12 @@ export default function GradeParticipantAnswers({
 
   return (
     <div className="container mx-auto max-w-6xl p-4 pb-20" dir="rtl">
-      <Card className="shadow-lg mb-8">
+      <Card className="shadow-lg mb-8 border-t-4 border-t-blue-600">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-2xl flex items-center">
+                <DocumentTextIcon className="h-6 w-6 ml-2" />
                 تصحیح پاسخ‌های آزمون: {examInfo.data.examName}
               </CardTitle>
               <CardDescription className="text-blue-100 mt-1">
@@ -377,44 +422,79 @@ export default function GradeParticipantAnswers({
                 {examInfo.data.examCode}
               </CardDescription>
             </div>
-            <div className="flex space-x-2 space-x-reverse">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="bg-white text-blue-600 hover:bg-blue-50"
                 onClick={() => router.back()}
               >
                 <ArrowLeftIcon className="h-4 w-4 ml-2" />
-                بازگشت به لیست شرکت‌کنندگان
+                بازگشت به لیست
               </Button>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-6">
+          {/* Navigation Bar */}
+          <div className="mb-6 border border-gray-200 rounded-lg shadow-sm p-4 bg-gray-50 flex items-center justify-between">
+            <Button
+              variant="outline"
+              className="flex items-center px-5 py-2 text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-700"
+              onClick={handlePrevious}
+              disabled={currentParticipantIndex <= 0}
+            >
+              <ChevronRightIcon className="h-5 w-5 ml-1" />
+              دانش‌آموز قبلی
+            </Button>
+
+            <div className="text-center px-4">
+              <span className="text-gray-600">
+                {currentParticipantIndex + 1} از {examParticipants.length}{" "}
+                دانش‌آموز
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              className="flex items-center px-5 py-2 text-gray-700 border-gray-300 hover:bg-blue-50 hover:text-blue-700"
+              onClick={handleNext}
+              disabled={currentParticipantIndex >= examParticipants.length - 1}
+            >
+              دانش‌آموز بعدی
+              <ChevronLeftIcon className="h-5 w-5 mr-1" />
+            </Button>
+          </div>
+
           <div className="mb-6 pb-4 border-b">
-            <h3 className="text-lg font-bold mb-2">اطلاعات تصحیح</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-500">نمره کل</p>
-                <p className="text-lg font-bold">
+            <h3 className="text-lg font-bold mb-2 flex items-center">
+              <span className="bg-blue-100 text-blue-800 p-1 rounded-md ml-2 inline-flex items-center justify-center w-7 h-7">
+                <CheckCircleIcon className="h-5 w-5" />
+              </span>
+              اطلاعات تصحیح
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className="bg-blue-50 p-4 rounded-md shadow-sm border border-blue-100">
+                <p className="text-sm text-gray-600 mb-1">نمره کل</p>
+                <p className="text-xl font-bold text-blue-700">
                   {participant.sumScore} از {participant.maxScore}
                 </p>
               </div>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-500">تعداد سوالات</p>
-                <p className="text-lg font-bold">
+              <div className="bg-gray-50 p-4 rounded-md shadow-sm border border-gray-100">
+                <p className="text-sm text-gray-600 mb-1">تعداد سوالات</p>
+                <p className="text-xl font-bold">
                   {participant.answers.length}
                 </p>
               </div>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-500">پاسخ‌های صحیح</p>
-                <p className="text-lg font-bold text-green-600">
+              <div className="bg-green-50 p-4 rounded-md shadow-sm border border-green-100">
+                <p className="text-sm text-gray-600 mb-1">پاسخ‌های صحیح</p>
+                <p className="text-xl font-bold text-green-600">
                   {participant.correctAnswerCount || 0}
                 </p>
               </div>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-500">پاسخ‌های نادرست</p>
-                <p className="text-lg font-bold text-red-600">
+              <div className="bg-red-50 p-4 rounded-md shadow-sm border border-red-100">
+                <p className="text-sm text-gray-600 mb-1">پاسخ‌های نادرست</p>
+                <p className="text-xl font-bold text-red-600">
                   {participant.wrongAnswerCount || 0}
                 </p>
               </div>
@@ -422,7 +502,7 @@ export default function GradeParticipantAnswers({
           </div>
 
           {categories.length > 0 ? (
-            <Tabs defaultValue={categories[0]}>
+            <Tabs defaultValue={categories[0]} dir="rtl">
               <TabsList className="mb-6">
                 {categories.map((category) => (
                   <TabsTrigger key={category} value={category}>
@@ -432,108 +512,157 @@ export default function GradeParticipantAnswers({
               </TabsList>
 
               {categories.map((category) => (
-                <TabsContent key={category} value={category}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right">شماره</TableHead>
-                        <TableHead className="text-right">سوال</TableHead>
-                        <TableHead className="text-right">
-                          پاسخ دانش‌آموز
-                        </TableHead>
-                        <TableHead className="text-right">
-                          نمره (از {participant.maxScore})
-                        </TableHead>
-                        <TableHead className="text-right">
-                          توضیحات معلم
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {answersByCategory[category].map((answer, index) => {
-                        const question = questions[answer.questionId];
-                        const maxScore = answer.maxScore || 1;
+                <TabsContent key={category} value={category} dir="rtl">
+                  <div className="border rounded-lg overflow-hidden shadow-sm">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-right font-bold text-gray-700">
+                            شماره
+                          </TableHead>
+                          <TableHead className="text-right font-bold text-gray-700">
+                            سوال
+                          </TableHead>
+                          <TableHead className="text-right font-bold text-gray-700">
+                            پاسخ دانش‌آموز
+                          </TableHead>
+                          <TableHead className="text-right font-bold text-gray-700 w-24">
+                            نمره
+                          </TableHead>
+                          <TableHead className="text-right font-bold text-gray-700">
+                            توضیحات معلم
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {answersByCategory[category].map((answer, index) => {
+                          const question = questions[answer.questionId];
+                          const maxScore = answer.maxScore || 1;
 
-                        return (
-                          <TableRow key={answer.questionId}>
-                            <TableCell className="font-medium">
-                              {index + 1}
-                            </TableCell>
-                            <TableCell>
-                              <MathJax>
-                                <div
-                                  dangerouslySetInnerHTML={renderHTML(
-                                    question?.question?.question ||
-                                      "سوال موجود نیست"
-                                  )}
-                                ></div>
-                              </MathJax>
-                            </TableCell>
-                            <TableCell>
-                              <MathJax>
-                                <div
-                                  className="max-w-xs break-words"
-                                  dangerouslySetInnerHTML={renderHTML(
-                                    answer.answer || "بدون پاسخ"
-                                  )}
-                                ></div>
-                              </MathJax>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={maxScore}
-                                step={0.25}
-                                value={scores[answer.questionId] || 0}
-                                onChange={(e) =>
-                                  handleScoreChange(
-                                    answer.questionId,
-                                    e.target.value
-                                  )
-                                }
-                                className="w-20"
-                              />
-                              <span className="text-sm text-gray-500 mr-2">
-                                از {maxScore}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <Textarea
-                                placeholder="توضیحات"
-                                value={comments[answer.questionId] || ""}
-                                onChange={(e) =>
-                                  handleCommentChange(
-                                    answer.questionId,
-                                    e.target.value
-                                  )
-                                }
-                                className="text-sm resize-none h-20"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                          return (
+                            <TableRow
+                              key={answer.questionId}
+                              className="hover:bg-blue-50 transition-colors"
+                            >
+                              <TableCell className="font-medium text-center bg-gray-50 w-12">
+                                <span className="inline-flex items-center justify-center rounded-full bg-blue-100 text-blue-800 h-7 w-7 text-sm font-medium">
+                                  {index + 1}
+                                </span>
+                              </TableCell>
+                              <TableCell dir="rtl">
+                                <MathJax>
+                                  <div
+                                    className="text-gray-700"
+                                    dangerouslySetInnerHTML={renderHTML(
+                                      question?.question?.question ||
+                                        "سوال موجود نیست"
+                                    )}
+                                    dir="rtl"
+                                  ></div>
+                                </MathJax>
+                              </TableCell>
+                              <TableCell dir="rtl">
+                                <MathJax>
+                                  <div
+                                    className="max-w-xs break-words p-2 bg-gray-50 rounded-md border border-gray-200"
+                                    dangerouslySetInnerHTML={renderHTML(
+                                      answer.answer || "بدون پاسخ"
+                                    )}
+                                    dir="rtl"
+                                  ></div>
+                                </MathJax>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center flex-col sm:flex-row">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={maxScore}
+                                    step={0.25}
+                                    value={scores[answer.questionId] || 0}
+                                    onChange={(e) =>
+                                      handleScoreChange(
+                                        answer.questionId,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-20 text-center border-blue-200 focus:border-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-500 mr-2">
+                                    از {maxScore}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Textarea
+                                  placeholder="توضیحات برای دانش‌آموز..."
+                                  value={comments[answer.questionId] || ""}
+                                  onChange={(e) =>
+                                    handleCommentChange(
+                                      answer.questionId,
+                                      e.target.value
+                                    )
+                                  }
+                                  className="text-sm resize-none h-20 border-gray-200 focus:border-blue-500"
+                                  dir="rtl"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </TabsContent>
               ))}
             </Tabs>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              هیچ پاسخی برای این آزمون ثبت نشده است.
+            <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <DocumentTextIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+              <p>هیچ پاسخی برای این آزمون ثبت نشده است.</p>
             </div>
           )}
         </CardContent>
 
-        <CardFooter className="bg-gray-50 p-4 flex justify-between">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeftIcon className="h-4 w-4 ml-2" />
-            انصراف
-          </Button>
+        <CardFooter className="bg-gray-50 p-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => router.back()}
+              className="hover:bg-red-50 border-red-200 text-red-700 hover:text-red-800"
+            >
+              <ArrowLeftIcon className="h-4 w-4 ml-2" />
+              انصراف
+            </Button>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                onClick={handlePrevious}
+                disabled={currentParticipantIndex <= 0}
+              >
+                <ChevronRightIcon className="h-4 w-4 ml-1" />
+                قبلی
+              </Button>
+
+              <Button
+                variant="outline"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                onClick={handleNext}
+                disabled={
+                  currentParticipantIndex >= examParticipants.length - 1
+                }
+              >
+                بعدی
+                <ChevronLeftIcon className="h-4 w-4 mr-1" />
+              </Button>
+            </div>
+          </div>
+
           <div className="flex items-center">
             {saveSuccess && (
-              <span className="text-green-600 ml-2 flex items-center">
+              <span className="text-green-600 ml-3 flex items-center bg-green-50 py-2 px-3 rounded-md border border-green-200">
                 <CheckCircleIcon className="h-5 w-5 ml-1" />
                 با موفقیت ذخیره شد
               </span>
@@ -542,7 +671,7 @@ export default function GradeParticipantAnswers({
               variant="default"
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 shadow-md min-w-32"
             >
               {isSaving ? (
                 <>
