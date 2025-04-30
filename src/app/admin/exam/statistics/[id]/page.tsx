@@ -235,10 +235,78 @@ export default function ExamStatisticsPage({
         const scoreB = b.sumScore || 0;
         return scoreB - scoreA;
       })
-      .map((participant, index) => ({
-        ...participant,
-        rank: index + 1,
-      }));
+      .map((participant, index) => {
+        // Calculate statistics by category
+        const categoryStats: Record<
+          string,
+          {
+            correct: number;
+            wrong: number;
+            unanswered: number;
+            maxPossible: number;
+            percentage: number;
+          }
+        > = {};
+
+        // Initialize with all question categories
+        questions.forEach((question) => {
+          const category = question.category;
+          if (!categoryStats[category]) {
+            categoryStats[category] = {
+              correct: 0,
+              wrong: 0,
+              unanswered: 0,
+              maxPossible: 0,
+              percentage: 0,
+            };
+          }
+        });
+
+        // Calculate stats for each answer
+        participant.answers.forEach((answer) => {
+          const question = questions.find((q) => q._id === answer.questionId);
+          if (question) {
+            const category = question.category;
+            if (!categoryStats[category]) {
+              categoryStats[category] = {
+                correct: 0,
+                wrong: 0,
+                unanswered: 0,
+                maxPossible: 0,
+                percentage: 0,
+              };
+            }
+
+            // Update category stats
+            categoryStats[category].maxPossible += answer.maxScore;
+
+            if (answer.isCorrect === true) {
+              categoryStats[category].correct += 1;
+            } else if (answer.isCorrect === false) {
+              categoryStats[category].wrong += 1;
+            } else {
+              categoryStats[category].unanswered += 1;
+            }
+          }
+        });
+
+        // Calculate percentages for each category
+        Object.keys(categoryStats).forEach((category) => {
+          const stats = categoryStats[category];
+          const totalQuestions = stats.correct + stats.wrong + stats.unanswered;
+          if (totalQuestions > 0) {
+            stats.percentage = Math.round(
+              (stats.correct / totalQuestions) * 100
+            );
+          }
+        });
+
+        return {
+          ...participant,
+          rank: index + 1,
+          categoryStats,
+        };
+      });
 
     return rankedParticipants;
   };
@@ -549,46 +617,83 @@ export default function ExamStatisticsPage({
                   <TableRow>
                     <TableHead className="text-right">رتبه</TableHead>
                     <TableHead className="text-right">نام کاربر</TableHead>
-                    <TableHead className="text-right">نمره</TableHead>
-                    <TableHead className="text-right">درصد</TableHead>
-                    <TableHead className="text-right">پاسخ‌های صحیح</TableHead>
-                    <TableHead className="text-right">
-                      پاسخ‌های اشتباه
-                    </TableHead>
+                    <TableHead className="text-right">نمره کل</TableHead>
+                    <TableHead className="text-right">دسته‌بندی</TableHead>
+                    <TableHead className="text-right">صحیح</TableHead>
+                    <TableHead className="text-right">اشتباه</TableHead>
                     <TableHead className="text-right">بدون پاسخ</TableHead>
+                    <TableHead className="text-right">درصد</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rankedParticipants.map((participant) => (
-                    <TableRow key={participant._id}>
-                      <TableCell>{participant.rank}</TableCell>
-                      <TableCell className="font-medium">
-                        {participant.userName || participant.userId}
-                      </TableCell>
-                      <TableCell>
-                        {participant.sumScore !== undefined
-                          ? `${participant.sumScore} از ${
-                              participant.maxScore || 0
-                            }`
-                          : "نامشخص"}
-                      </TableCell>
-                      <TableCell>
-                        {participant.sumScore !== undefined &&
-                        participant.maxScore &&
-                        participant.maxScore > 0
-                          ? `${Math.round(
-                              (participant.sumScore / participant.maxScore) *
-                                100
-                            )}%`
-                          : ""}
-                      </TableCell>
-                      <TableCell>
-                        {participant.correctAnswerCount || 0}
-                      </TableCell>
-                      <TableCell>{participant.wrongAnswerCount || 0}</TableCell>
-                      <TableCell>{participant.unansweredCount || 0}</TableCell>
-                    </TableRow>
-                  ))}
+                  {rankedParticipants
+                    .map((participant) => {
+                      // Get all unique categories
+                      const categories = Object.keys(
+                        participant.categoryStats || {}
+                      );
+
+                      // Calculate overall statistics
+                      const overallCorrect =
+                        participant.correctAnswerCount || 0;
+                      const overallWrong = participant.wrongAnswerCount || 0;
+                      const overallUnanswered =
+                        participant.unansweredCount || 0;
+                      const overallTotal =
+                        overallCorrect + overallWrong + overallUnanswered;
+                      const overallPercentage =
+                        overallTotal > 0
+                          ? Math.round((overallCorrect / overallTotal) * 100)
+                          : 0;
+
+                      // First row is overall stats
+                      return [
+                        // Overall stats row
+                        <TableRow key={`${participant._id}-overall`}>
+                          <TableCell rowSpan={categories.length + 1}>
+                            {participant.rank}
+                          </TableCell>
+                          <TableCell
+                            rowSpan={categories.length + 1}
+                            className="font-medium"
+                          >
+                            {participant.userName || participant.userId}
+                          </TableCell>
+                          <TableCell rowSpan={categories.length + 1}>
+                            {participant.sumScore !== undefined
+                              ? `${participant.sumScore} از ${
+                                  participant.maxScore || 0
+                                }`
+                              : "نامشخص"}
+                          </TableCell>
+                          <TableCell className="font-bold">کل</TableCell>
+                          <TableCell>{overallCorrect}</TableCell>
+                          <TableCell>{overallWrong}</TableCell>
+                          <TableCell>{overallUnanswered}</TableCell>
+                          <TableCell>{overallPercentage}%</TableCell>
+                        </TableRow>,
+
+                        // Category-specific rows
+                        ...categories.map((category) => (
+                          <TableRow key={`${participant._id}-${category}`}>
+                            <TableCell>{category}</TableCell>
+                            <TableCell>
+                              {participant.categoryStats[category].correct}
+                            </TableCell>
+                            <TableCell>
+                              {participant.categoryStats[category].wrong}
+                            </TableCell>
+                            <TableCell>
+                              {participant.categoryStats[category].unanswered}
+                            </TableCell>
+                            <TableCell>
+                              {participant.categoryStats[category].percentage}%
+                            </TableCell>
+                          </TableRow>
+                        )),
+                      ];
+                    })
+                    .flat()}
                 </TableBody>
               </Table>
             </div>
