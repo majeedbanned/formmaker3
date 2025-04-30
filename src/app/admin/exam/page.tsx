@@ -2,7 +2,11 @@
 
 import { Suspense, useState } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, UsersIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentIcon,
+  UsersIcon,
+  PrinterIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { useAuth } from "@/hooks/useAuth";
@@ -672,6 +676,13 @@ function StudentsPageContent() {
                   <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
               ),
+            },
+            {
+              label: "چاپ نتایج آزمون",
+              action: (examId) => {
+                window.location.href = `/admin/exam/printresults/${examId}`;
+              },
+              icon: PrinterIcon,
             },
           ]}
           initialFilter={initialFilter as Record<string, unknown>}
