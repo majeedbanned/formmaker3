@@ -6,11 +6,13 @@ import {
   DocumentIcon,
   UsersIcon,
   PrinterIcon,
+  QrCodeIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { useAuth } from "@/hooks/useAuth";
 import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
+import ScanAnswerSheetModal from "@/components/ScanAnswerSheetModal";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -49,6 +51,7 @@ function StudentsPageContent() {
   const { initialFilter } = useInitialFilter();
   const { user, isLoading } = useAuth();
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
 
   console.log("user", user);
@@ -684,6 +687,14 @@ function StudentsPageContent() {
               },
               icon: PrinterIcon,
             },
+            {
+              label: "اسکن پاسخ‌برگ",
+              action: (examId) => {
+                setSelectedExamId(examId);
+                setShowScanModal(true);
+              },
+              icon: QrCodeIcon,
+            },
           ]}
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
@@ -693,6 +704,13 @@ function StudentsPageContent() {
         <ExamParticipantsModal
           isOpen={showParticipantsModal}
           onClose={() => setShowParticipantsModal(false)}
+          examId={selectedExamId}
+        />
+
+        {/* Scan Answer Sheet Modal */}
+        <ScanAnswerSheetModal
+          isOpen={showScanModal}
+          onClose={() => setShowScanModal(false)}
           examId={selectedExamId}
         />
       </div>
