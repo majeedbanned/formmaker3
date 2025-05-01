@@ -140,6 +140,17 @@ export async function POST(request: Request) {
               // Add file info to the result
               result.originalFilename = file.name;
               result.processedFilePath = `/${filePath}`;
+              
+              // Make sure correctedImageUrl is accessible from the browser
+              if (result.correctedImageUrl && !result.correctedImageUrl.startsWith('http')) {
+                // If it's a relative path in the public folder, ensure it has a leading /
+                const imagePath = result.correctedImageUrl.startsWith('/') 
+                  ? result.correctedImageUrl 
+                  : `/${result.correctedImageUrl}`;
+                  
+                result.correctedImageUrl = imagePath;
+              }
+              
               resolve(result);
             } catch {
               // JSON parsing error - ignore the specific error
