@@ -1,3 +1,4 @@
+// src/app/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,7 +10,7 @@ interface ScanResult {
   multipleAnswers: number[];
   unAnswered: number[];
   Useranswers: number[];
-  correctedImageUrl: string;
+  correctedImageUrl: string; // e.g. "upload/corrects/2285137680.jpg"
 }
 
 export default function Home() {
@@ -26,7 +27,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imagePath: "/input.jpg", // place your test image in /public/
+          imagePath: "/input.jpg", // your test image in /public
           answers: [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
         }),
       });
@@ -46,11 +47,13 @@ export default function Home() {
   }
 
   return (
-    <main className="p-4">
+    <main className="p-4 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-semibold mb-4">Exam Sheet Scanner</h1>
+
       <button
         onClick={runScan}
-        className="px-4 py-2 bg-green-600 text-white rounded"
         disabled={loading}
+        className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
       >
         {loading ? "Scanning…" : "Run Scanner"}
       </button>
@@ -58,9 +61,27 @@ export default function Home() {
       {error && <p className="mt-4 text-red-600">Error: {error}</p>}
 
       {result && (
-        <pre className="mt-4 p-3 bg-gray-100 rounded">
-          {JSON.stringify(result, null, 2)}
-        </pre>
+        <section className="mt-6 space-y-6">
+          <div>
+            <h2 className="text-xl font-medium">Result JSON</h2>
+            <pre className="mt-2 p-3 bg-gray-100 rounded overflow-x-auto">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-medium">Corrected Image</h2>
+            <img
+              src={
+                result.correctedImageUrl.startsWith("/")
+                  ? result.correctedImageUrl
+                  : `/${result.correctedImageUrl}`
+              }
+              alt="Corrected Answer Sheet"
+              className="mt-2 w-full h-auto rounded shadow"
+            />
+          </div>
+        </section>
       )}
     </main>
   );
