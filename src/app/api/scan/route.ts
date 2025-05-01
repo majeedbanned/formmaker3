@@ -1,9 +1,10 @@
 import { spawn } from 'child_process'
 import { NextResponse } from 'next/server'
 import path from 'path'
+import { existsSync } from 'fs'
 
 interface ScanRequest {
-  imagePath: string
+  imagePath: string      // e.g. "/input.jpg"
   answers: number[]
 }
 
@@ -19,20 +20,32 @@ export async function POST(request: Request) {
     )
   }
 
-  const { imagePath, answers } = payload
+  const { imagePath: clientPath, answers } = payload
 
-  // 2) spawn the Python script
+  // 2) build the absolute path to public/<whatever>
+  //    strip leading slash then join into <projectRoot>/public
+  const relative = clientPath.replace(/^\/+/, '')            // "input.jpg"
+  const absImagePath = path.join(process.cwd(), 'public', relative)
+
+  // 3) sanity‐check it exists
+  if (!existsSync(absImagePath)) {
+    return NextResponse.json(
+      { error: `File not found on disk: ${absImagePath}` },
+      { status: 400 }
+    )
+  }
+
+  // 4) now spawn your Python script with the real path
   const scriptPath = path.join(process.cwd(), 'python', 'scanner.py')
-  const pythonCwd = path.join(process.cwd(), 'python')
-  const py = spawn(
-    'python3',
-    [scriptPath, imagePath, JSON.stringify(answers)],
-    { cwd: pythonCwd }
-  )
+  const pythonCwd  = path.join(process.cwd(), 'python')
+  const py = spawn('python3', [
+    scriptPath,
+    absImagePath,
+    JSON.stringify(answers)
+  ], { cwd: pythonCwd })
 
-  // 3) collect stdout / stderr
-  let stdout = ''
-  let stderr = ''
+  // 5) collect stdout / stderr
+  let stdout = '', stderr = ''
   for await (const chunk of py.stdout) stdout += chunk
   for await (const chunk of py.stderr) stderr += chunk
 
@@ -40,7 +53,7 @@ export async function POST(request: Request) {
     py.on('close', resolve)
   )
 
-  // 4) handle errors
+  // 6) handle errors
   if (exitCode !== 0) {
     return NextResponse.json(
       { error: stderr || 'Python script failed' },
@@ -48,7 +61,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // 5) parse JSON result
+  // 7) parse JSON result
   try {
     const data = JSON.parse(stdout)
     return NextResponse.json(data)
