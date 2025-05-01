@@ -126,7 +126,7 @@ def convert_to_two_tone(image):
 def warp_image(input_image):
     global paper_size
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-    parameters = aruco.DetectorParameters()
+    parameters = aruco.DetectorParameters_create()
 
     gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
     corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
