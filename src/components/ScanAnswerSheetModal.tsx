@@ -205,7 +205,10 @@ export default function ScanAnswerSheetModal({
               <div className="relative overflow-hidden rounded-lg border bg-gray-100 flex justify-center">
                 {selectedResult.correctedImageUrl ? (
                   <img
-                    src={selectedResult.correctedImageUrl}
+                    src={selectedResult.correctedImageUrl.replace(
+                      "/../public",
+                      ""
+                    )}
                     alt="Corrected Answer Sheet"
                     className="max-w-full object-contain max-h-[500px]"
                   />
