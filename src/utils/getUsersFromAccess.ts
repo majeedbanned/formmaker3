@@ -16,6 +16,7 @@ interface AccessObject {
 }
 
 interface User {
+  id: string;
   username: string;
   name: string;
   className?: string;
@@ -73,8 +74,10 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
     
       const studentsData = await fetchStudents(domain, { "data.studentCode": { $in: studentCodes } });
       studentsData.forEach((student: StudentDocument) => {
-        if (!processedIds.has(student.data.studentCode)) {
+        const id = student._id.toString();
+        if (!processedIds.has(id)) {
           users.push({
+            id,
             username: student.data.studentCode,
             name: student.data.studentName && student.data.studentFamily 
               ? `${student.data.studentName} ${student.data.studentFamily}` 
@@ -84,7 +87,7 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
               : undefined,
             role: 'student'
           });
-          processedIds.add(student.data.studentCode);
+          processedIds.add(id);
         }
       });
     }
@@ -96,8 +99,10 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
       const studentsInGroups = await fetchStudents(domain, { "data.groups.value": { $in: groupIds } });
       
       studentsInGroups.forEach((student: StudentDocument) => {
-        if (!processedIds.has(student.data.studentCode)) {
+        const id = student._id.toString();
+        if (!processedIds.has(id)) {
           users.push({
+            id,
             username: student.data.studentCode,
             name: student.data.studentName && student.data.studentFamily 
               ? `${student.data.studentName} ${student.data.studentFamily}` 
@@ -107,7 +112,7 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
               : undefined,
             role: 'student'
           });
-          processedIds.add(student.data.studentCode);
+          processedIds.add(id);
         }
       });
     }
@@ -119,8 +124,10 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
       const studentsInClasses = await fetchStudents(domain, { "data.classCode.value": { $in: classCodes } });
       
       studentsInClasses.forEach((student: StudentDocument) => {
-        if (!processedIds.has(student.data.studentCode)) {
+        const id = student._id.toString();
+        if (!processedIds.has(id)) {
           users.push({
+            id,
             username: student.data.studentCode,
             name: student.data.studentName && student.data.studentFamily 
               ? `${student.data.studentName} ${student.data.studentFamily}` 
@@ -130,7 +137,7 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
               : undefined,
             role: 'student'
           });
-          processedIds.add(student.data.studentCode);
+          processedIds.add(id);
         }
       });
     }
@@ -142,13 +149,15 @@ export async function getUsersFromAccess(domain: string, accessObject: AccessObj
       const teachersData = await fetchTeachers(domain, { "data.teacherCode": { $in: teacherCodes } });
       
       teachersData.forEach((teacher: TeacherDocument) => {
-        if (!processedIds.has(teacher.data.teacherCode)) {
+        const id = teacher._id.toString();
+        if (!processedIds.has(id)) {
           users.push({
+            id,
             username: teacher.data.teacherCode,
             name: teacher.data.teacherName || teacher.data.teacherCode,
             role: 'teacher'
           });
-          processedIds.add(teacher.data.teacherCode);
+          processedIds.add(id);
         }
       });
     }

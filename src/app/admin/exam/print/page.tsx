@@ -184,6 +184,7 @@ function PrintExamContent() {
   const [examData, setExamData] = useState<ExamData | null>(null);
   const [examUsers, setExamUsers] = useState<
     {
+      id: string;
       username: string;
       name: string;
       className?: string;
@@ -481,6 +482,7 @@ function PrintExamContent() {
           const student1 = studentsForQR[page * 2];
 
           // Generate and add QR code for first student with optimization
+          console.log("student1", student1);
           const qrDataUrl1 = await qrcodeModule.toDataURL(
             student1.username.toString(),
             qrOptions
