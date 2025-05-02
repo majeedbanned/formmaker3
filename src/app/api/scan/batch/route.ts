@@ -195,6 +195,42 @@ export async function POST(request: Request) {
             userId: result.qRCodeData  // Assuming qRCodeData contains userId
           });
           
+          // Calculate total max score from questions
+          const totalMaxScore = questions.reduce((sum, q) => sum + (q.score || 1), 0);
+          
+          // Create the answers array mapped from the questions and scan results
+          const answers = questions.map((question, index) => {
+            const questionNumber = index + 1;
+            const answerValue = result.Useranswers[index] ? result.Useranswers[index].toString() : "";
+            const isCorrect = result.rightAnswers.includes(questionNumber);
+            const maxScore = question.score || 1;
+            const earnedScore = isCorrect ? maxScore : 0;
+            
+            return {
+              questionId: question._id.toString(),
+              answer: answerValue,
+              examId: examId,
+              isCorrect: isCorrect,
+              maxScore: maxScore,
+              earnedScore: earnedScore,
+              category: question.question?.category || "test",
+              needsGrading: false
+            };
+          });
+          
+          // Create common date objects
+          const now = new Date();
+          const persianDate = new Intl.DateTimeFormat('fa-IR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          }).format(now).replace(/‏/g, '').replace(/،/g, '');
+          
+          // If participant exists, update participant record
           if (participant) {
             // Update participant with scan results
             await participantsCollection.updateOne(
@@ -219,93 +255,81 @@ export async function POST(request: Request) {
                 }
               }
             );
-            
-            // Create entry in examstudentsinfo collection or update if exists
-            const now = new Date();
-            const persianDate = new Intl.DateTimeFormat('fa-IR', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: false,
-            }).format(now).replace(/‏/g, '').replace(/،/g, '');
-            
-            // Calculate total max score from questions
-            const totalMaxScore = questions.reduce((sum, q) => sum + (q.score || 1), 0);
-            
-            // Create the answers array mapped from the questions and scan results
-            const answers = questions.map((question, index) => {
-              const questionNumber = index + 1;
-              const answerValue = result.Useranswers[index] ? result.Useranswers[index].toString() : "";
-              const isCorrect = result.rightAnswers.includes(questionNumber);
-              const maxScore = question.score || 1;
-              const earnedScore = isCorrect ? maxScore : 0;
-              
-              return {
-                questionId: question._id.toString(),
-                answer: answerValue,
-                examId: examId,
-                isCorrect: isCorrect,
-                maxScore: maxScore,
-                earnedScore: earnedScore,
-                category: question.question?.category || "test",
-                needsGrading: false
-              };
-            });
-            
-            // Check if entry already exists
-            const existingEntry = await examStudentsInfoCollection.findOne({
+          } else {
+            // Participant doesn't exist, create a new entry in examparticipants
+            await participantsCollection.insertOne({
               examId: examId,
-              userId: result.qRCodeData
+              userId: result.qRCodeData,
+              answers: result.Useranswers.map((answer: number, index: number) => ({
+                questionId: questions[index]?._id || '',
+                answer: answer.toString(),
+                isCorrect: result.rightAnswers.includes(index + 1),
+                maxScore: questions[index]?.score || 1,
+                earnedScore: result.rightAnswers.includes(index + 1) ? (questions[index]?.score || 1) : 0,
+                needsGrading: false
+              })),
+              sumScore: result.rightAnswers.length,
+              maxScore: questions.length,
+              correctAnswerCount: result.rightAnswers.length,
+              wrongAnswerCount: result.wrongAnswers.length,
+              unansweredCount: result.unAnswered.length,
+              gradingStatus: "scanned",
+              scanResult: result,
+              createdAt: now,
+              updatedAt: now
             });
-            
-            if (existingEntry) {
-              // Update existing entry
-              await examStudentsInfoCollection.updateOne(
-                { _id: existingEntry._id },
-                {
-                  $set: {
-                    answers: answers,
-                    isFinished: true,
-                    lastSavedTime: now,
-                    updatedAt: now,
-                    correctAnswerCount: result.rightAnswers.length,
-                    wrongAnswerCount: result.wrongAnswers.length,
-                    unansweredCount: result.unAnswered.length,
-                    sumScore: result.rightAnswers.length,
-                    maxScore: totalMaxScore,
-                    gradingStatus: "scanned",
-                    gradingTime: now,
-                    scanResult: result
-                  }
+          }
+          
+          // Check if entry already exists in examstudentsinfo
+          const existingEntry = await examStudentsInfoCollection.findOne({
+            examId: examId,
+            userId: result.qRCodeData
+          });
+          
+          if (existingEntry) {
+            // Update existing entry
+            await examStudentsInfoCollection.updateOne(
+              { _id: existingEntry._id },
+              {
+                $set: {
+                  answers: answers,
+                  isFinished: true,
+                  lastSavedTime: now,
+                  updatedAt: now,
+                  correctAnswerCount: result.rightAnswers.length,
+                  wrongAnswerCount: result.wrongAnswers.length,
+                  unansweredCount: result.unAnswered.length,
+                  sumScore: result.rightAnswers.length,
+                  maxScore: totalMaxScore,
+                  gradingStatus: "scanned",
+                  gradingTime: now,
+                  scanResult: result
                 }
-              );
-            } else {
-              // Create new entry
-              await examStudentsInfoCollection.insertOne({
-                examId: examId,
-                userId: result.qRCodeData,
-                schoolCode: schoolCode,
-                entryTime: now,
-                entryDate: now,
-                persianEntryDate: persianDate,
-                answers: answers,
-                isFinished: true,
-                lastSavedTime: now,
-                createdAt: now,
-                updatedAt: now,
-                correctAnswerCount: result.rightAnswers.length,
-                wrongAnswerCount: result.wrongAnswers.length,
-                unansweredCount: result.unAnswered.length,
-                sumScore: result.rightAnswers.length,
-                maxScore: totalMaxScore,
-                gradingStatus: "scanned",
-                gradingTime: now,
-                scanResult: result
-              });
-            }
+              }
+            );
+          } else {
+            // Create new entry
+            await examStudentsInfoCollection.insertOne({
+              examId: examId,
+              userId: result.qRCodeData,
+              schoolCode: schoolCode,
+              entryTime: now,
+              entryDate: now,
+              persianEntryDate: persianDate,
+              answers: answers,
+              isFinished: true,
+              lastSavedTime: now,
+              createdAt: now,
+              updatedAt: now,
+              correctAnswerCount: result.rightAnswers.length,
+              wrongAnswerCount: result.wrongAnswers.length,
+              unansweredCount: result.unAnswered.length,
+              sumScore: result.rightAnswers.length,
+              maxScore: totalMaxScore,
+              gradingStatus: "scanned",
+              gradingTime: now,
+              scanResult: result
+            });
           }
         }
       }
