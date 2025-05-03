@@ -113,9 +113,11 @@ console.log("typexxx",userType);
       // Store token in students collection
       const studentsCollection = connection.collection('students');
       
-      // Find student by _id (MongoDB ObjectId)
-      await studentsCollection.updateOne(
-        { '_id': userId },
+      console.log(`Trying to update student with userId: ${userId} and schoolCode: ${schoolCode}`);
+      
+      // First try to find by _id (MongoDB ObjectId)
+      let updateResult = await studentsCollection.updateOne(
+        { _id: userId },
         {
           $addToSet: { 
             'data.tokens': { 
@@ -126,15 +128,42 @@ console.log("typexxx",userType);
         }
       );
       
-      logger.info(`Added token to student record with ID ${userId}`);
+      // If no student found by _id, try by studentCode and schoolCode
+      if (updateResult.matchedCount === 0) {
+        console.log(`No student found with _id ${userId}, trying with studentCode and schoolCode`);
+        updateResult = await studentsCollection.updateOne(
+          { 
+            'data.studentCode': userId,
+            'data.schoolCode': schoolCode 
+          },
+          {
+            $addToSet: { 
+              'data.tokens': { 
+                token: token, 
+                deviceInfo: device 
+              } 
+            }
+          }
+        );
+      }
+      
+      console.log(`Student update result: ${JSON.stringify(updateResult)}`);
+      
+      if (updateResult.matchedCount > 0) {
+        logger.info(`Added token to student record. UserId: ${userId}, SchoolCode: ${schoolCode}`);
+      } else {
+        logger.warn(`No student found with either _id ${userId} or studentCode ${userId} with schoolCode ${schoolCode}`);
+      }
     } 
     else if (userType === 'teacher') {
       // Store token in teachers collection
       const teachersCollection = connection.collection('teachers');
       
-      // Find teacher by _id
-      await teachersCollection.updateOne(
-        { '_id': userId },
+      console.log(`Trying to update teacher with userId: ${userId} and schoolCode: ${schoolCode}`);
+      
+      // First try to find by _id (MongoDB ObjectId)
+      let updateResult = await teachersCollection.updateOne(
+        { _id: userId },
         {
           $addToSet: { 
             'data.tokens': { 
@@ -145,15 +174,42 @@ console.log("typexxx",userType);
         }
       );
       
-      logger.info(`Added token to teacher record with ID ${userId}`);
+      // If no teacher found by _id, try by teacherCode and schoolCode
+      if (updateResult.matchedCount === 0) {
+        console.log(`No teacher found with _id ${userId}, trying with teacherCode and schoolCode`);
+        updateResult = await teachersCollection.updateOne(
+          { 
+            'data.teacherCode': userId,
+            'data.schoolCode': schoolCode 
+          },
+          {
+            $addToSet: { 
+              'data.tokens': { 
+                token: token, 
+                deviceInfo: device 
+              } 
+            }
+          }
+        );
+      }
+      
+      console.log(`Teacher update result: ${JSON.stringify(updateResult)}`);
+      
+      if (updateResult.matchedCount > 0) {
+        logger.info(`Added token to teacher record. UserId: ${userId}, SchoolCode: ${schoolCode}`);
+      } else {
+        logger.warn(`No teacher found with either _id ${userId} or teacherCode ${userId} with schoolCode ${schoolCode}`);
+      }
     }
     else if (userType === 'school') {
       // Store token in schools collection
       const schoolsCollection = connection.collection('schools');
       
-      // Find school by _id
-      await schoolsCollection.updateOne(
-        { '_id': userId },
+      console.log(`Trying to update school with userId: ${userId} and schoolCode: ${schoolCode}`);
+      
+      // First try to find by _id (MongoDB ObjectId of the school)
+      let updateResult = await schoolsCollection.updateOne(
+        { _id: userId },
         {
           $addToSet: { 
             'data.tokens': { 
@@ -164,7 +220,29 @@ console.log("typexxx",userType);
         }
       );
       
-      logger.info(`Added token to school record with ID ${userId}`);
+      // If no school found by _id, try by schoolCode
+      if (updateResult.matchedCount === 0) {
+        console.log(`No school found with _id ${userId}, trying with schoolCode ${schoolCode}`);
+        updateResult = await schoolsCollection.updateOne(
+          { 'data.schoolCode': schoolCode },
+          {
+            $addToSet: { 
+              'data.tokens': { 
+                token: token, 
+                deviceInfo: device 
+              } 
+            }
+          }
+        );
+      }
+      
+      console.log(`School update result: ${JSON.stringify(updateResult)}`);
+      
+      if (updateResult.matchedCount > 0) {
+        logger.info(`Added token to school record. UserId: ${userId}, SchoolCode: ${schoolCode}`);
+      } else {
+        logger.warn(`No school found with either _id ${userId} or schoolCode ${schoolCode}`);
+      }
     }
 
     logger.info(`Device registered for notifications: ${token.substring(0, 10)}... for domain: ${domain}`);
