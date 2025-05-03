@@ -98,6 +98,38 @@ const data = {
     },
 
     {
+      title: "ارتباطات",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: " ارسال پیامک",
+          url: "/admin/sms",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "ارسال پیام الکترونیکی",
+          url: "/admin/messages",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "آنلاین چت",
+          url: "/admin/mychat",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: " ارسال نوتیفیکیشن",
+          url: "/admin/notifications",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+      ],
+    },
+    {
       title: "امکانات",
       url: "#",
       icon: SquareTerminal,
@@ -159,12 +191,7 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
-        {
-          title: "پیامک",
-          url: "/admin/sms",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
+
         {
           title: "بانک سوالات",
           url: "/admin/questionbank",
@@ -183,12 +210,7 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
-        {
-          title: "ارسال پیام",
-          url: "/admin/messages",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
+
         {
           title: "صندوق پیام",
           url: "/admin/inbox",
@@ -219,12 +241,7 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
-        {
-          title: " چت",
-          url: "/admin/mychat",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
+
         {
           title: " گفتگوی شناور",
           url: "/admin/floatingchat",

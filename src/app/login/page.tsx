@@ -4,13 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,13 +16,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { motion } from "framer-motion";
+import { CheckCircle2, School, UserRound, BookOpenCheck } from "lucide-react";
 
 const formSchema = z.object({
   userType: z.enum(["school", "teacher", "student"], {
@@ -44,6 +33,44 @@ const formSchema = z.object({
     message: "رمز عبور الزامی است",
   }),
 });
+
+// UserType box component
+const UserTypeBox = ({
+  label,
+  icon,
+  selected,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  selected: boolean;
+  onClick: () => void;
+}) => (
+  <motion.div
+    whileHover={{ y: -5 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={onClick}
+    className={`relative cursor-pointer rounded-xl p-6 overflow-hidden transition-all duration-300 ${
+      selected
+        ? "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/20 border-blue-400 text-white"
+        : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-lg"
+    } border-2 flex flex-col items-center justify-center gap-2`}
+  >
+    <div className={`text-3xl ${selected ? "text-white" : "text-blue-500"}`}>
+      {icon}
+    </div>
+    <div className="text-lg font-medium mt-2">{label}</div>
+    {selected && (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="absolute top-2 right-2"
+      >
+        <CheckCircle2 className="h-5 w-5 text-white" />
+      </motion.div>
+    )}
+  </motion.div>
+);
 
 function LoginForm() {
   const router = useRouter();
@@ -92,116 +119,210 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            1.2 ورود به پنل مدیریت
-          </CardTitle>
-          <CardDescription className="text-center">
-            لطفا اطلاعات حساب کاربری خود را وارد کنید
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="userType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>نوع کاربر</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-b-[40px] shadow-lg"></div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="z-10 w-full max-w-md relative"
+      >
+        <div className="text-center text-white mb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-3xl font-bold"
+          >
+            ورود به پنل مدیریت
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="mt-2 text-blue-100"
+          >
+            نسخه ۱.۲
+          </motion.p>
+        </div>
+
+        <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
+          <CardContent className="p-6">
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
+                <FormField
+                  control={form.control}
+                  name="userType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-4">
+                      <FormLabel className="text-center block text-lg font-medium text-gray-700">
+                        انتخاب نوع کاربر
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="نوع کاربر را انتخاب کنید" />
-                        </SelectTrigger>
+                        <div className="grid grid-cols-3 gap-3">
+                          <UserTypeBox
+                            label="مدرسه"
+                            icon={<School />}
+                            selected={field.value === "school"}
+                            onClick={() => field.onChange("school")}
+                          />
+                          <UserTypeBox
+                            label="معلم"
+                            icon={<UserRound />}
+                            selected={field.value === "teacher"}
+                            onClick={() => field.onChange("teacher")}
+                          />
+                          <UserTypeBox
+                            label="دانش آموز"
+                            icon={<BookOpenCheck />}
+                            selected={field.value === "student"}
+                            onClick={() => field.onChange("student")}
+                          />
+                        </div>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="school">مدرسه</SelectItem>
-                        <SelectItem value="teacher">معلم</SelectItem>
-                        <SelectItem value="student">دانش آموز</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="schoolCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>کد مدرسه</FormLabel>
-                    <FormControl>
-                      <Input
-                        dir="ltr"
-                        placeholder="کد مدرسه خود را وارد کنید"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <FormField
+                    control={form.control}
+                    name="schoolCode"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-gray-700">
+                          کد مدرسه
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            dir="ltr"
+                            placeholder="کد مدرسه خود را وارد کنید"
+                            className="bg-white border-gray-200 focus:border-blue-500 h-11 ring-blue-500/20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
 
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>نام کاربری</FormLabel>
-                    <FormControl>
-                      <Input
-                        dir="ltr"
-                        placeholder="نام کاربری خود را وارد کنید"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-gray-700">
+                          نام کاربری
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            dir="ltr"
+                            placeholder="نام کاربری خود را وارد کنید"
+                            className="bg-white border-gray-200 focus:border-blue-500 h-11 ring-blue-500/20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>رمز عبور</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="رمز عبور خود را وارد کنید"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-gray-700">
+                          رمز عبور
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="رمز عبور خود را وارد کنید"
+                            className="bg-white border-gray-200 focus:border-blue-500 h-11 ring-blue-500/20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
 
-              {error && (
-                <div className="text-sm text-red-500 text-center">{error}</div>
-              )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "در حال ورود..." : "ورود"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3 text-center"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg font-medium"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "در حال ورود..." : "ورود به سیستم"}
+                  </Button>
+                </motion.div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-6 text-center text-sm text-gray-500"
+        >
+          با ورود به سیستم، شما قوانین و مقررات سایت را پذیرفته‌اید
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-50 to-indigo-50">
+          <div className="animate-pulse text-center">
+            <div className="h-10 w-40 bg-blue-200 mx-auto rounded-md"></div>
+            <div className="h-4 w-24 bg-blue-100 mx-auto mt-3 rounded-md"></div>
+          </div>
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

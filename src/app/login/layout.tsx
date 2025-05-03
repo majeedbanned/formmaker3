@@ -1,13 +1,11 @@
 import { vazirmatn } from "@/lib/fonts";
 import "./../globals.css";
-export default function HomeLayout({ children }) {
+
+export default function LoginLayout({ children }) {
   return (
-    <html>
+    <html lang="fa" dir="rtl">
       <body className={`${vazirmatn.className} antialiased`}>
-        <div>
-          <header>login Layout Header</header>
-          <main>{children}</main>
-        </div>
+        <main>{children}</main>
       </body>
     </html>
   );
