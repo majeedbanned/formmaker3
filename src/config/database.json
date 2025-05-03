@@ -1,5 +1,6 @@
 {
   "localhost:3000": {
+    "schoolCode":"2295566177",
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/parsamooz?authSource=admin",
     "description": "Local development database"
   },
@@ -8,6 +9,7 @@
     "description": "Test environment database"
   },
   "parsplus.farsamooz.ir": {
+    "schoolCode":"2295566177",
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/parsamooz?authSource=admin",
     "description": "Production database for alireza.ir"
   }
