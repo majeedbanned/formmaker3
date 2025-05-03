@@ -30,7 +30,7 @@ console.log("userIdxxx",userId);
 console.log("tokenxxx",token);
 console.log("devicexxx",device);
 console.log("schoolCodexxx",schoolCode);
-console.log("typexxx",type);
+console.log("typexxx",userType);
 
 
     if (domaintype==="mobileapp") {
