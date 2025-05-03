@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
+    console.log("start stage 1")
     // Get domain from request headers for logging purposes
     let domain = request.headers.get("x-domain") 
     const domaintype = request.headers.get("x-domaintype") ;
@@ -24,11 +25,12 @@ export async function POST(request: Request) {
 
     // Parse the request body
     const body = await request.json();
-    const { userId, token, device,schoolCode } = body;
+    const { userId, token, device,schoolCode,userType } = body;
 console.log("userIdxxx",userId);
 console.log("tokenxxx",token);
 console.log("devicexxx",device);
 console.log("schoolCodexxx",schoolCode);
+console.log("typexxx",type);
 
 
     if (domaintype==="mobileapp") {
@@ -98,6 +100,7 @@ console.log("schoolCodexxx",schoolCode);
           token: token,
           userId: userId,
           deviceInfo: device,
+          userType:userType,
           isActive: true,
           lastUpdated: new Date()
         }
