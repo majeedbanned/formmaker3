@@ -10,7 +10,6 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    console.log("start stage 1")
     // Get domain from request headers for logging purposes
     let domain = request.headers.get("x-domain") 
     const domaintype = request.headers.get("x-domaintype") ;
@@ -100,13 +99,73 @@ console.log("typexxx",userType);
           token: token,
           userId: userId,
           deviceInfo: device,
-          userType:userType,
           isActive: true,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
+          schoolCode: schoolCode,
+          userType: userType
         }
       },
       { upsert: true }
     );
+
+    // Now update the appropriate collection based on userType
+    if (userType === 'student') {
+      // Store token in students collection
+      const studentsCollection = connection.collection('students');
+      
+      // Find student by _id (MongoDB ObjectId)
+      await studentsCollection.updateOne(
+        { '_id': userId },
+        {
+          $addToSet: { 
+            'data.tokens': { 
+              token: token, 
+              deviceInfo: device 
+            } 
+          }
+        }
+      );
+      
+      logger.info(`Added token to student record with ID ${userId}`);
+    } 
+    else if (userType === 'teacher') {
+      // Store token in teachers collection
+      const teachersCollection = connection.collection('teachers');
+      
+      // Find teacher by _id
+      await teachersCollection.updateOne(
+        { '_id': userId },
+        {
+          $addToSet: { 
+            'data.tokens': { 
+              token: token, 
+              deviceInfo: device 
+            } 
+          }
+        }
+      );
+      
+      logger.info(`Added token to teacher record with ID ${userId}`);
+    }
+    else if (userType === 'school') {
+      // Store token in schools collection
+      const schoolsCollection = connection.collection('schools');
+      
+      // Find school by _id
+      await schoolsCollection.updateOne(
+        { '_id': userId },
+        {
+          $addToSet: { 
+            'data.tokens': { 
+              token: token, 
+              deviceInfo: device 
+            } 
+          }
+        }
+      );
+      
+      logger.info(`Added token to school record with ID ${userId}`);
+    }
 
     logger.info(`Device registered for notifications: ${token.substring(0, 10)}... for domain: ${domain}`);
 
