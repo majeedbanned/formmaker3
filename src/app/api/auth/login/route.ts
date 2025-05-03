@@ -5,7 +5,19 @@ import fs from 'fs';
 import path from 'path';
 
 // Set runtime to nodejs
+
 export const runtime = 'nodejs';
+export async function OPTIONS(request: Request) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "http://localhost:8081",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, x-domain, x-domaintype",
+    },
+  });
+}
+
 
 export async function POST(request: Request) {
   try {
@@ -87,6 +99,10 @@ export async function POST(request: Request) {
         permissions: user.permissions,
       }
     }, { status: 200 });
+
+    response.headers.set("Access-Control-Allow-Origin", "http://localhost:8081");
+response.headers.set("Access-Control-Allow-Credentials", "true");
+
 
     // Set the cookie in the response
     response.cookies.set("auth-token", token, {
