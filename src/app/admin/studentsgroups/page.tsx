@@ -57,10 +57,14 @@ function StudentsPageContent() {
       type: "text",
       isShowInList: true,
       isSearchable: true,
-
+      populateID: {
+        collection: "studentsgroups",
+        field: "data.groupCode",
+      },
+      enabled: false,
       groupUniqueness: true,
       required: true,
-      enabled: true,
+      readonly: true,
       visible: true,
       validation: {
         requiredMessage: "کد گروه الزامی است",

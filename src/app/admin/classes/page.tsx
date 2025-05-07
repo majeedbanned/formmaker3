@@ -85,9 +85,14 @@ export default function Home() {
       isShowInList: true,
       isSearchable: true,
       required: true,
+      defaultValue: "1234567890",
       enabled: true,
       groupUniqueness: true,
       visible: true,
+      populateID: {
+        collection: "classes",
+        field: "data.classCode",
+      },
       validation: {
         requiredMessage: "کد کلاس الزامی است",
         groupUniqueMessage: "این کد کلاس قبلاً ثبت شده است",

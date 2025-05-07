@@ -212,6 +212,10 @@ export interface FormField extends Omit<FormFieldMinimal, 'required'> {
     refreshInterval?: number;
     customLabel?: string;
   };
+  populateID?: {
+    collection: string;
+    field: string;
+  };
   icon?: React.ComponentType<{ className?: string }>;
   placeholder?: string;
   autoCompleteStyle?: {

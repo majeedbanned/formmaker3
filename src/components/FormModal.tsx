@@ -385,6 +385,43 @@ const FormField = ({
     { label: string; value: unknown }[]
   >([]);
 
+  // Handle populateID for text fields
+  useEffect(() => {
+    const fetchMaxValue = async () => {
+      if (field.type === "text" && field.populateID && !fieldValue) {
+        try {
+          const response = await fetch("/api/max-field-value", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-domain": window.location.host,
+            },
+            body: JSON.stringify({
+              collection: field.populateID.collection,
+              field: field.populateID.field,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.maxValue !== undefined) {
+              // Set the default value to max + 1
+              setValue(field.name, String(Number(data.maxValue) + 1), {
+                shouldValidate: true,
+              });
+            }
+          } else {
+            console.error("Failed to fetch max value:", await response.text());
+          }
+        } catch (error) {
+          console.error("Error fetching max value:", error);
+        }
+      }
+    };
+
+    fetchMaxValue();
+  }, [field, setValue]); // Remove fieldValue from the dependency array
+
   useEffect(() => {
     const fetchOptions = async () => {
       if (
