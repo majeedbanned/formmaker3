@@ -2070,6 +2070,7 @@ export default function FormModal({
     watch,
     control,
     formState: { errors },
+    setError,
   } = useForm();
 
   // Add formSubmitting state variable
@@ -2378,19 +2379,78 @@ export default function FormModal({
     }
   };
 
+  // Function to check for group uniqueness before submitting
+  const checkGroupUniqueness = async (
+    data: Record<string, unknown>
+  ): Promise<boolean> => {
+    // Get all fields with groupUniqueness: true
+    const groupUniqueFields = formStructure.filter(
+      (field) => field.groupUniqueness
+    );
+
+    // If no fields with groupUniqueness, return true (validation passes)
+    if (groupUniqueFields.length === 0) return true;
+
+    try {
+      // Make a request to check uniqueness
+      const response = await fetch("/api/check-uniqueness", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          collectionName,
+          data,
+          editingId,
+          formStructure,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        // If we have duplicate fields, set errors
+        if (errorData.duplicateFields) {
+          Object.entries(errorData.duplicateFields).forEach(
+            ([field, message]) => {
+              setError(field, {
+                type: "manual",
+                message: message as string,
+              });
+            }
+          );
+          return false;
+        }
+
+        throw new Error("Failed to validate uniqueness");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking uniqueness:", error);
+      return false;
+    }
+  };
+
   // Update the onSubmitWithFiles function to use setFormSubmitting
   const onSubmitWithFiles = async (data: Record<string, unknown>) => {
     try {
       // Set form to submitting state
       setFormSubmitting(true);
 
-      // ... rest of your existing function ...
-
       // Process form data with uploaded files
       const combinedData = {
         ...data,
         ...uploadedFiles,
       };
+
+      // Check group uniqueness before submitting
+      const isUnique = await checkGroupUniqueness(combinedData);
+      if (!isUnique) {
+        setFormSubmitting(false);
+        return;
+      }
 
       // Pass the combined data to onSubmit handler
       await onSubmit(combinedData);

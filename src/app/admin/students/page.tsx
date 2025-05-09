@@ -97,6 +97,7 @@ function StudentsPageContent() {
       visible: true,
       validation: {
         requiredMessage: "کد دانش آموز الزامی است",
+        groupUniqueMessage: "این کد کلاس قبلاً ثبت شده است",
       },
     },
 
@@ -158,14 +159,14 @@ function StudentsPageContent() {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: false,
+      isShowInList: true,
       isSearchable: true,
       defaultValue: user?.schoolCode,
       readonly: true,
       required: true,
       groupUniqueness: true,
       enabled: true,
-      visible: false,
+      visible: true,
 
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
