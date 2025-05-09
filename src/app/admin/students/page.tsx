@@ -69,7 +69,7 @@ function StudentsPageContent() {
     },
     {
       name: "studentFamily",
-      title: "نام خانوادگی دانش آموز",
+      title: "نام خانوادگی  ",
       type: "text",
       isShowInList: true,
       isSearchable: true,
@@ -159,14 +159,14 @@ function StudentsPageContent() {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       defaultValue: user?.schoolCode,
       readonly: true,
       required: true,
       groupUniqueness: true,
       enabled: true,
-      visible: true,
+      visible: false,
 
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
@@ -177,7 +177,7 @@ function StudentsPageContent() {
       name: "password",
       title: "رمز عبور",
       type: "text",
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
 
       required: true,
@@ -228,7 +228,7 @@ function StudentsPageContent() {
         },
         {
           name: "number",
-          title: "Number",
+          title: "شماره تلفن",
           type: "text",
           enabled: true,
           visible: true,
@@ -364,18 +364,18 @@ function StudentsPageContent() {
               },
             ],
           }}
-          rowActions={[
-            {
-              label: "مشاهده سند",
-              link: "/document",
-              icon: DocumentIcon,
-            },
-            {
-              label: "اشتراک",
-              action: shareWithFilters,
-              icon: ShareIcon,
-            },
-          ]}
+          // rowActions={[
+          //   {
+          //     label: "مشاهده سند",
+          //     link: "/document",
+          //     icon: DocumentIcon,
+          //   },
+          //   {
+          //     label: "اشتراک",
+          //     action: shareWithFilters,
+          //     icon: ShareIcon,
+          //   },
+          // ]}
           onAfterAdd={(entity) => {
             console.log("Entity added:", entity);
           }}

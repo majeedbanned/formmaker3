@@ -512,7 +512,7 @@ const renderCellContent = (
                 type="button"
                 className="flex items-center gap-2 cursor-help"
               >
-                <span>{files.length} فایل</span>
+                <span>{files?.length} فایل</span>
                 <span className="text-xs text-gray-500">
                   {/* (برای مشاهده جزئیات کلیک کنید) */}
                   <EyeIcon className="w-4 h-4" />
@@ -767,33 +767,7 @@ export default function Table({
           }),
         ]
       : []),
-    ...formStructure
-      .filter((field) => field.isShowInList)
-      .map((field) =>
-        columnHelper.accessor((row) => row.data[field.name] as unknown, {
-          id: field.name,
-          header: field.title,
-          cell: (info) => {
-            const value = info.getValue();
-            const field = formStructure.find((f) => f.name === info.column.id);
-            if (!field) return null;
 
-            const style = field.listLabelColor
-              ? { color: field.listLabelColor }
-              : {};
-
-            return (
-              <div style={style}>
-                <NestedValueDisplay
-                  value={value}
-                  field={field}
-                  layout={layout}
-                />
-              </div>
-            );
-          },
-        })
-      ),
     ...(onEdit || onDelete || rowActions?.length
       ? [
           columnHelper.display({
@@ -876,6 +850,33 @@ export default function Table({
           }),
         ]
       : []),
+    ...formStructure
+      .filter((field) => field.isShowInList)
+      .map((field) =>
+        columnHelper.accessor((row) => row.data[field.name] as unknown, {
+          id: field.name,
+          header: field.title,
+          cell: (info) => {
+            const value = info.getValue();
+            const field = formStructure.find((f) => f.name === info.column.id);
+            if (!field) return null;
+
+            const style = field.listLabelColor
+              ? { color: field.listLabelColor }
+              : {};
+
+            return (
+              <div style={style}>
+                <NestedValueDisplay
+                  value={value}
+                  field={field}
+                  layout={layout}
+                />
+              </div>
+            );
+          },
+        })
+      ),
   ];
 
   const table = useReactTable({
