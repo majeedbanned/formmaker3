@@ -505,6 +505,7 @@ const renderCellContent = (
     case "file":
       if (field.isMultiple) {
         const files = value as UploadedFile[];
+        console.log("filesx", files);
         return (
           <HoverCard>
             <HoverCardTrigger>
@@ -543,6 +544,56 @@ const renderCellContent = (
                 </div>
               </div>
             </HoverCardContent>
+          </HoverCard>
+        );
+      } else {
+        // Handle single file
+        const file = value as UploadedFile;
+        if (!file) return <span></span>;
+
+        // Check if the file is an image
+        const isImage = file.type && file.type.startsWith("image/");
+
+        return (
+          <HoverCard>
+            <HoverCardTrigger>
+              <a
+                href={file.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-primary hover:underline"
+              >
+                {isImage ? (
+                  <img
+                    src={file.path}
+                    alt={file.originalName}
+                    className="h-8 w-8 object-cover rounded-sm"
+                  />
+                ) : (
+                  <span>{getFileIcon(file.type)}</span>
+                )}
+                {/* <span className="truncate max-w-[150px]">
+                  {file.originalName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatFileSize(file.size)}
+                </span> */}
+              </a>
+            </HoverCardTrigger>
+            {isImage && (
+              <HoverCardContent className="w-64">
+                <div className="space-y-2">
+                  <img
+                    src={file.path}
+                    alt={file.originalName}
+                    className="w-full h-auto object-contain rounded-md"
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    {file.originalName}
+                  </p>
+                </div>
+              </HoverCardContent>
+            )}
           </HoverCard>
         );
       }
