@@ -15,6 +15,8 @@ import {
   ChevronDownIcon,
   EllipsisVerticalIcon,
   EyeIcon,
+  CheckIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { TableProps, Entity, FormField, UploadedFile } from "../types/crud";
 import {
@@ -497,9 +499,10 @@ const renderCellContent = (
   value: unknown,
   layout: TableProps["layout"]
 ): React.ReactNode => {
-  if (!value) return <span>-</span>;
+  //return;
+  if (!value) return <span></span>;
   if (!field) return <span>{String(value)}</span>;
-
+  //console.log("value", field.type);
   // Handle special field types
   switch (field.type) {
     case "file":
@@ -600,6 +603,7 @@ const renderCellContent = (
 
     case "checkbox":
       if (field.isMultiple && Array.isArray(value)) {
+        //  console.log("valuex", value);
         return (
           <span>
             {value
@@ -611,7 +615,16 @@ const renderCellContent = (
           </span>
         );
       }
-      return <span>{value === true ? "Yes" : "No"}</span>;
+      // console.log("valuey", value);
+      return (
+        <span className="flex justify-center">
+          {value === true ? (
+            <CheckIcon className="h-5 w-5 text-green-600" />
+          ) : (
+            <XMarkIcon className="h-5 w-5 text-red-600" />
+          )}
+        </span>
+      );
 
     case "dropdown":
       if (field.isMultiple && Array.isArray(value)) {
@@ -1062,6 +1075,7 @@ export default function Table({
                         field.type === "file" ||
                         field.type === "shadcnmultiselect" ||
                         field.type === "richtextbox" ||
+                        field.type === "checkbox" ||
                         field.fields ? (
                           renderCellContent(field, value, layout)
                         ) : (
