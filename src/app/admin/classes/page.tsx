@@ -85,9 +85,10 @@ export default function Home() {
       isShowInList: true,
       isSearchable: true,
       required: true,
-      defaultValue: "1234567890",
-      enabled: true,
+      // defaultValue: "1234567890",
+      enabled: false,
       groupUniqueness: true,
+      readonly: true,
       visible: true,
       populateID: {
         collection: "classes",
@@ -168,7 +169,7 @@ export default function Home() {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       groupUniqueness: true,
 
@@ -177,7 +178,7 @@ export default function Home() {
 
       required: true,
       enabled: true,
-      visible: true,
+      visible: false,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },
@@ -226,7 +227,7 @@ export default function Home() {
     {
       enabled: true,
       visible: true,
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       name: "teachers",
       title: "معلمان",

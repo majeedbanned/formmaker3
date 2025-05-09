@@ -223,26 +223,12 @@ export default function Home() {
         requiredMessage: "لطفا یک پایه تحصیلی را انتخاب کنید",
       },
     },
-    {
-      name: "advancedContent",
-      title: "محتوای پیشرفته کلاس",
-      type: "editor",
-      isShowInList: true,
-      isSearchable: false,
-      required: false,
-      enabled: true,
-      visible: true,
-      validation: {
-        requiredMessage: "محتوای پیشرفته کلاس الزامی است",
-      },
-      placeholder: "محتوای پیشرفته کلاس را وارد کنید...",
-      className: "min-h-[250px]",
-    },
+
     {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       groupUniqueness: true,
 
@@ -251,7 +237,7 @@ export default function Home() {
 
       required: true,
       enabled: true,
-      visible: true,
+      visible: false,
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
       },

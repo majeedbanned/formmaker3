@@ -170,7 +170,62 @@ export default function Home({
       readonly: false,
       defaultValue: true,
     },
-
+    {
+      enabled: true,
+      visible: true,
+      isShowInList: true,
+      isSearchable: true,
+      name: "phones",
+      title: "شماره تلفن",
+      type: "text",
+      required: false,
+      nestedType: "array",
+      fields: [
+        {
+          enabled: true,
+          visible: true,
+          isSearchable: true,
+          required: true,
+          isShowInList: true,
+          name: "owner",
+          title: "صاحب شماره",
+          type: "dropdown",
+          options: [{ label: "معلم", value: "معلم" }],
+        },
+        {
+          name: "number",
+          title: "شماره تلفن",
+          type: "text",
+          enabled: true,
+          visible: true,
+          isSearchable: true,
+          isShowInList: true,
+          required: false,
+        },
+      ],
+      orientation: "horizontal",
+      isOpen: true,
+    },
+    {
+      name: "avatar",
+      title: "تصویر",
+      type: "file",
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      fileConfig: {
+        allowedTypes: ["image/*"],
+        maxSize: 5 * 1024 * 1024, // 5MB
+        directory: "avatars",
+        multiple: false,
+      },
+      validation: {
+        requiredMessage: "لطفا یک تصویر آپلود کنید",
+      },
+    },
     {
       enabled: true,
       visible: true,
@@ -231,9 +286,7 @@ export default function Home({
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Dynamic Form CRUD Example
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">استادان مدرسه</h1>
 
         {/* Filter Examples Section */}
         {/* <div className="mb-8 p-4 bg-white rounded-lg shadow">
@@ -298,18 +351,18 @@ export default function Home({
             canSearchAllFields: true,
           }}
           layout={layout}
-          rowActions={[
-            {
-              label: "View Document",
-              link: "/document",
-              icon: DocumentIcon,
-            },
-            {
-              label: "Share",
-              action: shareWithFilters,
-              icon: ShareIcon,
-            },
-          ]}
+          // rowActions={[
+          //   {
+          //     label: "View Document",
+          //     link: "/document",
+          //     icon: DocumentIcon,
+          //   },
+          //   {
+          //     label: "Share",
+          //     action: shareWithFilters,
+          //     icon: ShareIcon,
+          //   },
+          // ]}
           onAfterAdd={(entity) => {
             console.log("Entity added:", entity);
           }}
