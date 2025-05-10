@@ -15,6 +15,10 @@ import {
   SquareStack,
   SwitchCamera,
   Upload,
+  MessageSquare,
+  RadioIcon,
+  ListFilter,
+  FileUp,
 } from "lucide-react";
 
 interface FieldTypeSelectorProps {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FormField } from "./FormBuilderList";
+import { FormField as BaseFormField } from "./FormBuilderList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,17 +15,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, X } from "lucide-react";
+import { Save, X, PlusCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, ChevronsUpDown, PlusCircle, X as XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { z } from "zod";
+import { X as XIcon } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
+import { z } from "zod";
+import { Check, ChevronsUpDown } from "lucide-react";
+
+// Extended FormField interface to add description
+interface FormField extends BaseFormField {
+  description?: string;
+}
 
 interface FieldEditorProps {
   field: FormField;
@@ -68,7 +74,7 @@ export function FieldEditor({
   }, [editedField.label]);
 
   // Helper function to update field values
-  const updateField = (key: keyof FormField, value: any) => {
+  const updateField = (key: keyof FormField, value: unknown) => {
     setEditedField({
       ...editedField,
       [key]: value,
@@ -176,6 +182,14 @@ export function FieldEditor({
     if (!editedField.fields?.length) {
       updateField("fields", []);
     }
+  };
+
+  const handleRemoveNestedField = (index: number) => {
+    if (!editedField.fields) return;
+
+    const newFields = [...editedField.fields];
+    newFields.splice(index, 1);
+    updateField("fields", newFields);
   };
 
   // Validate and save
@@ -430,6 +444,19 @@ export function FieldEditor({
                   <AccordionTrigger>Nested Fields</AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="group-description">توضیحات گروه</Label>
+                        <Textarea
+                          id="group-description"
+                          value={editedField.description || ""}
+                          onChange={(e) =>
+                            updateField("description", e.target.value)
+                          }
+                          placeholder="توضیحات اختیاری برای این گروه فیلد"
+                          className="h-20"
+                        />
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <Label htmlFor="repeatable-field">Repeatable</Label>
                         <Switch
@@ -443,6 +470,266 @@ export function FieldEditor({
                           ? "Users can add multiple instances of this field group"
                           : "Field group appears once in the form"}
                       </p>
+
+                      <div className="pt-4 border-t">
+                        <div className="flex justify-between items-center mb-2">
+                          <Label>فیلدهای داخلی</Label>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateField("fields", [
+                                  ...(editedField.fields || []),
+                                  {
+                                    type: "text",
+                                    label: "متن",
+                                    name: `text_${Date.now()}`,
+                                  },
+                                ]);
+                              }}
+                            >
+                              متن
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateField("fields", [
+                                  ...(editedField.fields || []),
+                                  {
+                                    type: "number",
+                                    label: "عدد",
+                                    name: `number_${Date.now()}`,
+                                  },
+                                ]);
+                              }}
+                            >
+                              عدد
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateField("fields", [
+                                  ...(editedField.fields || []),
+                                  {
+                                    type: "select",
+                                    label: "منوی کشویی",
+                                    name: `select_${Date.now()}`,
+                                    options: [
+                                      { label: "گزینه 1", value: "option1" },
+                                      { label: "گزینه 2", value: "option2" },
+                                    ],
+                                  },
+                                ]);
+                              }}
+                            >
+                              منوی کشویی
+                            </Button>
+                          </div>
+                        </div>
+
+                        {editedField.fields && editedField.fields.length > 0 ? (
+                          <div className="space-y-2">
+                            {editedField.fields.map((nestedField, index) => (
+                              <div
+                                key={index}
+                                className="border p-3 rounded space-y-2"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <span className="font-medium">
+                                      {nestedField.label}
+                                    </span>
+                                    <span className="text-xs text-gray-500 mr-2">
+                                      (
+                                      {nestedField.type === "text"
+                                        ? "متن"
+                                        : nestedField.type === "number"
+                                        ? "عدد"
+                                        : nestedField.type === "select"
+                                        ? "منوی کشویی"
+                                        : nestedField.type}
+                                      )
+                                    </span>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRemoveNestedField(index)
+                                    }
+                                  >
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <div className="flex-1">
+                                    <Label
+                                      htmlFor={`nested-label-${index}`}
+                                      className="text-xs"
+                                    >
+                                      عنوان
+                                    </Label>
+                                    <Input
+                                      id={`nested-label-${index}`}
+                                      value={nestedField.label}
+                                      onChange={(e) => {
+                                        const newFields = [
+                                          ...(editedField.fields || []),
+                                        ];
+                                        newFields[index] = {
+                                          ...newFields[index],
+                                          label: e.target.value,
+                                        };
+                                        updateField("fields", newFields);
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <Label
+                                      htmlFor={`nested-name-${index}`}
+                                      className="text-xs"
+                                    >
+                                      نام فیلد
+                                    </Label>
+                                    <Input
+                                      id={`nested-name-${index}`}
+                                      value={nestedField.name}
+                                      onChange={(e) => {
+                                        const newFields = [
+                                          ...(editedField.fields || []),
+                                        ];
+                                        newFields[index] = {
+                                          ...newFields[index],
+                                          name: e.target.value,
+                                        };
+                                        updateField("fields", newFields);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {nestedField.type === "select" && (
+                                  <div className="mt-2 pt-2 border-t">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <Label className="text-xs">
+                                        گزینه‌ها
+                                      </Label>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const newFields = [
+                                            ...(editedField.fields || []),
+                                          ];
+                                          newFields[index] = {
+                                            ...newFields[index],
+                                            options: [
+                                              ...(nestedField.options || []),
+                                              { label: "", value: "" },
+                                            ],
+                                          };
+                                          updateField("fields", newFields);
+                                        }}
+                                      >
+                                        <PlusCircle className="h-3 w-3 ml-1" />
+                                        افزودن
+                                      </Button>
+                                    </div>
+
+                                    {(nestedField.options || []).map(
+                                      (option, optionIndex) => (
+                                        <div
+                                          key={optionIndex}
+                                          className="flex gap-2 items-center mb-1"
+                                        >
+                                          <Input
+                                            placeholder="برچسب"
+                                            value={option.label}
+                                            className="flex-1 h-7 text-xs"
+                                            onChange={(e) => {
+                                              const newFields = [
+                                                ...(editedField.fields || []),
+                                              ];
+                                              const newOptions = [
+                                                ...(nestedField.options || []),
+                                              ];
+                                              newOptions[optionIndex] = {
+                                                ...newOptions[optionIndex],
+                                                label: e.target.value,
+                                              };
+                                              newFields[index] = {
+                                                ...newFields[index],
+                                                options: newOptions,
+                                              };
+                                              updateField("fields", newFields);
+                                            }}
+                                          />
+                                          <Input
+                                            placeholder="مقدار"
+                                            value={option.value}
+                                            className="flex-1 h-7 text-xs"
+                                            onChange={(e) => {
+                                              const newFields = [
+                                                ...(editedField.fields || []),
+                                              ];
+                                              const newOptions = [
+                                                ...(nestedField.options || []),
+                                              ];
+                                              newOptions[optionIndex] = {
+                                                ...newOptions[optionIndex],
+                                                value: e.target.value,
+                                              };
+                                              newFields[index] = {
+                                                ...newFields[index],
+                                                options: newOptions,
+                                              };
+                                              updateField("fields", newFields);
+                                            }}
+                                          />
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              const newFields = [
+                                                ...(editedField.fields || []),
+                                              ];
+                                              const newOptions = [
+                                                ...(nestedField.options || []),
+                                              ];
+                                              newOptions.splice(optionIndex, 1);
+                                              newFields[index] = {
+                                                ...newFields[index],
+                                                options: newOptions,
+                                              };
+                                              updateField("fields", newFields);
+                                            }}
+                                          >
+                                            <XIcon className="h-3 w-3 text-red-500" />
+                                          </Button>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">
+                            هنوز فیلدی اضافه نشده است
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>

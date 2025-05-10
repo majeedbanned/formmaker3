@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { FormSchema, FormField } from "./FormBuilderList";
+import { FormSchema, FormField as BaseFormField } from "./FormBuilderList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileJson, ChevronRight, ChevronLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  FileJson,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  PlusCircle,
+} from "lucide-react";
 import {
   Form,
   FormControl,
@@ -25,11 +32,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Extend the FormField type to include description
+interface FormField extends BaseFormField {
+  description?: string;
+}
 
 interface FormPreviewProps {
   form: FormSchema;
@@ -63,84 +75,109 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
       // Skip fields with conditions for initial schema
       if (field.condition) return;
 
-      // Create base schema based on field type
-      let fieldSchema;
-      switch (field.type) {
-        case "text":
-        case "textarea":
-          fieldSchema = z.string();
-
-          // Add regex validation only for text fields
-          if (field.validation?.regex) {
-            try {
-              const regex = new RegExp(field.validation.regex);
-              fieldSchema = z.string().regex(regex, {
-                message: field.validation.validationMessage || "فرمت نامعتبر",
-              });
-            } catch (e) {
-              console.error("Invalid regex pattern", e);
-            }
-          }
-          break;
-
-        case "email":
-          fieldSchema = z.string().email("ایمیل نامعتبر است");
-          break;
-
-        case "number":
-          fieldSchema = z.preprocess(
-            (val) => (val === "" ? undefined : Number(val)),
-            z.number().optional()
-          );
-          break;
-
-        case "date":
-          fieldSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-            message: "لطفا یک تاریخ معتبر در فرمت YYYY-MM-DD وارد کنید",
+      // Handle nested field groups
+      if (field.type === "group") {
+        if (field.repeatable) {
+          // For repeatable groups, create an array schema
+          schema[field.name] = z
+            .array(z.object({}).catchall(z.unknown()))
+            .optional();
+        } else if (field.fields && field.fields.length > 0) {
+          // For non-repeatable groups, create a nested object schema
+          field.fields.forEach((nestedField) => {
+            const fieldKey = `${field.name}.${nestedField.name}`;
+            schema[fieldKey] = createFieldSchema(nestedField as FormField);
           });
-          break;
-
-        case "select":
-        case "radio":
-          fieldSchema = z.string();
-          break;
-
-        case "checkbox":
-        case "switch":
-          fieldSchema = z.boolean().optional();
-          break;
-
-        case "file":
-          fieldSchema = z.instanceof(File).optional();
-          break;
-
-        default:
-          fieldSchema = z.unknown().optional();
-      }
-
-      // Add required validation
-      if (field.required) {
-        if (["checkbox", "switch"].includes(field.type)) {
-          fieldSchema = z.boolean().refine((val) => val === true, {
-            message: "این فیلد الزامی است",
-          });
-        } else if (
-          ["text", "textarea", "email", "select", "radio", "date"].includes(
-            field.type
-          )
-        ) {
-          fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
-        } else if (field.type === "number") {
-          fieldSchema = z.number({ required_error: "این فیلد الزامی است" });
-        } else if (field.type === "file") {
-          fieldSchema = z.instanceof(File, { message: "این فیلد الزامی است" });
         }
+
+        return;
       }
 
-      schema[field.name] = fieldSchema;
+      // Standard field schema
+      schema[field.name] = createFieldSchema(field);
     });
 
     return z.object(schema);
+  };
+
+  // Helper function to create schema for a single field
+  const createFieldSchema = (field: FormField): z.ZodTypeAny => {
+    // Create base schema based on field type
+    let fieldSchema: z.ZodTypeAny;
+
+    switch (field.type) {
+      case "text":
+      case "textarea":
+        fieldSchema = z.string();
+
+        // Add regex validation only for text fields
+        if (field.validation?.regex) {
+          try {
+            const regex = new RegExp(field.validation.regex);
+            fieldSchema = z.string().regex(regex, {
+              message: field.validation.validationMessage || "فرمت نامعتبر",
+            });
+          } catch (e) {
+            console.error("Invalid regex pattern", e);
+          }
+        }
+        break;
+
+      case "email":
+        fieldSchema = z.string().email("ایمیل نامعتبر است");
+        break;
+
+      case "number":
+        fieldSchema = z.preprocess(
+          (val) => (val === "" ? undefined : Number(val)),
+          z.number().optional()
+        );
+        break;
+
+      case "date":
+        fieldSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+          message: "لطفا یک تاریخ معتبر در فرمت YYYY-MM-DD وارد کنید",
+        });
+        break;
+
+      case "select":
+      case "radio":
+        fieldSchema = z.string();
+        break;
+
+      case "checkbox":
+      case "switch":
+        fieldSchema = z.boolean().optional();
+        break;
+
+      case "file":
+        fieldSchema = z.instanceof(File).optional();
+        break;
+
+      default:
+        fieldSchema = z.unknown().optional();
+    }
+
+    // Add required validation
+    if (field.required) {
+      if (["checkbox", "switch"].includes(field.type)) {
+        fieldSchema = z.boolean().refine((val) => val === true, {
+          message: "این فیلد الزامی است",
+        });
+      } else if (
+        ["text", "textarea", "email", "select", "radio", "date"].includes(
+          field.type
+        )
+      ) {
+        fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
+      } else if (field.type === "number") {
+        fieldSchema = z.number({ required_error: "این فیلد الزامی است" });
+      } else if (field.type === "file") {
+        fieldSchema = z.instanceof(File, { message: "این فیلد الزامی است" });
+      }
+    }
+
+    return fieldSchema;
   };
 
   // Get fields for the current step
@@ -224,6 +261,45 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
     }
 
     switch (field.type) {
+      case "group":
+        return (
+          <div
+            key={field.name}
+            className="space-y-4 border rounded-md p-4 mb-4"
+          >
+            <h3 className="font-medium text-lg border-b pb-2">{field.label}</h3>
+            {field.description && (
+              <p className="text-sm text-gray-500 mb-2">{field.description}</p>
+            )}
+
+            {field.repeatable ? (
+              <GroupFieldRepeatable
+                field={field}
+                methods={methods}
+                renderField={renderField}
+              />
+            ) : (
+              <div className="space-y-4">
+                {field.fields?.map((nestedField) =>
+                  renderField({
+                    ...nestedField,
+                    name: `${field.name}.${nestedField.name}`,
+                    // Update condition to include parent field name in path if needed
+                    condition: nestedField.condition
+                      ? {
+                          ...nestedField.condition,
+                          field: nestedField.condition.field.includes(".")
+                            ? nestedField.condition.field
+                            : `${field.name}.${nestedField.condition.field}`,
+                        }
+                      : undefined,
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        );
+
       case "text":
         return (
           <UIFormField
@@ -471,6 +547,90 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
       default:
         return null;
     }
+  };
+
+  // Component to handle repeatable field groups
+  const GroupFieldRepeatable = ({
+    field,
+    methods,
+    renderField,
+  }: {
+    field: FormField;
+    methods: ReturnType<typeof useForm>;
+    renderField: (field: FormField) => React.ReactNode;
+  }) => {
+    // Use React Hook Form's useFieldArray for properly managing array fields
+    const {
+      fields: fieldItems,
+      append,
+      remove,
+    } = useFieldArray({
+      control: methods.control,
+      name: field.name,
+    });
+
+    // If field array is empty, initialize with one item
+    if (fieldItems.length === 0) {
+      append({});
+    }
+
+    return (
+      <div className="space-y-4">
+        {fieldItems.map((item, index) => (
+          <div
+            key={item.id} // Using the id from useFieldArray
+            className="border rounded-md p-3 relative"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                // Don't remove the last item
+                if (fieldItems.length > 1) {
+                  remove(index);
+                }
+              }}
+              className="absolute top-2 left-2 text-red-500 hover:text-red-700"
+              aria-label="حذف"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="space-y-3 pt-2">
+              {field.fields?.map((nestedField) =>
+                renderField({
+                  ...nestedField,
+                  name: `${field.name}.${index}.${nestedField.name}`,
+                  // Update condition to include correct path for array items
+                  condition: nestedField.condition
+                    ? {
+                        ...nestedField.condition,
+                        field: nestedField.condition.field.includes(".")
+                          ? `${
+                              field.name
+                            }.${index}.${nestedField.condition.field
+                              .split(".")
+                              .pop()}`
+                          : `${field.name}.${index}.${nestedField.condition.field}`,
+                      }
+                    : undefined,
+                })
+              )}
+            </div>
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => append({})}
+          className="mt-2"
+        >
+          <PlusCircle className="h-4 w-4 ml-2" />
+          افزودن {field.label}
+        </Button>
+      </div>
+    );
   };
 
   // Render step progress indicator
