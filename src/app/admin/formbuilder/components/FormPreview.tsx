@@ -280,21 +280,30 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
               />
             ) : (
               <div className="space-y-4">
-                {field.fields?.map((nestedField) =>
-                  renderField({
-                    ...nestedField,
-                    name: `${field.name}.${nestedField.name}`,
-                    // Update condition to include parent field name in path if needed
-                    condition: nestedField.condition
-                      ? {
-                          ...nestedField.condition,
-                          field: nestedField.condition.field.includes(".")
-                            ? nestedField.condition.field
-                            : `${field.name}.${nestedField.condition.field}`,
-                        }
-                      : undefined,
-                  })
-                )}
+                {/* Check if non-repeatable group has horizontal fields */}
+                {field.fields && hasHorizontalFields(field.fields)
+                  ? // Render fields by layout
+                    renderNonRepeatableFieldsByLayout(
+                      field.fields,
+                      field.name,
+                      renderField
+                    )
+                  : // Render all fields vertically as before
+                    field.fields?.map((nestedField) =>
+                      renderField({
+                        ...nestedField,
+                        name: `${field.name}.${nestedField.name}`,
+                        // Update condition to include parent field name in path if needed
+                        condition: nestedField.condition
+                          ? {
+                              ...nestedField.condition,
+                              field: nestedField.condition.field.includes(".")
+                                ? nestedField.condition.field
+                                : `${field.name}.${nestedField.condition.field}`,
+                            }
+                          : undefined,
+                      })
+                    )}
               </div>
             )}
           </div>
@@ -596,25 +605,35 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
             </button>
 
             <div className="space-y-3 pt-2">
-              {field.fields?.map((nestedField) =>
-                renderField({
-                  ...nestedField,
-                  name: `${field.name}.${index}.${nestedField.name}`,
-                  // Update condition to include correct path for array items
-                  condition: nestedField.condition
-                    ? {
-                        ...nestedField.condition,
-                        field: nestedField.condition.field.includes(".")
-                          ? `${
-                              field.name
-                            }.${index}.${nestedField.condition.field
-                              .split(".")
-                              .pop()}`
-                          : `${field.name}.${index}.${nestedField.condition.field}`,
-                      }
-                    : undefined,
-                })
-              )}
+              {/* Check if there are fields with horizontal layout */}
+              {field.fields && hasHorizontalFields(field.fields)
+                ? // Render fields in subgroups based on layout
+                  renderFieldsByLayout(
+                    field.fields,
+                    index,
+                    field.name,
+                    renderField
+                  )
+                : // Render all fields vertically as before
+                  field.fields?.map((nestedField) =>
+                    renderField({
+                      ...nestedField,
+                      name: `${field.name}.${index}.${nestedField.name}`,
+                      // Update condition to include correct path for array items
+                      condition: nestedField.condition
+                        ? {
+                            ...nestedField.condition,
+                            field: nestedField.condition.field.includes(".")
+                              ? `${
+                                  field.name
+                                }.${index}.${nestedField.condition.field
+                                  .split(".")
+                                  .pop()}`
+                              : `${field.name}.${index}.${nestedField.condition.field}`,
+                          }
+                        : undefined,
+                    })
+                  )}
             </div>
           </div>
         ))}
@@ -630,6 +649,139 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
           افزودن {field.label}
         </Button>
       </div>
+    );
+  };
+
+  // Helper functions for layout handling
+  const hasHorizontalFields = (fields: FormField[]) => {
+    return fields.some((field) => field.layout === "horizontal");
+  };
+
+  const renderFieldsByLayout = (
+    fields: FormField[],
+    index: number,
+    parentName: string,
+    renderField: (field: FormField) => React.ReactNode
+  ) => {
+    // Group fields by their layout type
+    const horizontalFields: FormField[] = [];
+    const verticalFields: FormField[] = [];
+
+    // Separate fields based on layout
+    fields.forEach((field) => {
+      if (field.layout === "horizontal") {
+        horizontalFields.push(field);
+      } else {
+        verticalFields.push(field);
+      }
+    });
+
+    return (
+      <>
+        {/* Render horizontal fields in a flex row */}
+        {horizontalFields.length > 0 && (
+          <div className="flex flex-wrap gap-4 mb-4">
+            {horizontalFields.map((nestedField) => (
+              <div key={nestedField.name} className="flex-1 min-w-[200px]">
+                {renderField({
+                  ...nestedField,
+                  name: `${parentName}.${index}.${nestedField.name}`,
+                  condition: nestedField.condition
+                    ? {
+                        ...nestedField.condition,
+                        field: nestedField.condition.field.includes(".")
+                          ? `${parentName}.${index}.${nestedField.condition.field
+                              .split(".")
+                              .pop()}`
+                          : `${parentName}.${index}.${nestedField.condition.field}`,
+                      }
+                    : undefined,
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Render vertical fields normally */}
+        {verticalFields.map((nestedField) =>
+          renderField({
+            ...nestedField,
+            name: `${parentName}.${index}.${nestedField.name}`,
+            condition: nestedField.condition
+              ? {
+                  ...nestedField.condition,
+                  field: nestedField.condition.field.includes(".")
+                    ? `${parentName}.${index}.${nestedField.condition.field
+                        .split(".")
+                        .pop()}`
+                    : `${parentName}.${index}.${nestedField.condition.field}`,
+                }
+              : undefined,
+          })
+        )}
+      </>
+    );
+  };
+
+  // Helper function to render non-repeatable fields by layout
+  const renderNonRepeatableFieldsByLayout = (
+    fields: FormField[],
+    parentName: string,
+    renderField: (field: FormField) => React.ReactNode
+  ) => {
+    // Group fields by their layout type
+    const horizontalFields: FormField[] = [];
+    const verticalFields: FormField[] = [];
+
+    // Separate fields based on layout
+    fields.forEach((field) => {
+      if (field.layout === "horizontal") {
+        horizontalFields.push(field);
+      } else {
+        verticalFields.push(field);
+      }
+    });
+
+    return (
+      <>
+        {/* Render horizontal fields in a flex row */}
+        {horizontalFields.length > 0 && (
+          <div className="flex flex-wrap gap-4 mb-4">
+            {horizontalFields.map((nestedField) => (
+              <div key={nestedField.name} className="flex-1 min-w-[200px]">
+                {renderField({
+                  ...nestedField,
+                  name: `${parentName}.${nestedField.name}`,
+                  condition: nestedField.condition
+                    ? {
+                        ...nestedField.condition,
+                        field: nestedField.condition.field.includes(".")
+                          ? nestedField.condition.field
+                          : `${parentName}.${nestedField.condition.field}`,
+                      }
+                    : undefined,
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Render vertical fields normally */}
+        {verticalFields.map((nestedField) =>
+          renderField({
+            ...nestedField,
+            name: `${parentName}.${nestedField.name}`,
+            condition: nestedField.condition
+              ? {
+                  ...nestedField.condition,
+                  field: nestedField.condition.field.includes(".")
+                    ? nestedField.condition.field
+                    : `${parentName}.${nestedField.condition.field}`,
+                }
+              : undefined,
+          })
+        )}
+      </>
     );
   };
 

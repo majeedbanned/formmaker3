@@ -616,6 +616,43 @@ export function FieldEditor({
                                   </div>
                                 </div>
 
+                                <div className="mt-2">
+                                  <Label
+                                    htmlFor={`nested-layout-${index}`}
+                                    className="text-xs"
+                                  >
+                                    نحوه نمایش
+                                  </Label>
+                                  <Select
+                                    value={nestedField.layout || "vertical"}
+                                    onValueChange={(value) => {
+                                      const newFields = [
+                                        ...(editedField.fields || []),
+                                      ];
+                                      newFields[index] = {
+                                        ...newFields[index],
+                                        layout: value,
+                                      };
+                                      updateField("fields", newFields);
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      id={`nested-layout-${index}`}
+                                      className="mt-1"
+                                    >
+                                      <SelectValue placeholder="انتخاب نحوه نمایش" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="vertical">
+                                        عمودی
+                                      </SelectItem>
+                                      <SelectItem value="horizontal">
+                                        افقی
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
                                 {nestedField.type === "select" && (
                                   <div className="mt-2 pt-2 border-t">
                                     <div className="flex justify-between items-center mb-2">
