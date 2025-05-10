@@ -14,7 +14,7 @@ interface StudentImport {
 }
 
 interface ProcessedStudent {
-  _id: ObjectId;
+  _id: string;
   studentCode: string;
   studentName: string;
   studentlname: string;
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           
           // Add student record with ID to the processed list
           processedStudentRecords.push({
-            _id: existingStudent._id,
+            _id: existingStudent._id.toString(),
             studentCode: student.studentCode,
             studentName: student.studentName,
             studentlname: student.studentFamily,
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
           
           // Add student record with ID to the processed list
           processedStudentRecords.push({
-            _id: result.insertedId,
+            _id: result.insertedId.toString(),
             studentCode: student.studentCode,
             studentName: student.studentName,
             studentlname: student.studentFamily,
