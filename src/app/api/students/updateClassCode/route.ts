@@ -50,19 +50,35 @@ export async function PUT(request: NextRequest) {
     
     // Check if the new class code already exists in the current array
     const newClassCode = classCode[0]; // Get the first class code from the array
-    const classCodeExists = currentClassCodes.some(
+    
+    let classCodeExists = false;
+    let updatedClassCodes = [...currentClassCodes];
+    
+    // Find the index of the existing class code (if any)
+    const existingClassIndex = currentClassCodes.findIndex(
       (code: { label: string; value: string }) => code.value === newClassCode.value
     );
     
-    // If class code doesn't exist, add it to the array
-    let updatedClassCodes;
-    if (!classCodeExists) {
+    if (existingClassIndex !== -1) {
+      classCodeExists = true;
+      
+      // Check if the class name (label) has changed
+      if (currentClassCodes[existingClassIndex].label !== newClassCode.label) {
+        logger.info(`Updating class name from ${currentClassCodes[existingClassIndex].label} to ${newClassCode.label} for class code ${newClassCode.value}`, { domain });
+        
+        // Update the label for the existing class code
+        updatedClassCodes[existingClassIndex] = {
+          ...currentClassCodes[existingClassIndex],
+          label: newClassCode.label
+        };
+      } else {
+        // No change needed if both code and label are the same
+        logger.info(`Class code ${newClassCode.value} already exists with same label for student ${studentId}`, { domain });
+      }
+    } else {
+      // Class code doesn't exist, add it to the array
       updatedClassCodes = [...currentClassCodes, newClassCode];
       logger.info(`Adding new class code ${newClassCode.value} to student ${studentId}`, { domain });
-    } else {
-      // Class code already exists, no change needed
-      updatedClassCodes = currentClassCodes;
-      logger.info(`Class code ${newClassCode.value} already exists for student ${studentId}`, { domain });
     }
     
     // Update the classCode field with the new array
@@ -77,7 +93,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ 
       success: true,
       data: result,
-      alreadyExisted: classCodeExists
+      alreadyExisted: classCodeExists,
+      labelUpdated: classCodeExists && currentClassCodes[existingClassIndex]?.label !== newClassCode.label
     });
     
   } catch (err) {

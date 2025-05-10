@@ -505,11 +505,62 @@ export default function Home() {
             // Update students' classCode field
             await updateStudentsClassCode(entity as unknown as ClassData);
           }}
-          onAfterEdit={async (entity) => {
-            console.log("Entity updated:", entity);
+          onAfterEdit={async (editedEntity) => {
+            console.log("Entity updated:", editedEntity);
+
+            const typedEntity = editedEntity as unknown as ClassData;
+
+            // Get previous class data from the window global
+            const previousData = window.__EDITING_ENTITY_DATA__;
+
+            // Check if className was changed
+            if (
+              previousData &&
+              previousData.className !== typedEntity.className
+            ) {
+              console.log(
+                `Class name changed from "${previousData.className}" to "${typedEntity.className}"`
+              );
+
+              // Update the class name in all students' records
+              try {
+                const updateResponse = await fetch(
+                  "/api/classes/updateClassName",
+                  {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-domain": window.location.host,
+                    },
+                    body: JSON.stringify({
+                      classCode: typedEntity.classCode,
+                      oldClassName: previousData.className,
+                      newClassName: typedEntity.className,
+                    }),
+                  }
+                );
+
+                if (updateResponse.ok) {
+                  const result = await updateResponse.json();
+                  console.log(
+                    `Updated class name for ${result.updated} students`
+                  );
+                } else {
+                  console.error(
+                    "Failed to update class name in student records:",
+                    await updateResponse.text()
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  "Error updating class name in student records:",
+                  error
+                );
+              }
+            }
 
             // Update students' classCode field
-            await updateStudentsClassCode(entity as unknown as ClassData);
+            await updateStudentsClassCode(typedEntity);
           }}
           onAfterDelete={(id) => {
             console.log("Entity deleted:", id);
