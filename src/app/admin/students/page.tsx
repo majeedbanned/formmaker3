@@ -545,11 +545,100 @@ function StudentsPageContent() {
               }
             }
           }}
-          onAfterDelete={(id: string) => {
-            console.log("Entity deleted:", id);
+          onAfterDelete={async (entity) => {
+            console.log("Entity deleted:", entity);
+
+            // Check if the entity has classCode field
+            const classCodeEntries = entity?.data?.classCode;
+
+            if (
+              classCodeEntries &&
+              Array.isArray(classCodeEntries) &&
+              classCodeEntries.length > 0
+            ) {
+              // For each class, remove the student
+              for (const classEntry of classCodeEntries) {
+                try {
+                  // Remove student from class
+                  const response = await fetch("/api/classes/removeStudent", {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-domain": window.location.host,
+                    },
+                    body: JSON.stringify({
+                      classCode: classEntry.value,
+                      studentId: entity._id,
+                    }),
+                  });
+
+                  if (response.ok) {
+                    console.log(
+                      `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
+                    );
+                  } else {
+                    console.error(
+                      `Failed to remove student from class ${classEntry.value}:`,
+                      await response.text()
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `Error removing student from class ${classEntry.value}:`,
+                    error
+                  );
+                }
+              }
+            }
           }}
-          onAfterGroupDelete={(ids: string[]) => {
-            console.log("Entities deleted:", ids);
+          onAfterGroupDelete={async (entities) => {
+            console.log("Entities deleted:", entities);
+
+            // Process each deleted entity
+            for (const entity of entities) {
+              // Check if the entity has classCode field
+              const classCodeEntries = entity?.data?.classCode;
+
+              if (
+                classCodeEntries &&
+                Array.isArray(classCodeEntries) &&
+                classCodeEntries.length > 0
+              ) {
+                // For each class, remove the student
+                for (const classEntry of classCodeEntries) {
+                  try {
+                    // Remove student from class
+                    const response = await fetch("/api/classes/removeStudent", {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-domain": window.location.host,
+                      },
+                      body: JSON.stringify({
+                        classCode: classEntry.value,
+                        studentId: entity._id,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      console.log(
+                        `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
+                      );
+                    } else {
+                      console.error(
+                        `Failed to remove student from class ${classEntry.value}:`,
+                        await response.text()
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      `Error removing student from class ${classEntry.value}:`,
+                      error
+                    );
+                  }
+                }
+              }
+            }
           }}
         />
       </div>
