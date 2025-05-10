@@ -123,10 +123,53 @@ export function FormSubmissionViewer({
   };
 
   const handleExportToExcel = async () => {
-    // In a real implementation, this would export all submissions to Excel
-    // For now just log the action
-    console.log("Exporting submissions to Excel");
-    alert("این قابلیت در حال توسعه است");
+    try {
+      setLoading(true);
+
+      // Create a URL for the Excel export endpoint
+      const exportUrl = `/api/formbuilder/export-excel?formId=${formId}`;
+
+      // Create a hidden link element to trigger the download
+      const link = document.createElement("a");
+      link.href = exportUrl;
+      link.target = "_blank";
+      link.download = `${formTitle || "form-submissions"}.xlsx`;
+
+      // Add any required headers using fetch
+      const response = await fetch(exportUrl, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to export Excel file");
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob();
+
+      // Create an object URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Update the link href
+      link.href = url;
+
+      // Append to the document, click, and remove
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      setError("خطا در ایجاد فایل اکسل");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Format date for display
