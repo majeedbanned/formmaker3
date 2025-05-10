@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FormSchema, FormField } from "./FormBuilderList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileJson } from "lucide-react";
+import { ArrowLeft, FileJson, ChevronRight, ChevronLeft } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -37,100 +37,141 @@ interface FormPreviewProps {
 }
 
 export default function FormPreview({ form, onBack }: FormPreviewProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Process steps for multi-step form
+  const isMultiStep = form.isMultiStep && form.steps && form.steps.length > 0;
+  const steps = isMultiStep
+    ? form.steps || []
+    : [
+        {
+          id: "single-step",
+          title: form.title,
+          fieldIds: form.fields.map((f) => f.name),
+        },
+      ];
 
   // Create Zod validation schema dynamically based on form fields
-  const generateValidationSchema = () => {
-    const schema: Record<string, any> = {};
+  const generateValidationSchema = (currentStepFields: FormField[]) => {
+    const schema: Record<string, z.ZodTypeAny> = {};
 
-    const processField = (field: FormField) => {
-      let fieldSchema = z.any();
+    // Process fields and add to schema
+    currentStepFields.forEach((field) => {
+      // Skip fields with conditions for initial schema
+      if (field.condition) return;
 
+      // Create base schema based on field type
+      let fieldSchema;
       switch (field.type) {
         case "text":
         case "textarea":
           fieldSchema = z.string();
+
+          // Add regex validation only for text fields
+          if (field.validation?.regex) {
+            try {
+              const regex = new RegExp(field.validation.regex);
+              fieldSchema = z.string().regex(regex, {
+                message: field.validation.validationMessage || "فرمت نامعتبر",
+              });
+            } catch (e) {
+              console.error("Invalid regex pattern", e);
+            }
+          }
           break;
+
         case "email":
-          fieldSchema = z.string().email();
+          fieldSchema = z.string().email("ایمیل نامعتبر است");
           break;
+
         case "number":
           fieldSchema = z.preprocess(
             (val) => (val === "" ? undefined : Number(val)),
             z.number().optional()
           );
           break;
+
         case "date":
           fieldSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-            message: "Please enter a valid date in YYYY-MM-DD format",
+            message: "لطفا یک تاریخ معتبر در فرمت YYYY-MM-DD وارد کنید",
           });
           break;
+
         case "select":
         case "radio":
           fieldSchema = z.string();
           break;
+
         case "checkbox":
-          fieldSchema = z.boolean().optional();
-          break;
         case "switch":
           fieldSchema = z.boolean().optional();
           break;
+
         case "file":
-          fieldSchema = z.any().optional();
+          fieldSchema = z.instanceof(File).optional();
           break;
+
         default:
-          fieldSchema = z.any().optional();
+          fieldSchema = z.unknown().optional();
       }
 
-      // Add required validation if field is required
+      // Add required validation
       if (field.required) {
         if (["checkbox", "switch"].includes(field.type)) {
           fieldSchema = z.boolean().refine((val) => val === true, {
-            message: "This field is required",
+            message: "این فیلد الزامی است",
           });
-        } else {
-          fieldSchema = fieldSchema.refine(
-            (val) => val !== undefined && val !== "",
-            {
-              message: "This field is required",
-            }
-          );
+        } else if (
+          ["text", "textarea", "email", "select", "radio", "date"].includes(
+            field.type
+          )
+        ) {
+          fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
+        } else if (field.type === "number") {
+          fieldSchema = z.number({ required_error: "این فیلد الزامی است" });
+        } else if (field.type === "file") {
+          fieldSchema = z.instanceof(File, { message: "این فیلد الزامی است" });
         }
-      } else {
-        fieldSchema = fieldSchema.optional();
       }
 
-      // Add custom regex validation if specified
-      if (field.validation?.regex) {
-        fieldSchema = fieldSchema.regex(new RegExp(field.validation.regex), {
-          message: field.validation.validationMessage || "Invalid format",
-        });
-      }
-
-      return fieldSchema;
-    };
-
-    // Process fields and add to schema
-    form.fields.forEach((field) => {
-      // Skip fields with conditions for initial schema
-      if (!field.condition) {
-        schema[field.name] = processField(field);
-      }
+      schema[field.name] = fieldSchema;
     });
 
     return z.object(schema);
   };
 
-  const formSchema = generateValidationSchema();
+  // Get fields for the current step
+  const getCurrentStepFields = () => {
+    if (!isMultiStep) return form.fields;
+
+    const currentStepData = steps[currentStep];
+    return form.fields.filter((field) =>
+      currentStepData.fieldIds.includes(field.name)
+    );
+  };
+
+  const currentStepFields = getCurrentStepFields();
+  const formSchema = generateValidationSchema(currentStepFields);
 
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: formData,
   });
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
+    // For multi-step forms, update the form data and move to the next step
+    const updatedFormData = { ...formData, ...data };
+    setFormData(updatedFormData);
+
+    if (isMultiStep && currentStep < steps.length - 1) {
+      // Move to the next step
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+
     try {
       // Only make the API call if the form has an ID
       if (form._id) {
@@ -141,7 +182,7 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
           },
           body: JSON.stringify({
             formId: form._id,
-            answers: data,
+            answers: updatedFormData,
           }),
         });
 
@@ -155,12 +196,17 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
       }
 
       // Update UI state
-      setFormData(data);
       setSubmitted(true);
-      console.log("Form submitted:", data);
+      console.log("Form submitted:", updatedFormData);
     } catch (error) {
       console.error("Error submitting form:", error);
       // Could add error handling UI here
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -208,7 +254,7 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
                 <FormControl>
                   <Input
                     type="email"
-                    placeholder={field.placeholder || "Email address"}
+                    placeholder={field.placeholder || "ایمیل"}
                     {...formField}
                   />
                 </FormControl>
@@ -297,7 +343,9 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue
-                        placeholder={field.placeholder || "Select an option"}
+                        placeholder={
+                          field.placeholder || "یک گزینه انتخاب کنید"
+                        }
                       />
                     </SelectTrigger>
                   </FormControl>
@@ -322,14 +370,14 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
             control={methods.control}
             name={field.name}
             render={({ field: formField }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4">
                 <FormControl>
                   <Checkbox
                     checked={formField.value}
                     onCheckedChange={formField.onChange}
                   />
                 </FormControl>
-                <div className="space-y-1 leading-none">
+                <div className="space-y-1 leading-none mr-3">
                   <FormLabel>{field.label}</FormLabel>
                 </div>
                 <FormMessage />
@@ -356,12 +404,12 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
                     {field.options?.map((option) => (
                       <FormItem
                         key={option.value}
-                        className="flex items-center space-x-3 space-y-0"
+                        className="flex items-center space-x-3 space-x-reverse space-y-0"
                       >
                         <FormControl>
                           <RadioGroupItem value={option.value} />
                         </FormControl>
-                        <FormLabel className="font-normal">
+                        <FormLabel className="font-normal mr-3">
                           {option.label}
                         </FormLabel>
                       </FormItem>
@@ -425,6 +473,46 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
     }
   };
 
+  // Render step progress indicator
+  const renderStepProgress = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center">
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  index === currentStep
+                    ? "bg-primary text-primary-foreground"
+                    : index < currentStep
+                    ? "bg-primary/20 text-primary"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                {index + 1}
+              </div>
+              {index < steps.length - 1 && (
+                <div
+                  className={`h-1 w-12 mx-2 ${
+                    index < currentStep ? "bg-primary" : "bg-gray-200"
+                  }`}
+                ></div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-center">
+          <h3 className="font-medium text-lg">{steps[currentStep].title}</h3>
+          {steps[currentStep].description && (
+            <p className="text-gray-500 text-sm mt-1">
+              {steps[currentStep].description}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center gap-4">
@@ -458,16 +546,41 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
             </div>
           )}
 
+          {!submitted && isMultiStep && renderStepProgress()}
+
           <Form {...methods}>
             <form
               onSubmit={methods.handleSubmit(onSubmit)}
               className="space-y-6"
             >
-              {form.fields.map((field) => renderField(field))}
+              {currentStepFields.map((field) => renderField(field))}
 
-              <Button type="submit" className="w-full">
-                ارسال
-              </Button>
+              <div className="flex justify-between mt-6">
+                {isMultiStep && currentStep > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePrevStep}
+                  >
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                    مرحله قبل
+                  </Button>
+                )}
+
+                <Button
+                  type="submit"
+                  className={isMultiStep && currentStep > 0 ? "" : "w-full"}
+                >
+                  {isMultiStep && currentStep < steps.length - 1 ? (
+                    <>
+                      مرحله بعد
+                      <ChevronLeft className="h-4 w-4 mr-2" />
+                    </>
+                  ) : (
+                    "ارسال"
+                  )}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

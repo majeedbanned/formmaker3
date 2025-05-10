@@ -20,8 +20,17 @@ export interface FormSchema {
   _id?: string;
   title: string;
   fields: FormField[];
+  steps?: FormStep[];
+  isMultiStep?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface FormStep {
+  id: string;
+  title: string;
+  description?: string;
+  fieldIds: string[];
 }
 
 export interface FormField {
@@ -39,6 +48,7 @@ export interface FormField {
   fields?: FormField[];
   layout?: string;
   repeatable?: boolean;
+  stepId?: string; // Reference to the step this field belongs to
 }
 
 interface FormBuilderListProps {
