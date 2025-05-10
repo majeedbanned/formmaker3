@@ -3,10 +3,23 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, Trash, FileText, ExternalLink } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  Trash,
+  FileText,
+  ExternalLink,
+  Settings,
+  Calendar,
+} from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import DatePicker from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+import type { Value } from "react-multi-date-picker";
+import TimePicker from "react-multi-date-picker/plugins/time_picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +30,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Define the Form type based on our requirements
 export interface FormSchema {
@@ -25,6 +47,8 @@ export interface FormSchema {
   fields: FormField[];
   steps?: FormStep[];
   isMultiStep?: boolean;
+  formStartEntryDatetime?: string | null;
+  formEndEntryDateTime?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -69,6 +93,8 @@ export default function FormBuilderList({
   const [submissionCounts, setSubmissionCounts] = useState<
     Record<string, number>
   >({});
+  const [selectedForm, setSelectedForm] = useState<FormSchema | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     fetchForms();
@@ -130,6 +156,90 @@ export default function FormBuilderList({
     }
   };
 
+  const handleSettingsClick = (form: FormSchema) => {
+    setSelectedForm(form);
+    setSettingsOpen(true);
+  };
+
+  const handleSaveSettings = async () => {
+    if (!selectedForm || !selectedForm._id) return;
+
+    try {
+      const response = await fetch(`/api/formbuilder/${selectedForm._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(selectedForm),
+      });
+
+      if (!response.ok) throw new Error("Failed to update form settings");
+
+      // Update the form in the local state
+      setForms(
+        forms.map((form) =>
+          form._id === selectedForm._id ? selectedForm : form
+        )
+      );
+
+      setSettingsOpen(false);
+    } catch (error) {
+      console.error("Error updating form settings:", error);
+    }
+  };
+
+  const handleStartDateChange = (value: Value) => {
+    if (!selectedForm) return;
+    console.log("value", value);
+    console.log("valueS", value?.toString());
+    const tem = value?.toString()
+      ? value?.toString()
+      : value?.toString()
+      ? new Date(value.toString())
+      : null;
+
+    console.log("tem", tem);
+
+    setSelectedForm({
+      ...selectedForm,
+      formStartEntryDatetime: value?.toString()
+        ? value?.toString()
+        : value?.toString()
+        ? new Date(value.toString())
+        : null,
+    });
+  };
+
+  const handleEndDateChange = (value: Value) => {
+    if (!selectedForm) return;
+
+    setSelectedForm({
+      ...selectedForm,
+      formEndEntryDateTime: value?.toString()
+        ? value?.toString()
+        : value?.toString()
+        ? new Date(value.toString())
+        : value?.toString(),
+    });
+  };
+
+  // Format date for display
+  const formatDate = (date: Date | null | undefined) => {
+    if (!date) return "تنظیم نشده";
+
+    try {
+      const persianDate = new Date(date);
+      return persianDate.toLocaleDateString("fa-IR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      // eslint-disable-next-line no-empty
+    } catch {
+      return "تنظیم نشده";
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading forms...</div>;
   }
@@ -165,6 +275,14 @@ export default function FormBuilderList({
                     onClick={() => onPreview(form)}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSettingsClick(form)}
+                    title="تنظیمات فرم"
+                  >
+                    <Settings className="h-4 w-4" />
                   </Button>
                   <Link
                     target="_blank"
@@ -214,6 +332,75 @@ export default function FormBuilderList({
           </Card>
         ))}
       </div>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent dir="rtl" className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>تنظیمات فرم</DialogTitle>
+            <DialogDescription>
+              تنظیم زمان شروع و پایان ثبت نام در این فرم
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label htmlFor="start-date" className="flex items-center mb-2">
+                  <Calendar className="h-4 w-4 ml-2" />
+                  تاریخ شروع ثبت نام
+                </Label>
+                <DatePicker
+                  value={selectedForm?.formStartEntryDatetime}
+                  onChange={handleStartDateChange}
+                  calendar={persian}
+                  locale={persian_fa}
+                  calendarPosition="bottom-right"
+                  className="w-full p-2 border rounded-md custom-datepicker"
+                  inputClass="w-full p-2 border rounded-md"
+                  format="YYYY/MM/DD  HH:mm"
+                  plugins={[<TimePicker hideSeconds position="bottom" />]}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end-date" className="flex items-center mb-2">
+                  <Calendar className="h-4 w-4 ml-2" />
+                  تاریخ پایان ثبت نام
+                </Label>
+                <DatePicker
+                  value={selectedForm?.formEndEntryDateTime}
+                  onChange={handleEndDateChange}
+                  calendar={persian}
+                  locale={persian_fa}
+                  calendarPosition="bottom-right"
+                  className="w-full p-2 border rounded-md custom-datepicker"
+                  inputClass="w-full p-2 border rounded-md"
+                  format="YYYY/MM/DD  HH:mm"
+                  plugins={[<TimePicker hideSeconds position="bottom" />]}
+                />
+              </div>
+              {/* Show the dates in a readable format */}
+              <div className="mt-2 text-sm text-gray-500">
+                <div className="flex flex-col space-y-1">
+                  <div>
+                    شروع ثبت نام:{" "}
+                    {formatDate(selectedForm?.formStartEntryDatetime)}
+                  </div>
+                  <div>
+                    پایان ثبت نام:{" "}
+                    {formatDate(selectedForm?.formEndEntryDateTime)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+              انصراف
+            </Button>
+            <Button onClick={handleSaveSettings}>ذخیره تنظیمات</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

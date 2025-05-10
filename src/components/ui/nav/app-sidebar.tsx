@@ -171,6 +171,13 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+
+        {
+          title: "ساخت فرم ها",
+          url: "/admin/formbuilder",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
         ,
         {
           title: "پرینت",
