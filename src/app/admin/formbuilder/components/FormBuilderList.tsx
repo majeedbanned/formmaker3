@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, Trash } from "lucide-react";
+import { Edit, Eye, Trash, FileText } from "lucide-react";
+import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -142,6 +143,15 @@ export default function FormBuilderList({
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                  <FormSubmissionViewer
+                    formId={form._id!}
+                    formTitle={form.title}
+                    trigger={
+                      <Button variant="ghost" size="sm">
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
