@@ -146,6 +146,13 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
       setLoading(true);
       setError(null);
 
+      // First, find the entity to be deleted
+      const entityToDelete = entities.find(entity => entity._id === id);
+      
+      if (!entityToDelete) {
+        throw new Error(`Entity with ID ${id} not found`);
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json"
       };
@@ -167,6 +174,9 @@ export function useCrud({ collectionName, connectionString, initialFilter, formS
       if (!response.ok) throw new Error("Failed to delete entity");
 
       await fetchEntities();
+      
+      // Return the complete entity that was deleted
+      return entityToDelete;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete entity");
       throw err;

@@ -562,11 +562,29 @@ export default function Home() {
             // Update students' classCode field
             await updateStudentsClassCode(typedEntity);
           }}
-          onAfterDelete={(id) => {
-            console.log("Entity deleted:", id);
+          onAfterDelete={async (deletedEntity) => {
+            console.log("Entity deleted:", deletedEntity);
+
+            // Extract the class code from the deleted entity
+            const classData = deletedEntity.data as unknown as ClassData;
+
+            if (classData && classData.classCode) {
+              // Remove this class from all student records
+              await removeClassFromAllStudents(classData.classCode);
+            }
           }}
-          onAfterGroupDelete={(ids) => {
-            console.log("Entities deleted:", ids);
+          onAfterGroupDelete={async (deletedEntities) => {
+            console.log("Entities deleted:", deletedEntities);
+
+            // Process each deleted class
+            for (const deletedEntity of deletedEntities) {
+              const classData = deletedEntity.data as unknown as ClassData;
+
+              if (classData && classData.classCode) {
+                // Remove this class from all student records
+                await removeClassFromAllStudents(classData.classCode);
+              }
+            }
           }}
         />
       </div>
@@ -835,5 +853,47 @@ async function updateStudentsClassCode(entity: ClassData) {
     console.log("Finished updating students");
   } catch (error) {
     console.error("Error updating students' class codes:", error);
+  }
+}
+
+// Function to remove a class from all student records
+async function removeClassFromAllStudents(classCode: string) {
+  if (!classCode) {
+    console.log("Missing required class code");
+    return;
+  }
+
+  console.log(`Removing class ${classCode} from all student records`);
+
+  try {
+    // Call the API to remove this class from all student records
+    const removeResponse = await fetch(
+      "/api/students/removeClassFromAllStudents",
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          classCode: classCode,
+        }),
+      }
+    );
+
+    if (removeResponse.ok) {
+      const result = await removeResponse.json();
+      console.log(`Removed class from ${result.updated} student records`);
+      return result;
+    } else {
+      console.error(
+        "Failed to remove class from student records:",
+        await removeResponse.text()
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error("Error removing class from student records:", error);
+    return null;
   }
 }

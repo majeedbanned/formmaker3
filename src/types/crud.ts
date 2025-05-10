@@ -339,8 +339,8 @@ export interface CRUDComponentProps {
   // Event handlers
   onAfterAdd?: (newEntity: Entity) => void | Promise<void>;
   onAfterEdit?: (editedEntity: Entity) => void | Promise<void>;
-  onAfterDelete?: (deletedId: string) => void | Promise<void>;
-  onAfterGroupDelete?: (deletedIds: string[]) => void | Promise<void>;
+  onAfterDelete?: (deletedEntity: Entity) => void | Promise<void>;
+  onAfterGroupDelete?: (deletedEntities: Entity[]) => void | Promise<void>;
 }
 
 export interface ValidationRules {

@@ -169,11 +169,7 @@ export default function CRUDComponent({
         if (!permissions.canEdit) return;
         entity = await updateEntity(editingId, data);
 
-        const updateddata = {
-          ...data,
-          recordId: editingId,
-        };
-        onAfterEdit?.(updateddata);
+        onAfterEdit?.(entity);
       } else {
         if (!permissions.canAdd) return;
         entity = await createEntity(data);
@@ -226,11 +222,19 @@ export default function CRUDComponent({
 
     try {
       if (deleteId) {
-        await deleteEntity(deleteId);
-        onAfterDelete?.(deleteId);
+        const deletedEntity = await deleteEntity(deleteId);
+        if (onAfterDelete) {
+          onAfterDelete(deletedEntity);
+        }
       } else if (deleteIds.length > 0) {
-        await Promise.all(deleteIds.map((id) => deleteEntity(id)));
-        onAfterGroupDelete?.(deleteIds);
+        const deletedEntities = await Promise.all(
+          deleteIds.map(async (id) => {
+            return await deleteEntity(id);
+          })
+        );
+        if (onAfterGroupDelete) {
+          onAfterGroupDelete(deletedEntities);
+        }
       }
       setIsDeleteModalOpen(false);
       setDeleteId(null);
