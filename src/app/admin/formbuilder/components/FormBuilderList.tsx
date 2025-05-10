@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit, Eye, Trash, FileText } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +42,7 @@ export interface FormField {
   required?: boolean;
   options?: { label: string; value: string }[];
   placeholder?: string;
-  validation?: any;
+  validation?: Record<string, unknown>;
   condition?: {
     field: string;
     equals: string | boolean | number;
@@ -64,9 +65,13 @@ export default function FormBuilderList({
   const [forms, setForms] = useState<FormSchema[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteFormId, setDeleteFormId] = useState<string | null>(null);
+  const [submissionCounts, setSubmissionCounts] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
     fetchForms();
+    fetchSubmissionCounts();
   }, []);
 
   const fetchForms = async () => {
@@ -81,6 +86,23 @@ export default function FormBuilderList({
       console.error("Error fetching forms:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSubmissionCounts = async () => {
+    try {
+      const response = await fetch("/api/formbuilder/submissions/count", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch submission counts");
+
+      const data = await response.json();
+      setSubmissionCounts(data.counts || {});
+    } catch (error) {
+      console.error("Error fetching submission counts:", error);
     }
   };
 
@@ -164,10 +186,20 @@ export default function FormBuilderList({
 
               <div className="text-sm text-gray-500">
                 <p>Fields: {form.fields?.length || 0}</p>
-                <p>
-                  Last updated:{" "}
-                  {new Date(form.updatedAt || "").toLocaleDateString()}
-                </p>
+                <div className="flex justify-between items-center mt-1">
+                  <p>
+                    Last updated:{" "}
+                    {new Date(form.updatedAt || "").toLocaleDateString("fa-IR")}
+                  </p>
+                  {form._id && (
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 text-blue-600"
+                    >
+                      {submissionCounts[form._id] || 0} پاسخ
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
