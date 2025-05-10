@@ -1,0 +1,61 @@
+/* RTL Styles for Form Builder */
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .flex.justify-between {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .space-x-2 > *:not(:first-child) {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .space-x-reverse > *:not(:last-child) {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* Fix input direction */
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+/* Fix select direction */
+[dir="rtl"] .select-content {
+  text-align: right;
+}
+
+/* Fix dialog footer */
+[dir="rtl"] .flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+/* Add Persian font support */
+@font-face {
+  font-family: 'Vazir';
+  src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[dir="rtl"] body,
+[dir="rtl"] button,
+[dir="rtl"] input,
+[dir="rtl"] select,
+[dir="rtl"] textarea {
+  font-family: 'Vazir', system-ui, sans-serif;
+} 
