@@ -1,11 +1,17 @@
 "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentIcon,
+  ShareIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
+import ImportStudentsModal from "./ImportStudentsModal";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -43,6 +49,14 @@ const layout: LayoutSettings = {
 export default function Home() {
   const router = useRouter();
   const { isLoading, user } = useAuth();
+  const hardcodedFilter = user?.schoolCode
+    ? { schoolCode: user.schoolCode }
+    : {};
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<{
+    code: string;
+    name: string;
+  } | null>(null);
 
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
@@ -52,7 +66,7 @@ export default function Home() {
     router.push(newURL.toString());
   };
 
-  // Function to share with combined filters
+  // Function to share with filters
   const shareWithFilters = (rowId: string) => {
     // Create a filter combining hardcoded filters with the specific row
     const combinedFilter = {
@@ -61,6 +75,72 @@ export default function Home() {
     };
     updateFilterInURL(combinedFilter);
     //  console.log("Share clicked for row:", rowId);
+  };
+
+  // Function to handle importing students from Excel
+  const handleImportStudents = (
+    rowId: string,
+    rowData?: Record<string, unknown>
+  ) => {
+    console.log("Import students for row:", rowId, rowData);
+
+    if (!rowData) return;
+
+    // Set the selected class for the import modal
+    setSelectedClass({
+      code: rowData.classCode as string,
+      name: rowData.className as string,
+    });
+
+    // Open the import modal
+    setImportModalOpen(true);
+  };
+
+  // Function to process imported students
+  const processImportedStudents = async (
+    students: Array<{
+      studentCode: string;
+      studentName: string;
+      studentFamily: string;
+      phone: string;
+    }>
+  ) => {
+    if (!selectedClass) {
+      console.error("No class selected for import");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/students/bulkImport", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          students: students,
+          classCode: selectedClass.code,
+          className: selectedClass.name,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Import failed: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      console.log("Import result:", result);
+
+      // Close the modal and refresh the data
+      setImportModalOpen(false);
+      setSelectedClass(null);
+
+      // Optionally refresh the page or data after import
+      // You could add a refresh mechanism here
+    } catch (error) {
+      console.error("Error importing students:", error);
+      throw error; // Let the modal handle the error
+    }
   };
 
   if (isLoading) {
@@ -74,9 +154,6 @@ export default function Home() {
     );
   }
 
-  const hardcodedFilter = {
-    schoolCode: user?.schoolCode,
-  } as const;
   const sampleFormStructure: FormField[] = [
     {
       name: "classCode",
@@ -202,27 +279,27 @@ export default function Home() {
 
     // Example of shadcnmultiselect field with datasource
 
-    {
-      name: "students",
-      title: "لیست دانش آموزان (وارد کردن با کپی از اکسل)",
-      type: "importTextBox",
-      isShowInList: false,
-      isSearchable: false,
-      required: false,
-      enabled: true,
-      visible: true,
-      importTextBoxStyle: {
-        rows: 10,
-        placeholder: "اطلاعات دانش آموزان را از اکسل کپی و اینجا پیست کنید...",
-        isOpen: false,
-        nameBinding: [
-          { name: "studentCode", type: "number", isUnique: true },
-          { name: "studentName", type: "text", isUnique: false },
-          { name: "studentlname", type: "text", isUnique: false },
-          { name: "phone", type: "text", isUnique: false },
-        ],
-      },
-    },
+    // {
+    //   name: "students",
+    //   title: "لیست دانش آموزان (وارد کردن با کپی از اکسل)",
+    //   type: "importTextBox",
+    //   isShowInList: false,
+    //   isSearchable: false,
+    //   required: false,
+    //   enabled: true,
+    //   visible: true,
+    //   importTextBoxStyle: {
+    //     rows: 10,
+    //     placeholder: "اطلاعات دانش آموزان را از اکسل کپی و اینجا پیست کنید...",
+    //     isOpen: false,
+    //     nameBinding: [
+    //       { name: "studentCode", type: "number", isUnique: true },
+    //       { name: "studentName", type: "text", isUnique: false },
+    //       { name: "studentlname", type: "text", isUnique: false },
+    //       { name: "phone", type: "text", isUnique: false },
+    //     ],
+    //   },
+    // },
 
     {
       enabled: true,
@@ -488,18 +565,24 @@ export default function Home() {
           }}
           layout={layout}
           rowActions={[
+            // {
+            //   label: "View Document",
+            //   link: "/document",
+            //   icon: DocumentIcon,
+            // },
+            // {
+            //   label: "Share",
+            //   action: shareWithFilters,
+            //   icon: ShareIcon,
+            // },
             {
-              label: "View Document",
-              link: "/document",
-              icon: DocumentIcon,
-            },
-            {
-              label: "Share",
-              action: shareWithFilters,
-              icon: ShareIcon,
+              label: "Import Students",
+              action: handleImportStudents,
+              icon: UserPlusIcon,
             },
           ]}
           onAfterAdd={async (entity) => {
+            return;
             console.log("Entity added:", entity);
 
             // Update students' classCode field
@@ -560,7 +643,7 @@ export default function Home() {
             }
 
             // Update students' classCode field
-            await updateStudentsClassCode(typedEntity);
+            // await updateStudentsClassCode(typedEntity);
           }}
           onAfterDelete={async (deletedEntity) => {
             console.log("Entity deleted:", deletedEntity);
@@ -587,6 +670,20 @@ export default function Home() {
             }
           }}
         />
+
+        {/* Import Students Modal */}
+        {selectedClass && (
+          <ImportStudentsModal
+            isOpen={importModalOpen}
+            onClose={() => {
+              setImportModalOpen(false);
+              setSelectedClass(null);
+            }}
+            onImport={processImportedStudents}
+            classCode={selectedClass.code}
+            className={selectedClass.name}
+          />
+        )}
       </div>
     </main>
   );

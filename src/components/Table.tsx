@@ -894,7 +894,10 @@ export default function Table({
                           ) : (
                             <button
                               onClick={() =>
-                                action.action?.(props.row.original._id)
+                                action.action?.(
+                                  props.row.original._id,
+                                  props.row.original.data
+                                )
                               }
                               className="flex items-center gap-2 w-full"
                             >

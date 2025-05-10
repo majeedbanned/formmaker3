@@ -305,7 +305,7 @@ export interface LayoutSettings {
 export interface RowAction {
   label: string;
   link?: string;  // If provided, will be used as navigation link with rowId as query param
-  action?: (rowId: string) => void;  // If provided, will be called when menu item is clicked
+  action?: (rowId: string, rowData?: Record<string, unknown>) => void;  // If provided, will be called when menu item is clicked
   icon?: React.ComponentType<{ className?: string }>;  // Optional icon component
 }
 
