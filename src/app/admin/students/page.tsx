@@ -4,9 +4,10 @@ import { Suspense } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
 import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
-import { useInitialFilter } from "@/hooks/useInitialFilter";
+// import useInitialFilter from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useAuth } from "@/hooks/useAuth";
+import Image from "next/image";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -41,8 +42,113 @@ const layout: LayoutSettings = {
   },
 };
 
+// Define the interface for class code entries
+interface ClassCodeEntry {
+  label: string;
+  value: string;
+}
+
+// Define the interface for a student entity
+interface StudentEntity {
+  recordId: string;
+
+  studentCode: string;
+  studentName?: string;
+  studentFamily?: string;
+  phone?: string;
+  classCode?: ClassCodeEntry[];
+  [key: string]: unknown;
+}
+
+// Helper function to update a class document with student information
+async function updateClassWithStudentInfo(
+  student: StudentEntity,
+  classEntry: ClassCodeEntry
+) {
+  try {
+    // Create the student data object for the class
+    const studentForClass = {
+      studentCode: student.studentCode,
+      studentName: student.studentName || "",
+      studentlname: student.studentFamily || "",
+      phone: student.phone || "",
+      _id: student.recordId, // Include the MongoDB ID for reference
+    };
+
+    // Update the class document to include this student
+    const response = await fetch("/api/classes/addStudent", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-domain": window.location.host,
+      },
+      body: JSON.stringify({
+        classCode: classEntry.value,
+        student: studentForClass,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Failed to update class ${classEntry.value} with student ${student.studentCode}:`,
+        await response.text()
+      );
+    } else {
+      console.log(
+        `Successfully updated class ${classEntry.value} with student ${student.studentCode}`
+      );
+    }
+  } catch (error) {
+    console.error(`Error updating class ${classEntry.value}:`, error);
+  }
+}
+
+// Helper function to remove a student from a class
+async function removeStudentFromClass(
+  student: StudentEntity,
+  classCode: string
+) {
+  try {
+    // Remove the student from the class document
+    const response = await fetch("/api/classes/removeStudent", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-domain": window.location.host,
+      },
+      body: JSON.stringify({
+        classCode: classCode,
+        studentId: student.recordId,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Failed to remove student ${student.studentCode} from class ${classCode}:`,
+        await response.text()
+      );
+    } else {
+      console.log(
+        `Successfully removed student ${student.studentCode} from class ${classCode}`
+      );
+    }
+  } catch (error) {
+    console.error(`Error removing student from class ${classCode}:`, error);
+  }
+}
+
+// Add window interface for global typing
+declare global {
+  interface Window {
+    __EDITING_ENTITY_DATA__?: {
+      classCode?: ClassCodeEntry[];
+      [key: string]: unknown;
+    };
+  }
+}
+
 function StudentsPageContent() {
-  const { initialFilter } = useInitialFilter();
+  //const { initialFilter } = useInitialFilter();
   const { user } = useAuth();
   const shareWithFilters = (rowId: string) => {
     const filter = { _id: rowId };
@@ -326,7 +432,7 @@ function StudentsPageContent() {
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="students"
-          initialFilter={initialFilter as Record<string, unknown>}
+          // initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           importFunction={{
             active: true,
@@ -376,16 +482,73 @@ function StudentsPageContent() {
           //     icon: ShareIcon,
           //   },
           // ]}
-          onAfterAdd={(entity) => {
+          onAfterAdd={async (entity: StudentEntity) => {
             console.log("Entity added:", entity);
+
+            // Check if the entity has classCode field
+            const classCodeEntries = entity?.classCode;
+            if (
+              classCodeEntries &&
+              Array.isArray(classCodeEntries) &&
+              classCodeEntries.length > 0
+            ) {
+              // For each class code, update the corresponding class document
+              for (const classEntry of classCodeEntries) {
+                console.log("classEntry", classEntry);
+                await updateClassWithStudentInfo(entity, classEntry);
+              }
+            }
           }}
-          onAfterEdit={(entity) => {
+          onAfterEdit={async (entity: StudentEntity) => {
             console.log("Entity updated:", entity);
+
+            // Check if the entity has classCode field
+            const classCodeEntries = entity?.classCode;
+
+            // Get previous data if available
+            const previousData = window.__EDITING_ENTITY_DATA__;
+            const previousClassCodes = previousData?.classCode || [];
+
+            if (classCodeEntries && Array.isArray(classCodeEntries)) {
+              // For each class code, update the corresponding class document
+              for (const classEntry of classCodeEntries) {
+                await updateClassWithStudentInfo(entity, classEntry);
+              }
+
+              // Check if any classes were removed
+              if (
+                previousClassCodes &&
+                Array.isArray(previousClassCodes) &&
+                previousClassCodes.length > 0
+              ) {
+                const currentClassValues = classCodeEntries.map(
+                  (entry) => entry.value
+                );
+                const removedClasses = previousClassCodes.filter(
+                  (prevClass: ClassCodeEntry) =>
+                    !currentClassValues.includes(prevClass.value)
+                );
+
+                // Remove student from classes that were removed
+                for (const removedClass of removedClasses) {
+                  await removeStudentFromClass(entity, removedClass.value);
+                }
+              }
+            } else if (
+              previousClassCodes &&
+              Array.isArray(previousClassCodes) &&
+              previousClassCodes.length > 0
+            ) {
+              // All classes were removed, remove student from all previous classes
+              for (const prevClass of previousClassCodes) {
+                await removeStudentFromClass(entity, prevClass.value);
+              }
+            }
           }}
-          onAfterDelete={(id) => {
+          onAfterDelete={(id: string) => {
             console.log("Entity deleted:", id);
           }}
-          onAfterGroupDelete={(ids) => {
+          onAfterGroupDelete={(ids: string[]) => {
             console.log("Entities deleted:", ids);
           }}
         />

@@ -169,7 +169,12 @@ export default function CRUDComponent({
         if (!permissions.canEdit) return;
         entity = await updateEntity(editingId, data);
 
-        onAfterEdit?.(entity);
+        const editeddata = {
+          ...data,
+          recordId: editingId,
+        };
+
+        onAfterEdit?.(editeddata);
       } else {
         if (!permissions.canAdd) return;
         entity = await createEntity(data);
