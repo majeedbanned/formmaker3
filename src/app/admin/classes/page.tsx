@@ -499,11 +499,17 @@ export default function Home() {
               icon: ShareIcon,
             },
           ]}
-          onAfterAdd={(entity) => {
+          onAfterAdd={async (entity) => {
             console.log("Entity added:", entity);
+
+            // Update students' classCode field
+            await updateStudentsClassCode(entity as unknown as ClassData);
           }}
-          onAfterEdit={(entity) => {
+          onAfterEdit={async (entity) => {
             console.log("Entity updated:", entity);
+
+            // Update students' classCode field
+            await updateStudentsClassCode(entity as unknown as ClassData);
           }}
           onAfterDelete={(id) => {
             console.log("Entity deleted:", id);
@@ -515,4 +521,268 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+// Define the interface for a student record from the database
+interface StudentRecord {
+  _id: string;
+  data: {
+    studentCode: string;
+    studentName?: string;
+    studentFamily?: string;
+    classCode?: Array<{
+      label: string;
+      value: string;
+    }>;
+    [key: string]: unknown;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Define the interface for the class data structure
+interface ClassData {
+  classCode: string;
+  className: string;
+  schoolCode: string;
+  students?: Array<{
+    studentCode: string;
+    studentName?: string;
+    studentlname?: string;
+    phone?: string;
+  }>;
+  [key: string]: unknown;
+}
+
+// Function to update students' classCode field in the students collection
+async function updateStudentsClassCode(entity: ClassData) {
+  // Check if entity has students array
+  if (!entity.students || !Array.isArray(entity.students)) {
+    console.log("No students to update");
+    return;
+  }
+
+  // Make sure we have the required data (classCode and className)
+  if (!entity.classCode || !entity.className) {
+    console.log("Missing required class data (classCode or className)");
+    return;
+  }
+
+  console.log("entity.students", entity.students);
+
+  try {
+    // Create class info object to be assigned to each student
+    const classInfo = {
+      label: entity.className,
+      value: entity.classCode,
+    };
+
+    console.log(
+      `Updating ${entity.students.length} students with class: ${entity.className} (${entity.classCode})`
+    );
+
+    // For checking which students were removed from the class
+    // First, get all students who are currently assigned to this class
+    console.log("Finding students assigned to class", entity.classCode);
+    const findClassStudentsResponse = await fetch(
+      `/api/students/findByClass?classCode=${entity.classCode}`,
+      {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      }
+    );
+
+    let currentStudentCodes: string[] = [];
+    let studentsToRemove: StudentRecord[] = [];
+
+    if (findClassStudentsResponse.ok) {
+      const result = await findClassStudentsResponse.json();
+      if (result.data && result.data.length > 0) {
+        currentStudentCodes = result.data.map((student: StudentRecord) =>
+          student.data.studentCode.toString()
+        );
+
+        // Get new student codes from the updated entity
+        const newStudentCodes = entity.students.map((student) =>
+          student.studentCode.toString()
+        );
+
+        // Find students who were removed (in current list but not in new list)
+        const removedStudentCodes = currentStudentCodes.filter(
+          (code) => !newStudentCodes.includes(code)
+        );
+
+        // Get the full student records for the removed students
+        studentsToRemove = result.data.filter((student: StudentRecord) =>
+          removedStudentCodes.includes(student.data.studentCode.toString())
+        );
+
+        console.log(
+          `Found ${studentsToRemove.length} students to remove from class`
+        );
+      }
+    } else {
+      console.error("Failed to find current students in class");
+    }
+
+    // Update each student in the students collection
+    for (const student of entity.students) {
+      if (!student.studentCode) {
+        console.log("Missing studentCode for a student, skipping", student);
+        continue;
+      }
+
+      try {
+        // Use the new API endpoint to find student by code
+        const findResponse = await fetch(
+          `/api/students/findByCode?code=${student.studentCode.toString()}`,
+          {
+            headers: {
+              "x-domain": window.location.host,
+            },
+          }
+        );
+
+        if (!findResponse.ok) {
+          console.error(`Failed to find student ${student.studentCode}`);
+          continue;
+        }
+
+        const findResult = await findResponse.json();
+        console.log("findResult", findResult);
+        if (!findResult.data || findResult.data.length === 0) {
+          console.log(
+            `Student with code ${student.studentCode} not found, will create new record`
+          );
+
+          // Create new student record if not found
+          const createResponse = await fetch("/api/crud/students", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-domain": window.location.host,
+            },
+            body: JSON.stringify({
+              data: {
+                studentCode: student.studentCode.toString(),
+                studentName: student.studentName || "",
+                studentFamily: student.studentlname || "",
+                phone: student.phone || "",
+                schoolCode: entity.schoolCode,
+                // Put classCode in an array to match existing schema
+                classCode: [classInfo],
+                // Add default values for required fields
+                password: student.studentCode.toString(), // Default password same as student code
+                isActive: true,
+                groups: [],
+                phones: [],
+                premisions: [],
+                premisions_expanded: false,
+              },
+              formStructure: [
+                { name: "studentCode", type: "text" },
+                { name: "studentName", type: "text" },
+                { name: "studentFamily", type: "text" },
+                { name: "phone", type: "text" },
+                { name: "schoolCode", type: "text" },
+                {
+                  name: "classCode",
+                  type: "autoCompleteText",
+                  isMultiple: true,
+                },
+                { name: "password", type: "text" },
+                { name: "isActive", type: "checkbox" },
+                { name: "groups", type: "autoCompleteText", isMultiple: true },
+                { name: "phones", type: "text", nestedType: "array" },
+                { name: "premisions", type: "text", nestedType: "array" },
+                { name: "premisions_expanded", type: "checkbox" },
+              ],
+            }),
+          });
+
+          if (!createResponse.ok) {
+            console.error(
+              `Failed to create student ${student.studentCode}:`,
+              await createResponse.text()
+            );
+          } else {
+            console.log(
+              `Created new student ${student.studentCode} with classCode`
+            );
+          }
+
+          continue;
+        }
+
+        // Student found, update with class info
+        const studentRecord = findResult.data[0];
+        const updateResponse = await fetch("/api/students/updateClassCode", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-domain": window.location.host,
+          },
+          body: JSON.stringify({
+            studentId: studentRecord._id,
+            classCode: [classInfo],
+          }),
+        });
+
+        if (!updateResponse.ok) {
+          console.error(
+            `Failed to update student ${student.studentCode}:`,
+            await updateResponse.text()
+          );
+        } else {
+          console.log(`Updated classCode for student ${student.studentCode}`);
+        }
+      } catch (error) {
+        console.error(
+          `Error processing student ${student.studentCode}:`,
+          error
+        );
+      }
+    }
+
+    // Remove class code from students who are no longer in the class
+    for (const student of studentsToRemove) {
+      try {
+        console.log(
+          `Removing class ${entity.classCode} from student ${student.data.studentCode}`
+        );
+        const removeResponse = await fetch("/api/students/removeClassCode", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-domain": window.location.host,
+          },
+          body: JSON.stringify({
+            studentId: student._id,
+            classCodeValue: entity.classCode,
+          }),
+        });
+
+        if (!removeResponse.ok) {
+          console.error(
+            `Failed to remove class code from student ${student.data.studentCode}:`,
+            await removeResponse.text()
+          );
+        } else {
+          console.log(
+            `Removed class code from student ${student.data.studentCode}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `Error removing class code from student ${student.data.studentCode}:`,
+          error
+        );
+      }
+    }
+
+    console.log("Finished updating students");
+  } catch (error) {
+    console.error("Error updating students' class codes:", error);
+  }
 }
