@@ -48,11 +48,32 @@ interface FormPreviewProps {
   onBack: () => void;
 }
 
+// Fix the type definitions
+interface UploadResult {
+  filename: string;
+  originalName: string;
+  path: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
+
+// Add types for file upload state
+interface FileUploadState {
+  uploading: boolean;
+  progress: number;
+  error: string | null;
+}
+
 export default function FormPreview({ form, onBack }: FormPreviewProps) {
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  // Add state for file uploads
+  const [fileUploads, setFileUploads] = useState<
+    Record<string, FileUploadState>
+  >({});
 
   // Process steps for multi-step form
   const isMultiStep = form.isMultiStep && form.steps && form.steps.length > 0;
@@ -199,23 +220,60 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
   });
 
   const onSubmit = async (data: Record<string, unknown>) => {
-    // For multi-step forms, update the form data and move to the next step
-    const updatedFormData = { ...formData, ...data };
-    setFormData(updatedFormData);
-
-    if (isMultiStep && currentStep < steps.length - 1) {
-      // Move to the next step
-      setCurrentStep(currentStep + 1);
-      return;
-    }
-
     try {
+      // Find all File objects in the data
+      const fileFields: string[] = [];
+
+      // Process files first
+      for (const [key, value] of Object.entries(data)) {
+        if (value instanceof File) {
+          fileFields.push(key);
+          try {
+            // Upload each file
+            const result = await uploadFile(key, value as File);
+            // Store the file info directly in the data object
+            data[key] = {
+              filename: result.filename,
+              originalName: result.originalName,
+              path: result.path,
+              size: result.size,
+              type: result.type,
+              uploadedAt: result.uploadedAt,
+            };
+          } catch (error) {
+            console.error(`Error uploading file for field ${key}:`, error);
+            // Remove failed file fields
+            delete data[key];
+          }
+        }
+      }
+
+      // For multi-step forms, update the form data and move to the next step
+      const updatedFormData = { ...formData, ...data };
+      setFormData(updatedFormData);
+
+      // Debug log to verify file data is in the correct structure
+      console.log("Current form data:", updatedFormData);
+
+      if (isMultiStep && currentStep < steps.length - 1) {
+        // Move to the next step
+        setCurrentStep(currentStep + 1);
+        return;
+      }
+
       // Only make the API call if the form has an ID
       if (form._id) {
+        // Log the full payload to verify structure before sending
+        console.log("Submitting form with data:", {
+          formId: form._id,
+          answers: updatedFormData,
+        });
+
         const response = await fetch("/api/formbuilder/submissions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-domain": window.location.host,
           },
           body: JSON.stringify({
             formId: form._id,
@@ -224,20 +282,124 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
         });
 
         if (!response.ok) {
-          throw new Error("Error submitting form");
+          const errorText = await response.text();
+          console.error("Error submitting form:", response.status, errorText);
+          throw new Error(`Error submitting form: ${response.status}`);
         }
 
         // Get the submission confirmation
         const result = await response.json();
         console.log("Form submission result:", result);
-      }
 
-      // Update UI state
-      setSubmitted(true);
-      console.log("Form submitted:", updatedFormData);
+        // Update UI state
+        setSubmitted(true);
+      }
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Error processing form submission:", error);
       // Could add error handling UI here
+    }
+  };
+
+  // Function to upload a file and update the form data
+  const uploadFile = async (
+    fieldName: string,
+    file: File
+  ): Promise<UploadResult> => {
+    if (!form._id) {
+      console.error("Form ID is missing, cannot upload file");
+      throw new Error("Form ID is missing");
+    }
+
+    // Set initial upload state
+    setFileUploads((prev) => ({
+      ...prev,
+      [fieldName]: {
+        uploading: true,
+        progress: 0,
+        error: null,
+      },
+    }));
+
+    try {
+      // Create form data for upload
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("filename", file.name);
+      uploadData.append("formId", form._id);
+
+      // Create a directory path for the upload based on form ID
+      const directory = `formfiles/forms/${form._id}`;
+      uploadData.append("directory", directory);
+
+      // Upload with progress tracking
+      const xhr = new XMLHttpRequest();
+
+      const uploadPromise = new Promise<UploadResult>((resolve, reject) => {
+        // Track upload progress
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100);
+            setFileUploads((prev) => ({
+              ...prev,
+              [fieldName]: { ...prev[fieldName], progress },
+            }));
+          }
+        });
+
+        // Handle response
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch {
+              reject(new Error("Invalid response"));
+            }
+          } else {
+            reject(new Error(`HTTP error ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error"));
+      });
+
+      // Start the upload
+      xhr.open("POST", "/api/upload");
+
+      // Add domain header
+      const domain = window.location.host;
+      xhr.setRequestHeader("x-domain", domain);
+
+      xhr.send(uploadData);
+
+      // Wait for upload to complete
+      const result = await uploadPromise;
+
+      // Update upload state
+      setFileUploads((prev) => ({
+        ...prev,
+        [fieldName]: {
+          uploading: false,
+          progress: 100,
+          error: null,
+        },
+      }));
+
+      return result;
+    } catch (error) {
+      console.error(`Error uploading file for ${fieldName}:`, error);
+
+      // Update upload state with error
+      setFileUploads((prev) => ({
+        ...prev,
+        [fieldName]: {
+          uploading: false,
+          progress: 0,
+          error: error instanceof Error ? error.message : "Upload failed",
+        },
+      }));
+
+      throw error;
     }
   };
 
@@ -536,20 +698,86 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
             key={field.name}
             control={methods.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    onChange={(e) => {
-                      formField.onChange(e.target.files?.[0] || null);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field: formField }) => {
+              // Get upload state for this field
+              const uploadState = fileUploads[field.name];
+
+              return (
+                <FormItem>
+                  <FormLabel>{field.label}</FormLabel>
+                  <FormControl>
+                    <div className="space-y-3">
+                      <Input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Store file in form state
+                            formField.onChange(file);
+
+                            // Create a preview if it's an image
+                            if (file.type.startsWith("image/")) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                // Display image preview if needed
+                                console.log("Image loaded:", reader.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }
+                        }}
+                        disabled={uploadState?.uploading}
+                      />
+
+                      {/* Show upload progress */}
+                      {uploadState?.uploading && (
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
+                            style={{ width: `${uploadState.progress}%` }}
+                          ></div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            آپلود در حال انجام... {uploadState.progress}%
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Show error message */}
+                      {uploadState?.error && (
+                        <p className="text-sm text-red-500">
+                          خطا: {uploadState.error}
+                        </p>
+                      )}
+
+                      {/* Show selected file */}
+                      {formField.value && !uploadState?.uploading && (
+                        <div className="text-sm border rounded-md p-3 bg-gray-50 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <FileJson className="h-4 w-4 text-blue-500" />
+                            <span>
+                              {formField.value instanceof File
+                                ? formField.value.name
+                                : (formField.value as UploadResult)
+                                    ?.originalName || "فایل انتخاب شده"}
+                            </span>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => formField.onChange(null)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         );
 
