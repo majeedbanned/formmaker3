@@ -11,6 +11,8 @@ import {
   ExternalLink,
   Settings,
   Calendar,
+  BookOpen,
+  Users,
 } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +41,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Define types for classes and teachers
+interface ClassData {
+  _id: string;
+  data: {
+    className: string;
+    classCode: string;
+    Grade?: string;
+    major?: string;
+  };
+}
+
+interface TeacherData {
+  _id: string;
+  data: {
+    teacherName: string;
+    teacherCode: string;
+  };
+}
 
 // Define the Form type based on our requirements
 export interface FormSchema {
@@ -49,6 +71,8 @@ export interface FormSchema {
   isMultiStep?: boolean;
   formStartEntryDatetime?: string | null;
   formEndEntryDateTime?: string | null;
+  assignedClassCodes?: string[];
+  assignedTeacherCodes?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -95,11 +119,20 @@ export default function FormBuilderList({
   >({});
   const [selectedForm, setSelectedForm] = useState<FormSchema | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [teachers, setTeachers] = useState<TeacherData[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
     fetchForms();
     fetchSubmissionCounts();
   }, []);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      fetchClassesAndTeachers();
+    }
+  }, [settingsOpen]);
 
   const fetchForms = async () => {
     try {
@@ -133,6 +166,26 @@ export default function FormBuilderList({
     }
   };
 
+  const fetchClassesAndTeachers = async () => {
+    try {
+      setLoadingData(true);
+      const response = await fetch("/api/formbuilder/classes-teachers", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch classes and teachers");
+
+      const data = await response.json();
+      setClasses(data.classes || []);
+      setTeachers(data.teachers || []);
+    } catch (error) {
+      console.error("Error fetching classes and teachers:", error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const handleDeleteClick = (formId: string) => {
     setDeleteFormId(formId);
   };
@@ -157,7 +210,11 @@ export default function FormBuilderList({
   };
 
   const handleSettingsClick = (form: FormSchema) => {
-    setSelectedForm(form);
+    setSelectedForm({
+      ...form,
+      assignedClassCodes: form.assignedClassCodes || [],
+      assignedTeacherCodes: form.assignedTeacherCodes || [],
+    });
     setSettingsOpen(true);
   };
 
@@ -188,53 +245,61 @@ export default function FormBuilderList({
     }
   };
 
-  const handleStartDateChange = (value: Value) => {
+  const handleClassToggle = (classId: string, classCode: string) => {
     if (!selectedForm) return;
-    console.log("value", value);
-    console.log("valueS", value?.toString());
-    const tem = value?.toString()
-      ? value?.toString()
-      : value?.toString()
-      ? new Date(value.toString())
-      : null;
 
-    console.log("tem", tem);
+    const assignedClassCodes = selectedForm.assignedClassCodes || [];
+    const updatedClassCodes = assignedClassCodes.includes(classCode)
+      ? assignedClassCodes.filter((code) => code !== classCode)
+      : [...assignedClassCodes, classCode];
 
     setSelectedForm({
       ...selectedForm,
-      formStartEntryDatetime: value?.toString()
-        ? value?.toString()
-        : value?.toString()
-        ? new Date(value.toString())
-        : null,
+      assignedClassCodes: updatedClassCodes,
+    });
+  };
+
+  const handleTeacherToggle = (teacherId: string, teacherCode: string) => {
+    if (!selectedForm) return;
+
+    const assignedTeacherCodes = selectedForm.assignedTeacherCodes || [];
+    const updatedTeacherCodes = assignedTeacherCodes.includes(teacherCode)
+      ? assignedTeacherCodes.filter((code) => code !== teacherCode)
+      : [...assignedTeacherCodes, teacherCode];
+
+    setSelectedForm({
+      ...selectedForm,
+      assignedTeacherCodes: updatedTeacherCodes,
+    });
+  };
+
+  const handleStartDateChange = (value: Value) => {
+    if (!selectedForm) return;
+    setSelectedForm({
+      ...selectedForm,
+      formStartEntryDatetime: value ? value.toString() : null,
     });
   };
 
   const handleEndDateChange = (value: Value) => {
     if (!selectedForm) return;
-
     setSelectedForm({
       ...selectedForm,
-      formEndEntryDateTime: value?.toString()
-        ? value?.toString()
-        : value?.toString()
-        ? new Date(value.toString())
-        : value?.toString(),
+      formEndEntryDateTime: value ? value.toString() : null,
     });
   };
 
-  // Format date for display
-  const formatDate = (date: Date | null | undefined) => {
+  // Fix the formatDate function to handle both string and Date types
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return "تنظیم نشده";
 
     try {
-      const persianDate = new Date(date);
-      return persianDate.toLocaleDateString("fa-IR", {
+      const dateObj = new Date(date);
+      return dateObj.toLocaleDateString("fa-IR", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
-      // eslint-disable-next-line no-empty
     } catch {
       return "تنظیم نشده";
     }
@@ -335,11 +400,14 @@ export default function FormBuilderList({
 
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-[425px]">
+        <DialogContent
+          dir="rtl"
+          className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>تنظیمات فرم</DialogTitle>
             <DialogDescription>
-              تنظیم زمان شروع و پایان ثبت نام در این فرم
+              تنظیم زمان ثبت نام و تخصیص به کلاس‌ها و معلم‌ها
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -358,7 +426,13 @@ export default function FormBuilderList({
                   className="w-full p-2 border rounded-md custom-datepicker"
                   inputClass="w-full p-2 border rounded-md"
                   format="YYYY/MM/DD  HH:mm"
-                  plugins={[<TimePicker hideSeconds position="bottom" />]}
+                  plugins={[
+                    <TimePicker
+                      key="start-time"
+                      hideSeconds
+                      position="bottom"
+                    />,
+                  ]}
                 />
               </div>
               <div>
@@ -375,12 +449,101 @@ export default function FormBuilderList({
                   className="w-full p-2 border rounded-md custom-datepicker"
                   inputClass="w-full p-2 border rounded-md"
                   format="YYYY/MM/DD  HH:mm"
-                  plugins={[<TimePicker hideSeconds position="bottom" />]}
+                  plugins={[
+                    <TimePicker key="end-time" hideSeconds position="bottom" />,
+                  ]}
                 />
               </div>
+
+              {/* Classes Section */}
+              <div className="mt-6">
+                <Label className="flex items-center mb-2">
+                  <BookOpen className="h-4 w-4 ml-2" />
+                  کلاس‌ها
+                </Label>
+
+                {loadingData ? (
+                  <p className="text-sm text-gray-500">
+                    در حال بارگذاری کلاس‌ها...
+                  </p>
+                ) : classes.length === 0 ? (
+                  <p className="text-sm text-gray-500">هیچ کلاسی یافت نشد</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                    {classes.map((cls) => (
+                      <div
+                        key={cls._id}
+                        className="flex items-center space-x-2 space-x-reverse"
+                      >
+                        <Checkbox
+                          id={`class-${cls._id}`}
+                          checked={selectedForm?.assignedClassCodes?.includes(
+                            cls.data.classCode
+                          )}
+                          onCheckedChange={() =>
+                            handleClassToggle(cls._id, cls.data.classCode)
+                          }
+                        />
+                        <label
+                          htmlFor={`class-${cls._id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {cls.data.className} ({cls.data.classCode})
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Teachers Section */}
+              <div className="mt-4">
+                <Label className="flex items-center mb-2">
+                  <Users className="h-4 w-4 ml-2" />
+                  معلم‌ها
+                </Label>
+
+                {loadingData ? (
+                  <p className="text-sm text-gray-500">
+                    در حال بارگذاری معلم‌ها...
+                  </p>
+                ) : teachers.length === 0 ? (
+                  <p className="text-sm text-gray-500">هیچ معلمی یافت نشد</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                    {teachers.map((teacher) => (
+                      <div
+                        key={teacher._id}
+                        className="flex items-center space-x-2 space-x-reverse"
+                      >
+                        <Checkbox
+                          id={`teacher-${teacher._id}`}
+                          checked={selectedForm?.assignedTeacherCodes?.includes(
+                            teacher.data.teacherCode
+                          )}
+                          onCheckedChange={() =>
+                            handleTeacherToggle(
+                              teacher._id,
+                              teacher.data.teacherCode
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={`teacher-${teacher._id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {teacher.data.teacherName} ({teacher.data.teacherCode}
+                          )
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Show the dates in a readable format */}
-              <div className="mt-2 text-sm text-gray-500">
-                <div className="flex flex-col space-y-1">
+              <div className="mt-4 text-sm text-gray-500">
+                {/* <div className="flex flex-col space-y-1">
                   <div>
                     شروع ثبت نام:{" "}
                     {formatDate(selectedForm?.formStartEntryDatetime)}
@@ -389,7 +552,7 @@ export default function FormBuilderList({
                     پایان ثبت نام:{" "}
                     {formatDate(selectedForm?.formEndEntryDateTime)}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
