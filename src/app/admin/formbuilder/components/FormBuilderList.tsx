@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye, Trash, FileText } from "lucide-react";
+import { Edit, Eye, Trash, FileText, ExternalLink } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -165,6 +166,14 @@ export default function FormBuilderList({
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                  <Link
+                    target="_blank"
+                    href={`/admin/formbuilder/view?id=${form._id}`}
+                  >
+                    <Button variant="ghost" size="sm" title="مشاهده مستقل فرم">
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </Link>
                   <FormSubmissionViewer
                     formId={form._id!}
                     formTitle={form.title}

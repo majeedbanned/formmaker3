@@ -1,0 +1,94 @@
+/* RTL Styles for Form View */
+.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.rtl button svg,
+.rtl .form-button svg {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+.rtl .mr-2 {
+  margin-right: 0 !important;
+  margin-left: 0.5rem !important;
+}
+
+.rtl .mr-3 {
+  margin-right: 0 !important;
+  margin-left: 0.75rem !important;
+}
+
+.rtl .ml-2 {
+  margin-left: 0 !important;
+  margin-right: 0.5rem !important;
+}
+
+.rtl .ml-3 {
+  margin-left: 0 !important;
+  margin-right: 0.75rem !important;
+}
+
+.rtl .space-x-reverse > * + * {
+  margin-left: 0;
+  margin-right: var(--space-x-reverse, 0.5rem);
+}
+
+.rtl .space-x-3 > * + * {
+  margin-left: 0 !important;
+  margin-right: 0.75rem !important;
+}
+
+.rtl .space-x-2 > * + * {
+  margin-left: 0 !important;
+  margin-right: 0.5rem !important;
+}
+
+.rtl input[type="date"],
+.rtl input[type="time"],
+.rtl input[type="datetime-local"] {
+  direction: ltr;
+  text-align: right;
+}
+
+.rtl label + div {
+  text-align: right;
+}
+
+.rtl form label {
+  text-align: right;
+}
+
+.rtl .text-left {
+  text-align: right !important;
+}
+
+.rtl .text-right {
+  text-align: left !important;
+}
+
+.rtl .items-start {
+  align-items: flex-start !important;
+}
+
+.rtl .pl-4 {
+  padding-left: 0 !important;
+  padding-right: 1rem !important;
+}
+
+.rtl .border-l {
+  border-left: none !important;
+  border-right: 1px solid;
+}
+
+.rtl select {
+  background-position: left 0.5rem center;
+  padding-right: 1rem;
+  padding-left: 2.5rem;
+  text-align: right;
+}
+
+.rtl .flex-row {
+  flex-direction: row-reverse;
+} 
