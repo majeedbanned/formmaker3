@@ -13,6 +13,9 @@ import {
   Calendar,
   BookOpen,
   Users,
+  MoreVertical,
+  Search,
+  FileJson,
 } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +45,21 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Define types for classes and teachers
 interface ClassData {
@@ -137,6 +155,8 @@ export default function FormBuilderList({
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchForms();
@@ -330,6 +350,152 @@ export default function FormBuilderList({
     }
   };
 
+  // Add a function to determine form status
+  const getFormStatus = (form: FormSchema) => {
+    const now = new Date();
+    const startDate = form.formStartEntryDatetime
+      ? new Date(form.formStartEntryDatetime.toString())
+      : null;
+    const endDate = form.formEndEntryDateTime
+      ? new Date(form.formEndEntryDateTime.toString())
+      : null;
+
+    if (!startDate && !endDate)
+      return {
+        status: "open",
+        label: "باز",
+        color: "bg-green-100 text-green-800",
+      };
+    if (startDate && startDate > now)
+      return {
+        status: "upcoming",
+        label: "آینده",
+        color: "bg-blue-100 text-blue-800",
+      };
+    if (endDate && endDate < now)
+      return {
+        status: "expired",
+        label: "منقضی شده",
+        color: "bg-red-100 text-red-800",
+      };
+    return {
+      status: "active",
+      label: "فعال",
+      color: "bg-green-100 text-green-800",
+    };
+  };
+
+  // Add a filteredForms computed value
+  const filteredForms = forms.filter((form) => {
+    // Filter by search term (case insensitive)
+    const matchesSearch = form.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    // Filter by status
+    let matchesStatus = true;
+    if (statusFilter !== "all") {
+      const formStatus = getFormStatus(form).status;
+      matchesStatus = formStatus === statusFilter;
+    }
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Add an export function to download form submissions
+  const handleExportSubmissions = async (
+    formId: string,
+    format: "json" | "csv"
+  ) => {
+    try {
+      const response = await fetch(
+        `/api/formbuilder/submissions?formId=${formId}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch submissions");
+
+      const data = await response.json();
+
+      if (!data.submissions || data.submissions.length === 0) {
+        // Show alert if no submissions
+        alert("این فرم هیچ پاسخی ندارد که بتوان دانلود کرد.");
+        return;
+      }
+
+      let content: string;
+      let fileName: string;
+      let mimeType: string;
+
+      if (format === "json") {
+        // Prepare JSON data
+        content = JSON.stringify(data.submissions, null, 2);
+        fileName = `form-submissions-${formId}.json`;
+        mimeType = "application/json";
+      } else {
+        // Prepare CSV data
+        // Get all possible keys from all submissions
+        const allKeys = new Set<string>();
+        data.submissions.forEach(
+          (submission: { answers?: Record<string, unknown> }) => {
+            Object.keys(submission.answers || {}).forEach((key) =>
+              allKeys.add(key)
+            );
+          }
+        );
+
+        // Create CSV header
+        const keys = Array.from(allKeys);
+        let csv = ["id", "submitted_date", ...keys].join(",") + "\n";
+
+        // Add rows
+        data.submissions.forEach(
+          (submission: {
+            _id: string;
+            createdAt: string;
+            answers?: Record<string, unknown>;
+          }) => {
+            const row = [
+              submission._id,
+              new Date(submission.createdAt).toLocaleString(),
+              ...keys.map((key) => {
+                const value = submission.answers?.[key];
+                // Handle different value types for CSV
+                if (value === null || value === undefined) return "";
+                if (typeof value === "object")
+                  return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+                return `"${String(value).replace(/"/g, '""')}"`;
+              }),
+            ];
+            csv += row.join(",") + "\n";
+          }
+        );
+
+        content = csv;
+        fileName = `form-submissions-${formId}.csv`;
+        mimeType = "text/csv";
+      }
+
+      // Create a download link and trigger it
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting submissions:", error);
+      alert("خطا در دریافت پاسخ‌ها. لطفاً مجدداً تلاش کنید.");
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading forms...</div>;
   }
@@ -345,67 +511,171 @@ export default function FormBuilderList({
 
   return (
     <div>
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="جستجو در فرم‌ها..."
+              className="w-full p-2 pr-8 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+            <Search className="h-4 w-4 absolute top-3 right-2 text-gray-400" />
+          </div>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-40">
+              <SelectValue placeholder="وضعیت فرم" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">همه فرم‌ها</SelectItem>
+              <SelectItem value="active">فرم‌های فعال</SelectItem>
+              <SelectItem value="upcoming">فرم‌های آینده</SelectItem>
+              <SelectItem value="expired">فرم‌های منقضی شده</SelectItem>
+              <SelectItem value="open">فرم‌های باز</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-gray-500">
+            {filteredForms.length} فرم یافت شد
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {forms.map((form) => (
+        {filteredForms.map((form) => (
           <Card key={form._id} className="overflow-hidden">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="font-semibold text-lg">{form.title}</h3>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(form)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onPreview(form)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSettingsClick(form)}
-                    title="تنظیمات فرم"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  <Link
-                    target="_blank"
-                    href={`/admin/formbuilder/view?id=${form._id}`}
-                  >
-                    <Button variant="ghost" size="sm" title="مشاهده مستقل فرم">
-                      <ExternalLink className="h-4 w-4" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreVertical className="h-4 w-4" />
                     </Button>
-                  </Link>
-                  <FormSubmissionViewer
-                    formId={form._id!}
-                    formTitle={form.title}
-                    trigger={
-                      <Button variant="ghost" size="sm">
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteClick(form._id!)}
-                  >
-                    <Trash className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>گزینه‌های فرم</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onEdit(form)}>
+                      <Edit className="h-4 w-4 ml-2" />
+                      <span>ویرایش فرم</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onPreview(form)}>
+                      <Eye className="h-4 w-4 ml-2" />
+                      <span>پیش‌نمایش فرم</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSettingsClick(form)}>
+                      <Settings className="h-4 w-4 ml-2" />
+                      <span>تنظیمات فرم</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        className="flex items-center cursor-pointer"
+                        target="_blank"
+                        href={`/admin/formbuilder/view?id=${form._id}`}
+                      >
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                        <span>مشاهده مستقل فرم</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <FormSubmissionViewer
+                        formId={form._id!}
+                        formTitle={form.title}
+                        trigger={
+                          <div className="flex items-center w-full">
+                            <FileText className="h-4 w-4 ml-2" />
+                            <span>مشاهده پاسخ‌ها</span>
+                          </div>
+                        }
+                      />
+                    </DropdownMenuItem>
+
+                    {/* Add export options */}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-gray-500">
+                      دریافت پاسخ‌ها
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => handleExportSubmissions(form._id!, "json")}
+                    >
+                      <FileJson className="h-4 w-4 ml-2" />
+                      <span>دریافت با فرمت JSON</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExportSubmissions(form._id!, "csv")}
+                    >
+                      <FileText className="h-4 w-4 ml-2" />
+                      <span>دریافت با فرمت CSV</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => handleDeleteClick(form._id!)}
+                      className="text-red-600 focus:text-red-700"
+                    >
+                      <Trash className="h-4 w-4 ml-2" />
+                      <span>حذف فرم</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="text-sm text-gray-500">
-                <p>Fields: {form.fields?.length || 0}</p>
-                <div className="flex justify-between items-center mt-1">
-                  <p>
-                    Last updated:{" "}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <Badge variant="outline" className="bg-gray-100">
+                    {form.fields?.length || 0} فیلد
+                  </Badge>
+
+                  {form.isMultiStep && (
+                    <Badge
+                      variant="outline"
+                      className="bg-purple-100 text-purple-800"
+                    >
+                      چند مرحله‌ای
+                    </Badge>
+                  )}
+
+                  {form.isEditable && (
+                    <Badge
+                      variant="outline"
+                      className="bg-indigo-100 text-indigo-800"
+                    >
+                      قابل ویرایش
+                    </Badge>
+                  )}
+
+                  {/* Show form status */}
+                  <Badge
+                    variant="outline"
+                    className={getFormStatus(form).color}
+                  >
+                    {getFormStatus(form).label}
+                  </Badge>
+                </div>
+
+                <div className="mt-2 text-xs space-y-1">
+                  {form.formStartEntryDatetime && (
+                    <p className="flex items-center gap-1">
+                      <span>از:</span>{" "}
+                      {showFormattedDate(form.formStartEntryDatetime)}
+                    </p>
+                  )}
+                  {form.formEndEntryDateTime && (
+                    <p className="flex items-center gap-1">
+                      <span>تا:</span>{" "}
+                      {showFormattedDate(form.formEndEntryDateTime)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                  <p className="text-xs">
+                    بروزرسانی:{" "}
                     {new Date(form.updatedAt || "").toLocaleDateString("fa-IR")}
                   </p>
                   {form._id && (
