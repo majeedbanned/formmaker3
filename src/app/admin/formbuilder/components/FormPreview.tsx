@@ -12,6 +12,8 @@ import {
   X,
   PlusCircle,
   CheckCircle2,
+  Eye,
+  Edit,
 } from "lucide-react";
 import {
   Form,
@@ -196,8 +198,13 @@ export default function FormPreview({
                 : String(field.validation.regex);
 
             const regex = new RegExp(regexPattern);
+            const validationMessage =
+              typeof field.validation.validationMessage === "string"
+                ? field.validation.validationMessage
+                : "فرمت نامعتبر";
+
             fieldSchema = z.string().regex(regex, {
-              message: field.validation.validationMessage || "فرمت نامعتبر",
+              message: validationMessage,
             });
           } catch (e) {
             console.error("Invalid regex pattern", e);
@@ -233,7 +240,20 @@ export default function FormPreview({
         break;
 
       case "file":
-        fieldSchema = z.instanceof(File).optional();
+        // For file fields, accept either a File object or a metadata object (for already uploaded files)
+        fieldSchema = z
+          .union([
+            z.instanceof(File),
+            z
+              .object({
+                filename: z.string(),
+                originalName: z.string(),
+                path: z.string(),
+              })
+              .passthrough(),
+            z.null(),
+          ])
+          .optional();
         break;
 
       default:
@@ -255,7 +275,22 @@ export default function FormPreview({
       } else if (field.type === "number") {
         fieldSchema = z.number({ required_error: "این فیلد الزامی است" });
       } else if (field.type === "file") {
-        fieldSchema = z.instanceof(File, { message: "این فیلد الزامی است" });
+        // For required file fields, accept either File object or metadata object
+        fieldSchema = z.union(
+          [
+            z.instanceof(File),
+            z
+              .object({
+                filename: z.string(),
+                originalName: z.string(),
+                path: z.string(),
+              })
+              .passthrough(),
+          ],
+          {
+            errorMap: () => ({ message: "این فیلد الزامی است" }),
+          }
+        );
       }
     }
 
@@ -318,6 +353,7 @@ export default function FormPreview({
 
       // Process files first
       for (const [key, value] of Object.entries(data)) {
+        // Only process actual File objects, skip file metadata
         if (value instanceof File) {
           fileFields.push(key);
           try {
@@ -338,6 +374,13 @@ export default function FormPreview({
             delete data[key];
           }
         }
+        // For null values in file fields (when a file was removed), set to null explicitly
+        else if (
+          value === null &&
+          currentStepFields.some((f) => f.name === key && f.type === "file")
+        ) {
+          data[key] = null;
+        }
       }
 
       // If we're on the last step of a multi-step form, or it's a single-step form
@@ -345,6 +388,23 @@ export default function FormPreview({
         // Merge with previous steps' data for multi-step forms
         const completeFormData = { ...formData, ...data };
         setFormData(completeFormData);
+
+        // Add debug log for file fields in edit mode
+        if (isEditMode) {
+          console.log("Form data before submission:", completeFormData);
+          const fileFieldsInForm = currentStepFields
+            .filter((f) => f.type === "file")
+            .map((f) => f.name);
+          if (fileFieldsInForm.length > 0) {
+            console.log("File fields in form:", fileFieldsInForm);
+            fileFieldsInForm.forEach((fieldName) => {
+              console.log(
+                `Field ${fieldName} value:`,
+                completeFormData[fieldName]
+              );
+            });
+          }
+        }
 
         // Determine whether to create a new entry or update an existing one
         const apiEndpoint =
@@ -787,32 +847,56 @@ export default function FormPreview({
               // Get upload state for this field
               const uploadState = fileUploads[field.name];
 
+              // Define an interface for the file metadata
+              interface FileMetadata {
+                filename: string;
+                originalName: string;
+                path: string;
+                size?: number;
+                type?: string;
+                uploadedAt?: string;
+              }
+
+              // Check if there's an existing uploaded file (edit mode)
+              const hasExistingFile =
+                formField.value &&
+                typeof formField.value === "object" &&
+                "filename" in formField.value;
+
+              // Use proper typing for the file metadata
+              const fileMetadata = hasExistingFile
+                ? (formField.value as FileMetadata)
+                : null;
+
               return (
                 <FormItem>
                   <FormLabel>{field.label}</FormLabel>
                   <FormControl>
                     <div className="space-y-3">
-                      <Input
-                        type="file"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // Store file in form state
-                            formField.onChange(file);
+                      {/* Only show file input if no file is already uploaded or if we're uploading */}
+                      {(!hasExistingFile || uploadState?.uploading) && (
+                        <Input
+                          type="file"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Store file in form state
+                              formField.onChange(file);
 
-                            // Create a preview if it's an image
-                            if (file.type.startsWith("image/")) {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                // Display image preview if needed
-                                console.log("Image loaded:", reader.result);
-                              };
-                              reader.readAsDataURL(file);
+                              // Create a preview if it's an image
+                              if (file.type.startsWith("image/")) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  // Display image preview if needed
+                                  console.log("Image loaded:", reader.result);
+                                };
+                                reader.readAsDataURL(file);
+                              }
                             }
-                          }
-                        }}
-                        disabled={uploadState?.uploading}
-                      />
+                          }}
+                          disabled={uploadState?.uploading}
+                        />
+                      )}
 
                       {/* Show upload progress */}
                       {uploadState?.uploading && (
@@ -834,27 +918,86 @@ export default function FormPreview({
                         </p>
                       )}
 
-                      {/* Show selected file */}
+                      {/* Show selected file or existing file */}
                       {formField.value && !uploadState?.uploading && (
-                        <div className="text-sm border rounded-md p-3 bg-gray-50 flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <FileJson className="h-4 w-4 text-blue-500" />
-                            <span>
-                              {formField.value instanceof File
-                                ? formField.value.name
-                                : (formField.value as UploadResult)
-                                    ?.originalName || "فایل انتخاب شده"}
-                            </span>
+                        <div className="text-sm border rounded-md p-3 bg-gray-50 flex flex-col gap-2">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <FileJson className="h-4 w-4 text-blue-500" />
+                              <span>
+                                {formField.value instanceof File
+                                  ? formField.value.name
+                                  : hasExistingFile
+                                  ? fileMetadata?.originalName ||
+                                    "فایل آپلود شده"
+                                  : "فایل انتخاب شده"}
+                              </span>
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                formField.onChange(null);
+                                // If in edit mode with existing file, show file input again
+                                if (hasExistingFile) {
+                                  // Force re-render to show file input
+                                  setTimeout(() => {
+                                    formField.onChange(null);
+                                  }, 0);
+                                }
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
 
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => formField.onChange(null)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {/* Add buttons for existing files */}
+                          {hasExistingFile && fileMetadata && (
+                            <div className="flex gap-2 mt-1">
+                              {/* View file button */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  // Determine file URL based on path
+                                  let fileUrl;
+
+                                  if (fileMetadata.path.startsWith("http")) {
+                                    // If path is already a full URL
+                                    fileUrl = fileMetadata.path;
+                                  } else {
+                                    // Construct URL from domain and path
+                                    fileUrl = `${
+                                      window.location.origin
+                                    }/${fileMetadata.path.replace(/^\//, "")}`;
+                                  }
+
+                                  // Open in new tab
+                                  window.open(fileUrl, "_blank");
+                                }}
+                              >
+                                <Eye className="h-4 w-4 ml-2" /> مشاهده فایل
+                              </Button>
+
+                              {/* Change file button */}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  // Clear current file to show file input
+                                  formField.onChange(null);
+                                }}
+                              >
+                                <Edit className="h-4 w-4 ml-2" /> تغییر فایل
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
