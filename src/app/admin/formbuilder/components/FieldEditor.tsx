@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, X, PlusCircle } from "lucide-react";
+import { Save, PlusCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X as XIcon } from "lucide-react";
 import {
@@ -28,6 +28,12 @@ import {
 // Extended FormField interface to add description
 interface FormField extends BaseFormField {
   description?: string;
+}
+
+// Define a proper type for the validation object
+interface ValidationOptions {
+  regex?: string;
+  validationMessage?: string;
 }
 
 interface FieldEditorProps {
@@ -106,6 +112,9 @@ export function FieldEditor({
       case "signature":
         schema +=
           "object({ signatureDataUrl: z.string(), timestamp: z.string() })";
+        break;
+      case "rating":
+        schema += "number()";
         break;
       default:
         schema += "any()";
@@ -362,12 +371,12 @@ export function FieldEditor({
               <Label htmlFor="field-regex">Custom Regex Pattern</Label>
               <Input
                 id="field-regex"
-                value={editedField.validation?.regex || ""}
+                value={(editedField.validation?.regex as string) || ""}
                 onChange={(e) =>
                   updateField("validation", {
                     ...editedField.validation,
                     regex: e.target.value,
-                  })
+                  } as ValidationOptions)
                 }
                 placeholder="e.g. ^[A-Za-z0-9]+$"
               />
@@ -377,12 +386,14 @@ export function FieldEditor({
               <Label htmlFor="validation-message">Validation Message</Label>
               <Input
                 id="validation-message"
-                value={editedField.validation?.validationMessage || ""}
+                value={
+                  (editedField.validation?.validationMessage as string) || ""
+                }
                 onChange={(e) =>
                   updateField("validation", {
                     ...editedField.validation,
                     validationMessage: e.target.value,
-                  })
+                  } as ValidationOptions)
                 }
                 placeholder="e.g. Please enter a valid input"
               />
@@ -437,6 +448,132 @@ export function FieldEditor({
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
+
+            {/* Rating field options */}
+            {editedField.type === "rating" && (
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="rating-options">
+                  <AccordionTrigger>تنظیمات امتیازدهی</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="rating-max">حداکثر امتیاز</Label>
+                        <Input
+                          id="rating-max"
+                          type="number"
+                          value={editedField.ratingOptions?.maxRating || 5}
+                          onChange={(e) => {
+                            const maxRating = parseInt(e.target.value);
+                            updateField("ratingOptions", {
+                              ...editedField.ratingOptions,
+                              maxRating: maxRating > 0 ? maxRating : 5,
+                            } as FormField["ratingOptions"]);
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rating-default">امتیاز پیش‌فرض</Label>
+                        <Input
+                          id="rating-default"
+                          type="number"
+                          value={editedField.ratingOptions?.defaultRating || 0}
+                          onChange={(e) => {
+                            const defaultRating = parseInt(e.target.value);
+                            updateField("ratingOptions", {
+                              ...editedField.ratingOptions,
+                              defaultRating:
+                                defaultRating >= 0 ? defaultRating : 0,
+                            } as FormField["ratingOptions"]);
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rating-size">اندازه ستاره‌ها</Label>
+                        <Select
+                          value={editedField.ratingOptions?.size || "md"}
+                          onValueChange={(value) => {
+                            updateField("ratingOptions", {
+                              ...editedField.ratingOptions,
+                              size: value as "sm" | "md" | "lg",
+                            } as FormField["ratingOptions"]);
+                          }}
+                        >
+                          <SelectTrigger id="rating-size">
+                            <SelectValue placeholder="اندازه ستاره‌ها" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sm">کوچک</SelectItem>
+                            <SelectItem value="md">متوسط</SelectItem>
+                            <SelectItem value="lg">بزرگ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center space-x-2 space-x-reverse">
+                        <Switch
+                          id="allow-half"
+                          checked={
+                            editedField.ratingOptions?.allowHalf || false
+                          }
+                          onCheckedChange={(checked) => {
+                            updateField("ratingOptions", {
+                              ...editedField.ratingOptions,
+                              allowHalf: checked,
+                            } as FormField["ratingOptions"]);
+                          }}
+                        />
+                        <Label htmlFor="allow-half">
+                          امکان انتخاب نیم ستاره
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2 space-x-reverse">
+                        <Switch
+                          id="show-count"
+                          checked={
+                            editedField.ratingOptions?.showCount || false
+                          }
+                          onCheckedChange={(checked) => {
+                            updateField("ratingOptions", {
+                              ...editedField.ratingOptions,
+                              showCount: checked,
+                            } as FormField["ratingOptions"]);
+                          }}
+                        />
+                        <Label htmlFor="show-count">نمایش عدد امتیاز</Label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="rating-color">رنگ ستاره‌ها</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="rating-color"
+                            value={
+                              editedField.ratingOptions?.color || "#facc15"
+                            }
+                            onChange={(e) => {
+                              updateField("ratingOptions", {
+                                ...editedField.ratingOptions,
+                                color: e.target.value,
+                              } as FormField["ratingOptions"]);
+                            }}
+                          />
+                          <div
+                            className="w-10 h-10 border rounded"
+                            style={{
+                              backgroundColor:
+                                editedField.ratingOptions?.color || "#facc15",
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
 
             {/* Signature field options */}
             {editedField.type === "signature" && (

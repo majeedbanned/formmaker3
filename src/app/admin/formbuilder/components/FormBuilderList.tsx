@@ -107,6 +107,14 @@ export interface FormField {
     backgroundColor?: string;
     penColor?: string;
   };
+  ratingOptions?: {
+    maxRating?: number;
+    defaultRating?: number;
+    size?: "sm" | "md" | "lg";
+    allowHalf?: boolean;
+    showCount?: boolean;
+    color?: string;
+  };
 }
 
 interface FormBuilderListProps {

@@ -41,6 +41,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SignaturePad from "react-signature-canvas";
+import { Rating } from "react-simple-star-rating";
 
 // Extend the FormField type to include description
 interface FormField extends BaseFormField {
@@ -88,6 +89,201 @@ interface SignatureData {
   signatureDataUrl: string;
   timestamp: string;
 }
+
+// SignatureField component to handle the signature pad rendering and state
+const SignatureField = ({
+  field,
+  formField,
+}: {
+  field: FormField;
+  formField: {
+    value: SignatureData | null | undefined;
+    onChange: (value: SignatureData | null) => void;
+  };
+}) => {
+  const sigPadRef = useRef<SignaturePad>(null);
+  const [signatureExists, setSignatureExists] = useState(false);
+
+  // Default signature options
+  const defaultWidth = 500;
+  const defaultHeight = 200;
+  const sigOptions = field.signatureOptions || {};
+  const width = sigOptions.width || defaultWidth;
+  const height = sigOptions.height || defaultHeight;
+  const backgroundColor = sigOptions.backgroundColor || "rgb(248, 250, 252)";
+  const penColor = sigOptions.penColor || "rgb(0, 0, 0)";
+
+  // Check if there's an existing signature (in edit mode)
+  useEffect(() => {
+    const hasExistingSignature =
+      formField.value &&
+      typeof formField.value === "object" &&
+      "signatureDataUrl" in formField.value;
+
+    if (hasExistingSignature && sigPadRef.current) {
+      // Set existing signature from the data URL
+      const dataUrl = (formField.value as SignatureData).signatureDataUrl;
+      if (dataUrl) {
+        setSignatureExists(true);
+        // Load the image onto the canvas
+        const img = new Image();
+        img.onload = () => {
+          const ctx = sigPadRef.current?.getCanvas().getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+          }
+        };
+        img.src = dataUrl;
+      }
+    }
+  }, [formField.value]);
+
+  // Handle signature change
+  const handleSignatureEnd = () => {
+    if (sigPadRef.current) {
+      const isEmpty = sigPadRef.current.isEmpty();
+      setSignatureExists(!isEmpty);
+
+      if (!isEmpty) {
+        // Save signature data
+        const signatureData: SignatureData = {
+          signatureDataUrl: sigPadRef.current.toDataURL(),
+          timestamp: new Date().toISOString(),
+        };
+        formField.onChange(signatureData);
+      } else {
+        formField.onChange(null);
+      }
+    }
+  };
+
+  // Clear signature
+  const handleClear = () => {
+    if (sigPadRef.current) {
+      sigPadRef.current.clear();
+      setSignatureExists(false);
+      formField.onChange(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div
+        className="border rounded-md overflow-hidden"
+        style={{ width: width, maxWidth: "100%" }}
+      >
+        <SignaturePad
+          ref={sigPadRef}
+          canvasProps={{
+            className: "signature-canvas",
+            width: width,
+            height: height,
+            style: {
+              width: "100%",
+              height: height,
+              backgroundColor: backgroundColor,
+            },
+          }}
+          onEnd={handleSignatureEnd}
+          penColor={penColor}
+        />
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Pen className="h-4 w-4" />
+        {signatureExists
+          ? "امضا ثبت شد."
+          : "در کادر بالا با موس یا انگشت خود امضا کنید."}
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleClear}
+          disabled={!signatureExists}
+        >
+          <RefreshCw className="h-4 w-4 ml-2" /> پاک کردن
+        </Button>
+
+        {/* Show timestamp if signature exists and in edit mode */}
+        {signatureExists &&
+          formField.value &&
+          "timestamp" in formField.value && (
+            <div className="text-xs text-gray-500 flex items-center">
+              آخرین بروزرسانی:{" "}
+              {new Date(
+                (formField.value as SignatureData).timestamp
+              ).toLocaleString("fa-IR")}
+            </div>
+          )}
+      </div>
+    </div>
+  );
+};
+
+// RatingField component to handle the star rating
+const RatingField = ({
+  field,
+  formField,
+}: {
+  field: FormField;
+  formField: {
+    value: number | null | undefined;
+    onChange: (value: number) => void;
+  };
+}) => {
+  const ratingOptions = field.ratingOptions || {};
+  const maxRating = ratingOptions.maxRating || 5;
+  const size = ratingOptions.size || "md";
+  const color = ratingOptions.color || "#facc15";
+  const allowHalf = ratingOptions.allowHalf || false;
+  const showCount = ratingOptions.showCount || false;
+
+  // Convert size string to pixel values
+  const getSizeInPixels = (size: string) => {
+    switch (size) {
+      case "sm":
+        return 20;
+      case "lg":
+        return 40;
+      default:
+        return 30; // md
+    }
+  };
+
+  // Handle initial value
+  const defaultValue =
+    typeof formField.value === "number"
+      ? formField.value
+      : ratingOptions.defaultRating || 0;
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Rating
+        onClick={(rating) => {
+          formField.onChange(rating);
+        }}
+        initialValue={defaultValue}
+        size={getSizeInPixels(size)}
+        transition
+        fillColor={color}
+        allowFraction={allowHalf}
+        SVGstyle={{ display: "inline-block" }}
+        className="dir-ltr"
+      />
+      {showCount &&
+        formField.value !== null &&
+        formField.value !== undefined &&
+        formField.value > 0 && (
+          <div className="text-sm text-gray-500">
+            امتیاز انتخاب شده: {formField.value} از {maxRating}
+          </div>
+        )}
+    </div>
+  );
+};
 
 export default function FormPreview({
   form,
@@ -274,6 +470,10 @@ export default function FormPreview({
           })
           .nullable()
           .optional();
+        break;
+
+      case "rating":
+        fieldSchema = z.number().optional();
         break;
 
       default:
@@ -1048,139 +1248,33 @@ export default function FormPreview({
             key={field.name}
             control={methods.control}
             name={field.name}
-            render={({ field: formField }) => {
-              // Create refs for the signature pad
-              const sigPadRef = useRef<SignaturePad>(null);
-              const [signatureExists, setSignatureExists] = useState(false);
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <SignatureField field={field} formField={formField} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
 
-              // Default signature options
-              const defaultWidth = 500;
-              const defaultHeight = 200;
-              const sigOptions = field.signatureOptions || {};
-              const width = sigOptions.width || defaultWidth;
-              const height = sigOptions.height || defaultHeight;
-              const backgroundColor =
-                sigOptions.backgroundColor || "rgb(248, 250, 252)";
-              const penColor = sigOptions.penColor || "rgb(0, 0, 0)";
-
-              // Check if there's an existing signature (in edit mode)
-              useEffect(() => {
-                const hasExistingSignature =
-                  formField.value &&
-                  typeof formField.value === "object" &&
-                  "signatureDataUrl" in formField.value;
-
-                if (hasExistingSignature && sigPadRef.current) {
-                  // Set existing signature from the data URL
-                  const dataUrl = (formField.value as SignatureData)
-                    .signatureDataUrl;
-                  if (dataUrl) {
-                    setSignatureExists(true);
-                    // Load the image onto the canvas
-                    const img = new Image();
-                    img.onload = () => {
-                      const ctx = sigPadRef.current
-                        ?.getCanvas()
-                        .getContext("2d");
-                      if (ctx) {
-                        ctx.drawImage(img, 0, 0);
-                      }
-                    };
-                    img.src = dataUrl;
-                  }
-                }
-              }, [formField.value]);
-
-              // Handle signature change
-              const handleSignatureEnd = () => {
-                if (sigPadRef.current) {
-                  const isEmpty = sigPadRef.current.isEmpty();
-                  setSignatureExists(!isEmpty);
-
-                  if (!isEmpty) {
-                    // Save signature data
-                    const signatureData: SignatureData = {
-                      signatureDataUrl: sigPadRef.current.toDataURL(),
-                      timestamp: new Date().toISOString(),
-                    };
-                    formField.onChange(signatureData);
-                  } else {
-                    formField.onChange(null);
-                  }
-                }
-              };
-
-              // Clear signature
-              const handleClear = () => {
-                if (sigPadRef.current) {
-                  sigPadRef.current.clear();
-                  setSignatureExists(false);
-                  formField.onChange(null);
-                }
-              };
-
-              return (
-                <FormItem>
-                  <FormLabel>{field.label}</FormLabel>
-                  <FormControl>
-                    <div className="space-y-3">
-                      <div
-                        className="border rounded-md overflow-hidden"
-                        style={{ width: width, maxWidth: "100%" }}
-                      >
-                        <SignaturePad
-                          ref={sigPadRef}
-                          canvasProps={{
-                            className: "signature-canvas",
-                            width: width,
-                            height: height,
-                            style: {
-                              width: "100%",
-                              height: height,
-                              backgroundColor: backgroundColor,
-                            },
-                          }}
-                          onEnd={handleSignatureEnd}
-                          penColor={penColor}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Pen className="h-4 w-4" />
-                        {signatureExists
-                          ? "امضا ثبت شد."
-                          : "در کادر بالا با موس یا انگشت خود امضا کنید."}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleClear}
-                          disabled={!signatureExists}
-                        >
-                          <RefreshCw className="h-4 w-4 ml-2" /> پاک کردن
-                        </Button>
-
-                        {/* Show timestamp if signature exists and in edit mode */}
-                        {signatureExists &&
-                          formField.value &&
-                          "timestamp" in formField.value && (
-                            <div className="text-xs text-gray-500 flex items-center">
-                              آخرین بروزرسانی:{" "}
-                              {new Date(
-                                (formField.value as SignatureData).timestamp
-                              ).toLocaleString("fa-IR")}
-                            </div>
-                          )}
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
+      case "rating":
+        return (
+          <UIFormField
+            key={field.name}
+            control={methods.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <RatingField field={field} formField={formField} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         );
 

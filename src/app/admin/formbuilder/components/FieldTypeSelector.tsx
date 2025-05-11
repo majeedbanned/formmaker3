@@ -15,11 +15,8 @@ import {
   SquareStack,
   SwitchCamera,
   Upload,
-  MessageSquare,
-  RadioIcon,
-  ListFilter,
-  FileUp,
   Pen,
+  Star,
 } from "lucide-react";
 
 interface FieldTypeSelectorProps {
@@ -38,6 +35,7 @@ const fieldTypes = [
   { type: "switch", icon: SwitchCamera, label: "کلید" },
   { type: "textarea", icon: AlignJustify, label: "متن بلند" },
   { type: "signature", icon: Pen, label: "امضاء دیجیتال" },
+  { type: "rating", icon: Star, label: "امتیازدهی ستاره‌ای" },
   { type: "group", icon: SquareStack, label: "گروه فیلد" },
   { type: "conditional", icon: FileText, label: "فیلد شرطی" },
 ];
