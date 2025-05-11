@@ -24,9 +24,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { cn } from "@/lib/utils";
-import { z } from "zod";
-import { Check, ChevronsUpDown } from "lucide-react";
 
 // Extended FormField interface to add description
 interface FormField extends BaseFormField {
@@ -105,6 +102,10 @@ export function FieldEditor({
         break;
       case "file":
         schema += "any()";
+        break;
+      case "signature":
+        schema +=
+          "object({ signatureDataUrl: z.string(), timestamp: z.string() })";
         break;
       default:
         schema += "any()";
@@ -437,6 +438,104 @@ export function FieldEditor({
               </AccordionItem>
             </Accordion>
 
+            {/* Signature field options */}
+            {editedField.type === "signature" && (
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="signature-options">
+                  <AccordionTrigger>تنظیمات امضاء</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signature-width">عرض (پیکسل)</Label>
+                        <Input
+                          id="signature-width"
+                          type="number"
+                          value={editedField.signatureOptions?.width || 500}
+                          onChange={(e) => {
+                            const width = parseInt(e.target.value);
+                            updateField("signatureOptions", {
+                              ...editedField.signatureOptions,
+                              width: width > 0 ? width : 500,
+                            } as FormField["signatureOptions"]);
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signature-height">ارتفاع (پیکسل)</Label>
+                        <Input
+                          id="signature-height"
+                          type="number"
+                          value={editedField.signatureOptions?.height || 200}
+                          onChange={(e) => {
+                            const height = parseInt(e.target.value);
+                            updateField("signatureOptions", {
+                              ...editedField.signatureOptions,
+                              height: height > 0 ? height : 200,
+                            } as FormField["signatureOptions"]);
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signature-bg-color">رنگ پس‌زمینه</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="signature-bg-color"
+                            value={
+                              editedField.signatureOptions?.backgroundColor ||
+                              "rgb(248, 250, 252)"
+                            }
+                            onChange={(e) => {
+                              updateField("signatureOptions", {
+                                ...editedField.signatureOptions,
+                                backgroundColor: e.target.value,
+                              } as FormField["signatureOptions"]);
+                            }}
+                          />
+                          <div
+                            className="w-10 h-10 border rounded"
+                            style={{
+                              backgroundColor:
+                                editedField.signatureOptions?.backgroundColor ||
+                                "rgb(248, 250, 252)",
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signature-pen-color">رنگ قلم</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="signature-pen-color"
+                            value={
+                              editedField.signatureOptions?.penColor ||
+                              "rgb(0, 0, 0)"
+                            }
+                            onChange={(e) => {
+                              updateField("signatureOptions", {
+                                ...editedField.signatureOptions,
+                                penColor: e.target.value,
+                              } as FormField["signatureOptions"]);
+                            }}
+                          />
+                          <div
+                            className="w-10 h-10 border rounded"
+                            style={{
+                              backgroundColor:
+                                editedField.signatureOptions?.penColor ||
+                                "rgb(0, 0, 0)",
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+
             {/* Field groups */}
             {editedField.type === "group" && (
               <Accordion type="single" collapsible className="w-full">
@@ -565,7 +664,7 @@ export function FieldEditor({
                                       handleRemoveNestedField(index)
                                     }
                                   >
-                                    <X className="h-4 w-4 text-red-500" />
+                                    <XIcon className="h-4 w-4 text-red-500" />
                                   </Button>
                                 </div>
 
@@ -796,7 +895,7 @@ export function FieldEditor({
 
         <div className="flex justify-between mt-6">
           <Button variant="outline" onClick={onCancel}>
-            <X className="h-4 w-4 ml-2" />
+            <XIcon className="h-4 w-4 ml-2" />
             انصراف
           </Button>
           <Button onClick={handleSave}>

@@ -19,6 +19,7 @@ import {
   RadioIcon,
   ListFilter,
   FileUp,
+  Pen,
 } from "lucide-react";
 
 interface FieldTypeSelectorProps {
@@ -36,6 +37,7 @@ const fieldTypes = [
   { type: "radio", icon: Check, label: "گزینه‌های رادیویی" },
   { type: "switch", icon: SwitchCamera, label: "کلید" },
   { type: "textarea", icon: AlignJustify, label: "متن بلند" },
+  { type: "signature", icon: Pen, label: "امضاء دیجیتال" },
   { type: "group", icon: SquareStack, label: "گروه فیلد" },
   { type: "conditional", icon: FileText, label: "فیلد شرطی" },
 ];

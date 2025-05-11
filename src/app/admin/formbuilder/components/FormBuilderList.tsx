@@ -101,6 +101,12 @@ export interface FormField {
   layout?: string;
   repeatable?: boolean;
   stepId?: string; // Reference to the step this field belongs to
+  signatureOptions?: {
+    width?: number;
+    height?: number;
+    backgroundColor?: string;
+    penColor?: string;
+  };
 }
 
 interface FormBuilderListProps {
