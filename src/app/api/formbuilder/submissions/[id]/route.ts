@@ -71,33 +71,29 @@ export async function GET(
   }
 }
 
-// Update a form submission
+// Update an existing form submission
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Parse request body
     const data = await request.json();
     
     // Get domain from request headers
-    const domain = request.headers.get("x-domain") || "localhost:3000";
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    console.log(`Updating form submission with ID: ${params.id} for domain: ${domain}`);
     
-    if (!id) {
-      logger.warn(`Missing submission ID in update request for domain: ${domain}`);
-      return NextResponse.json({ error: 'Submission ID is required' }, { status: 400 });
-    }
-
-    // Validate ObjectId format
-    if (!ObjectId.isValid(id)) {
-      logger.warn(`Invalid submission ID format: ${id} for domain: ${domain}`);
-      return NextResponse.json({ error: 'Invalid submission ID format' }, { status: 400 });
-    }
+    // Validate required fields
+    const requiredFields = ['formId', 'answers'];
+    const missingFields = requiredFields.filter(field => !data[field]);
     
-    // Validate answers data
-    if (!data.answers || typeof data.answers !== 'object') {
+    if (missingFields.length > 0) {
       return NextResponse.json(
-        { error: 'answers object is required', errorFa: 'پاسخ‌ها الزامی هستند' },
+        { 
+          error: `Missing required fields: ${missingFields.join(', ')}`,
+          errorFa: `فیلدهای ضروری وجود ندارند: ${missingFields.join(', ')}`
+        },
         { status: 400 }
       );
     }
@@ -109,48 +105,47 @@ export async function PUT(
       // Get the formsInput collection
       const formsInputCollection = connection.collection('formsInput');
       
-      // First check if the submission exists
-      const existingSubmission = await formsInputCollection.findOne({
-        _id: new ObjectId(id)
+      // Check if the form entry exists
+      const existingEntry = await formsInputCollection.findOne({
+        _id: new ObjectId(params.id)
       });
       
-      if (!existingSubmission) {
-        logger.warn(`Submission not found with ID: ${id} for domain: ${domain}`);
-        return NextResponse.json({ error: 'Submission not found', errorFa: 'ارسال یافت نشد' }, { status: 404 });
+      if (!existingEntry) {
+        return NextResponse.json(
+          { error: 'Form submission not found', errorFa: 'پاسخ فرم یافت نشد' },
+          { status: 404 }
+        );
       }
       
-      // Prepare the update data
-      const updateData = {
-        answers: data.answers,
-        updatedAt: new Date(),
-        lastModifiedBy: request.headers.get('x-user') || data.userId || 'unknown'
-      };
-      
-      // Update the submission
-      const result = await formsInputCollection.findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $set: updateData },
-        { returnDocument: 'after' }
+      // Update the form submission
+      const result = await formsInputCollection.updateOne(
+        { _id: new ObjectId(params.id) },
+        {
+          $set: {
+            answers: data.answers,
+            updatedAt: new Date()
+          }
+        }
       );
       
-      if (!result) {
-        logger.warn(`Failed to update submission with ID: ${id} for domain: ${domain}`);
-        return NextResponse.json({ error: 'Failed to update submission', errorFa: 'به‌روزرسانی ارسال با شکست مواجه شد' }, { status: 500 });
-      }
-      
-      logger.info(`Successfully updated submission with ID: ${id} for domain: ${domain}`);
-      return NextResponse.json(result);
+      // Return success response
+      return NextResponse.json({
+        success: true,
+        message: 'Form submission updated successfully',
+        messageFa: 'پاسخ فرم با موفقیت بروزرسانی شد',
+        updated: result.modifiedCount > 0
+      });
     } catch (dbError) {
-      logger.error(`Database error for domain ${domain}:`, dbError);
+      console.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
-        { error: 'Error updating the submission in database' },
+        { error: 'Error updating the database', errorFa: 'خطا در بروزرسانی پایگاه داده' },
         { status: 500 }
       );
     }
   } catch (error) {
-    logger.error('Error updating form submission:', error);
+    console.error('Error processing form submission update:', error);
     return NextResponse.json(
-      { error: 'Failed to update submission' },
+      { error: 'Failed to process form submission update', errorFa: 'خطا در پردازش بروزرسانی پاسخ فرم' },
       { status: 500 }
     );
   }

@@ -73,6 +73,7 @@ export interface FormSchema {
   formEndEntryDateTime?: string | null;
   assignedClassCodes?: string[];
   assignedTeacherCodes?: string[];
+  isEditable?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -214,6 +215,7 @@ export default function FormBuilderList({
       ...form,
       assignedClassCodes: form.assignedClassCodes || [],
       assignedTeacherCodes: form.assignedTeacherCodes || [],
+      isEditable: form.isEditable || false,
     });
     setSettingsOpen(true);
   };
@@ -289,8 +291,17 @@ export default function FormBuilderList({
     });
   };
 
-  // Fix the formatDate function to handle both string and Date types
-  const formatDate = (date: string | null | undefined) => {
+  const handleEditableChange = (checked: boolean) => {
+    if (!selectedForm) return;
+
+    setSelectedForm({
+      ...selectedForm,
+      isEditable: checked,
+    });
+  };
+
+  // Show date in readable format - directly used in the UI
+  const showFormattedDate = (date: string | null | undefined) => {
     if (!date) return "تنظیم نشده";
 
     try {
@@ -541,18 +552,36 @@ export default function FormBuilderList({
                 )}
               </div>
 
+              {/* Form Editable Option */}
+              <div className="mt-6">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <Checkbox
+                    id="form-editable"
+                    checked={selectedForm?.isEditable}
+                    onCheckedChange={handleEditableChange}
+                  />
+                  <label
+                    htmlFor="form-editable"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    امکان ویرایش فرم پس از ثبت (کاربران می‌توانند پاسخ‌های خود
+                    را ویرایش کنند)
+                  </label>
+                </div>
+              </div>
+
               {/* Show the dates in a readable format */}
               <div className="mt-4 text-sm text-gray-500">
-                {/* <div className="flex flex-col space-y-1">
+                <div className="flex flex-col space-y-1">
                   <div>
                     شروع ثبت نام:{" "}
-                    {formatDate(selectedForm?.formStartEntryDatetime)}
+                    {showFormattedDate(selectedForm?.formStartEntryDatetime)}
                   </div>
                   <div>
                     پایان ثبت نام:{" "}
-                    {formatDate(selectedForm?.formEndEntryDateTime)}
+                    {showFormattedDate(selectedForm?.formEndEntryDateTime)}
                   </div>
-                </div> */}
+                </div>
               </div>
             </div>
           </div>

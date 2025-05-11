@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormSchema, FormField as BaseFormField } from "./FormBuilderList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   X,
   PlusCircle,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Form,
@@ -35,17 +36,29 @@ import {
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CheckCircle2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Extend the FormField type to include description
 interface FormField extends BaseFormField {
   description?: string;
 }
 
+// Define the proper types for existingEntry
+interface FormEntry {
+  _id: string;
+  formId: string;
+  formTitle: string;
+  answers: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  submittedBy: string;
+}
+
 interface FormPreviewProps {
   form: FormSchema;
   onBack: () => void;
+  isEditable?: boolean;
+  existingEntry?: FormEntry;
+  loadingEntry?: boolean;
 }
 
 // Fix the type definitions
@@ -65,11 +78,19 @@ interface FileUploadState {
   error: string | null;
 }
 
-export default function FormPreview({ form, onBack }: FormPreviewProps) {
+export default function FormPreview({
+  form,
+  onBack,
+  isEditable = false,
+  existingEntry,
+  loadingEntry = false,
+}: FormPreviewProps) {
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [entryId, setEntryId] = useState<string | null>(null);
   // Add state for file uploads
   const [fileUploads, setFileUploads] = useState<
     Record<string, FileUploadState>
@@ -86,6 +107,40 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
           fieldIds: form.fields.map((f) => f.name),
         },
       ];
+
+  // Load existing data when available
+  useEffect(() => {
+    if (existingEntry && isEditable) {
+      setIsEditMode(true);
+      setEntryId(existingEntry._id);
+
+      // Convert answers to form data format
+      const formattedData = formatExistingDataForForm(existingEntry.answers);
+      setFormData(formattedData);
+
+      // Wait for next render cycle to ensure methods are initialized
+      setTimeout(() => {
+        // Reset form with existing data
+        methods.reset(formattedData);
+        console.log("Form reset with data:", formattedData);
+      }, 0);
+    }
+  }, [existingEntry, isEditable]);
+
+  // Fix the formatExistingDataForForm function to handle data types correctly
+  const formatExistingDataForForm = (
+    answers: Record<string, unknown>
+  ): Record<string, unknown> => {
+    const formattedData: Record<string, unknown> = {};
+
+    // Process each answer to match the form field format
+    Object.entries(answers).forEach(([key, value]) => {
+      // Handle special cases based on field type if needed
+      formattedData[key] = value;
+    });
+
+    return formattedData;
+  };
 
   // Create Zod validation schema dynamically based on form fields
   const generateValidationSchema = (currentStepFields: FormField[]) => {
@@ -134,7 +189,13 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
         // Add regex validation only for text fields
         if (field.validation?.regex) {
           try {
-            const regex = new RegExp(field.validation.regex);
+            // Check if regex is valid and convert it to a proper string if needed
+            const regexPattern =
+              typeof field.validation.regex === "string"
+                ? field.validation.regex
+                : String(field.validation.regex);
+
+            const regex = new RegExp(regexPattern);
             fieldSchema = z.string().regex(regex, {
               message: field.validation.validationMessage || "فرمت نامعتبر",
             });
@@ -219,6 +280,37 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
     defaultValues: formData,
   });
 
+  // Handle form initialization and reset when form changes or when in edit mode
+  useEffect(() => {
+    // Reset form with current data whenever form ID changes
+    if (form._id) {
+      methods.reset(formData);
+    }
+  }, [form._id, formData]);
+
+  // Add debug logging for edit mode
+  useEffect(() => {
+    if (isEditMode && process.env.NODE_ENV !== "production") {
+      console.log("Edit mode active");
+      console.log("Current form values:", methods.getValues());
+
+      // Log when radio and select fields are rendered
+      const selectFields = form.fields.filter(
+        (f) => f.type === "select" || f.type === "radio"
+      );
+      if (selectFields.length > 0) {
+        console.log(
+          "Select/Radio fields:",
+          selectFields.map((f) => f.name)
+        );
+        selectFields.forEach((field) => {
+          const value = methods.getValues(field.name);
+          console.log(`Field ${field.name} value:`, value);
+        });
+      }
+    }
+  }, [isEditMode, methods]);
+
   const onSubmit = async (data: Record<string, unknown>) => {
     try {
       // Find all File objects in the data
@@ -248,55 +340,46 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
         }
       }
 
-      // For multi-step forms, update the form data and move to the next step
-      const updatedFormData = { ...formData, ...data };
-      setFormData(updatedFormData);
+      // If we're on the last step of a multi-step form, or it's a single-step form
+      if (!isMultiStep || currentStep === steps.length - 1) {
+        // Merge with previous steps' data for multi-step forms
+        const completeFormData = { ...formData, ...data };
+        setFormData(completeFormData);
 
-      // Debug log to verify file data is in the correct structure
-      console.log("Current form data:", updatedFormData);
+        // Determine whether to create a new entry or update an existing one
+        const apiEndpoint =
+          isEditMode && entryId
+            ? `/api/formbuilder/submissions/${entryId}`
+            : "/api/formbuilder/submissions";
 
-      if (isMultiStep && currentStep < steps.length - 1) {
-        // Move to the next step
-        setCurrentStep(currentStep + 1);
-        return;
-      }
+        const method = isEditMode && entryId ? "PUT" : "POST";
 
-      // Only make the API call if the form has an ID
-      if (form._id) {
-        // Log the full payload to verify structure before sending
-        console.log("Submitting form with data:", {
-          formId: form._id,
-          answers: updatedFormData,
-        });
-
-        const response = await fetch("/api/formbuilder/submissions", {
-          method: "POST",
+        // Submit to API
+        const response = await fetch(apiEndpoint, {
+          method: method,
           headers: {
             "Content-Type": "application/json",
             "x-domain": window.location.host,
           },
           body: JSON.stringify({
             formId: form._id,
-            answers: updatedFormData,
+            answers: completeFormData,
           }),
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Error submitting form:", response.status, errorText);
-          throw new Error(`Error submitting form: ${response.status}`);
+          throw new Error(`Error submitting form: ${response.statusText}`);
         }
 
-        // Get the submission confirmation
-        const result = await response.json();
-        console.log("Form submission result:", result);
-
-        // Update UI state
         setSubmitted(true);
+      } else {
+        // For multi-step forms, store the current step data and move to next step
+        setFormData((prev) => ({ ...prev, ...data }));
+        setCurrentStep((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Error processing form submission:", error);
-      // Could add error handling UI here
+      console.error("Error submitting form:", error);
+      // Handle error appropriately (show message, etc.)
     }
   };
 
@@ -585,6 +668,7 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
                 <FormLabel>{field.label}</FormLabel>
                 <Select
                   onValueChange={formField.onChange}
+                  value={formField.value}
                   defaultValue={formField.value}
                 >
                   <FormControl>
@@ -645,6 +729,7 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
                 <FormControl>
                   <RadioGroup
                     onValueChange={formField.onChange}
+                    value={formField.value}
                     defaultValue={formField.value}
                     className="flex flex-col space-y-1"
                   >
@@ -1053,78 +1138,127 @@ export default function FormPreview({ form, onBack }: FormPreviewProps) {
     );
   };
 
+  // Add output toggling function
+  const toggleOutput = () => {
+    setShowOutput((prev) => !prev);
+  };
+
   return (
-    <div className="space-y-6" dir="rtl">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 ml-2" /> بازگشت به ویرایشگر
-        </Button>
-        {submitted && (
-          <Button variant="outline" onClick={() => setShowOutput(!showOutput)}>
-            <FileJson className="h-4 w-4 ml-2" />
-            {showOutput ? "پنهان کردن" : "نمایش"} خروجی JSON
+    <Card className="bg-white shadow-md">
+      <CardHeader className="border-b">
+        <div className="flex justify-between items-center">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 ml-2" />
+            بازگشت
           </Button>
+          {(submitted || showOutput) && (
+            <Button variant="outline" onClick={toggleOutput}>
+              <FileJson className="h-4 w-4 ml-2" />
+              {showOutput ? "پنهان کردن خروجی" : "نمایش خروجی"}
+            </Button>
+          )}
+        </div>
+        <CardTitle className="text-xl font-bold mt-2">{form.title}</CardTitle>
+        {isEditable && existingEntry && (
+          <div className="bg-blue-50 text-blue-700 p-3 rounded-md mt-2">
+            شما در حال ویرایش پاسخ‌های قبلی خود هستید. تغییرات را اعمال کرده و
+            فرم را مجدداً ارسال کنید.
+          </div>
         )}
-      </div>
+        {isEditable && !existingEntry && !loadingEntry && (
+          <div className="bg-gray-50 text-gray-700 p-3 rounded-md mt-2">
+            این فرم قابل ویرایش است. پس از ارسال می‌توانید پاسخ‌های خود را
+            ویرایش کنید.
+          </div>
+        )}
+      </CardHeader>
 
-      <Card className="max-w-3xl mx-auto">
-        <CardHeader>
-          <CardTitle>{form.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {submitted && !showOutput && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertTitle>موفقیت!</AlertTitle>
-              <AlertDescription>فرم شما با موفقیت ارسال شد.</AlertDescription>
-            </Alert>
-          )}
-
-          {showOutput && (
-            <div className="mb-6 p-4 bg-gray-100 rounded-md overflow-auto max-h-60">
-              <pre className="text-xs">{JSON.stringify(formData, null, 2)}</pre>
+      <CardContent className="p-6">
+        {submitted ? (
+          <div className="text-center py-8">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-4">
+              <CheckCircle2 className="h-12 w-12 text-green-600" />
             </div>
-          )}
-
-          {!submitted && isMultiStep && renderStepProgress()}
-
+            <h3 className="text-lg font-medium mt-2">
+              {isEditMode
+                ? "پاسخ‌های شما با موفقیت به‌روزرسانی شد"
+                : "فرم با موفقیت ارسال شد"}
+            </h3>
+            {showOutput && (
+              <div className="mt-6 p-4 bg-gray-100 rounded-md overflow-auto max-h-[400px] text-left">
+                <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                  {JSON.stringify(formData, null, 2)}
+                </pre>
+              </div>
+            )}
+            <Button
+              className="mt-4"
+              onClick={() => {
+                setSubmitted(false);
+                methods.reset({});
+                if (isEditMode) {
+                  // Reload the page to show updated data
+                  window.location.reload();
+                }
+              }}
+            >
+              {isEditMode ? "مشاهده فرم به‌روزرسانی شده" : "ارسال فرم جدید"}
+            </Button>
+          </div>
+        ) : (
           <Form {...methods}>
             <form
               onSubmit={methods.handleSubmit(onSubmit)}
-              className="space-y-6"
+              className="space-y-8"
             >
+              {isMultiStep && renderStepProgress()}
+
+              {showOutput && (
+                <div className="mb-6 p-4 bg-gray-100 rounded-md overflow-auto max-h-[400px]">
+                  <pre className="text-xs whitespace-pre-wrap overflow-auto">
+                    {JSON.stringify(
+                      { ...formData, ...methods.getValues() },
+                      null,
+                      2
+                    )}
+                  </pre>
+                </div>
+              )}
+
+              {/* Form fields */}
               {currentStepFields.map((field) => renderField(field))}
 
-              <div className="flex justify-between mt-6">
+              <div className="flex justify-between">
                 {isMultiStep && currentStep > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrevStep}
-                  >
+                  <Button type="button" onClick={handlePrevStep}>
                     <ChevronRight className="h-4 w-4 ml-2" />
                     مرحله قبل
                   </Button>
                 )}
-
                 <Button
                   type="submit"
-                  className={isMultiStep && currentStep > 0 ? "" : "w-full"}
+                  className={
+                    isMultiStep && currentStep < steps.length - 1
+                      ? "bg-blue-500 hover:bg-blue-600"
+                      : "bg-green-500 hover:bg-green-600"
+                  }
                 >
                   {isMultiStep && currentStep < steps.length - 1 ? (
                     <>
                       مرحله بعد
                       <ChevronLeft className="h-4 w-4 mr-2" />
                     </>
+                  ) : isEditMode ? (
+                    "به‌روزرسانی پاسخ‌ها"
                   ) : (
-                    "ارسال"
+                    "ارسال فرم"
                   )}
                 </Button>
               </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

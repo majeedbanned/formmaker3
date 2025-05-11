@@ -21,6 +21,8 @@ function FormViewWrapper() {
   const [form, setForm] = useState<FormSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [existingEntry, setExistingEntry] = useState<any>(null);
+  const [loadingEntry, setLoadingEntry] = useState(false);
 
   useEffect(() => {
     console.log("Form ID from URL:", formId);
@@ -91,6 +93,11 @@ function FormViewWrapper() {
         }
 
         setForm(data);
+
+        // If form is editable, check for existing entries
+        if (data.isEditable) {
+          fetchExistingEntry(data._id);
+        }
       } catch (err) {
         // Handle AbortController timeout
         const error = err as Error;
@@ -114,6 +121,40 @@ function FormViewWrapper() {
       // Any cleanup if needed
     };
   }, [formId]);
+
+  // Function to fetch existing entry for the current user
+  const fetchExistingEntry = async (formId: string) => {
+    try {
+      setLoadingEntry(true);
+
+      const response = await fetch(
+        `/api/formbuilder/submissions?formId=${formId}&limit=1`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch existing entries");
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data && data.submissions && data.submissions.length > 0) {
+        console.log("Found existing entry:", data.submissions[0]);
+        setExistingEntry(data.submissions[0]);
+      } else {
+        console.log("No existing entries found");
+      }
+    } catch (error) {
+      console.error("Error fetching existing entries:", error);
+    } finally {
+      setLoadingEntry(false);
+    }
+  };
 
   const handleBack = () => {
     router.push("/admin/formbuilder");
@@ -167,7 +208,13 @@ function FormViewWrapper() {
 
   return (
     <div className="container mx-auto py-8 rtl" dir="rtl">
-      <FormPreview form={form} onBack={handleBack} />
+      <FormPreview
+        form={form}
+        onBack={handleBack}
+        isEditable={form.isEditable}
+        existingEntry={existingEntry}
+        loadingEntry={loadingEntry}
+      />
     </div>
   );
 }
