@@ -333,6 +333,10 @@ const ClassSheet = ({
   const [startDate, setStartDate] = useState<Value>(defaultStart);
   const [endDate, setEndDate] = useState<Value>(defaultEnd);
 
+  // New state to store course and teacher names
+  const [coursesInfo, setCoursesInfo] = useState<Record<string, string>>({});
+  const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
+
   // Build teacher-course options from all classes (filter by teacherCode if provided)
   const courseOptions: (CourseOption & {
     classIndex: number;
@@ -350,6 +354,15 @@ const ClassSheet = ({
       : classDoc.data.teachers;
 
     teachers.forEach((t) => {
+      // Get teacher and course names from the fetched data
+      const teacherName =
+        teachersInfo[t.teacherCode] || `معلم ${t.teacherCode}`;
+      const courseName = coursesInfo[t.courseCode] || `درس ${t.courseCode}`;
+
+      console.log(
+        `Building option for: courseCode=${t.courseCode}, courseName=${courseName}, teacherCode=${t.teacherCode}, teacherName=${teacherName}`
+      );
+
       courseOptions.push({
         value: `${t.teacherCode}-${t.courseCode}-${classDoc.data.classCode}`,
         teacherCode: t.teacherCode,
@@ -357,7 +370,7 @@ const ClassSheet = ({
         classCode: classDoc.data.classCode,
         className: classDoc.data.className,
         classIndex: classIndex,
-        label: `${classDoc.data.className} - معلم ${t.teacherCode} - درس ${t.courseCode}`,
+        label: `${classDoc.data.className} - ${teacherName} - ${courseName}`,
         weeklySchedule: t.weeklySchedule,
       });
     });
@@ -605,6 +618,147 @@ const ClassSheet = ({
       loadAssessmentOptions();
     }
   }, [schoolCode, teacherCode]);
+
+  // Load teacher and course names from the database
+  useEffect(() => {
+    const fetchTeachersAndCourses = async () => {
+      if (!schoolCode) return;
+
+      try {
+        // Fetch teachers
+        const teachersResponse = await fetch(
+          `/api/formbuilder/classes-teachers`,
+          {
+            headers: {
+              "x-domain": window.location.host,
+            },
+          }
+        );
+
+        if (teachersResponse.ok) {
+          const { teachers } = await teachersResponse.json();
+
+          // Create a map of teacher codes to names
+          const teacherMap: Record<string, string> = {};
+          teachers.forEach(
+            (teacher: {
+              data: { teacherCode: string; teacherName?: string };
+            }) => {
+              teacherMap[teacher.data.teacherCode] =
+                teacher.data.teacherName || teacher.data.teacherCode;
+            }
+          );
+          setTeachersInfo(teacherMap);
+        }
+
+        // Fetch courses
+        const coursesResponse = await fetch(
+          `/api/courses/sheet?schoolCode=${schoolCode}`
+        );
+        if (coursesResponse.ok) {
+          const coursesData = await coursesResponse.json();
+          console.log("Courses data:", coursesData);
+
+          // Create a map of course codes to names
+          const courseMap: Record<string, string> = {};
+
+          // Helper function to recursively find courseCode and courseName in nested objects
+          const findCourseInfo = (
+            obj: any,
+            path = ""
+          ): { courseCode?: string; courseName?: string } => {
+            const result: { courseCode?: string; courseName?: string } = {};
+
+            if (!obj || typeof obj !== "object") return result;
+
+            // Direct properties
+            if (obj.courseCode) result.courseCode = obj.courseCode;
+            if (obj.courseName) result.courseName = obj.courseName;
+
+            // Check if this is a MongoDB Map converted to JSON (data field with object entries)
+            if (obj.data && typeof obj.data === "object") {
+              // Case 1: Direct properties in data
+              if (obj.data.courseCode) result.courseCode = obj.data.courseCode;
+              if (obj.data.courseName) result.courseName = obj.data.courseName;
+
+              // Case 2: MongoDB stores Map as an object with individual entries
+              // Check each property of data for courseCode and courseName
+              for (const key in obj.data) {
+                if (key === "courseCode") result.courseCode = obj.data[key];
+                if (key === "courseName") result.courseName = obj.data[key];
+              }
+            }
+
+            // If we haven't found either code or name yet, search deeper
+            if (!result.courseCode || !result.courseName) {
+              for (const key in obj) {
+                if (typeof obj[key] === "object" && obj[key] !== null) {
+                  // Skip data since we already checked it above
+                  if (key === "data") continue;
+
+                  const childResult = findCourseInfo(
+                    obj[key],
+                    `${path}.${key}`
+                  );
+                  if (childResult.courseCode && !result.courseCode)
+                    result.courseCode = childResult.courseCode;
+                  if (childResult.courseName && !result.courseName)
+                    result.courseName = childResult.courseName;
+                }
+              }
+            }
+
+            return result;
+          };
+
+          if (Array.isArray(coursesData)) {
+            coursesData.forEach((course, index) => {
+              try {
+                // Check if the course has direct courseCode and courseName properties
+                // (from our API transformation)
+                if (course.courseCode) {
+                  courseMap[course.courseCode] =
+                    course.courseName || course.courseCode;
+                  console.log(
+                    `Direct mapping: ${course.courseCode} -> ${
+                      courseMap[course.courseCode]
+                    }`
+                  );
+                }
+                // Fallback to our existing recursive search if needed
+                else {
+                  // Try to find course info in any nested structure
+                  const { courseCode, courseName } = findCourseInfo(course);
+
+                  if (courseCode) {
+                    // Use found courseName or fall back to courseCode
+                    courseMap[courseCode] = courseName || courseCode;
+                    console.log(
+                      `Nested search mapping: ${courseCode} -> ${courseMap[courseCode]}`
+                    );
+                  } else {
+                    console.log(
+                      `No courseCode found in course ${index}:`,
+                      course
+                    );
+                  }
+                }
+              } catch (e) {
+                console.error("Error processing course data:", e, course);
+              }
+            });
+          }
+
+          console.log("Final course map:", courseMap);
+          setCoursesInfo(courseMap);
+        }
+      } catch (error) {
+        console.error("Error fetching teachers and courses:", error);
+      }
+    };
+
+    fetchTeachersAndCourses();
+  }, [schoolCode]);
 
   // Handle cell click and display
   const getCellContent = (
@@ -2045,7 +2199,7 @@ const ClassSheet = ({
   return (
     <div className="p-0 bg-gray-100" dir="rtl">
       {/* Teacher-Course Selection and Date Range in a single row */}
-      <div className="mb-0 items-end bg-white px-0  py-4 flex flex-col md:flex-row  md:space-x-4 md:space-x-reverse space-y-4 md:space-y-0">
+      <div className="mb-0 items-end bg-white px-0 py-4 flex flex-col md:flex-row md:space-x-4 md:space-x-reverse space-y-4 md:space-y-0">
         {/* Teacher-Course Selection */}
         <div className="md:w-1/3">
           <label
@@ -2058,13 +2212,23 @@ const ClassSheet = ({
             id="course-select"
             value={selectedOption?.value}
             onChange={handleSelectChange}
-            className="w-full p-2 border border-gray-200 rounded-lg  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+            className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
           >
-            {courseOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {courseOptions.map((option) => {
+              // Debug the option to see what's being displayed
+              console.log(
+                `Rendering option: ${option.value}, label: ${
+                  option.label
+                }, course: ${option.courseCode} -> ${
+                  coursesInfo[option.courseCode] || "not found"
+                }`
+              );
+              return (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              );
+            })}
           </select>
         </div>
 
