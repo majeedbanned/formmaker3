@@ -139,6 +139,14 @@ const ASSESSMENT_VALUES_MAP: Record<string, number> = {
   "بسیار ضعیف": -2,
 };
 
+type CourseData = {
+  courseCode: string;
+  courseName: string;
+  schoolCode?: string;
+  vahed?: number;
+  [key: string]: any;
+};
+
 type StudentReportCard = {
   studentCode: string;
   studentName: string;
@@ -147,11 +155,20 @@ type StudentReportCard = {
     {
       courseName: string;
       teacherName: string;
+      vahed: number;
       monthlyGrades: Record<string, number | null>;
       monthlyAssessments: Record<string, AssessmentEntry[]>;
       yearAverage: number | null;
     }
   >;
+};
+
+// Type for storing the weighted grade calculation details for tooltips
+type WeightedGradeInfo = {
+  courseName: string;
+  grade: number;
+  vahed: number;
+  weightedValue: number;
 };
 
 // Helper function for Persian date conversion
@@ -209,7 +226,9 @@ const ReportCards = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
-  const [coursesInfo, setCoursesInfo] = useState<Record<string, string>>({});
+  const [coursesInfo, setCoursesInfo] = useState<Record<string, CourseData>>(
+    {}
+  );
   const [courseAssessmentValues, setCourseAssessmentValues] = useState<
     Record<string, Record<string, number>>
   >({});
@@ -279,22 +298,34 @@ const ReportCards = ({
           setTeachersInfo(teacherMap);
         }
 
-        // Fetch courses
+        // Fetch courses with vahed information
         const coursesResponse = await fetch(
           `/api/courses/sheet?schoolCode=${schoolCode}`
         );
-
+        console.log("coursesResponse", coursesResponse);
         if (coursesResponse.ok) {
           const coursesData = await coursesResponse.json();
-
-          // Create a map of course codes to names
-          const courseMap: Record<string, string> = {};
+          console.log("coursesData", coursesData);
+          // Create a map of course codes to course data
+          const courseMap: Record<string, CourseData> = {};
 
           if (Array.isArray(coursesData)) {
             coursesData.forEach((course) => {
-              if (course && course.courseCode) {
-                courseMap[course.courseCode] =
-                  course.courseName || course.courseCode;
+              // Handle different data structures
+              const courseCode =
+                course.courseCode || (course.data && course.data.courseCode);
+              if (courseCode) {
+                // Create a standardized course data object
+                courseMap[courseCode] = {
+                  courseCode,
+                  courseName:
+                    course.courseName ||
+                    (course.data && course.data.courseName) ||
+                    courseCode,
+                  vahed:
+                    course.vahed || (course.data && course.data.vahed) || 1, // Default to 1 if not specified
+                  schoolCode,
+                };
               }
             });
           }
@@ -379,6 +410,47 @@ const ReportCards = ({
     []
   );
 
+  // Helper function to format weighted average tooltip
+  const formatWeightedAverageTooltip = useCallback(
+    (weightedGradesInfo: WeightedGradeInfo[]): string => {
+      if (!weightedGradesInfo || weightedGradesInfo.length === 0)
+        return "اطلاعاتی موجود نیست";
+
+      // Calculate total weights and sum for final display
+      const totalWeight = weightedGradesInfo.reduce(
+        (sum, item) => sum + item.vahed,
+        0
+      );
+      const weightedSum = weightedGradesInfo.reduce(
+        (sum, item) => sum + item.weightedValue,
+        0
+      );
+      const average = Math.round((weightedSum / totalWeight) * 100) / 100;
+
+      // Create detailed breakdown
+      let tooltip = "محاسبه میانگین بر اساس واحد:\n\n";
+
+      // Add each course's calculation
+      weightedGradesInfo.forEach((item) => {
+        const formattedGrade = toPersianDigits(item.grade.toFixed(2));
+        const formattedVahed = toPersianDigits(item.vahed);
+        const formattedWeighted = toPersianDigits(
+          item.weightedValue.toFixed(2)
+        );
+
+        tooltip += `${item.courseName}: ${formattedGrade} × ${formattedVahed} واحد = ${formattedWeighted}\n`;
+      });
+
+      // Add summary calculation
+      tooltip += `\nمجموع: ${toPersianDigits(weightedSum.toFixed(2))}\n`;
+      tooltip += `تعداد کل واحد: ${toPersianDigits(totalWeight)}\n`;
+      tooltip += `میانگین نهایی: ${toPersianDigits(average.toFixed(2))}`;
+
+      return tooltip;
+    },
+    []
+  );
+
   // Fetch grades when selection changes
   useEffect(() => {
     if (!selectedClass || !selectedYear) {
@@ -459,7 +531,13 @@ const ReportCards = ({
         for (const tc of teacherCourses) {
           // Get teacher and course names
           const teacherName = teachersInfo[tc.teacherCode] || tc.teacherCode;
-          const courseName = coursesInfo[tc.courseCode] || tc.courseCode;
+          const courseData = coursesInfo[tc.courseCode] || {
+            courseCode: tc.courseCode,
+            courseName: `درس ${tc.courseCode}`,
+            vahed: 1, // Default to 1 if not specified
+          };
+          const courseName = courseData.courseName || `درس ${tc.courseCode}`;
+          const vahed = courseData.vahed || 1;
 
           // Fetch all grade data for this teacher-course
           const response = await fetch("/api/classsheet", {
@@ -524,6 +602,7 @@ const ReportCards = ({
             studentReports[student.studentCode].courses[tc.courseCode] = {
               courseName,
               teacherName,
+              vahed,
               monthlyGrades: {},
               monthlyAssessments: {}, // Add assessments tracking
               yearAverage: null,
@@ -633,7 +712,45 @@ const ReportCards = ({
         }
 
         // Convert to array for easier rendering
-        const reportCardsArray = Object.values(studentReports);
+        const reportCardsArray = Object.values(studentReports).map(
+          (student) => {
+            // Calculate weighted average based on vahed values for each student
+            const weightedGradesInfo: WeightedGradeInfo[] = [];
+            let totalWeight = 0;
+            let weightedSum = 0;
+
+            // Process each course
+            Object.values(student.courses).forEach((course) => {
+              if (course.yearAverage !== null) {
+                const weightedValue = course.yearAverage * course.vahed;
+                weightedSum += weightedValue;
+                totalWeight += course.vahed;
+
+                // Store weighted grade info for tooltip
+                weightedGradesInfo.push({
+                  courseName: course.courseName,
+                  grade: course.yearAverage,
+                  vahed: course.vahed,
+                  weightedValue,
+                });
+              }
+            });
+
+            // Calculate final weighted average
+            const weightedAverage =
+              totalWeight > 0
+                ? Math.round((weightedSum / totalWeight) * 100) / 100
+                : null;
+
+            // Add weighted average info to the student record
+            return {
+              ...student,
+              weightedAverage,
+              weightedGradesInfo,
+            };
+          }
+        );
+
         setStudentReportCards(reportCardsArray);
       } catch (error) {
         console.error("Error fetching report card data:", error);
@@ -714,6 +831,7 @@ const ReportCards = ({
       const columns = [
         { header: "نام درس", key: "courseName", width: 25 },
         { header: "معلم", key: "teacherName", width: 25 },
+        { header: "واحد", key: "vahed", width: 10 },
         { header: "مهر", key: "7", width: 12 },
         { header: "آبان", key: "8", width: 12 },
         { header: "آذر", key: "9", width: 12 },
@@ -752,10 +870,11 @@ const ReportCards = ({
 
       // Add course data
       const coursesData = Object.entries(student.courses).map(
-        ([courseCode, courseData]) => {
-          const rowData: any = {
+        ([, courseData]) => {
+          const rowData = {
             courseName: courseData.courseName,
             teacherName: courseData.teacherName,
+            vahed: courseData.vahed,
             average:
               courseData.yearAverage !== null
                 ? Number(courseData.yearAverage.toFixed(2))
@@ -765,10 +884,17 @@ const ReportCards = ({
           // Add monthly grades
           for (let month = 1; month <= 12; month++) {
             const monthKey = month.toString();
-            rowData[monthKey] =
-              courseData.monthlyGrades[monthKey] !== null
-                ? Number(courseData.monthlyGrades[monthKey].toFixed(2))
-                : null;
+            if (
+              courseData.monthlyGrades &&
+              monthKey in courseData.monthlyGrades
+            ) {
+              rowData[monthKey] =
+                courseData.monthlyGrades[monthKey] !== null
+                  ? Number(courseData.monthlyGrades[monthKey].toFixed(2))
+                  : null;
+            } else {
+              rowData[monthKey] = null;
+            }
           }
 
           return rowData;
@@ -778,48 +904,45 @@ const ReportCards = ({
       // Add rows to sheet
       studentSheet.addRows(coursesData);
 
-      // Add averages row
-      const averagesRow = {
-        courseName: "میانگین کل",
+      // Add weighted averages row
+      const weightedAveragesRow = {
+        courseName: "میانگین کل (با احتساب واحد)",
         teacherName: "",
+        vahed: "",
       };
 
-      // Calculate monthly averages
+      // Calculate monthly weighted averages
       for (let month = 1; month <= 12; month++) {
         const monthKey = month.toString();
-        const grades = Object.values(student.courses)
-          .map((c) => c.monthlyGrades[monthKey])
-          .filter((g) => g !== null) as number[];
 
-        averagesRow[monthKey] =
-          grades.length > 0
-            ? Number(
-                (grades.reduce((sum, g) => sum + g, 0) / grades.length).toFixed(
-                  2
-                )
-              )
+        // Calculate weighted average
+        let totalWeight = 0;
+        let weightedSum = 0;
+
+        Object.values(student.courses).forEach((course) => {
+          const monthGrade = course.monthlyGrades[monthKey];
+          if (monthGrade !== null) {
+            weightedSum += monthGrade * course.vahed;
+            totalWeight += course.vahed;
+          }
+        });
+
+        weightedAveragesRow[monthKey] =
+          totalWeight > 0
+            ? Number((weightedSum / totalWeight).toFixed(2))
             : null;
       }
 
-      // Calculate overall average
-      const courseAverages = Object.values(student.courses)
-        .map((c) => c.yearAverage)
-        .filter((g) => g !== null) as number[];
-
-      averagesRow["average"] =
-        courseAverages.length > 0
-          ? Number(
-              (
-                courseAverages.reduce((sum, g) => sum + g, 0) /
-                courseAverages.length
-              ).toFixed(2)
-            )
+      // Calculate overall weighted average
+      weightedAveragesRow["average"] =
+        student.weightedAverage !== null
+          ? Number(student.weightedAverage.toFixed(2))
           : null;
 
-      // Add averages row
-      studentSheet.addRow(averagesRow);
+      // Add weighted averages row
+      studentSheet.addRow(weightedAveragesRow);
 
-      // Style the averages row
+      // Style the weighted averages row
       const lastRow = studentSheet.lastRow;
       if (lastRow) {
         lastRow.font = { bold: true };
@@ -830,11 +953,25 @@ const ReportCards = ({
         };
       }
 
+      // Add formula explanation
+      studentSheet.mergeCells(
+        `A${studentSheet.rowCount + 2}:N${studentSheet.rowCount + 2}`
+      );
+      const formulaCell = studentSheet.getCell(`A${studentSheet.rowCount + 2}`);
+      formulaCell.value =
+        "فرمول محاسبه میانگین وزنی: مجموع (نمره × واحد) ÷ مجموع واحدها";
+      formulaCell.font = {
+        italic: true,
+        size: 10,
+        color: { argb: "FF555555" },
+      };
+      formulaCell.alignment = { horizontal: "right" };
+
       // Apply borders and styling
       studentSheet.eachRow((row, rowNum) => {
         if (rowNum >= 3) {
           // Skip title rows
-          row.eachCell((cell) => {
+          row.eachCell((cell, colNum) => {
             cell.border = {
               top: { style: "thin" },
               left: { style: "thin" },
@@ -845,8 +982,8 @@ const ReportCards = ({
             // Center align cells
             cell.alignment = { horizontal: "center", vertical: "middle" };
 
-            // Color code grades
-            if (rowNum > 3 && cell.column > 2) {
+            // Color code grades (skip first 3 columns: courseName, teacherName, vahed)
+            if (rowNum > 3 && colNum > 3) {
               const value = cell.value as number;
 
               if (value) {
@@ -907,9 +1044,9 @@ const ReportCards = ({
 
     // Add overall average column
     summaryColumns.push({
-      header: "میانگین کل",
-      key: "overallAverage",
-      width: 15,
+      header: "میانگین کل (با احتساب واحد)",
+      key: "weightedAverage",
+      width: 20,
     });
 
     summarySheet.columns = summaryColumns;
@@ -925,7 +1062,7 @@ const ReportCards = ({
 
     // Add student data
     const summaryData = studentReportCards.map((student) => {
-      const rowData: any = {
+      const rowData: Record<string, any> = {
         studentCode: student.studentCode,
         studentName: student.studentName,
       };
@@ -941,42 +1078,45 @@ const ReportCards = ({
             : null;
       });
 
-      // Calculate overall average
-      const courseAverages = Object.values(student.courses)
-        .map((c) => c.yearAverage)
-        .filter((g) => g !== null) as number[];
-
-      rowData.overallAverage =
-        courseAverages.length > 0
-          ? Number(
-              (
-                courseAverages.reduce((sum, g) => sum + g, 0) /
-                courseAverages.length
-              ).toFixed(2)
-            )
+      // Add weighted average
+      rowData.weightedAverage =
+        student.weightedAverage !== null
+          ? Number(student.weightedAverage.toFixed(2))
           : null;
 
       return rowData;
     });
 
-    // Sort by overall average (descending)
+    // Sort by weighted average (descending)
     summaryData.sort((a, b) => {
       // Handle null values
-      if (a.overallAverage === null && b.overallAverage === null) return 0;
-      if (a.overallAverage === null) return 1;
-      if (b.overallAverage === null) return -1;
+      if (a.weightedAverage === null && b.weightedAverage === null) return 0;
+      if (a.weightedAverage === null) return 1;
+      if (b.weightedAverage === null) return -1;
 
-      return b.overallAverage - a.overallAverage;
+      return b.weightedAverage - a.weightedAverage;
     });
 
     // Add rows to sheet
     summarySheet.addRows(summaryData);
 
+    // Add formula explanation
+    summarySheet.mergeCells(
+      `A${summarySheet.rowCount + 2}:${String.fromCharCode(
+        65 + summaryColumns.length - 1
+      )}${summarySheet.rowCount + 2}`
+    );
+    const formulaCell = summarySheet.getCell(`A${summarySheet.rowCount + 2}`);
+    formulaCell.value =
+      "فرمول محاسبه میانگین وزنی: مجموع (نمره × واحد) ÷ مجموع واحدها";
+    formulaCell.font = { italic: true, size: 10, color: { argb: "FF555555" } };
+    formulaCell.alignment = { horizontal: "right" };
+
     // Style the summary sheet
     summarySheet.eachRow((row, rowNum) => {
       if (rowNum >= 2) {
         // Skip title row
-        row.eachCell((cell) => {
+        row.eachCell((cell, colNum) => {
           cell.border = {
             top: { style: "thin" },
             left: { style: "thin" },
@@ -987,8 +1127,8 @@ const ReportCards = ({
           // Center align cells
           cell.alignment = { horizontal: "center", vertical: "middle" };
 
-          // Color code grades
-          if (rowNum > 2 && cell.column > 2) {
+          // Color code grades (skip first 2 columns: studentCode, studentName)
+          if (rowNum > 2 && colNum > 2) {
             const value = cell.value as number;
 
             if (value) {
@@ -1253,36 +1393,47 @@ const ReportCards = ({
                             {/* Final row with overall average */}
                             <TableRow className="bg-gray-50">
                               <TableCell colSpan={2} className="font-bold">
-                                میانگین کل
+                                میانگین کل (با احتساب واحد)
                               </TableCell>
                               {/* Calculate average for each month across all courses */}
                               {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].map(
                                 (month) => {
-                                  const monthGrades = Object.values(
-                                    student.courses
-                                  )
-                                    .map(
-                                      (c) => c.monthlyGrades[month.toString()]
-                                    )
-                                    .filter((g) => g !== null) as number[];
+                                  const monthKey = month.toString();
 
-                                  const avgGrade =
-                                    monthGrades.length > 0
-                                      ? monthGrades.reduce(
-                                          (sum, g) => sum + g,
-                                          0
-                                        ) / monthGrades.length
+                                  // Calculate weighted average by course vahed
+                                  let totalWeight = 0;
+                                  let weightedSum = 0;
+
+                                  Object.values(student.courses).forEach(
+                                    (course) => {
+                                      const grade =
+                                        course.monthlyGrades[monthKey];
+                                      const vahed = course.vahed || 1;
+
+                                      if (grade !== null) {
+                                        weightedSum += grade * vahed;
+                                        totalWeight += vahed;
+                                      }
+                                    }
+                                  );
+
+                                  const weightedAvg =
+                                    totalWeight > 0
+                                      ? weightedSum / totalWeight
                                       : null;
 
                                   return (
                                     <TableCell
                                       key={`avg-${month}`}
                                       className={`font-bold ${getScoreColorClass(
-                                        avgGrade
+                                        weightedAvg
                                       )}`}
+                                      title={`میانگین وزنی بر اساس واحد دروس`}
                                     >
-                                      {avgGrade !== null
-                                        ? toPersianDigits(avgGrade.toFixed(2))
+                                      {weightedAvg !== null
+                                        ? toPersianDigits(
+                                            weightedAvg.toFixed(2)
+                                          )
                                         : "—"}
                                     </TableCell>
                                   );
@@ -1290,28 +1441,25 @@ const ReportCards = ({
                               )}
                               {/* Overall average of all course averages */}
                               {(() => {
-                                const courseAverages = Object.values(
-                                  student.courses
-                                )
-                                  .map((c) => c.yearAverage)
-                                  .filter((g) => g !== null) as number[];
-
-                                const overallAvg =
-                                  courseAverages.length > 0
-                                    ? courseAverages.reduce(
-                                        (sum, g) => sum + g,
-                                        0
-                                      ) / courseAverages.length
-                                    : null;
-
                                 return (
                                   <TableCell
                                     className={`font-bold text-lg ${getScoreColorClass(
-                                      overallAvg
+                                      student.weightedAverage
                                     )}`}
+                                    title={formatWeightedAverageTooltip(
+                                      student.weightedGradesInfo
+                                    )}
+                                    style={{
+                                      cursor:
+                                        student.weightedGradesInfo.length > 0
+                                          ? "help"
+                                          : "default",
+                                    }}
                                   >
-                                    {overallAvg !== null
-                                      ? toPersianDigits(overallAvg.toFixed(2))
+                                    {student.weightedAverage !== null
+                                      ? toPersianDigits(
+                                          student.weightedAverage.toFixed(2)
+                                        )
                                       : "—"}
                                   </TableCell>
                                 );

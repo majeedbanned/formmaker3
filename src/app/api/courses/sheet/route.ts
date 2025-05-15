@@ -47,10 +47,11 @@ export async function GET(request: NextRequest) {
         return {
           courseCode: data.courseCode,
           courseName: data.courseName || data.courseCode,
-          schoolCode: data.schoolCode
+          schoolCode: data.schoolCode,
+          vahed: data.vahed,
         };
       });
-      
+
       logger.info(`Found ${courses.length} courses for schoolCode: ${schoolCode}${courseCode ? `, courseCode: ${courseCode}` : ''}`);
       
       return NextResponse.json(transformedCourses);
