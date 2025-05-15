@@ -437,7 +437,7 @@ const MonthlyGradeOverallReport = ({
     const classDoc = classDocuments.find(
       (doc) => doc.data.classCode === selectedClass
     );
-
+    // console.log("classDoc", classDoc);
     if (classDoc) {
       setLoading(true);
 
@@ -450,12 +450,14 @@ const MonthlyGradeOverallReport = ({
       // Fetch course details for each courseCode
       const fetchCourseDetails = async () => {
         try {
+          // console.log("teacherCourses", teacherCourses);
           // Create promises for all course fetch operations
           const coursePromises = teacherCourses.map(async (teacherCourse) => {
             const response = await fetch(
               `/api/courses?courseCode=${teacherCourse.courseCode}&schoolCode=${schoolCode}`
             );
 
+            //console.log("responsexx", response);
             if (!response.ok) {
               console.error(
                 `Failed to fetch course ${teacherCourse.courseCode}`
