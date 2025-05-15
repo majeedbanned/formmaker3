@@ -144,7 +144,7 @@ type CourseData = {
   courseName: string;
   schoolCode?: string;
   vahed?: number;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 };
 
 type StudentReportCard = {
@@ -161,6 +161,8 @@ type StudentReportCard = {
       yearAverage: number | null;
     }
   >;
+  weightedAverage?: number | null;
+  weightedGradesInfo?: WeightedGradeInfo[];
 };
 
 // Type for storing the weighted grade calculation details for tooltips
@@ -229,12 +231,15 @@ const ReportCards = ({
   const [coursesInfo, setCoursesInfo] = useState<Record<string, CourseData>>(
     {}
   );
-  const [courseAssessmentValues, setCourseAssessmentValues] = useState<
+  const [assessmentValues, setAssessmentValues] = useState<
     Record<string, Record<string, number>>
   >({});
   const [studentReportCards, setStudentReportCards] = useState<
     StudentReportCard[]
   >([]);
+  // Add new state for display options
+  const [showProgress, setShowProgress] = useState(false);
+  const [showRanking, setShowRanking] = useState(false);
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -412,7 +417,7 @@ const ReportCards = ({
 
   // Helper function to format weighted average tooltip
   const formatWeightedAverageTooltip = useCallback(
-    (weightedGradesInfo: WeightedGradeInfo[]): string => {
+    (weightedGradesInfo: WeightedGradeInfo[] | undefined): string => {
       if (!weightedGradesInfo || weightedGradesInfo.length === 0)
         return "اطلاعاتی موجود نیست";
 
@@ -425,7 +430,10 @@ const ReportCards = ({
         (sum, item) => sum + item.weightedValue,
         0
       );
-      const average = Math.round((weightedSum / totalWeight) * 100) / 100;
+      const average =
+        totalWeight > 0
+          ? Math.round((weightedSum / totalWeight) * 100) / 100
+          : 0;
 
       // Create detailed breakdown
       let tooltip = "محاسبه میانگین بر اساس واحد:\n\n";
@@ -513,7 +521,7 @@ const ReportCards = ({
         }
 
         // Update assessment values state
-        setCourseAssessmentValues(courseValues);
+        setAssessmentValues(courseValues);
 
         // Student report card structure
         const studentReports: Record<string, StudentReportCard> = {};
@@ -691,7 +699,7 @@ const ReportCards = ({
                   rawGrade,
                   assessments,
                   tc.courseCode,
-                  courseValues
+                  assessmentValues
                 );
               }
             }
@@ -771,8 +779,8 @@ const ReportCards = ({
   ]);
 
   // Function to get color class based on grade
-  const getScoreColorClass = (score: number | null): string => {
-    if (score === null) return "text-gray-400";
+  const getScoreColorClass = (score: number | null | undefined): string => {
+    if (score === null || score === undefined) return "text-gray-400";
     if (score >= 18) return "text-green-600 font-bold";
     if (score >= 15) return "text-green-500";
     if (score >= 12) return "text-blue-500";
@@ -871,7 +879,13 @@ const ReportCards = ({
       // Add course data
       const coursesData = Object.entries(student.courses).map(
         ([, courseData]) => {
-          const rowData = {
+          const rowData: {
+            courseName: string;
+            teacherName: string;
+            vahed: number;
+            average: number | null;
+            [key: string]: string | number | null;
+          } = {
             courseName: courseData.courseName,
             teacherName: courseData.teacherName,
             vahed: courseData.vahed,
@@ -905,7 +919,13 @@ const ReportCards = ({
       studentSheet.addRows(coursesData);
 
       // Add weighted averages row
-      const weightedAveragesRow = {
+      const weightedAveragesRow: {
+        courseName: string;
+        teacherName: string;
+        vahed: string;
+        average?: number | null;
+        [key: string]: string | number | null | undefined;
+      } = {
         courseName: "میانگین کل (با احتساب واحد)",
         teacherName: "",
         vahed: "",
@@ -935,7 +955,8 @@ const ReportCards = ({
 
       // Calculate overall weighted average
       weightedAveragesRow["average"] =
-        student.weightedAverage !== null
+        student.weightedAverage !== null &&
+        student.weightedAverage !== undefined
           ? Number(student.weightedAverage.toFixed(2))
           : null;
 
@@ -1062,7 +1083,7 @@ const ReportCards = ({
 
     // Add student data
     const summaryData = studentReportCards.map((student) => {
-      const rowData: Record<string, any> = {
+      const rowData: Record<string, string | number | null> = {
         studentCode: student.studentCode,
         studentName: student.studentName,
       };
@@ -1080,7 +1101,8 @@ const ReportCards = ({
 
       // Add weighted average
       rowData.weightedAverage =
-        student.weightedAverage !== null
+        student.weightedAverage !== null &&
+        student.weightedAverage !== undefined
           ? Number(student.weightedAverage.toFixed(2))
           : null;
 
@@ -1094,7 +1116,7 @@ const ReportCards = ({
       if (a.weightedAverage === null) return 1;
       if (b.weightedAverage === null) return -1;
 
-      return b.weightedAverage - a.weightedAverage;
+      return (b.weightedAverage as number) - (a.weightedAverage as number);
     });
 
     // Add rows to sheet
@@ -1209,6 +1231,85 @@ const ReportCards = ({
     </svg>
   );
 
+  // Calculate student rankings by month and course
+  const calculateRankings = useCallback(() => {
+    if (!studentReportCards.length) return {};
+
+    const rankings: Record<string, Record<string, Record<string, number>>> = {};
+
+    // Get all courseKeys
+    const allCourseKeys = new Set<string>();
+    studentReportCards.forEach((student) => {
+      Object.keys(student.courses).forEach((courseKey) => {
+        allCourseKeys.add(courseKey);
+      });
+    });
+
+    // For each course and month, calculate rankings
+    allCourseKeys.forEach((courseKey) => {
+      rankings[courseKey] = {};
+
+      // For each month
+      for (let month = 1; month <= 12; month++) {
+        const monthKey = month.toString();
+        rankings[courseKey][monthKey] = {};
+
+        // Get all grades for this course and month
+        const grades = studentReportCards
+          .map((student) => ({
+            studentCode: student.studentCode,
+            grade: student.courses[courseKey]?.monthlyGrades[monthKey] ?? null,
+          }))
+          .filter((item) => item.grade !== null)
+          .sort((a, b) => (b.grade as number) - (a.grade as number));
+
+        // Assign rankings
+        grades.forEach((item, index) => {
+          rankings[courseKey][monthKey][item.studentCode] = index + 1;
+        });
+      }
+    });
+
+    return rankings;
+  }, [studentReportCards]);
+
+  // Calculate progress percentages between months
+  const calculateProgress = useCallback(
+    (
+      currentGrade: number | null,
+      previousGrade: number | null
+    ): number | null => {
+      if (currentGrade === null || previousGrade === null) return null;
+      if (previousGrade === 0) return null; // Avoid division by zero
+
+      const progressPercent =
+        ((currentGrade - previousGrade) / previousGrade) * 100;
+      return Math.round(progressPercent * 10) / 10; // Round to 1 decimal place
+    },
+    []
+  );
+
+  // Get progress indicator color class
+  const getProgressColorClass = useCallback(
+    (progress: number | null): string => {
+      if (progress === null) return "";
+      if (progress > 5) return "text-green-600";
+      if (progress > 0) return "text-green-500";
+      if (progress === 0) return "text-gray-500";
+      if (progress > -5) return "text-orange-500";
+      return "text-red-500";
+    },
+    []
+  );
+
+  // Get progress indicator symbol
+  const getProgressSymbol = useCallback((progress: number | null): string => {
+    if (progress === null) return "";
+    if (progress > 0) return "↑";
+    if (progress === 0) return "→";
+    return "↓";
+  }, []);
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
@@ -1249,6 +1350,29 @@ const ReportCards = ({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="show-progress"
+                    checked={showProgress}
+                    onChange={(e) => setShowProgress(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="show-progress">نمایش درصد پیشرفت</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="show-ranking"
+                    checked={showRanking}
+                    onChange={(e) => setShowRanking(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="show-ranking">نمایش رتبه</Label>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1293,183 +1417,580 @@ const ReportCards = ({
             <CardContent>
               {studentReportCards.length > 0 ? (
                 <div className="space-y-8">
-                  {studentReportCards.map((student) => (
-                    <div
-                      key={student.studentCode}
-                      className="mb-8 p-2 border border-gray-200 rounded-md"
-                    >
-                      <h3 className="text-lg font-bold mb-3">
-                        کارنامه {student.studentName} - کد:{" "}
-                        {toPersianDigits(student.studentCode)}
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[200px]">
-                                نام درس
-                              </TableHead>
-                              <TableHead className="w-[150px]">معلم</TableHead>
-                              <TableHead>مهر</TableHead>
-                              <TableHead>آبان</TableHead>
-                              <TableHead>آذر</TableHead>
-                              <TableHead>دی</TableHead>
-                              <TableHead>بهمن</TableHead>
-                              <TableHead>اسفند</TableHead>
-                              <TableHead>فروردین</TableHead>
-                              <TableHead>اردیبهشت</TableHead>
-                              <TableHead>خرداد</TableHead>
-                              <TableHead>تیر</TableHead>
-                              <TableHead>میانگین کل</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Object.entries(student.courses).map(
-                              ([courseCode, courseData]) => (
-                                <TableRow key={courseCode}>
-                                  <TableCell className="font-medium">
-                                    {courseData.courseName}
-                                  </TableCell>
-                                  <TableCell>
-                                    {courseData.teacherName}
-                                  </TableCell>
-                                  {/* Months 7-12 (First half of school year) */}
-                                  {[7, 8, 9, 10, 11, 12].map((month) => (
-                                    <TableCell
-                                      key={`month-${month}`}
-                                      className={getScoreColorClass(
-                                        courseData.monthlyGrades[
-                                          month.toString()
-                                        ]
-                                      )}
-                                    >
-                                      {courseData.monthlyGrades[
-                                        month.toString()
-                                      ] !== null
-                                        ? toPersianDigits(
-                                            courseData.monthlyGrades[
-                                              month.toString()
-                                            ].toFixed(2)
-                                          )
-                                        : "—"}
-                                    </TableCell>
-                                  ))}
-                                  {/* Months 1-4 (Second half of school year) */}
-                                  {[1, 2, 3, 4].map((month) => (
-                                    <TableCell
-                                      key={`month-${month}`}
-                                      className={getScoreColorClass(
-                                        courseData.monthlyGrades[
-                                          month.toString()
-                                        ]
-                                      )}
-                                    >
-                                      {courseData.monthlyGrades[
-                                        month.toString()
-                                      ] !== null
-                                        ? toPersianDigits(
-                                            courseData.monthlyGrades[
-                                              month.toString()
-                                            ].toFixed(2)
-                                          )
-                                        : "—"}
-                                    </TableCell>
-                                  ))}
-                                  {/* Year Average */}
-                                  <TableCell
-                                    className={`font-bold ${getScoreColorClass(
-                                      courseData.yearAverage
-                                    )}`}
-                                  >
-                                    {courseData.yearAverage !== null
-                                      ? toPersianDigits(
-                                          courseData.yearAverage.toFixed(2)
-                                        )
-                                      : "—"}
-                                  </TableCell>
-                                </TableRow>
-                              )
-                            )}
-                            {/* Final row with overall average */}
-                            <TableRow className="bg-gray-50">
-                              <TableCell colSpan={2} className="font-bold">
-                                میانگین کل (با احتساب واحد)
-                              </TableCell>
-                              {/* Calculate average for each month across all courses */}
-                              {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].map(
-                                (month) => {
-                                  const monthKey = month.toString();
+                  {(() => {
+                    // Calculate rankings once
+                    const rankings = showRanking ? calculateRankings() : {};
 
-                                  // Calculate weighted average by course vahed
-                                  let totalWeight = 0;
-                                  let weightedSum = 0;
+                    return studentReportCards.map((student) => (
+                      <div
+                        key={student.studentCode}
+                        className="mb-8 p-2 border border-gray-200 rounded-md"
+                      >
+                        <h3 className="text-lg font-bold mb-3">
+                          کارنامه {student.studentName} - کد:{" "}
+                          {toPersianDigits(student.studentCode)}
+                        </h3>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[200px]">
+                                  نام درس
+                                </TableHead>
+                                <TableHead className="w-[150px]">
+                                  معلم
+                                </TableHead>
+                                <TableHead>مهر</TableHead>
+                                <TableHead>آبان</TableHead>
+                                <TableHead>آذر</TableHead>
+                                <TableHead>دی</TableHead>
+                                <TableHead>بهمن</TableHead>
+                                <TableHead>اسفند</TableHead>
+                                <TableHead>فروردین</TableHead>
+                                <TableHead>اردیبهشت</TableHead>
+                                <TableHead>خرداد</TableHead>
+                                <TableHead>تیر</TableHead>
+                                <TableHead>میانگین کل</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {Object.entries(student.courses).map(
+                                ([courseCode, courseData]) => {
+                                  // Calculate course ranking among all students
+                                  let courseRanking: number | null = null;
 
-                                  Object.values(student.courses).forEach(
-                                    (course) => {
-                                      const grade =
-                                        course.monthlyGrades[monthKey];
-                                      const vahed = course.vahed || 1;
+                                  if (
+                                    showRanking &&
+                                    courseData.yearAverage !== null
+                                  ) {
+                                    // Get all students' year averages for this course
+                                    const courseAverages = studentReportCards
+                                      .map((otherStudent) => {
+                                        const otherCourseData =
+                                          otherStudent.courses[courseCode];
+                                        return {
+                                          studentCode: otherStudent.studentCode,
+                                          average:
+                                            otherCourseData?.yearAverage ??
+                                            null,
+                                        };
+                                      })
+                                      .filter((item) => item.average !== null)
+                                      .sort(
+                                        (a, b) =>
+                                          (b.average as number) -
+                                          (a.average as number)
+                                      );
 
-                                      if (grade !== null) {
-                                        weightedSum += grade * vahed;
-                                        totalWeight += vahed;
-                                      }
+                                    // Find this student's position
+                                    const position = courseAverages.findIndex(
+                                      (item) =>
+                                        item.studentCode === student.studentCode
+                                    );
+
+                                    if (position !== -1) {
+                                      courseRanking = position + 1;
                                     }
-                                  );
-
-                                  const weightedAvg =
-                                    totalWeight > 0
-                                      ? weightedSum / totalWeight
-                                      : null;
+                                  }
 
                                   return (
-                                    <TableCell
-                                      key={`avg-${month}`}
-                                      className={`font-bold ${getScoreColorClass(
-                                        weightedAvg
-                                      )}`}
-                                      title={`میانگین وزنی بر اساس واحد دروس`}
-                                    >
-                                      {weightedAvg !== null
-                                        ? toPersianDigits(
-                                            weightedAvg.toFixed(2)
-                                          )
-                                        : "—"}
-                                    </TableCell>
+                                    <TableRow key={courseCode}>
+                                      <TableCell className="font-medium">
+                                        {courseData.courseName}
+                                      </TableCell>
+                                      <TableCell>
+                                        {courseData.teacherName}
+                                      </TableCell>
+                                      {/* Months 7-12 (First half of school year) */}
+                                      {[7, 8, 9, 10, 11, 12].map(
+                                        (month, index) => (
+                                          <TableCell
+                                            key={`month-${month}`}
+                                            className={getScoreColorClass(
+                                              courseData.monthlyGrades[
+                                                month.toString()
+                                              ]
+                                            )}
+                                          >
+                                            {courseData.monthlyGrades[
+                                              month.toString()
+                                            ] !== null ? (
+                                              <div>
+                                                <div>
+                                                  {toPersianDigits(
+                                                    courseData.monthlyGrades[
+                                                      month.toString()
+                                                    ]?.toFixed(2) || ""
+                                                  )}
+                                                </div>
+
+                                                {/* Progress percentage */}
+                                                {showProgress && index > 0 && (
+                                                  <div
+                                                    className={`text-xs mt-1 ${getProgressColorClass(
+                                                      calculateProgress(
+                                                        courseData
+                                                          .monthlyGrades[
+                                                          month.toString()
+                                                        ],
+                                                        courseData
+                                                          .monthlyGrades[
+                                                          (month - 1).toString()
+                                                        ] ||
+                                                          (month === 7
+                                                            ? null
+                                                            : courseData
+                                                                .monthlyGrades[
+                                                                "6"
+                                                              ])
+                                                      )
+                                                    )}`}
+                                                  >
+                                                    {(() => {
+                                                      const prevMonth =
+                                                        month === 7
+                                                          ? 6
+                                                          : month - 1;
+                                                      const progress =
+                                                        calculateProgress(
+                                                          courseData
+                                                            .monthlyGrades[
+                                                            month.toString()
+                                                          ],
+                                                          courseData
+                                                            .monthlyGrades[
+                                                            prevMonth.toString()
+                                                          ]
+                                                        );
+
+                                                      if (progress === null)
+                                                        return null;
+
+                                                      return (
+                                                        <>
+                                                          {getProgressSymbol(
+                                                            progress
+                                                          )}{" "}
+                                                          {toPersianDigits(
+                                                            Math.abs(
+                                                              progress
+                                                            ).toFixed(1)
+                                                          )}
+                                                          %
+                                                        </>
+                                                      );
+                                                    })()}
+                                                  </div>
+                                                )}
+
+                                                {/* Ranking */}
+                                                {showRanking &&
+                                                  rankings[courseCode]?.[
+                                                    month.toString()
+                                                  ]?.[student.studentCode] && (
+                                                    <div className="text-xs mt-1 text-purple-600 font-medium">
+                                                      رتبه:{" "}
+                                                      {toPersianDigits(
+                                                        rankings[courseCode][
+                                                          month.toString()
+                                                        ][student.studentCode]
+                                                      )}
+                                                    </div>
+                                                  )}
+                                              </div>
+                                            ) : (
+                                              "—"
+                                            )}
+                                          </TableCell>
+                                        )
+                                      )}
+
+                                      {/* Months 1-4 (Second half of school year) */}
+                                      {[1, 2, 3, 4].map((month) => (
+                                        <TableCell
+                                          key={`month-${month}`}
+                                          className={getScoreColorClass(
+                                            courseData.monthlyGrades[
+                                              month.toString()
+                                            ]
+                                          )}
+                                        >
+                                          {courseData.monthlyGrades[
+                                            month.toString()
+                                          ] !== null ? (
+                                            <div>
+                                              <div>
+                                                {toPersianDigits(
+                                                  courseData.monthlyGrades[
+                                                    month.toString()
+                                                  ]?.toFixed(2) || ""
+                                                )}
+                                              </div>
+
+                                              {/* Progress percentage */}
+                                              {showProgress && (
+                                                <div
+                                                  className={`text-xs mt-1 ${getProgressColorClass(
+                                                    calculateProgress(
+                                                      courseData.monthlyGrades[
+                                                        month.toString()
+                                                      ],
+                                                      month === 1
+                                                        ? courseData
+                                                            .monthlyGrades["12"]
+                                                        : courseData
+                                                            .monthlyGrades[
+                                                            (
+                                                              month - 1
+                                                            ).toString()
+                                                          ]
+                                                    )
+                                                  )}`}
+                                                >
+                                                  {(() => {
+                                                    const prevMonth =
+                                                      month === 1
+                                                        ? 12
+                                                        : month - 1;
+                                                    const progress =
+                                                      calculateProgress(
+                                                        courseData
+                                                          .monthlyGrades[
+                                                          month.toString()
+                                                        ],
+                                                        courseData
+                                                          .monthlyGrades[
+                                                          prevMonth.toString()
+                                                        ]
+                                                      );
+
+                                                    if (progress === null)
+                                                      return null;
+
+                                                    return (
+                                                      <>
+                                                        {getProgressSymbol(
+                                                          progress
+                                                        )}{" "}
+                                                        {toPersianDigits(
+                                                          Math.abs(
+                                                            progress
+                                                          ).toFixed(1)
+                                                        )}
+                                                        %
+                                                      </>
+                                                    );
+                                                  })()}
+                                                </div>
+                                              )}
+
+                                              {/* Ranking */}
+                                              {showRanking &&
+                                                rankings[courseCode]?.[
+                                                  month.toString()
+                                                ]?.[student.studentCode] && (
+                                                  <div className="text-xs mt-1 text-purple-600 font-medium">
+                                                    رتبه:{" "}
+                                                    {toPersianDigits(
+                                                      rankings[courseCode][
+                                                        month.toString()
+                                                      ][student.studentCode]
+                                                    )}
+                                                  </div>
+                                                )}
+                                            </div>
+                                          ) : (
+                                            "—"
+                                          )}
+                                        </TableCell>
+                                      ))}
+
+                                      {/* Year Average */}
+                                      <TableCell
+                                        className={`font-bold ${getScoreColorClass(
+                                          courseData.yearAverage
+                                        )}`}
+                                      >
+                                        <div>
+                                          <div>
+                                            {courseData.yearAverage !== null
+                                              ? toPersianDigits(
+                                                  courseData.yearAverage.toFixed(
+                                                    2
+                                                  )
+                                                )
+                                              : "—"}
+                                          </div>
+                                          {/* Show ranking for yearly course average */}
+                                          {showRanking &&
+                                            courseRanking !== null && (
+                                              <div className="text-xs mt-1 text-purple-600 font-medium">
+                                                رتبه:{" "}
+                                                {toPersianDigits(courseRanking)}
+                                              </div>
+                                            )}
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
                                   );
                                 }
                               )}
-                              {/* Overall average of all course averages */}
-                              {(() => {
-                                return (
-                                  <TableCell
-                                    className={`font-bold text-lg ${getScoreColorClass(
-                                      student.weightedAverage
-                                    )}`}
-                                    title={formatWeightedAverageTooltip(
-                                      student.weightedGradesInfo
-                                    )}
-                                    style={{
-                                      cursor:
-                                        student.weightedGradesInfo.length > 0
-                                          ? "help"
-                                          : "default",
-                                    }}
-                                  >
-                                    {student.weightedAverage !== null
-                                      ? toPersianDigits(
-                                          student.weightedAverage.toFixed(2)
-                                        )
-                                      : "—"}
-                                  </TableCell>
-                                );
-                              })()}
-                            </TableRow>
-                          </TableBody>
-                        </Table>
+
+                              {/* Final row with overall average */}
+                              <TableRow className="bg-gray-50">
+                                <TableCell colSpan={2} className="font-bold">
+                                  میانگین کل (با احتساب واحد)
+                                </TableCell>
+                                {/* Calculate average for each month across all courses */}
+                                {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].map(
+                                  (month) => {
+                                    const monthKey = month.toString();
+
+                                    // Calculate weighted average by course vahed
+                                    let totalWeight = 0;
+                                    let weightedSum = 0;
+
+                                    Object.values(student.courses).forEach(
+                                      (course) => {
+                                        const grade =
+                                          course.monthlyGrades[monthKey];
+                                        const vahed = course.vahed || 1;
+
+                                        if (grade !== null) {
+                                          weightedSum += grade * vahed;
+                                          totalWeight += vahed;
+                                        }
+                                      }
+                                    );
+
+                                    const weightedAvg =
+                                      totalWeight > 0
+                                        ? weightedSum / totalWeight
+                                        : null;
+
+                                    // Calculate previous month for progress indicators
+                                    let prevMonthKey: string;
+                                    if (month === 7) {
+                                      prevMonthKey = "6"; // Shahrivar
+                                    } else if (month === 1) {
+                                      prevMonthKey = "12"; // Esfand to Farvardin transition
+                                    } else {
+                                      prevMonthKey = (month - 1).toString();
+                                    }
+
+                                    // Calculate previous month weighted average
+                                    let prevTotalWeight = 0;
+                                    let prevWeightedSum = 0;
+
+                                    Object.values(student.courses).forEach(
+                                      (course) => {
+                                        const grade =
+                                          course.monthlyGrades[prevMonthKey];
+                                        const vahed = course.vahed || 1;
+
+                                        if (grade !== null) {
+                                          prevWeightedSum += grade * vahed;
+                                          prevTotalWeight += vahed;
+                                        }
+                                      }
+                                    );
+
+                                    const prevWeightedAvg =
+                                      prevTotalWeight > 0
+                                        ? prevWeightedSum / prevTotalWeight
+                                        : null;
+
+                                    // Calculate progress percentage
+                                    const progress =
+                                      weightedAvg !== null &&
+                                      prevWeightedAvg !== null
+                                        ? ((weightedAvg - prevWeightedAvg) /
+                                            prevWeightedAvg) *
+                                          100
+                                        : null;
+
+                                    // Find class position for this student (class ranking)
+                                    let classRanking: number | null = null;
+
+                                    if (weightedAvg !== null) {
+                                      // Get all other students' averages for this month
+                                      const monthlyAverages = studentReportCards
+                                        .map((otherStudent) => {
+                                          let otherTotalWeight = 0;
+                                          let otherWeightedSum = 0;
+
+                                          Object.values(
+                                            otherStudent.courses
+                                          ).forEach((course) => {
+                                            const grade =
+                                              course.monthlyGrades[monthKey];
+                                            const vahed = course.vahed || 1;
+
+                                            if (grade !== null) {
+                                              otherWeightedSum += grade * vahed;
+                                              otherTotalWeight += vahed;
+                                            }
+                                          });
+
+                                          return {
+                                            studentCode:
+                                              otherStudent.studentCode,
+                                            average:
+                                              otherTotalWeight > 0
+                                                ? otherWeightedSum /
+                                                  otherTotalWeight
+                                                : null,
+                                          };
+                                        })
+                                        .filter((item) => item.average !== null)
+                                        .sort(
+                                          (a, b) =>
+                                            (b.average as number) -
+                                            (a.average as number)
+                                        );
+
+                                      // Find this student's position
+                                      const position =
+                                        monthlyAverages.findIndex(
+                                          (item) =>
+                                            item.studentCode ===
+                                            student.studentCode
+                                        );
+
+                                      if (position !== -1) {
+                                        classRanking = position + 1;
+                                      }
+                                    }
+
+                                    return (
+                                      <TableCell
+                                        key={`avg-${month}`}
+                                        className={`font-bold ${getScoreColorClass(
+                                          weightedAvg
+                                        )}`}
+                                        title={`میانگین وزنی بر اساس واحد دروس`}
+                                      >
+                                        <div>
+                                          <div>
+                                            {weightedAvg !== null
+                                              ? toPersianDigits(
+                                                  weightedAvg.toFixed(2)
+                                                )
+                                              : "—"}
+                                          </div>
+
+                                          {/* Show progress for monthly average */}
+                                          {showProgress &&
+                                            progress !== null && (
+                                              <div
+                                                className={`text-xs mt-1 ${getProgressColorClass(
+                                                  progress
+                                                )}`}
+                                              >
+                                                {getProgressSymbol(progress)}{" "}
+                                                {toPersianDigits(
+                                                  Math.abs(progress).toFixed(1)
+                                                )}
+                                                %
+                                              </div>
+                                            )}
+
+                                          {/* Show ranking among class */}
+                                          {showRanking &&
+                                            classRanking !== null && (
+                                              <div className="text-xs mt-1 text-purple-600 font-medium">
+                                                رتبه:{" "}
+                                                {toPersianDigits(classRanking)}
+                                              </div>
+                                            )}
+                                        </div>
+                                      </TableCell>
+                                    );
+                                  }
+                                )}
+
+                                {/* Overall average of all course averages */}
+                                {(() => {
+                                  // Calculate overall class ranking
+                                  let overallRanking: number | null = null;
+
+                                  if (
+                                    showRanking &&
+                                    student.weightedAverage !== null &&
+                                    student.weightedAverage !== undefined
+                                  ) {
+                                    // Get all students' overall weighted averages
+                                    const overallAverages = studentReportCards
+                                      .map((otherStudent) => ({
+                                        studentCode: otherStudent.studentCode,
+                                        average:
+                                          otherStudent.weightedAverage || null,
+                                      }))
+                                      .filter((item) => item.average !== null)
+                                      .sort(
+                                        (a, b) =>
+                                          (b.average as number) -
+                                          (a.average as number)
+                                      );
+
+                                    // Find this student's position
+                                    const position = overallAverages.findIndex(
+                                      (item) =>
+                                        item.studentCode === student.studentCode
+                                    );
+
+                                    if (position !== -1) {
+                                      overallRanking = position + 1;
+                                    }
+                                  }
+
+                                  return (
+                                    <TableCell
+                                      className={`font-bold text-lg ${getScoreColorClass(
+                                        student.weightedAverage || null
+                                      )}`}
+                                      title={formatWeightedAverageTooltip(
+                                        student.weightedGradesInfo
+                                      )}
+                                      style={{
+                                        cursor:
+                                          student.weightedGradesInfo &&
+                                          student.weightedGradesInfo.length > 0
+                                            ? "help"
+                                            : "default",
+                                      }}
+                                    >
+                                      <div>
+                                        <div>
+                                          {student.weightedAverage !== null &&
+                                          student.weightedAverage !== undefined
+                                            ? toPersianDigits(
+                                                student.weightedAverage.toFixed(
+                                                  2
+                                                )
+                                              )
+                                            : "—"}
+                                        </div>
+
+                                        {/* Show overall class ranking */}
+                                        {showRanking &&
+                                          overallRanking !== null && (
+                                            <div className="text-xs mt-1 text-purple-600 font-bold">
+                                              رتبه کل:{" "}
+                                              {toPersianDigits(overallRanking)}
+                                            </div>
+                                          )}
+                                      </div>
+                                    </TableCell>
+                                  );
+                                })()}
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               ) : (
                 <div className="text-center p-8 text-gray-500">
