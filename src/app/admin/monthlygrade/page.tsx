@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import MonthlyGradeReport from "./components/MonthlyGradeReport";
+import { useAuth } from "@/hooks/useAuth";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -42,17 +43,34 @@ export default function MonthlyGradePage() {
   const [classDocuments, setClassDocuments] = useState<ClassDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, isLoading } = useAuth();
 
-  // Hardcoded value for now, could be from authentication context
-  const schoolCode = "2295566177";
+  // Get schoolCode and teacherCode from authenticated user
+  const schoolCode = user?.schoolCode;
+  const teacherCode = user?.userType === "teacher" ? user.username : undefined;
 
   useEffect(() => {
     const fetchClassData = async () => {
+      if (isLoading) return; // Wait for auth to complete
+      if (!schoolCode) {
+        setError(
+          "No school code available. Please make sure you're logged in."
+        );
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/classes?schoolCode=${schoolCode}`);
+        // Build API URL based on available data
+        let apiUrl = `/api/classes?schoolCode=${schoolCode}`;
+        if (teacherCode) {
+          apiUrl += `&teacherCode=${teacherCode}`;
+        }
+
+        const response = await fetch(apiUrl);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -94,15 +112,28 @@ export default function MonthlyGradePage() {
     };
 
     fetchClassData();
-  }, [schoolCode]);
+  }, [schoolCode, teacherCode, isLoading]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p>در حال بارگذاری کلاس‌ها...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center m-4">
+        <h3 className="text-yellow-700 font-medium text-lg mb-2">
+          دسترسی نامعتبر
+        </h3>
+        <p className="text-yellow-600">
+          لطفا وارد حساب کاربری خود شوید تا بتوانید به این بخش دسترسی پیدا کنید.
+        </p>
       </div>
     );
   }
@@ -130,7 +161,11 @@ export default function MonthlyGradePage() {
         <h3 className="text-yellow-700 font-medium text-lg mb-2">
           کلاسی یافت نشد
         </h3>
-        <p className="text-yellow-600">هیچ کلاسی برای این مدرسه یافت نشد.</p>
+        <p className="text-yellow-600">
+          {user.userType === "teacher"
+            ? "هیچ کلاسی برای شما یافت نشد."
+            : "هیچ کلاسی در مدرسه یافت نشد."}
+        </p>
       </div>
     );
   }
@@ -141,7 +176,8 @@ export default function MonthlyGradePage() {
         گزارش ماهانه نمرات
       </h1>
       <MonthlyGradeReport
-        schoolCode={schoolCode}
+        schoolCode={schoolCode || ""}
+        teacherCode={teacherCode}
         classDocuments={classDocuments}
       />
     </div>

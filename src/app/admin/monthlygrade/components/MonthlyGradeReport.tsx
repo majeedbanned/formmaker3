@@ -132,16 +132,35 @@ type CellData = {
   assessments?: AssessmentEntry[];
 };
 
-// Add a type for the assessment data from the API
-type AssessmentData = {
-  data: {
+// Replace the unused AssessmentData type with a more useful one
+interface AssessmentDataItem {
+  data?: {
     value: string;
     adjustment: number;
     title?: string;
     teacherCode?: string;
     courseCode?: string;
     schoolCode?: string;
+    weight?: number;
   };
+  value?: string;
+  weight?: number;
+  title?: string;
+  adjustment?: number;
+}
+
+// A more specific type for course data
+type CourseData = {
+  _id?: string;
+  data?: {
+    courseCode?: string;
+    courseName?: string;
+    schoolCode?: string;
+    [key: string]: any;
+  };
+  courseCode?: string;
+  courseName?: string;
+  [key: string]: any;
 };
 
 // Helper function for Persian date conversion
@@ -211,9 +230,11 @@ type StudentGrade = {
 
 const MonthlyGradeReport = ({
   schoolCode,
+  teacherCode,
   classDocuments,
 }: {
   schoolCode: string;
+  teacherCode?: string;
   classDocuments: ClassDocument[];
 }) => {
   const [selectedClass, setSelectedClass] = useState<string>("");
@@ -238,6 +259,8 @@ const MonthlyGradeReport = ({
   const [isPrinting, setIsPrinting] = useState(false);
   const [courseSpecificAssessmentValues, setCourseSpecificAssessmentValues] =
     useState<Record<string, number>>({});
+  const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
+  const [coursesInfo, setCoursesInfo] = useState<Record<string, string>>({});
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -246,6 +269,93 @@ const MonthlyGradeReport = ({
     currentDate.getMonth() + 1,
     currentDate.getDate()
   );
+
+  // Fetch teachers and courses info
+  useEffect(() => {
+    const fetchTeachersAndCourses = async () => {
+      if (!schoolCode) return;
+
+      try {
+        // Fetch teachers
+        const teachersResponse = await fetch(
+          `/api/formbuilder/classes-teachers`,
+          {
+            headers: {
+              "x-domain": window.location.host,
+            },
+          }
+        );
+
+        if (teachersResponse.ok) {
+          const { teachers } = await teachersResponse.json();
+
+          // Create a map of teacher codes to names
+          const teacherMap: Record<string, string> = {};
+          teachers.forEach(
+            (teacher: {
+              data: { teacherCode: string; teacherName?: string };
+            }) => {
+              teacherMap[teacher.data.teacherCode] =
+                teacher.data.teacherName || teacher.data.teacherCode;
+            }
+          );
+
+          setTeachersInfo(teacherMap);
+        }
+
+        // Fetch courses
+        const coursesResponse = await fetch(
+          `/api/courses/sheet?schoolCode=${schoolCode}`
+        );
+
+        if (coursesResponse.ok) {
+          const coursesData = await coursesResponse.json();
+          console.log("Courses data:", coursesData);
+
+          // Create a map of course codes to names
+          const courseMap: Record<string, string> = {};
+
+          // Helper function to extract course code and name
+          const extractCourseInfo = (course: CourseData) => {
+            // Case 1: Properties at the top level
+            if (course.courseCode) {
+              return {
+                code: course.courseCode,
+                name: course.courseName || course.courseCode,
+              };
+            }
+            // Case 2: Properties in data object
+            else if (course.data && course.data.courseCode) {
+              return {
+                code: course.data.courseCode,
+                name: course.data.courseName || course.data.courseCode,
+              };
+            }
+            // No valid data found
+            return null;
+          };
+
+          if (Array.isArray(coursesData)) {
+            coursesData.forEach((course) => {
+              const courseInfo = extractCourseInfo(course);
+              if (courseInfo) {
+                courseMap[courseInfo.code] = courseInfo.name;
+                console.log(
+                  `Mapped course: ${courseInfo.code} -> ${courseInfo.name}`
+                );
+              }
+            });
+          }
+
+          setCoursesInfo(courseMap);
+        }
+      } catch (err) {
+        console.error("Error fetching teacher/course data:", err);
+      }
+    };
+
+    fetchTeachersAndCourses();
+  }, [schoolCode]);
 
   // Generate year options once on component mount
   useEffect(() => {
@@ -268,49 +378,93 @@ const MonthlyGradeReport = ({
     setIsInitialized(true);
   }, [currentJYear, isInitialized]);
 
-  // Update teacher/course options when selected class changes
+  // This function populates the teacher-course options based on the selected class
   useEffect(() => {
-    if (!selectedClass) return;
+    if (!selectedClass) {
+      setTeacherCourseOptions([]);
+      return;
+    }
 
+    // Find the selected class document
     const classDoc = classDocuments.find(
       (doc) => doc.data.classCode === selectedClass
     );
 
-    if (classDoc) {
-      const options: TeacherWithCourse[] = [];
+    if (!classDoc) {
+      console.error("Selected class not found in documents");
+      return;
+    }
 
-      // For simplicity, we'll assign placeholder labels
-      classDoc.data.teachers.forEach((teacher) => {
-        options.push({
-          teacherCode: teacher.teacherCode,
-          courseCode: teacher.courseCode,
-          label: `Teacher ${teacher.teacherCode} - Course ${teacher.courseCode}`,
-        });
+    // Get all teacher-course combinations from the class
+    const options: TeacherWithCourse[] = [];
+
+    classDoc.data.teachers.forEach((teacher) => {
+      // If teacherCode is provided, only include options for that teacher
+      if (teacherCode && teacher.teacherCode !== teacherCode) {
+        return;
+      }
+
+      // Get teacher and course names from the fetched data
+      const teacherName =
+        teachersInfo[teacher.teacherCode] || `معلم ${teacher.teacherCode}`;
+      const courseName =
+        coursesInfo[teacher.courseCode] || `درس ${teacher.courseCode}`;
+
+      // Add this teacher-course option
+      options.push({
+        teacherCode: teacher.teacherCode,
+        courseCode: teacher.courseCode,
+        label: `${teacherName} - ${courseName}`,
+      });
+    });
+
+    setTeacherCourseOptions(options);
+
+    // Auto-select the first teacher-course option if there's only one and teacherCode is provided
+    if (options.length === 1 && teacherCode) {
+      setSelectedTeacherCourse(
+        `${options[0].teacherCode}-${options[0].courseCode}`
+      );
+    } else {
+      // Reset selection when class changes
+      setSelectedTeacherCourse("");
+    }
+  }, [selectedClass, classDocuments, teacherCode, teachersInfo, coursesInfo]);
+
+  // Filter the class options based on teacherCode if provided
+  const getClassOptions = () => {
+    let options = classDocuments.map((doc) => ({
+      value: doc.data.classCode,
+      label: doc.data.className,
+    }));
+
+    // If teacherCode is provided, only show classes where this teacher teaches
+    if (teacherCode) {
+      options = options.filter((option) => {
+        const classDoc = classDocuments.find(
+          (doc) => doc.data.classCode === option.value
+        );
+        if (!classDoc) return false;
+
+        return classDoc.data.teachers.some(
+          (teacher) => teacher.teacherCode === teacherCode
+        );
       });
 
-      setTeacherCourseOptions(options);
-
-      // Select the first teacher/course option by default
-      // Only set if it's not already set or if the current value is invalid
-      if (
-        options.length > 0 &&
-        (!selectedTeacherCourse ||
-          !options.find(
-            (o) => `${o.teacherCode}_${o.courseCode}` === selectedTeacherCourse
-          ))
-      ) {
-        setSelectedTeacherCourse(
-          `${options[0].teacherCode}_${options[0].courseCode}`
-        );
+      // Auto-select the first class if there's only one
+      if (options.length === 1 && !selectedClass) {
+        setTimeout(() => setSelectedClass(options[0].value), 0);
       }
     }
-  }, [selectedClass, classDocuments, selectedTeacherCourse]);
+
+    return options;
+  };
 
   // Add a new useEffect to fetch custom assessment values when teacherCourse changes
   useEffect(() => {
     if (!selectedTeacherCourse) return;
 
-    const [teacherCode, courseCode] = selectedTeacherCourse.split("_");
+    const [teacherCode, courseCode] = selectedTeacherCourse.split("-");
 
     const fetchAssessmentValues = async () => {
       try {
@@ -324,20 +478,22 @@ const MonthlyGradeReport = ({
           return;
         }
 
-        const assessmentData = (await response.json()) as AssessmentData[];
+        const assessmentData = await response.json();
         const customValues: Record<string, number> = {};
 
-        if (assessmentData && assessmentData.data.length > 0) {
+        if (
+          assessmentData &&
+          Array.isArray(assessmentData) &&
+          assessmentData.length > 0
+        ) {
           // Process assessment data to extract custom values
-          assessmentData.data.forEach((assessment: AssessmentData) => {
-            if (
-              assessment &&
-              assessment.value &&
-              assessment.weight !== undefined
-            ) {
-              console.log("assessmentxxx");
+          assessmentData.forEach((assessment: AssessmentDataItem) => {
+            // Extract assessment data from the response
+            const data = assessment.data || assessment;
 
-              customValues[assessment.value] = assessment.weight;
+            if (data && data.value && data.weight !== undefined) {
+              console.log("Assessment value found:", data.value, data.weight);
+              customValues[data.value] = data.weight;
             }
           });
         }
@@ -409,7 +565,7 @@ const MonthlyGradeReport = ({
     const fetchGradesData = async () => {
       setLoading(true);
       try {
-        const [teacherCode, courseCode] = selectedTeacherCourse.split("_");
+        const [teacherCode, courseCode] = selectedTeacherCourse.split("-");
 
         const selectedClassData = classDocuments.find(
           (doc) => doc.data.classCode === selectedClass
@@ -1069,7 +1225,7 @@ const MonthlyGradeReport = ({
             <CardTitle className="text-xl">فیلترها</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="class-select">کلاس</Label>
                 <Select value={selectedClass} onValueChange={setSelectedClass}>
@@ -1077,12 +1233,9 @@ const MonthlyGradeReport = ({
                     <SelectValue placeholder="انتخاب کلاس" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classDocuments.map((classDoc) => (
-                      <SelectItem
-                        key={classDoc.data.classCode}
-                        value={classDoc.data.classCode}
-                      >
-                        {classDoc.data.className}
+                    {getClassOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1102,8 +1255,8 @@ const MonthlyGradeReport = ({
                   <SelectContent>
                     {teacherCourseOptions.map((option) => (
                       <SelectItem
-                        key={`${option.teacherCode}_${option.courseCode}`}
-                        value={`${option.teacherCode}_${option.courseCode}`}
+                        key={`${option.teacherCode}-${option.courseCode}`}
+                        value={`${option.teacherCode}-${option.courseCode}`}
                       >
                         {option.label}
                       </SelectItem>
