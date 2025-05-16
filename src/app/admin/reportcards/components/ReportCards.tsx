@@ -615,6 +615,8 @@ const ReportCards = ({
   const [showRanking, setShowRanking] = useState(false);
   const [showPresence, setShowPresence] = useState(false);
   const [showAssessments, setShowAssessments] = useState(false);
+  // Add a new state for showing overall statistics
+  const [showOverallStats, setShowOverallStats] = useState(false);
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -1821,6 +1823,425 @@ const ReportCards = ({
     );
   };
 
+  // Add the new checkbox to the options section in the filter card
+  const OverallStatistics = ({ student }: { student: StudentReportCard }) => {
+    // Calculate overall presence statistics across all courses
+    const overallPresence = {
+      present: 0,
+      absent: 0,
+      late: 0,
+      total: 0,
+    };
+
+    // Calculate assessment statistics (count of each type of assessment)
+    const assessmentCounts: Record<string, number> = {};
+
+    // Calculate monthly average trends
+    const monthlyAverages: Record<
+      string,
+      { sum: number; count: number; avg: number | null }
+    > = {};
+    for (let i = 1; i <= 12; i++) {
+      monthlyAverages[i.toString()] = { sum: 0, count: 0, avg: null };
+    }
+
+    // Calculate subject performance data
+    const subjectPerformance: {
+      best: { subject: string; avg: number } | null;
+      worst: { subject: string; avg: number } | null;
+      mostImproved: { subject: string; improvement: number } | null;
+    } = {
+      best: null,
+      worst: null,
+      mostImproved: null,
+    };
+
+    // Collect all data from courses
+    Object.entries(student.courses).forEach(([, courseData]) => {
+      // Collect presence data
+      Object.values(courseData.monthlyPresence).forEach((monthData) => {
+        overallPresence.present += monthData.present;
+        overallPresence.absent += monthData.absent;
+        overallPresence.late += monthData.late;
+        overallPresence.total += monthData.total;
+      });
+
+      // Collect assessment data
+      Object.values(courseData.monthlyAssessments)
+        .flat()
+        .forEach((assessment) => {
+          assessmentCounts[assessment.value] =
+            (assessmentCounts[assessment.value] || 0) + 1;
+        });
+
+      // Collect monthly averages
+      Object.entries(courseData.monthlyGrades).forEach(([month, grade]) => {
+        if (grade !== null) {
+          monthlyAverages[month].sum += grade;
+          monthlyAverages[month].count += 1;
+        }
+      });
+
+      // Store subject performance
+      if (courseData.yearAverage !== null) {
+        // Check if this is the best subject
+        if (
+          !subjectPerformance.best ||
+          courseData.yearAverage > subjectPerformance.best.avg
+        ) {
+          subjectPerformance.best = {
+            subject: courseData.courseName,
+            avg: courseData.yearAverage,
+          };
+        }
+
+        // Check if this is the worst subject
+        if (
+          !subjectPerformance.worst ||
+          courseData.yearAverage < subjectPerformance.worst.avg
+        ) {
+          subjectPerformance.worst = {
+            subject: courseData.courseName,
+            avg: courseData.yearAverage,
+          };
+        }
+
+        // Calculate improvement (from first month with data to last month with data)
+        const monthsWithGrades = Object.entries(courseData.monthlyGrades)
+          .filter(([, grade]) => grade !== null)
+          .map(([month]) => parseInt(month))
+          .sort((a, b) => a - b);
+
+        if (monthsWithGrades.length >= 2) {
+          const firstMonth = monthsWithGrades[0].toString();
+          const lastMonth =
+            monthsWithGrades[monthsWithGrades.length - 1].toString();
+
+          const firstGrade = courseData.monthlyGrades[firstMonth];
+          const lastGrade = courseData.monthlyGrades[lastMonth];
+
+          if (firstGrade !== null && lastGrade !== null) {
+            const improvement = lastGrade - firstGrade;
+
+            if (
+              !subjectPerformance.mostImproved ||
+              improvement > subjectPerformance.mostImproved.improvement
+            ) {
+              subjectPerformance.mostImproved = {
+                subject: courseData.courseName,
+                improvement,
+              };
+            }
+          }
+        }
+      }
+    });
+
+    // Calculate final monthly averages
+    Object.keys(monthlyAverages).forEach((month) => {
+      if (monthlyAverages[month].count > 0) {
+        monthlyAverages[month].avg =
+          monthlyAverages[month].sum / monthlyAverages[month].count;
+      }
+    });
+
+    // Convert assessment counts to percentages
+    const totalAssessments = Object.values(assessmentCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+    const assessmentPercentages: Record<
+      string,
+      { count: number; percentage: number }
+    > = {};
+
+    Object.entries(assessmentCounts).forEach(([value, count]) => {
+      assessmentPercentages[value] = {
+        count,
+        percentage: totalAssessments > 0 ? (count / totalAssessments) * 100 : 0,
+      };
+    });
+
+    // No data available
+    if (
+      overallPresence.total === 0 &&
+      totalAssessments === 0 &&
+      !subjectPerformance.best &&
+      Object.values(monthlyAverages).every((m) => m.avg === null)
+    ) {
+      return (
+        <div className="text-center text-gray-500 py-4">
+          آمار کافی برای نمایش وجود ندارد.
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-4 border border-gray-200 rounded-md p-4 bg-gray-50">
+        <h4 className="text-lg font-bold border-b border-gray-200 pb-2 mb-4">
+          آمار کلی عملکرد دانش‌آموز
+        </h4>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Presence Statistics */}
+          {overallPresence.total > 0 && (
+            <div className="border rounded-md p-3 bg-white shadow-sm">
+              <h5 className="font-semibold border-b pb-1 mb-2">
+                وضعیت حضور و غیاب
+              </h5>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>حاضر:</span>
+                  <span className="text-green-600 font-medium">
+                    {toPersianDigits(overallPresence.present)} (
+                    {toPersianDigits(
+                      Math.round(
+                        (overallPresence.present / overallPresence.total) * 100
+                      )
+                    )}
+                    %)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>غایب:</span>
+                  <span className="text-red-600 font-medium">
+                    {toPersianDigits(overallPresence.absent)} (
+                    {toPersianDigits(
+                      Math.round(
+                        (overallPresence.absent / overallPresence.total) * 100
+                      )
+                    )}
+                    %)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>با تأخیر:</span>
+                  <span className="text-amber-600 font-medium">
+                    {toPersianDigits(overallPresence.late)} (
+                    {toPersianDigits(
+                      Math.round(
+                        (overallPresence.late / overallPresence.total) * 100
+                      )
+                    )}
+                    %)
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-gray-100">
+                  <span>مجموع جلسات:</span>
+                  <span className="font-medium">
+                    {toPersianDigits(overallPresence.total)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Assessment Statistics */}
+          {totalAssessments > 0 && (
+            <div className="border rounded-md p-3 bg-white shadow-sm">
+              <h5 className="font-semibold border-b pb-1 mb-2">
+                ارزیابی‌های کیفی
+              </h5>
+              <div className="space-y-2">
+                {Object.entries(assessmentPercentages).map(([value, data]) => (
+                  <div key={value} className="flex justify-between">
+                    <span>
+                      <span
+                        className={`inline-block w-3 h-3 rounded-full mr-1 ${getAssessmentValueClass(
+                          value
+                        )}`}
+                      ></span>
+                      {value}:
+                    </span>
+                    <span className="font-medium">
+                      {toPersianDigits(data.count)} (
+                      {toPersianDigits(Math.round(data.percentage))}%)
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-1 border-t border-gray-100">
+                  <span>مجموع ارزیابی‌ها:</span>
+                  <span className="font-medium">
+                    {toPersianDigits(totalAssessments)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subject Performance */}
+          {(subjectPerformance.best ||
+            subjectPerformance.worst ||
+            subjectPerformance.mostImproved) && (
+            <div className="border rounded-md p-3 bg-white shadow-sm">
+              <h5 className="font-semibold border-b pb-1 mb-2">
+                عملکرد در دروس
+              </h5>
+              <div className="space-y-2">
+                {subjectPerformance.best && (
+                  <div className="flex justify-between">
+                    <span>بهترین درس:</span>
+                    <span className="text-emerald-600 font-medium">
+                      {subjectPerformance.best.subject} (
+                      {toPersianDigits(subjectPerformance.best.avg.toFixed(2))})
+                    </span>
+                  </div>
+                )}
+
+                {subjectPerformance.worst && (
+                  <div className="flex justify-between">
+                    <span>ضعیف‌ترین درس:</span>
+                    <span className="text-red-600 font-medium">
+                      {subjectPerformance.worst.subject} (
+                      {toPersianDigits(subjectPerformance.worst.avg.toFixed(2))}
+                      )
+                    </span>
+                  </div>
+                )}
+
+                {subjectPerformance.mostImproved && (
+                  <div className="flex justify-between">
+                    <span>بیشترین پیشرفت:</span>
+                    <span
+                      className={
+                        subjectPerformance.mostImproved.improvement > 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }
+                    >
+                      {subjectPerformance.mostImproved.subject} (
+                      {toPersianDigits(
+                        (subjectPerformance.mostImproved.improvement > 0
+                          ? "+"
+                          : "") +
+                          subjectPerformance.mostImproved.improvement.toFixed(2)
+                      )}
+                      )
+                    </span>
+                  </div>
+                )}
+
+                {student.weightedAverage !== undefined &&
+                  student.weightedAverage !== null && (
+                    <div className="flex justify-between pt-1 border-t border-gray-100">
+                      <span>میانگین کل:</span>
+                      <span
+                        className={`font-medium ${getScoreColorClass(
+                          student.weightedAverage
+                        )}`}
+                      >
+                        {toPersianDigits(student.weightedAverage.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+              </div>
+            </div>
+          )}
+
+          {/* Monthly Trend */}
+          <div className="border rounded-md p-3 bg-white shadow-sm md:col-span-2 lg:col-span-3">
+            <h5 className="font-semibold border-b pb-1 mb-2">
+              روند پیشرفت ماهانه
+            </h5>
+            {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].some(
+              (m) => monthlyAverages[m.toString()].avg !== null
+            ) ? (
+              <div className="flex items-end justify-between h-32 px-2 relative mt-4">
+                {/* Background grid lines */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="border-t border-gray-100 w-full h-0"
+                    />
+                  ))}
+                </div>
+
+                {/* Y-axis labels */}
+                <div className="absolute left-0 inset-y-0 flex flex-col justify-between text-[9px] text-gray-400 pointer-events-none">
+                  <div className="-translate-y-2">۲۰</div>
+                  <div>۱۵</div>
+                  <div>۱۰</div>
+                  <div>۵</div>
+                  <div className="translate-y-2">۰</div>
+                </div>
+
+                <div className="w-full flex items-end justify-between pl-6">
+                  {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].map((monthNum) => {
+                    const month = monthNum.toString();
+                    const monthNames = [
+                      "فروردین",
+                      "اردیبهشت",
+                      "خرداد",
+                      "تیر",
+                      "مرداد",
+                      "شهریور",
+                      "مهر",
+                      "آبان",
+                      "آذر",
+                      "دی",
+                      "بهمن",
+                      "اسفند",
+                    ];
+                    const data = monthlyAverages[month];
+                    const avg = data?.avg;
+
+                    // Calculate height based on average (or 0 if no data)
+                    const height =
+                      avg !== null && avg !== undefined
+                        ? Math.max(4, Math.min(100, (avg / 20) * 100)) // Scale to percentage, min 4% height
+                        : 0; // No bar if no data
+
+                    return (
+                      <div
+                        key={month}
+                        className="flex flex-col items-center group"
+                      >
+                        {avg !== null && avg !== undefined ? (
+                          <div className="relative">
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                              {monthNames[parseInt(month) - 1]}:{" "}
+                              {toPersianDigits(avg.toFixed(2))}
+                            </div>
+                            <div
+                              className={`w-4 rounded-t ${getScoreBarColor(
+                                avg
+                              )}`}
+                              style={{ height: `${height}%` }}
+                            ></div>
+                          </div>
+                        ) : (
+                          <div className="w-4 h-1 bg-gray-200 rounded-t opacity-50"></div>
+                        )}
+                        <div className="text-xs mt-1 text-gray-600">
+                          {monthNames[parseInt(month) - 1].substring(0, 3)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="h-32 flex items-center justify-center text-gray-400 text-sm">
+                داده‌ای برای نمایش وجود ندارد
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Helper function to get bar color
+  const getScoreBarColor = (score: number): string => {
+    if (score >= 18) return "bg-emerald-500";
+    if (score >= 15) return "bg-green-500";
+    if (score >= 12) return "bg-blue-500";
+    if (score >= 10) return "bg-amber-400";
+    return "bg-red-500";
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
@@ -1928,6 +2349,21 @@ const ReportCards = ({
                   />
                   <Label htmlFor="show-assessments" className="checkbox-label">
                     نمایش جدول ارزیابی‌ها
+                  </Label>
+                </div>
+                <div className="option-checkbox">
+                  <input
+                    type="checkbox"
+                    id="show-overall-stats"
+                    checked={showOverallStats}
+                    onChange={(e) => setShowOverallStats(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <Label
+                    htmlFor="show-overall-stats"
+                    className="checkbox-label"
+                  >
+                    نمایش آمار کلی
                   </Label>
                 </div>
               </div>
@@ -2659,6 +3095,11 @@ const ReportCards = ({
                               </TableRow>
                             </TableBody>
                           </Table>
+
+                          {/* Show overall statistics if enabled */}
+                          {showOverallStats && (
+                            <OverallStatistics student={student} />
+                          )}
                         </div>
                       </div>
                     ));
