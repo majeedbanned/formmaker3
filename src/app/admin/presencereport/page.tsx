@@ -41,13 +41,15 @@ type ClassDocument = {
 
 export default function PresenceReportPage() {
   const [classDocuments, setClassDocuments] = useState<ClassDocument[]>([]);
+  const [filteredClassDocuments, setFilteredClassDocuments] = useState<
+    ClassDocument[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, isLoading } = useAuth();
 
-  // Get schoolCode and teacherCode from authenticated user
+  // Get schoolCode from authenticated user
   const schoolCode = user?.schoolCode;
-  const teacherCode = user?.userType === "teacher" ? user.username : undefined;
 
   useEffect(() => {
     const fetchClassData = async () => {
@@ -64,12 +66,8 @@ export default function PresenceReportPage() {
         setLoading(true);
         setError(null);
 
-        // Build API URL based on available data
-        let apiUrl = `/api/classes?schoolCode=${schoolCode}`;
-        if (teacherCode) {
-          apiUrl += `&teacherCode=${teacherCode}`;
-        }
-
+        // Always fetch all classes for the school
+        const apiUrl = `/api/classes?schoolCode=${schoolCode}`;
         const response = await fetch(apiUrl);
 
         if (!response.ok) {
@@ -112,7 +110,30 @@ export default function PresenceReportPage() {
     };
 
     fetchClassData();
-  }, [schoolCode, teacherCode, isLoading]);
+  }, [schoolCode, isLoading]);
+
+  // Filter classes based on user type
+  useEffect(() => {
+    if (!user || !classDocuments.length) return;
+
+    // For teacher users, filter to only show their classes
+    if (user.userType === "teacher" && user.username) {
+      const teacherClasses = classDocuments.filter((doc) =>
+        doc.data.teachers.some(
+          (teacher) => teacher.teacherCode === user.username
+        )
+      );
+      setFilteredClassDocuments(teacherClasses);
+    }
+    // For school users, show all classes
+    else if (user.userType === "school") {
+      setFilteredClassDocuments(classDocuments);
+    }
+    // Default - just in case
+    else {
+      setFilteredClassDocuments(classDocuments);
+    }
+  }, [user, classDocuments]);
 
   if (isLoading || loading) {
     return (
@@ -155,7 +176,7 @@ export default function PresenceReportPage() {
     );
   }
 
-  if (classDocuments.length === 0) {
+  if (filteredClassDocuments.length === 0) {
     return (
       <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center m-4">
         <h3 className="text-yellow-700 font-medium text-lg mb-2">
@@ -170,13 +191,16 @@ export default function PresenceReportPage() {
     );
   }
 
+  // Pass teacherCode only if user is a teacher
+  const teacherCode = user.userType === "teacher" ? user.username : undefined;
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-6 text-center">گزارش حضور و غیاب</h1>
       <PresenceReport
         schoolCode={schoolCode || ""}
         teacherCode={teacherCode}
-        classDocuments={classDocuments}
+        classDocuments={filteredClassDocuments}
       />
     </div>
   );

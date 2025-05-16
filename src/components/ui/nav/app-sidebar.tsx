@@ -179,7 +179,7 @@ const data = {
         },
 
         {
-          title: "گزارش حضور و غیاب",
+          title: "+گزارش حضور و غیاب",
           url: "/admin/presencereport",
           system: "importstudents",
           requiredPermission: "show",
