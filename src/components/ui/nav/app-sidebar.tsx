@@ -154,7 +154,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "گزارش نمرات ماهانه",
+          title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
           system: "importstudents",
           requiredPermission: "show",
