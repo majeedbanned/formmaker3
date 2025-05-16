@@ -265,7 +265,7 @@ function StudentsPageContent() {
       name: "schoolCode",
       title: "کد مدرسه",
       type: "text",
-      isShowInList: false,
+      isShowInList: true,
       isSearchable: true,
       defaultValue: user?.schoolCode,
       readonly: true,

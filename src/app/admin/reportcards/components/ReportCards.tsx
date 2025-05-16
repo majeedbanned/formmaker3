@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import Excel from "exceljs";
 import { saveAs } from "file-saver";
+import { useAuth } from "@/hooks/useAuth";
 
 // Define the print styles for report cards
 const printStyles = `
@@ -665,6 +666,9 @@ const ReportCards = ({
   teacherCode?: string;
   classDocuments: ClassDocument[];
 }) => {
+  // Get auth data
+  const { user, isLoading: authLoading } = useAuth();
+
   // Component state
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
@@ -693,6 +697,51 @@ const ReportCards = ({
   const [showOverallStats, setShowOverallStats] = useState(false);
   // Add a new state variable for selected student
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
+
+  // Add state for filtered documents based on user type
+  const [filteredClassDocuments, setFilteredClassDocuments] =
+    useState<ClassDocument[]>(classDocuments);
+
+  // Filter class documents based on user type
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    if (user.userType === "teacher") {
+      // For teachers: Only show classes they teach
+      const teacherClasses = classDocuments.filter((doc) =>
+        doc.data.teachers.some(
+          (teacher) => teacher.teacherCode === user.username
+        )
+      );
+      setFilteredClassDocuments(teacherClasses);
+
+      // Auto-select the first class if there's only one
+      if (teacherClasses.length === 1 && !selectedClass) {
+        setTimeout(() => setSelectedClass(teacherClasses[0].data.classCode), 0);
+      }
+    } else if (user.userType === "student") {
+      // For students: Only show classes they are in
+      const studentClasses = classDocuments.filter((doc) =>
+        doc.data.students.some(
+          (student) => student.studentCode === user.username
+        )
+      );
+      setFilteredClassDocuments(studentClasses);
+
+      // Auto-select the student's class
+      if (studentClasses.length > 0 && !selectedClass) {
+        setTimeout(() => setSelectedClass(studentClasses[0].data.classCode), 0);
+      }
+
+      // Auto-select the student
+      if (user.username) {
+        setTimeout(() => setSelectedStudent(user.username), 0);
+      }
+    } else {
+      // For school admins: Show all classes
+      setFilteredClassDocuments(classDocuments);
+    }
+  }, [user, authLoading, classDocuments, selectedClass]);
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -798,17 +847,17 @@ const ReportCards = ({
     fetchTeachersAndCourses();
   }, [schoolCode]);
 
-  // Get filtered class options based on teacherCode if provided
+  // Get filtered class options based on user type and teacherCode
   const getClassOptions = () => {
-    let options = classDocuments.map((doc) => ({
+    let options = filteredClassDocuments.map((doc) => ({
       value: doc.data.classCode,
       label: doc.data.className,
     }));
 
-    // If teacherCode is provided, only show classes where this teacher teaches
-    if (teacherCode) {
+    // If teacherCode is provided from props and user is not a student, filter by that teacherCode
+    if (teacherCode && user?.userType !== "student") {
       options = options.filter((option) => {
-        const classDoc = classDocuments.find(
+        const classDoc = filteredClassDocuments.find(
           (doc) => doc.data.classCode === option.value
         );
         if (!classDoc) return false;
@@ -921,7 +970,7 @@ const ReportCards = ({
     const fetchReportCardData = async () => {
       setLoading(true);
       try {
-        const selectedClassData = classDocuments.find(
+        const selectedClassData = filteredClassDocuments.find(
           (doc) => doc.data.classCode === selectedClass
         )?.data;
 
@@ -932,7 +981,14 @@ const ReportCards = ({
         }
 
         // Get all teacher-course pairs for this class
-        const teacherCourses = selectedClassData.teachers;
+        let teacherCourses = selectedClassData.teachers;
+
+        // If user is a teacher, filter to only their courses
+        if (user?.userType === "teacher") {
+          teacherCourses = teacherCourses.filter(
+            (tc) => tc.teacherCode === user.username
+          );
+        }
 
         // Create a map to store assessment values by course
         const courseValues: Record<string, Record<string, number>> = {};
@@ -979,7 +1035,7 @@ const ReportCards = ({
         // Student report card structure
         const studentReports: Record<string, StudentReportCard> = {};
 
-        // Initialize student report cards for all students in the class
+        // Initialize student report cards for students to process
         selectedClassData.students.forEach((student) => {
           studentReports[student.studentCode] = {
             studentCode: student.studentCode,
@@ -1249,11 +1305,12 @@ const ReportCards = ({
   }, [
     selectedClass,
     selectedYear,
-    classDocuments,
+    filteredClassDocuments,
     schoolCode,
     teachersInfo,
     coursesInfo,
     calculateFinalScore,
+    user,
   ]);
 
   // Function to get color class based on grade
@@ -1295,8 +1352,8 @@ const ReportCards = ({
     worksheet.mergeCells("A1:Z1");
     const titleCell = worksheet.getCell("A1");
     titleCell.value = `کارنامه تحصیلی - ${
-      classDocuments.find((doc) => doc.data.classCode === selectedClass)?.data
-        .className
+      filteredClassDocuments.find((doc) => doc.data.classCode === selectedClass)
+        ?.data.className
     } - سال تحصیلی ${yearOptions.find((y) => y.value === selectedYear)?.label}`;
     titleCell.font = { size: 14, bold: true };
     titleCell.alignment = { horizontal: "center" };
@@ -1346,8 +1403,9 @@ const ReportCards = ({
       studentSheet.mergeCells("A2:N2");
       const classInfo = studentSheet.getCell("A2");
       classInfo.value = `کلاس: ${
-        classDocuments.find((doc) => doc.data.classCode === selectedClass)?.data
-          .className
+        filteredClassDocuments.find(
+          (doc) => doc.data.classCode === selectedClass
+        )?.data.className
       } - سال تحصیلی: ${
         yearOptions.find((y) => y.value === selectedYear)?.label
       }`;
@@ -1512,8 +1570,8 @@ const ReportCards = ({
     summarySheet.mergeCells("A1:Z1");
     const summaryTitle = summarySheet.getCell("A1");
     summaryTitle.value = `خلاصه کارنامه کلاس ${
-      classDocuments.find((doc) => doc.data.classCode === selectedClass)?.data
-        .className
+      filteredClassDocuments.find((doc) => doc.data.classCode === selectedClass)
+        ?.data.className
     } - سال تحصیلی ${yearOptions.find((y) => y.value === selectedYear)?.label}`;
     summaryTitle.font = { size: 14, bold: true };
     summaryTitle.alignment = { horizontal: "center" };
@@ -2318,11 +2376,16 @@ const ReportCards = ({
     return "bg-red-500";
   };
 
-  // Add a function to get student options
+  // Modify the add student options function to disable selection for students
   const getStudentOptions = () => {
+    // If user is a student, they shouldn't be able to select other students
+    if (user?.userType === "student") {
+      return [];
+    }
+
     if (!selectedClass) return [];
 
-    const classData = classDocuments.find(
+    const classData = filteredClassDocuments.find(
       (doc) => doc.data.classCode === selectedClass
     )?.data;
 
@@ -2386,7 +2449,11 @@ const ReportCards = ({
                 >
                   کلاس
                 </Label>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <Select
+                  value={selectedClass}
+                  onValueChange={setSelectedClass}
+                  disabled={user?.userType === "student"}
+                >
                   <SelectTrigger
                     id="class-select"
                     className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
@@ -2403,8 +2470,8 @@ const ReportCards = ({
                 </Select>
               </div>
 
-              {/* Add student selection dropdown that only appears when a class is selected */}
-              {selectedClass && (
+              {/* Show student selection dropdown only if not a student user */}
+              {selectedClass && user?.userType !== "student" && (
                 <div>
                   <Label
                     htmlFor="student-select"
@@ -2537,7 +2604,7 @@ const ReportCards = ({
                 <CardTitle className="text-xl text-gray-800">
                   کارنامه تحصیلی -{" "}
                   {selectedClass &&
-                    classDocuments.find(
+                    filteredClassDocuments.find(
                       (doc) => doc.data.classCode === selectedClass
                     )?.data.className}{" "}
                   - سال تحصیلی{" "}
@@ -2609,7 +2676,7 @@ const ReportCards = ({
                                 <span>
                                   کلاس:{" "}
                                   {
-                                    classDocuments.find(
+                                    filteredClassDocuments.find(
                                       (doc) =>
                                         doc.data.classCode === selectedClass
                                     )?.data.className
