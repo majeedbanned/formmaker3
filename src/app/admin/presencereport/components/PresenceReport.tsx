@@ -258,6 +258,132 @@ const PresenceReport = ({
       .print-hidden {
         display: none !important;
       }
+
+      /* Optimize for printing */
+      body {
+        font-size: 12px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Reduce spacing */
+      .space-y-6 > * + * {
+        margin-top: 1rem !important;
+      }
+
+      .card {
+        margin-bottom: 0.75rem !important;
+        box-shadow: none !important;
+        border: 1px solid #e5e7eb !important;
+      }
+
+      /* Make card headers more compact */
+      .card-header {
+        padding: 0.5rem 1rem !important;
+      }
+
+      .card-content {
+        padding: 0.75rem 1rem !important;
+      }
+
+      /* Make tables more compact */
+      .table th, .table td {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+      }
+
+      /* Keep colors on print */
+      .text-red-600, .text-red-700, .text-red-800 {
+        color: #dc2626 !important;
+      }
+      
+      .text-green-600, .text-green-700, .text-green-800 {
+        color: #059669 !important;
+      }
+      
+      .text-yellow-600, .text-yellow-700, .text-yellow-800 {
+        color: #d97706 !important;
+      }
+
+      /* Summary cards more compact */
+      .grid.grid-cols-4 {
+        grid-gap: 0.5rem !important;
+      }
+
+      .card-content {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+      }
+
+      /* Optimize tables for limited width */
+      .table-container {
+        width: 100% !important;
+        overflow-x: visible !important;
+      }
+
+      /* Reduce progress bar heights */
+      .h-2\.5 {
+        height: 0.4rem !important;
+      }
+
+      .h-8 {
+        height: 1.2rem !important;
+      }
+
+      /* Scale down headings */
+      h1, h2, h3, .text-xl, .text-lg {
+        font-size: 14px !important;
+      }
+
+      .text-3xl {
+        font-size: 18px !important;
+      }
+
+      /* Add page break controls */
+      .page-break-before {
+        page-break-before: always;
+      }
+      
+      .no-page-break {
+        page-break-inside: avoid;
+      }
+      
+      /* Make summary cards more space efficient in print */
+      .print-grid-cols-4 {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+      }
+      
+      /* Reduce card padding further for print */
+      .summary-card {
+        padding: 0.3rem !important;
+      }
+      
+      /* Make status badges more compact for print */
+      .text-xs {
+        font-size: 9px !important;
+      }
+      
+      /* Smaller font for table content in print */
+      tbody td {
+        font-size: 10px !important;
+      }
+      
+      /* Hide empty spaces in print */
+      .print-hidden, .empty-message {
+        display: none !important;
+      }
+      
+      /* Each tab section should start on a new page */
+      .tabs-content-wrapper {
+        page-break-before: always;
+      }
+      
+      .table-container {
+        page-break-inside: avoid;
+      }
     }
   `;
 
@@ -625,7 +751,7 @@ const PresenceReport = ({
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: customStyles }} />
-      <Card className="filter-card shadow-sm">
+      <Card className="filter-card shadow-sm print:hidden">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl text-gray-800">
@@ -744,9 +870,9 @@ const PresenceReport = ({
           </TabsList>
 
           {/* Today's Report */}
-          <TabsContent value="today" className="space-y-6">
+          <TabsContent value="today" className="space-y-6 tabs-content-wrapper">
             {/* Today's Overview */}
-            <Card>
+            <Card className="no-page-break">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl text-gray-800 flex justify-between items-center">
                   <span>گزارش حضور و غیاب {formatDate(selectedDate)}</span>
@@ -762,9 +888,9 @@ const PresenceReport = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print-grid-cols-3">
                   {/* Summary Cards */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center stat-card">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center stat-card summary-card">
                     <div className="text-green-800 text-sm font-medium mb-1">
                       تعداد کل حضور امروز
                     </div>
@@ -784,7 +910,7 @@ const PresenceReport = ({
                     </div>
                   </div>
 
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center stat-card">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center stat-card summary-card">
                     <div className="text-red-800 text-sm font-medium mb-1">
                       تعداد غیبت‌های امروز
                     </div>
@@ -793,7 +919,7 @@ const PresenceReport = ({
                     </div>
                   </div>
 
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center stat-card">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center stat-card summary-card">
                     <div className="text-yellow-800 text-sm font-medium mb-1">
                       تعداد تاخیرهای امروز
                     </div>
@@ -814,34 +940,36 @@ const PresenceReport = ({
               </CardHeader>
               <CardContent>
                 {todayAbsent.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right">
-                          نام دانش‌آموز
-                        </TableHead>
-                        <TableHead className="text-right">کلاس</TableHead>
-                        <TableHead className="text-right">درس</TableHead>
-                        <TableHead className="text-right">معلم</TableHead>
-                        <TableHead className="text-right">ساعت</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {todayAbsent.map((record, index) => (
-                        <TableRow key={`absent-${index}`}>
-                          <TableCell className="font-medium">
-                            {record.studentName}
-                          </TableCell>
-                          <TableCell>{record.className}</TableCell>
-                          <TableCell>{record.courseName}</TableCell>
-                          <TableCell>{record.teacherName}</TableCell>
-                          <TableCell>{record.timeSlot}</TableCell>
+                  <div className="table-container overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">
+                            نام دانش‌آموز
+                          </TableHead>
+                          <TableHead className="text-right">کلاس</TableHead>
+                          <TableHead className="text-right">درس</TableHead>
+                          <TableHead className="text-right">معلم</TableHead>
+                          <TableHead className="text-right">ساعت</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {todayAbsent.map((record, index) => (
+                          <TableRow key={`absent-${index}`}>
+                            <TableCell className="font-medium">
+                              {record.studentName}
+                            </TableCell>
+                            <TableCell>{record.className}</TableCell>
+                            <TableCell>{record.courseName}</TableCell>
+                            <TableCell>{record.teacherName}</TableCell>
+                            <TableCell>{record.timeSlot}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  <div className="text-center p-6 text-gray-500">
+                  <div className="text-center p-6 text-gray-500 empty-message">
                     هیچ غیبتی در تاریخ انتخاب شده ثبت نشده است.
                   </div>
                 )}
@@ -857,34 +985,36 @@ const PresenceReport = ({
               </CardHeader>
               <CardContent>
                 {todayLate.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right">
-                          نام دانش‌آموز
-                        </TableHead>
-                        <TableHead className="text-right">کلاس</TableHead>
-                        <TableHead className="text-right">درس</TableHead>
-                        <TableHead className="text-right">معلم</TableHead>
-                        <TableHead className="text-right">ساعت</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {todayLate.map((record, index) => (
-                        <TableRow key={`late-${index}`}>
-                          <TableCell className="font-medium">
-                            {record.studentName}
-                          </TableCell>
-                          <TableCell>{record.className}</TableCell>
-                          <TableCell>{record.courseName}</TableCell>
-                          <TableCell>{record.teacherName}</TableCell>
-                          <TableCell>{record.timeSlot}</TableCell>
+                  <div className="table-container overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">
+                            نام دانش‌آموز
+                          </TableHead>
+                          <TableHead className="text-right">کلاس</TableHead>
+                          <TableHead className="text-right">درس</TableHead>
+                          <TableHead className="text-right">معلم</TableHead>
+                          <TableHead className="text-right">ساعت</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {todayLate.map((record, index) => (
+                          <TableRow key={`late-${index}`}>
+                            <TableCell className="font-medium">
+                              {record.studentName}
+                            </TableCell>
+                            <TableCell>{record.className}</TableCell>
+                            <TableCell>{record.courseName}</TableCell>
+                            <TableCell>{record.teacherName}</TableCell>
+                            <TableCell>{record.timeSlot}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  <div className="text-center p-6 text-gray-500">
+                  <div className="text-center p-6 text-gray-500 empty-message">
                     هیچ تاخیری در تاریخ انتخاب شده ثبت نشده است.
                   </div>
                 )}
@@ -893,10 +1023,13 @@ const PresenceReport = ({
           </TabsContent>
 
           {/* Students Statistics */}
-          <TabsContent value="students" className="space-y-6">
+          <TabsContent
+            value="students"
+            className="space-y-6 tabs-content-wrapper"
+          >
             {/* Summary Cards for Student Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print-grid-cols-4 no-page-break">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-blue-800 text-sm font-medium mb-2">
@@ -909,7 +1042,7 @@ const PresenceReport = ({
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200">
+              <Card className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-red-800 text-sm font-medium mb-2">
@@ -929,7 +1062,7 @@ const PresenceReport = ({
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200">
+              <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-yellow-800 text-sm font-medium mb-2">
@@ -949,7 +1082,7 @@ const PresenceReport = ({
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-green-800 text-sm font-medium mb-2">
@@ -978,86 +1111,94 @@ const PresenceReport = ({
               </CardHeader>
               <CardContent>
                 {studentStats.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right">
-                          نام دانش‌آموز
-                        </TableHead>
-                        <TableHead className="text-right">کلاس</TableHead>
-                        <TableHead className="text-right">تعداد حضور</TableHead>
-                        <TableHead className="text-right">تعداد غیبت</TableHead>
-                        <TableHead className="text-right">
-                          تعداد تاخیر
-                        </TableHead>
-                        <TableHead className="text-right">درصد غیبت</TableHead>
-                        <TableHead className="text-right">
-                          آخرین وضعیت
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {studentStats.slice(0, 10).map((student, index) => (
-                        <TableRow key={`student-${index}`}>
-                          <TableCell className="font-medium">
-                            {student.studentName}
-                          </TableCell>
-                          <TableCell>{student.className}</TableCell>
-                          <TableCell className="text-green-600 font-medium">
-                            {toPersianDigits(student.totalPresent)}
-                          </TableCell>
-                          <TableCell className="text-red-600 font-medium">
-                            {toPersianDigits(student.totalAbsent)}
-                          </TableCell>
-                          <TableCell className="text-yellow-600 font-medium">
-                            {toPersianDigits(student.totalLate)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
-                                <div
-                                  className="bg-red-600 h-2.5 rounded-full"
-                                  style={{
-                                    width: `${student.absentPercentage}%`,
-                                  }}
-                                ></div>
-                              </div>
-                              <span>
-                                {toPersianDigits(student.absentPercentage)}%
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {student.lastStatus && (
-                              <div className="flex flex-col">
-                                <span
-                                  className={`text-xs px-2 py-1 rounded-full inline-flex items-center justify-center w-fit ${
-                                    student.lastStatus.status === "present"
-                                      ? "bg-green-100 text-green-800"
-                                      : student.lastStatus.status === "absent"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  {student.lastStatus.status === "present"
-                                    ? "حاضر"
-                                    : student.lastStatus.status === "absent"
-                                    ? "غایب"
-                                    : "با تاخیر"}
-                                </span>
-                                <span className="text-xs text-gray-500 mt-1">
-                                  {formatDate(student.lastStatus.date)} -{" "}
-                                  {student.lastStatus.courseName}
-                                </span>
-                              </div>
-                            )}
-                          </TableCell>
+                  <div className="table-container overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">
+                            نام دانش‌آموز
+                          </TableHead>
+                          <TableHead className="text-right">کلاس</TableHead>
+                          <TableHead className="text-right">
+                            تعداد حضور
+                          </TableHead>
+                          <TableHead className="text-right">
+                            تعداد غیبت
+                          </TableHead>
+                          <TableHead className="text-right">
+                            تعداد تاخیر
+                          </TableHead>
+                          <TableHead className="text-right">
+                            درصد غیبت
+                          </TableHead>
+                          <TableHead className="text-right">
+                            آخرین وضعیت
+                          </TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {studentStats.slice(0, 10).map((student, index) => (
+                          <TableRow key={`student-${index}`}>
+                            <TableCell className="font-medium">
+                              {student.studentName}
+                            </TableCell>
+                            <TableCell>{student.className}</TableCell>
+                            <TableCell className="text-green-600 font-medium">
+                              {toPersianDigits(student.totalPresent)}
+                            </TableCell>
+                            <TableCell className="text-red-600 font-medium">
+                              {toPersianDigits(student.totalAbsent)}
+                            </TableCell>
+                            <TableCell className="text-yellow-600 font-medium">
+                              {toPersianDigits(student.totalLate)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
+                                  <div
+                                    className="bg-red-600 h-2.5 rounded-full"
+                                    style={{
+                                      width: `${student.absentPercentage}%`,
+                                    }}
+                                  ></div>
+                                </div>
+                                <span>
+                                  {toPersianDigits(student.absentPercentage)}%
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {student.lastStatus && (
+                                <div className="flex flex-col">
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded-full inline-flex items-center justify-center w-fit ${
+                                      student.lastStatus.status === "present"
+                                        ? "bg-green-100 text-green-800"
+                                        : student.lastStatus.status === "absent"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                    }`}
+                                  >
+                                    {student.lastStatus.status === "present"
+                                      ? "حاضر"
+                                      : student.lastStatus.status === "absent"
+                                      ? "غایب"
+                                      : "با تاخیر"}
+                                  </span>
+                                  <span className="text-xs text-gray-500 mt-1">
+                                    {formatDate(student.lastStatus.date)} -{" "}
+                                    {student.lastStatus.courseName}
+                                  </span>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  <div className="text-center p-6 text-gray-500">
+                  <div className="text-center p-6 text-gray-500 empty-message">
                     داده‌ای برای نمایش وجود ندارد.
                   </div>
                 )}
@@ -1066,10 +1207,13 @@ const PresenceReport = ({
           </TabsContent>
 
           {/* Courses Statistics */}
-          <TabsContent value="courses" className="space-y-6">
+          <TabsContent
+            value="courses"
+            className="space-y-6 tabs-content-wrapper"
+          >
             {/* Summary Cards for Course Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print-grid-cols-4 no-page-break">
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-purple-800 text-sm font-medium mb-2">
@@ -1082,7 +1226,7 @@ const PresenceReport = ({
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-green-800 text-sm font-medium mb-2">
@@ -1102,7 +1246,7 @@ const PresenceReport = ({
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200">
+              <Card className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 summary-card">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-red-800 text-sm font-medium mb-2">
@@ -1149,97 +1293,107 @@ const PresenceReport = ({
               </CardHeader>
               <CardContent>
                 {courseStats.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right">نام درس</TableHead>
-                        <TableHead className="text-right">معلم</TableHead>
-                        <TableHead className="text-right">تعداد حضور</TableHead>
-                        <TableHead className="text-right">تعداد غیبت</TableHead>
-                        <TableHead className="text-right">
-                          تعداد تاخیر
-                        </TableHead>
-                        <TableHead className="text-right">درصد غیبت</TableHead>
-                        <TableHead className="text-right">
-                          نمودار وضعیت
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {courseStats.slice(0, 10).map((course, index) => (
-                        <TableRow key={`course-${index}`}>
-                          <TableCell className="font-medium">
-                            {course.courseName}
-                          </TableCell>
-                          <TableCell>{course.teacherName}</TableCell>
-                          <TableCell className="text-green-600 font-medium">
-                            {toPersianDigits(course.totalPresent)}
-                          </TableCell>
-                          <TableCell className="text-red-600 font-medium">
-                            {toPersianDigits(course.totalAbsent)}
-                          </TableCell>
-                          <TableCell className="text-yellow-600 font-medium">
-                            {toPersianDigits(course.totalLate)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
+                  <div className="table-container overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">نام درس</TableHead>
+                          <TableHead className="text-right">معلم</TableHead>
+                          <TableHead className="text-right">
+                            تعداد حضور
+                          </TableHead>
+                          <TableHead className="text-right">
+                            تعداد غیبت
+                          </TableHead>
+                          <TableHead className="text-right">
+                            تعداد تاخیر
+                          </TableHead>
+                          <TableHead className="text-right">
+                            درصد غیبت
+                          </TableHead>
+                          <TableHead className="text-right">
+                            نمودار وضعیت
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {courseStats.slice(0, 10).map((course, index) => (
+                          <TableRow key={`course-${index}`}>
+                            <TableCell className="font-medium">
+                              {course.courseName}
+                            </TableCell>
+                            <TableCell>{course.teacherName}</TableCell>
+                            <TableCell className="text-green-600 font-medium">
+                              {toPersianDigits(course.totalPresent)}
+                            </TableCell>
+                            <TableCell className="text-red-600 font-medium">
+                              {toPersianDigits(course.totalAbsent)}
+                            </TableCell>
+                            <TableCell className="text-yellow-600 font-medium">
+                              {toPersianDigits(course.totalLate)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
+                                  <div
+                                    className="bg-red-600 h-2.5 rounded-full"
+                                    style={{
+                                      width: `${course.absentPercentage}%`,
+                                    }}
+                                  ></div>
+                                </div>
+                                <span>
+                                  {toPersianDigits(course.absentPercentage)}%
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {/* Mini chart showing present/absent/late distribution */}
+                              <div className="flex h-8 w-full overflow-hidden rounded progress-bar-rtl">
                                 <div
-                                  className="bg-red-600 h-2.5 rounded-full"
+                                  className="bg-green-500 h-full"
+                                  style={{
+                                    width: `${course.presencePercentage}%`,
+                                    minWidth:
+                                      course.presencePercentage > 0
+                                        ? "8px"
+                                        : "0",
+                                  }}
+                                  title={`حضور: ${toPersianDigits(
+                                    course.presencePercentage
+                                  )}%`}
+                                ></div>
+                                <div
+                                  className="bg-red-500 h-full"
                                   style={{
                                     width: `${course.absentPercentage}%`,
+                                    minWidth:
+                                      course.absentPercentage > 0 ? "8px" : "0",
                                   }}
+                                  title={`غیبت: ${toPersianDigits(
+                                    course.absentPercentage
+                                  )}%`}
+                                ></div>
+                                <div
+                                  className="bg-yellow-500 h-full"
+                                  style={{
+                                    width: `${course.latePercentage}%`,
+                                    minWidth:
+                                      course.latePercentage > 0 ? "8px" : "0",
+                                  }}
+                                  title={`تاخیر: ${toPersianDigits(
+                                    course.latePercentage
+                                  )}%`}
                                 ></div>
                               </div>
-                              <span>
-                                {toPersianDigits(course.absentPercentage)}%
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {/* Mini chart showing present/absent/late distribution */}
-                            <div className="flex h-8 w-full overflow-hidden rounded progress-bar-rtl">
-                              <div
-                                className="bg-green-500 h-full"
-                                style={{
-                                  width: `${course.presencePercentage}%`,
-                                  minWidth:
-                                    course.presencePercentage > 0 ? "8px" : "0",
-                                }}
-                                title={`حضور: ${toPersianDigits(
-                                  course.presencePercentage
-                                )}%`}
-                              ></div>
-                              <div
-                                className="bg-red-500 h-full"
-                                style={{
-                                  width: `${course.absentPercentage}%`,
-                                  minWidth:
-                                    course.absentPercentage > 0 ? "8px" : "0",
-                                }}
-                                title={`غیبت: ${toPersianDigits(
-                                  course.absentPercentage
-                                )}%`}
-                              ></div>
-                              <div
-                                className="bg-yellow-500 h-full"
-                                style={{
-                                  width: `${course.latePercentage}%`,
-                                  minWidth:
-                                    course.latePercentage > 0 ? "8px" : "0",
-                                }}
-                                title={`تاخیر: ${toPersianDigits(
-                                  course.latePercentage
-                                )}%`}
-                              ></div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  <div className="text-center p-6 text-gray-500">
+                  <div className="text-center p-6 text-gray-500 empty-message">
                     داده‌ای برای نمایش وجود ندارد.
                   </div>
                 )}
