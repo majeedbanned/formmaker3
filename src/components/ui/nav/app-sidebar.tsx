@@ -136,7 +136,7 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "دفتر کلاسی",
+          title: "*دفتر کلاسی",
           url: "/admin/classsheet",
           system: "importstudents",
           requiredPermission: "show",
@@ -172,7 +172,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "گزارش فعالیت معلمان",
+          title: "*گزارش فعالیت معلمان",
           url: "/admin/teacheractivities",
           system: "importstudents",
           requiredPermission: "show",
