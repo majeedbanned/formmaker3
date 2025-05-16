@@ -166,6 +166,13 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "کارنامه ها",
+          url: "/admin/reportcards",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+
+        {
           title: "فرم ها",
           url: "/admin/forms",
           system: "importstudents",
