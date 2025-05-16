@@ -88,6 +88,10 @@ const printStyles = `
     .printing .report-card-wrapper {
       margin-bottom: 8px !important;
       padding: 2px !important;
+      page-break-before: always !important;
+    }
+    .printing .report-card-wrapper:first-of-type {
+      page-break-before: avoid !important;
     }
     .printing .card-content {
       padding: 0 !important;
@@ -2576,7 +2580,7 @@ const ReportCards = ({
                     return filteredStudents.map((student) => (
                       <div
                         key={student.studentCode}
-                        className="mb-8 p-2 border border-gray-200 rounded-md report-card-wrapper bg-white"
+                        className="mb-8 p-2 border border-gray-200 rounded-md report-card-wrapper bg-white print:page-break-before-always"
                       >
                         <div className="student-name">
                           <div>
