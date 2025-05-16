@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, PlusCircle } from "lucide-react";
+import { Save, PlusCircle, Trash } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X as XIcon } from "lucide-react";
 import {
@@ -234,6 +234,35 @@ export function FieldEditor({
       return;
     }
 
+    // Nested options validation for select
+    if (
+      editedField.type === "select" &&
+      editedField.nestedOptions &&
+      editedField.nestedOptions.parentField
+    ) {
+      // Ensure the parent field exists
+      const parentFieldExists = allFields.some(
+        (f) => f.name === editedField.nestedOptions?.parentField
+      );
+
+      if (!parentFieldExists) {
+        setValidationError("Parent field for nested options does not exist");
+        return;
+      }
+
+      // Ensure there are mappings defined
+      const hasNoMappings =
+        !editedField.nestedOptions.mapping ||
+        Object.keys(editedField.nestedOptions.mapping).length === 0;
+
+      if (hasNoMappings) {
+        setValidationError(
+          "You must define at least one mapping for nested options"
+        );
+        return;
+      }
+    }
+
     // Conditional validation
     if (
       editedField.condition &&
@@ -248,6 +277,113 @@ export function FieldEditor({
 
     // All valid, save the field
     onSave(editedField);
+  };
+
+  // Add handlers for nested options
+  const handleParentFieldChange = (parentField: string) => {
+    const currentNestedOptions = editedField.nestedOptions || {
+      parentField: "",
+      mapping: {},
+    };
+
+    updateField("nestedOptions", {
+      ...currentNestedOptions,
+      parentField: parentField,
+    });
+  };
+
+  const handleAddMapping = (parentValue: string) => {
+    const currentNestedOptions = editedField.nestedOptions || {
+      parentField: "",
+      mapping: {},
+    };
+
+    const updatedMapping = { ...currentNestedOptions.mapping };
+
+    // Initialize with empty array if no mapping exists for this value
+    if (!updatedMapping[parentValue]) {
+      updatedMapping[parentValue] = [];
+    }
+
+    updateField("nestedOptions", {
+      ...currentNestedOptions,
+      mapping: updatedMapping,
+    });
+  };
+
+  const handleAddMappingOption = (parentValue: string) => {
+    const currentNestedOptions = editedField.nestedOptions || {
+      parentField: "",
+      mapping: {},
+    };
+
+    const updatedMapping = { ...currentNestedOptions.mapping };
+
+    // Add a new option to the mapping
+    if (!updatedMapping[parentValue]) {
+      updatedMapping[parentValue] = [];
+    }
+
+    updatedMapping[parentValue] = [
+      ...updatedMapping[parentValue],
+      { label: "", value: "" },
+    ];
+
+    updateField("nestedOptions", {
+      ...currentNestedOptions,
+      mapping: updatedMapping,
+    });
+  };
+
+  const handleMappingOptionChange = (
+    parentValue: string,
+    index: number,
+    key: "label" | "value",
+    newValue: string
+  ) => {
+    const currentNestedOptions = editedField.nestedOptions || {
+      parentField: "",
+      mapping: {},
+    };
+
+    const updatedMapping = { ...currentNestedOptions.mapping };
+
+    if (updatedMapping[parentValue] && updatedMapping[parentValue][index]) {
+      updatedMapping[parentValue][index] = {
+        ...updatedMapping[parentValue][index],
+        [key]: newValue,
+      };
+
+      updateField("nestedOptions", {
+        ...currentNestedOptions,
+        mapping: updatedMapping,
+      });
+    }
+  };
+
+  const handleRemoveMappingOption = (parentValue: string, index: number) => {
+    const currentNestedOptions = editedField.nestedOptions || {
+      parentField: "",
+      mapping: {},
+    };
+
+    const updatedMapping = { ...currentNestedOptions.mapping };
+
+    if (updatedMapping[parentValue]) {
+      updatedMapping[parentValue] = updatedMapping[parentValue].filter(
+        (_option, i) => i !== index
+      );
+
+      // If there are no more options for this value, remove the parent value
+      if (updatedMapping[parentValue].length === 0) {
+        delete updatedMapping[parentValue];
+      }
+
+      updateField("nestedOptions", {
+        ...currentNestedOptions,
+        mapping: updatedMapping,
+      });
+    }
   };
 
   return (
@@ -1027,6 +1163,165 @@ export function FieldEditor({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Nested dropdown options */}
+            {editedField.type === "select" && (
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="nested-dropdown">
+                  <AccordionTrigger>
+                    منوی کشویی وابسته (Nested Dropdown)
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="parent-field">فیلد والد</Label>
+                        <Select
+                          value={editedField.nestedOptions?.parentField || ""}
+                          onValueChange={handleParentFieldChange}
+                        >
+                          <SelectTrigger id="parent-field">
+                            <SelectValue placeholder="فیلدی را انتخاب کنید" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allFields
+                              .filter(
+                                (f) =>
+                                  f.name !== editedField.name &&
+                                  f.type === "select"
+                              )
+                              .map((f) => (
+                                <SelectItem key={f.name} value={f.name}>
+                                  {f.label}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">
+                          مقادیر این منوی کشویی، بر اساس انتخاب کاربر در فیلد
+                          والد تغییر خواهند کرد.
+                        </p>
+                      </div>
+
+                      {editedField.nestedOptions?.parentField && (
+                        <div className="space-y-4">
+                          <Label>تعریف مقادیر وابسته</Label>
+
+                          {/* Parent field options */}
+                          <div className="space-y-4 pt-2">
+                            {allFields
+                              .find(
+                                (f) =>
+                                  f.name ===
+                                  editedField.nestedOptions?.parentField
+                              )
+                              ?.options?.map((option) => (
+                                <div
+                                  key={option.value}
+                                  className="border rounded-md p-4 space-y-3 bg-gray-50"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <h4 className="font-medium text-sm">
+                                      اگر{" "}
+                                      {
+                                        allFields.find(
+                                          (f) =>
+                                            f.name ===
+                                            editedField.nestedOptions
+                                              ?.parentField
+                                        )?.label
+                                      }{" "}
+                                      = {option.label}
+                                    </h4>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleAddMappingOption(option.value)
+                                      }
+                                    >
+                                      <PlusCircle className="h-4 w-4 ml-2" />
+                                      افزودن گزینه
+                                    </Button>
+                                  </div>
+
+                                  {/* Child options */}
+                                  {editedField.nestedOptions?.mapping[
+                                    option.value
+                                  ]?.map((childOption, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex gap-2 items-center"
+                                    >
+                                      <Input
+                                        placeholder="برچسب"
+                                        value={childOption.label}
+                                        onChange={(e) =>
+                                          handleMappingOptionChange(
+                                            option.value,
+                                            index,
+                                            "label",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="flex-1"
+                                      />
+                                      <Input
+                                        placeholder="مقدار"
+                                        value={childOption.value}
+                                        onChange={(e) =>
+                                          handleMappingOptionChange(
+                                            option.value,
+                                            index,
+                                            "value",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="flex-1"
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleRemoveMappingOption(
+                                            option.value,
+                                            index
+                                          )
+                                        }
+                                      >
+                                        <Trash className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  ))}
+
+                                  {!editedField.nestedOptions?.mapping[
+                                    option.value
+                                  ] && (
+                                    <div className="text-center py-2 text-sm text-gray-500">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleAddMappingOption(option.value)
+                                        }
+                                      >
+                                        <PlusCircle className="h-4 w-4 ml-2" />
+                                        افزودن اولین گزینه
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
           </TabsContent>
         </Tabs>
 

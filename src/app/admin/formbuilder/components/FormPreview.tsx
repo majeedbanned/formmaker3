@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SignaturePad from "react-signature-canvas";
@@ -950,42 +950,97 @@ export default function FormPreview({
           />
         );
 
-      case "select":
-        return (
-          <UIFormField
-            key={field.name}
-            control={methods.control}
-            name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <Select
-                  onValueChange={formField.onChange}
-                  value={formField.value}
-                  defaultValue={formField.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          field.placeholder || "یک گزینه انتخاب کنید"
-                        }
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {field.options?.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
+      case "select": {
+        // For nested dropdowns, create a wrapper component to handle useEffect properly
+        const SelectFieldWithNestedOptions = () => {
+          // Get form context
+          const formContext = useFormContext();
+          const formValue = formContext.getValues(field.name);
+
+          // Handle nested dropdown if this field has nestedOptions configured
+          const hasNestedOptions =
+            field.nestedOptions && field.nestedOptions.parentField;
+          const parentField = hasNestedOptions
+            ? field.nestedOptions?.parentField
+            : null;
+
+          // Get available options based on parent field value
+          const parentValue = parentField
+            ? formContext.watch(parentField)
+            : null;
+
+          // Determine the options to display
+          let displayOptions = field.options || [];
+
+          // If this is a nested dropdown and we have a parent value
+          if (hasNestedOptions && parentValue && field.nestedOptions?.mapping) {
+            // Get options for this parent value
+            const nestedOptions =
+              field.nestedOptions.mapping[parentValue] || [];
+
+            // Use the nested options if available, otherwise fall back to default options
+            if (nestedOptions.length > 0) {
+              displayOptions = nestedOptions;
+            }
+          }
+
+          // Reset value if parent changed and current value is not valid
+          useEffect(() => {
+            if (hasNestedOptions && parentValue && formValue) {
+              const isCurrentValueValid = displayOptions.some(
+                (option) => option.value === formValue
+              );
+
+              if (!isCurrentValueValid) {
+                formContext.setValue(field.name, ""); // Reset to empty
+              }
+            }
+          }, [
+            parentValue,
+            hasNestedOptions,
+            formValue,
+            field.name,
+            formContext,
+          ]);
+
+          return (
+            <UIFormField
+              control={methods.control}
+              name={field.name}
+              render={({ field: formField }) => (
+                <FormItem>
+                  <FormLabel>{field.label}</FormLabel>
+                  <Select
+                    onValueChange={formField.onChange}
+                    value={formField.value}
+                    defaultValue={formField.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            field.placeholder || "یک گزینه انتخاب کنید"
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {displayOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        };
+
+        return <SelectFieldWithNestedOptions key={field.name} />;
+      }
 
       case "checkbox":
         return (

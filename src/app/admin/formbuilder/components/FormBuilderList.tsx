@@ -125,6 +125,10 @@ export interface FormField {
   name: string;
   required?: boolean;
   options?: { label: string; value: string }[];
+  nestedOptions?: {
+    parentField: string;
+    mapping: Record<string, { label: string; value: string }[]>;
+  };
   placeholder?: string;
   validation?: Record<string, unknown>;
   condition?: {
