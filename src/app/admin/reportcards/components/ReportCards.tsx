@@ -2443,6 +2443,71 @@ const ReportCards = ({
     }
   }, [user, authLoading]);
 
+  // Function to generate tooltip content for a grade
+  const generateGradeTooltip = useCallback(
+    (
+      courseCode: string,
+      monthKey: string,
+      grade: number | null,
+      assessments: AssessmentEntry[]
+    ) => {
+      if (grade === null) return "نمره‌ای ثبت نشده است";
+
+      // Get course-specific assessment values if available
+      const courseValues = assessmentValues[courseCode] || {};
+
+      // Calculate base grade before assessments
+      let baseGrade = grade;
+      let adjustmentTotal = 0;
+
+      // Calculate total assessment adjustments that were applied
+      if (assessments && assessments.length > 0) {
+        assessments.forEach((assessment) => {
+          const adjustment =
+            courseValues[assessment.value] !== undefined
+              ? courseValues[assessment.value]
+              : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+
+          adjustmentTotal += adjustment;
+        });
+
+        // Recalculate base grade
+        baseGrade = grade - adjustmentTotal;
+        // Handle edge cases to prevent negative base grades
+        baseGrade = Math.max(0, baseGrade);
+      }
+
+      let tooltip = `فرمول محاسبه نمره:\n`;
+      tooltip += `نمره اصلی: ${toPersianDigits(baseGrade.toFixed(2))}\n`;
+
+      if (assessments && assessments.length > 0) {
+        tooltip += `\nتعدیل‌های کیفی:\n`;
+        assessments.forEach((assessment) => {
+          const adjustment =
+            courseValues[assessment.value] !== undefined
+              ? courseValues[assessment.value]
+              : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+
+          tooltip += `${assessment.title} (${assessment.value}): ${
+            adjustment >= 0 ? "+" : ""
+          }${toPersianDigits(adjustment)}\n`;
+        });
+
+        tooltip += `\nمجموع تعدیل‌ها: ${
+          adjustmentTotal >= 0 ? "+" : ""
+        }${toPersianDigits(adjustmentTotal)}\n`;
+        tooltip += `نتیجه نهایی: ${toPersianDigits(baseGrade.toFixed(2))} ${
+          adjustmentTotal >= 0 ? "+" : ""
+        }${toPersianDigits(adjustmentTotal)} = ${toPersianDigits(
+          grade.toFixed(2)
+        )}`;
+      }
+
+      return tooltip;
+    },
+    [assessmentValues]
+  );
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
@@ -3075,7 +3140,20 @@ const ReportCards = ({
                                               {courseData.monthlyGrades[
                                                 month.toString()
                                               ] !== null ? (
-                                                <div className="grade-container">
+                                                <div
+                                                  className="grade-container"
+                                                  title={generateGradeTooltip(
+                                                    courseCode,
+                                                    month.toString(),
+                                                    courseData.monthlyGrades[
+                                                      month.toString()
+                                                    ],
+                                                    courseData
+                                                      .monthlyAssessments[
+                                                      month.toString()
+                                                    ]
+                                                  )}
+                                                >
                                                   <div className="grade-value">
                                                     {toPersianDigits(
                                                       courseData.monthlyGrades[
@@ -3186,7 +3264,19 @@ const ReportCards = ({
                                             {courseData.monthlyGrades[
                                               month.toString()
                                             ] !== null ? (
-                                              <div className="grade-container">
+                                              <div
+                                                className="grade-container"
+                                                title={generateGradeTooltip(
+                                                  courseCode,
+                                                  month.toString(),
+                                                  courseData.monthlyGrades[
+                                                    month.toString()
+                                                  ],
+                                                  courseData.monthlyAssessments[
+                                                    month.toString()
+                                                  ]
+                                                )}
+                                              >
                                                 <div className="grade-value">
                                                   {toPersianDigits(
                                                     courseData.monthlyGrades[
@@ -3284,7 +3374,44 @@ const ReportCards = ({
                                             courseData.yearAverage
                                           )}`}
                                         >
-                                          <div className="grade-container">
+                                          <div
+                                            className="grade-container"
+                                            title={
+                                              courseData.yearAverage !== null
+                                                ? `میانگین نمرات ماهانه\n${Object.entries(
+                                                    courseData.monthlyGrades
+                                                  )
+                                                    .filter(
+                                                      ([, grade]) =>
+                                                        grade !== null
+                                                    )
+                                                    .map(([month, grade]) => {
+                                                      const monthNames = [
+                                                        "فروردین",
+                                                        "اردیبهشت",
+                                                        "خرداد",
+                                                        "تیر",
+                                                        "مرداد",
+                                                        "شهریور",
+                                                        "مهر",
+                                                        "آبان",
+                                                        "آذر",
+                                                        "دی",
+                                                        "بهمن",
+                                                        "اسفند",
+                                                      ];
+                                                      const monthIndex =
+                                                        parseInt(month) - 1;
+                                                      return `${
+                                                        monthNames[monthIndex]
+                                                      }: ${toPersianDigits(
+                                                        grade?.toFixed(2) || ""
+                                                      )}`;
+                                                    })
+                                                    .join("\n")}`
+                                                : "نمره‌ای ثبت نشده است"
+                                            }
+                                          >
                                             <div className="grade-value">
                                               {courseData.yearAverage !== null
                                                 ? toPersianDigits(
