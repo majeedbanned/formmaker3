@@ -217,6 +217,42 @@ const PresenceReport = ({
       font-size: 0.75rem;
       font-weight: 600;
     }
+
+    // body, html {
+    //   direction: rtl;
+    //   text-align: right;
+    // }
+
+    .table-data {
+      text-align: right;
+    }
+
+    .pagination {
+      flex-direction: row-reverse;
+    }
+
+    input, select, textarea {
+      text-align: right;
+    }
+
+    .rmdp-container {
+      text-align: right;
+      direction: rtl;
+    }
+
+    .table th, .table td {
+      text-align: right;
+    }
+
+    /* Fix for RTL progress bars */
+    .progress-bar-rtl {
+      direction: ltr;
+    }
+
+    /* Fix for RTL flexbox */
+    .flex-row-reverse {
+      flex-direction: row-reverse;
+    }
     
     @media print {
       .print-hidden {
@@ -585,9 +621,9 @@ const PresenceReport = ({
       }
     }
   };
-
+  //dir="rtl" lang="fa"
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: customStyles }} />
       <Card className="filter-card shadow-sm">
         <CardHeader className="pb-2">
@@ -597,7 +633,7 @@ const PresenceReport = ({
             </CardTitle>
             <Button
               onClick={handlePrint}
-              className="print:hidden bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center gap-2"
+              className="print:hidden bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center gap-2 rtl"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -609,6 +645,7 @@ const PresenceReport = ({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="ml-1"
               >
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -667,8 +704,9 @@ const PresenceReport = ({
                   onChange={handleDateChange}
                   format="YYYY/MM/DD"
                   className="w-full rounded-md border border-gray-300"
-                  inputClass="w-full rounded-md border border-gray-300 p-2"
+                  inputClass="w-full rounded-md border border-gray-300 p-2 text-right"
                   calendarPosition="bottom-right"
+                  containerClassName="rmdp-container"
                 />
               </div>
             </div>
@@ -676,7 +714,7 @@ const PresenceReport = ({
             <div className="flex items-end">
               <Button
                 onClick={fetchPresenceData}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md rtl"
               >
                 به‌روزرسانی گزارش
               </Button>
@@ -693,9 +731,13 @@ const PresenceReport = ({
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="space-y-4"
+          className="space-y-4 rtl"
+          dir="rtl"
         >
-          <TabsList className="grid grid-cols-3 w-full md:w-[600px] mx-auto">
+          <TabsList
+            className="grid grid-cols-3 w-full md:w-[600px] mx-auto rtl"
+            dir="rtl"
+          >
             <TabsTrigger value="today">گزارش امروز</TabsTrigger>
             <TabsTrigger value="students">آمار دانش‌آموزان</TabsTrigger>
             <TabsTrigger value="courses">آمار دروس</TabsTrigger>
@@ -972,7 +1014,7 @@ const PresenceReport = ({
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
                                 <div
                                   className="bg-red-600 h-2.5 rounded-full"
                                   style={{
@@ -1141,7 +1183,7 @@ const PresenceReport = ({
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 progress-bar-rtl">
                                 <div
                                   className="bg-red-600 h-2.5 rounded-full"
                                   style={{
@@ -1156,7 +1198,7 @@ const PresenceReport = ({
                           </TableCell>
                           <TableCell>
                             {/* Mini chart showing present/absent/late distribution */}
-                            <div className="flex h-8 w-full overflow-hidden rounded">
+                            <div className="flex h-8 w-full overflow-hidden rounded progress-bar-rtl">
                               <div
                                 className="bg-green-500 h-full"
                                 style={{
