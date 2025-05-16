@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Edit,
   Eye,
@@ -168,11 +169,14 @@ export default function FormBuilderList({
   const [loadingData, setLoadingData] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchForms();
-    fetchSubmissionCounts();
-  }, []);
+    if (user) {
+      fetchForms();
+      fetchSubmissionCounts();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (settingsOpen) {
@@ -181,9 +185,22 @@ export default function FormBuilderList({
   }, [settingsOpen]);
 
   const fetchForms = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
-      const response = await fetch("/api/formbuilder");
+      // Add the username as a query parameter to filter forms
+      const queryParams = new URLSearchParams();
+
+      if (user.userType === "teacher" || user.userType === "student") {
+        queryParams.append("createdBy", user.username);
+      }
+
+      const url = `/api/formbuilder${
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      }`;
+
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch forms");
 
       const data = await response.json();

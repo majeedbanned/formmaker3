@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'updatedAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const createdBy = searchParams.get('createdBy') || '';
     
     // Get domain from request headers (set by middleware)
     const domain = request.headers.get('x-domain') || 'localhost:3000';
@@ -24,6 +25,11 @@ export async function GET(request: NextRequest) {
       
       // Build the query filter
       const filter: Record<string, unknown> = {};
+      
+      // Add creator filter if provided
+      if (createdBy) {
+        filter['metadata.createdBy'] = createdBy;
+      }
       
       // Add search functionality if provided
       if (search) {
@@ -118,10 +124,13 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       };
       
+      // Get user from header
+      const creator = request.headers.get('x-user') || 'unknown';
+      
       // Add creation metadata
       formDocument.metadata = {
         ...formDocument.metadata,
-        createdBy: request.headers.get('x-user') || 'unknown',
+        createdBy: creator,
         version: 1,
         status: 'draft', // Possible values: draft, published, archived
         _id: new ObjectId() // Using ObjectId here to fix linter error

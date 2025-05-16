@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormSchema, FormField, FormStep } from "./FormBuilderList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DndContext,
   closestCenter,
@@ -59,6 +60,8 @@ export default function FormBuilderEditor({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const { user } = useAuth();
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -179,7 +182,7 @@ export default function FormBuilderEditor({
         fieldType.charAt(0).toUpperCase() + fieldType.slice(1)
       }`,
       name: `field_${Date.now()}`,
-      stepId: formState.isMultiStep ? activeStep : undefined,
+      stepId: formState.isMultiStep && activeStep ? activeStep : undefined,
     };
 
     // Add options if select, radio, or checkbox
@@ -368,6 +371,11 @@ export default function FormBuilderEditor({
   };
 
   const handleSaveForm = async () => {
+    if (!user) {
+      console.error("No user authenticated");
+      return;
+    }
+
     try {
       const response = await fetch(
         formState._id
@@ -377,6 +385,7 @@ export default function FormBuilderEditor({
           method: formState._id ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-user": user.username,
           },
           body: JSON.stringify(formState),
         }
