@@ -343,114 +343,274 @@ const TeacherActivities: React.FC = () => {
   };
 
   return (
-    <div className="container p-4 mx-auto" dir="rtl">
-      <h1 className="text-2xl font-bold mb-6">
-        گزارش و رتبه‌بندی فعالیت معلمان
-      </h1>
+    <div
+      className="min-h-screen bg-gradient-to-b from-gray-50 to-white"
+      dir="rtl"
+    >
+      <div className="container px-4 py-8 mx-auto max-w-7xl">
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 animate-fade-in">
+            گزارش و رتبه‌بندی فعالیت معلمان
+          </h1>
+          <p className="text-gray-500 max-w-3xl">
+            این بخش امکان مشاهده و ارزیابی فعالیت‌های آموزشی کادر معلمان را
+            فراهم می‌کند. می‌توانید گزارش‌های مختلف را در قالب نمودار، خلاصه و
+            جزئیات مشاهده کنید.
+          </p>
+        </header>
 
-      {/* Filters section */}
-      <div className="mb-8 bg-white p-4 rounded-lg shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="startDate">از تاریخ:</Label>
-            <DatePicker
-              id="startDate"
-              calendar={persian}
-              locale={persian_fa}
-              value={startDate}
-              onChange={(value) => handleDateChange("start", value)}
-              format="YYYY/MM/DD"
-              className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-              calendarPosition="bottom-right"
-              placeholder="تاریخ شروع"
-            />
-          </div>
-          <div>
-            <Label htmlFor="endDate">تا تاریخ:</Label>
-            <DatePicker
-              id="endDate"
-              calendar={persian}
-              locale={persian_fa}
-              value={endDate}
-              onChange={(value) => handleDateChange("end", value)}
-              format="YYYY/MM/DD"
-              className="w-full rounded-lg border border-gray-200 bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-              calendarPosition="bottom-right"
-              placeholder="تاریخ پایان"
-            />
-          </div>
-          <div>
-            <Label htmlFor="teacherSelect">انتخاب معلم:</Label>
-            <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-              <SelectTrigger id="teacherSelect">
-                <SelectValue placeholder="همه معلمان" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value=" ">همه معلمان</SelectItem>
-                {Object.entries(teachers).map(([code, name]) => (
-                  <SelectItem key={code} value={code}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Filters section */}
+        <div className="mb-8 bg-white rounded-xl shadow-md overflow-hidden transition-all hover:shadow-lg">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2 text-blue-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
+              فیلترها
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="startDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  از تاریخ:
+                </Label>
+                <DatePicker
+                  id="startDate"
+                  calendar={persian}
+                  locale={persian_fa}
+                  value={startDate}
+                  onChange={(value) => handleDateChange("start", value)}
+                  format="YYYY/MM/DD"
+                  className="w-full rounded-lg border border-gray-200 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm"
+                  calendarPosition="bottom-right"
+                  placeholder="تاریخ شروع"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="endDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  تا تاریخ:
+                </Label>
+                <DatePicker
+                  id="endDate"
+                  calendar={persian}
+                  locale={persian_fa}
+                  value={endDate}
+                  onChange={(value) => handleDateChange("end", value)}
+                  format="YYYY/MM/DD"
+                  className="w-full rounded-lg border border-gray-200 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm"
+                  calendarPosition="bottom-right"
+                  placeholder="تاریخ پایان"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="teacherSelect"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  انتخاب معلم:
+                </Label>
+                <Select
+                  value={selectedTeacher}
+                  onValueChange={setSelectedTeacher}
+                >
+                  <SelectTrigger
+                    id="teacherSelect"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 shadow-sm transition-all"
+                  >
+                    <SelectValue placeholder="همه معلمان" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    <SelectItem value=" ">همه معلمان</SelectItem>
+                    {Object.entries(teachers).map(([code, name]) => (
+                      <SelectItem key={code} value={code}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Tabs section */}
-      <Tabs
-        defaultValue="summary"
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="w-full"
-      >
-        <TabsList className="mb-6">
-          <TabsTrigger value="summary">خلاصه فعالیت‌ها</TabsTrigger>
-          <TabsTrigger value="ranking">رتبه‌بندی معلمان</TabsTrigger>
-          <TabsTrigger value="details">جزئیات فعالیت</TabsTrigger>
-          <TabsTrigger value="chart">نمودار فعالیت</TabsTrigger>
-        </TabsList>
+        {/* Tabs section */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+          <Tabs
+            defaultValue="summary"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <div className="border-b border-gray-200">
+              <TabsList className="flex justify-start px-4 py-0 bg-transparent">
+                <TabsTrigger
+                  value="summary"
+                  className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                  </svg>
+                  خلاصه فعالیت‌ها
+                </TabsTrigger>
+                <TabsTrigger
+                  value="ranking"
+                  className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                  </svg>
+                  رتبه‌بندی معلمان
+                </TabsTrigger>
+                <TabsTrigger
+                  value="details"
+                  className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  جزئیات فعالیت
+                </TabsTrigger>
+                <TabsTrigger
+                  value="chart"
+                  className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 13v-1m4 1v-3m4 3V8M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                    />
+                  </svg>
+                  نمودار فعالیت
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-        <TabsContent value="summary" className="w-full">
-          <TeacherSummary
-            activities={teacherActivities}
-            teachers={teachers}
-            loading={loading}
-          />
-        </TabsContent>
+            <div className="p-6">
+              <TabsContent
+                value="summary"
+                className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
+              >
+                <TeacherSummary
+                  activities={teacherActivities}
+                  teachers={teachers}
+                  loading={loading}
+                />
+              </TabsContent>
 
-        <TabsContent value="ranking" className="w-full">
-          <TeacherRanking
-            activities={teacherActivities}
-            teachers={teachers}
-            loading={loading}
-          />
-        </TabsContent>
+              <TabsContent
+                value="ranking"
+                className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
+              >
+                <TeacherRanking
+                  activities={teacherActivities}
+                  teachers={teachers}
+                  loading={loading}
+                />
+              </TabsContent>
 
-        <TabsContent value="details" className="w-full">
-          <TeacherDetailedActivity
-            teacherStats={teacherDetailedStats}
-            teachers={teachers}
-            loading={loading}
-            selectedTeacher={selectedTeacher}
-          />
-        </TabsContent>
+              <TabsContent
+                value="details"
+                className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
+              >
+                <TeacherDetailedActivity
+                  teacherStats={teacherDetailedStats}
+                  teachers={teachers}
+                  loading={loading}
+                  selectedTeacher={selectedTeacher}
+                />
+              </TabsContent>
 
-        <TabsContent value="chart" className="w-full">
-          <ActivityChart data={activityChartData} loading={loading} />
-        </TabsContent>
-      </Tabs>
+              <TabsContent
+                value="chart"
+                className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
+              >
+                <ActivityChart data={activityChartData} loading={loading} />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
 
-      {/* Print button */}
-      <div className="mt-8 flex justify-end">
-        <Button
-          variant="outline"
-          onClick={() => window.print()}
-          className="print:hidden"
-        >
-          چاپ گزارش
-        </Button>
+        {/* Print button */}
+        <div className="mt-6 flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="print:hidden flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg px-5 py-2 shadow-sm transition-all hover:shadow"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+            چاپ گزارش
+          </Button>
+        </div>
       </div>
     </div>
   );
