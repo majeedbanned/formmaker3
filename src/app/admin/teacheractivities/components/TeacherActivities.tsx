@@ -78,6 +78,7 @@ export type ActivityChartData = {
   assessments: number;
   comments: number;
   events: number;
+  teacherCode?: string;
 };
 
 const TeacherActivities: React.FC = () => {
@@ -111,6 +112,11 @@ const TeacherActivities: React.FC = () => {
   useEffect(() => {
     if (user && user.schoolCode && !authLoading) {
       setSchoolCode(user.schoolCode);
+
+      // If user is a teacher, set them as the selected teacher
+      if (user.userType === "teacher" && user.username) {
+        setSelectedTeacher(user.username);
+      }
     }
   }, [user, authLoading]);
 
@@ -195,6 +201,7 @@ const TeacherActivities: React.FC = () => {
                     assessments: 0,
                     comments: 0,
                     events: 0,
+                    teacherCode: teacher.teacherCode,
                   };
                 }
                 aggregatedData[date].total += count;
@@ -214,6 +221,7 @@ const TeacherActivities: React.FC = () => {
                         assessments: 0,
                         comments: 0,
                         events: 0,
+                        teacherCode: teacher.teacherCode,
                       };
                     }
 
@@ -317,6 +325,7 @@ const TeacherActivities: React.FC = () => {
               assessments: item.assessments,
               comments: item.comments,
               events: item.events,
+              teacherCode: data.teacherCode,
             })
           );
 
@@ -427,25 +436,31 @@ const TeacherActivities: React.FC = () => {
                 >
                   انتخاب معلم:
                 </Label>
-                <Select
-                  value={selectedTeacher}
-                  onValueChange={setSelectedTeacher}
-                >
-                  <SelectTrigger
-                    id="teacherSelect"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 shadow-sm transition-all"
+                {user?.userType === "teacher" ? (
+                  <div className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-gray-50 text-gray-700">
+                    {teachers[user.username] || user.username || "معلم جاری"}
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedTeacher}
+                    onValueChange={setSelectedTeacher}
                   >
-                    <SelectValue placeholder="همه معلمان" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    <SelectItem value=" ">همه معلمان</SelectItem>
-                    {Object.entries(teachers).map(([code, name]) => (
-                      <SelectItem key={code} value={code}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      id="teacherSelect"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 shadow-sm transition-all"
+                    >
+                      <SelectValue placeholder="همه معلمان" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-80">
+                      <SelectItem value=" ">همه معلمان</SelectItem>
+                      {Object.entries(teachers).map(([code, name]) => (
+                        <SelectItem key={code} value={code}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </div>
@@ -541,26 +556,28 @@ const TeacherActivities: React.FC = () => {
                   </svg>
                   نمودار فعالیت
                 </TabsTrigger>
-                <TabsTrigger
-                  value="comparative"
-                  className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                {user?.userType !== "teacher" && (
+                  <TabsTrigger
+                    value="comparative"
+                    className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                  تحلیل مقایسه‌ای
-                </TabsTrigger>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    تحلیل مقایسه‌ای
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="trends"
                   className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
@@ -590,7 +607,13 @@ const TeacherActivities: React.FC = () => {
                 className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
               >
                 <TeacherSummary
-                  activities={teacherActivities}
+                  activities={
+                    user?.userType === "teacher"
+                      ? teacherActivities.filter(
+                          (t) => t.teacherCode === user.username
+                        )
+                      : teacherActivities
+                  }
                   teachers={teachers}
                   loading={loading}
                 />
@@ -623,7 +646,16 @@ const TeacherActivities: React.FC = () => {
                 value="chart"
                 className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
               >
-                <ActivityChart data={activityChartData} loading={loading} />
+                <ActivityChart
+                  data={
+                    user?.userType === "teacher" && selectedTeacher
+                      ? activityChartData.filter(
+                          (d) => d.teacherCode === user.username
+                        )
+                      : activityChartData
+                  }
+                  loading={loading}
+                />
               </TabsContent>
 
               <TabsContent
@@ -642,8 +674,20 @@ const TeacherActivities: React.FC = () => {
                 className="w-full mt-0 focus-visible:outline-none focus-visible:ring-0"
               >
                 <ActivityTrends
-                  activities={teacherActivities}
-                  chartData={activityChartData}
+                  activities={
+                    user?.userType === "teacher"
+                      ? teacherActivities.filter(
+                          (t) => t.teacherCode === user.username
+                        )
+                      : teacherActivities
+                  }
+                  chartData={
+                    user?.userType === "teacher" && selectedTeacher
+                      ? activityChartData.filter(
+                          (d) => d.teacherCode === user.username
+                        )
+                      : activityChartData
+                  }
                   loading={loading}
                 />
               </TabsContent>
