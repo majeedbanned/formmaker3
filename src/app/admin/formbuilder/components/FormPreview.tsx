@@ -42,6 +42,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SignaturePad from "react-signature-canvas";
 import { Rating } from "react-simple-star-rating";
+import "../rtl.css"; // Import RTL styles
 
 // Extend the FormField type to include description
 interface FormField extends BaseFormField {
@@ -167,7 +168,7 @@ const SignatureField = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 text-right">
       <div
         className="border rounded-md overflow-hidden"
         style={{ width: width, maxWidth: "100%" }}
@@ -190,7 +191,7 @@ const SignatureField = ({
       </div>
 
       <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Pen className="h-4 w-4" />
+        <Pen className="h-4 w-4 ml-2" />
         {signatureExists
           ? "امضا ثبت شد."
           : "در کادر بالا با موس یا انگشت خود امضا کنید."}
@@ -261,18 +262,20 @@ const RatingField = ({
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Rating
-        onClick={(rating) => {
-          formField.onChange(rating);
-        }}
-        initialValue={defaultValue}
-        size={getSizeInPixels(size)}
-        transition
-        fillColor={color}
-        allowFraction={allowHalf}
-        SVGstyle={{ display: "inline-block" }}
-        className="dir-ltr"
-      />
+      <div className="dir-ltr w-full flex justify-end">
+        <Rating
+          onClick={(rating) => {
+            formField.onChange(rating);
+          }}
+          initialValue={defaultValue}
+          size={getSizeInPixels(size)}
+          transition
+          fillColor={color}
+          allowFraction={allowHalf}
+          SVGstyle={{ display: "inline-block" }}
+          className="rtl:flex-row-reverse"
+        />
+      </div>
       {showCount &&
         formField.value !== null &&
         formField.value !== undefined &&
@@ -1208,10 +1211,10 @@ export default function FormPreview({
 
                       {/* Show selected file or existing file */}
                       {formField.value && !uploadState?.uploading && (
-                        <div className="text-sm border rounded-md p-3 bg-gray-50 flex flex-col gap-2">
+                        <div className="text-sm border rounded-md p-3 bg-gray-50 flex flex-col gap-2 text-right">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                              <FileJson className="h-4 w-4 text-blue-500" />
+                              <FileJson className="h-4 w-4 text-blue-500 ml-2" />
                               <span>
                                 {formField.value instanceof File
                                   ? formField.value.name
@@ -1570,28 +1573,30 @@ export default function FormPreview({
     return (
       <div className="mb-6">
         <div className="flex justify-between items-center">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  index === currentStep
-                    ? "bg-primary text-primary-foreground"
-                    : index < currentStep
-                    ? "bg-primary/20 text-primary"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                {index + 1}
-              </div>
-              {index < steps.length - 1 && (
+          {steps
+            .map((step, index) => (
+              <div key={step.id} className="flex items-center">
                 <div
-                  className={`h-1 w-12 mx-2 ${
-                    index < currentStep ? "bg-primary" : "bg-gray-200"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    index === currentStep
+                      ? "bg-primary text-primary-foreground"
+                      : index < currentStep
+                      ? "bg-primary/20 text-primary"
+                      : "bg-gray-200 text-gray-500"
                   }`}
-                ></div>
-              )}
-            </div>
-          ))}
+                >
+                  {index + 1}
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`h-1 w-12 mx-2 ${
+                      index < currentStep ? "bg-primary" : "bg-gray-200"
+                    }`}
+                  ></div>
+                )}
+              </div>
+            ))
+            .reverse()}
         </div>
         <div className="mt-4 text-center">
           <h3 className="font-medium text-lg">{steps[currentStep].title}</h3>
@@ -1611,7 +1616,7 @@ export default function FormPreview({
   };
 
   return (
-    <Card className="bg-white shadow-md">
+    <Card className="bg-white shadow-md" dir="rtl">
       <CardHeader className="border-b">
         <div className="flex justify-between items-center">
           <Button variant="ghost" onClick={onBack}>
@@ -1676,7 +1681,7 @@ export default function FormPreview({
           <Form {...methods}>
             <form
               onSubmit={methods.handleSubmit(onSubmit)}
-              className="space-y-8"
+              className="space-y-8 rtl"
             >
               {isMultiStep && renderStepProgress()}
 
@@ -1698,7 +1703,7 @@ export default function FormPreview({
               <div className="flex justify-between">
                 {isMultiStep && currentStep > 0 && (
                   <Button type="button" onClick={handlePrevStep}>
-                    <ChevronRight className="h-4 w-4 ml-2" />
+                    <ChevronLeft className="h-4 w-4 ml-2" />
                     مرحله قبل
                   </Button>
                 )}
@@ -1713,7 +1718,7 @@ export default function FormPreview({
                   {isMultiStep && currentStep < steps.length - 1 ? (
                     <>
                       مرحله بعد
-                      <ChevronLeft className="h-4 w-4 mr-2" />
+                      <ChevronRight className="h-4 w-4 mr-2" />
                     </>
                   ) : isEditMode ? (
                     "به‌روزرسانی پاسخ‌ها"
