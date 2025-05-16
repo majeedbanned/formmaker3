@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import MonthlyGradeOverallReport from "./components/MonthlyGradeOverallReport";
+import { useAuth } from "@/hooks/useAuth";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -40,14 +41,27 @@ type ClassDocument = {
 
 export default function MonthlyGradeOverallPage() {
   const [classDocuments, setClassDocuments] = useState<ClassDocument[]>([]);
+  const [filteredClassDocuments, setFilteredClassDocuments] = useState<
+    ClassDocument[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, isLoading } = useAuth();
 
-  // Hardcoded value for now, could be from authentication context
-  const schoolCode = "2295566177";
+  // Get schoolCode from authenticated user
+  const schoolCode = user?.schoolCode;
 
   useEffect(() => {
     const fetchClassData = async () => {
+      if (isLoading) return; // Wait for auth to complete
+      if (!schoolCode) {
+        setError(
+          "No school code available. Please make sure you're logged in."
+        );
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -94,15 +108,51 @@ export default function MonthlyGradeOverallPage() {
     };
 
     fetchClassData();
-  }, [schoolCode]);
+  }, [schoolCode, isLoading]);
 
-  if (loading) {
+  // Filter classes based on user type
+  useEffect(() => {
+    if (!user || !classDocuments.length) return;
+
+    // For teacher users, filter to only show their classes
+    if (user.userType === "teacher" && user.username) {
+      const teacherClasses = classDocuments.filter((doc) =>
+        doc.data.teachers.some(
+          (teacher) => teacher.teacherCode === user.username
+        )
+      );
+      setFilteredClassDocuments(teacherClasses);
+    }
+    // For school users, show all classes
+    else if (user.userType === "school") {
+      setFilteredClassDocuments(classDocuments);
+    }
+    // Default - just in case
+    else {
+      setFilteredClassDocuments(classDocuments);
+    }
+  }, [user, classDocuments]);
+
+  if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p>در حال بارگذاری کلاس‌ها...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center m-4">
+        <h3 className="text-yellow-700 font-medium text-lg mb-2">
+          دسترسی نامعتبر
+        </h3>
+        <p className="text-yellow-600">
+          لطفا وارد حساب کاربری خود شوید تا بتوانید به این بخش دسترسی پیدا کنید.
+        </p>
       </div>
     );
   }
@@ -124,13 +174,17 @@ export default function MonthlyGradeOverallPage() {
     );
   }
 
-  if (classDocuments.length === 0) {
+  if (filteredClassDocuments.length === 0) {
     return (
       <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center m-4">
         <h3 className="text-yellow-700 font-medium text-lg mb-2">
           کلاسی یافت نشد
         </h3>
-        <p className="text-yellow-600">هیچ کلاسی برای این مدرسه یافت نشد.</p>
+        <p className="text-yellow-600">
+          {user.userType === "teacher"
+            ? "هیچ کلاسی برای شما یافت نشد."
+            : "هیچ کلاسی در مدرسه یافت نشد."}
+        </p>
       </div>
     );
   }
@@ -141,8 +195,8 @@ export default function MonthlyGradeOverallPage() {
         گزارش نمرات تمام دروس
       </h1>
       <MonthlyGradeOverallReport
-        schoolCode={schoolCode}
-        classDocuments={classDocuments}
+        schoolCode={schoolCode || ""}
+        classDocuments={filteredClassDocuments}
       />
     </div>
   );

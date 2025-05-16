@@ -160,7 +160,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "گزارش نمرات سالانه",
+          title: "+گزارش نمرات سالانه",
           url: "/admin/monthlygradeoverall",
           system: "importstudents",
           requiredPermission: "show",
