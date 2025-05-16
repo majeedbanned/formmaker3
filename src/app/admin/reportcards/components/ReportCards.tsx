@@ -266,6 +266,150 @@ const customStyles = `
   .checkbox-label {
     margin-right: 0.5rem;
   }
+  
+  .presence-container {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+  
+  .presence-title {
+    background-color: #f3f4f6;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #4b5563;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .presence-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    background-color: #e5e7eb;
+  }
+  
+  .presence-grid-cell {
+    padding: 0.5rem;
+    background-color: white;
+    text-align: center;
+  }
+  
+  .presence-header {
+    font-weight: 600;
+    background-color: #f9fafb;
+  }
+  
+  .presence-present {
+    color: #10b981;
+  }
+  
+  .presence-absent {
+    color: #ef4444;
+  }
+  
+  .presence-late {
+    color: #f59e0b;
+  }
+  
+  .presence-total {
+    color: #6b7280;
+  }
+  
+  .assessment-container {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+  
+  .assessment-title {
+    background-color: #f3f4f6;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #4b5563;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .assessment-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .assessment-header {
+    background-color: #f9fafb;
+    font-weight: 600;
+    text-align: right;
+    padding: 0.5rem 1rem;
+  }
+  
+  .assessment-cell {
+    padding: 0.5rem 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+  
+  .assessment-value {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .assessment-excellent {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: rgb(16, 185, 129);
+  }
+  
+  .assessment-good {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: rgb(59, 130, 246);
+  }
+  
+  .assessment-average {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
+  }
+  
+  .assessment-poor {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
+  }
+  
+  .assessment-very-poor {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: rgb(220, 38, 38);
+  }
+  
+  @media print {
+    .presence-container, .assessment-container {
+      page-break-inside: avoid;
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .presence-title, .assessment-title {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+    
+    .presence-grid-cell {
+      padding: 0.25rem;
+      font-size: 0.7rem;
+    }
+    
+    .assessment-header, .assessment-cell {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+    }
+    
+    .assessment-value {
+      padding: 0.1rem 0.25rem;
+      font-size: 0.7rem;
+    }
+  }
 `;
 
 // Define types
@@ -360,6 +504,15 @@ type StudentReportCard = {
       vahed: number;
       monthlyGrades: Record<string, number | null>;
       monthlyAssessments: Record<string, AssessmentEntry[]>;
+      monthlyPresence: Record<
+        string,
+        {
+          present: number;
+          absent: number;
+          late: number;
+          total: number;
+        }
+      >;
       yearAverage: number | null;
     }
   >;
@@ -410,6 +563,24 @@ function toPersianDigits(num: number | string) {
     .join("");
 }
 
+// Add a helper function to get assessment value class
+const getAssessmentValueClass = (value: string): string => {
+  switch (value) {
+    case "عالی":
+      return "assessment-excellent";
+    case "خوب":
+      return "assessment-good";
+    case "متوسط":
+      return "assessment-average";
+    case "ضعیف":
+      return "assessment-poor";
+    case "بسیار ضعیف":
+      return "assessment-very-poor";
+    default:
+      return "";
+  }
+};
+
 // Main ReportCards component
 const ReportCards = ({
   schoolCode,
@@ -442,6 +613,8 @@ const ReportCards = ({
   // Add new state for display options
   const [showProgress, setShowProgress] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
+  const [showPresence, setShowPresence] = useState(false);
+  const [showAssessments, setShowAssessments] = useState(false);
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -815,10 +988,11 @@ const ReportCards = ({
               vahed,
               monthlyGrades: {},
               monthlyAssessments: {}, // Add assessments tracking
+              monthlyPresence: {}, // Add presence tracking
               yearAverage: null,
             };
 
-            // Initialize monthly grades and assessments
+            // Initialize monthly grades, assessments, and presence
             for (let i = 1; i <= 12; i++) {
               const monthKey = i.toString();
               studentReports[student.studentCode].courses[
@@ -827,6 +1001,14 @@ const ReportCards = ({
               studentReports[student.studentCode].courses[
                 tc.courseCode
               ].monthlyAssessments[monthKey] = [];
+              studentReports[student.studentCode].courses[
+                tc.courseCode
+              ].monthlyPresence[monthKey] = {
+                present: 0,
+                absent: 0,
+                late: 0,
+                total: 0,
+              };
             }
 
             // Process cells for each month
@@ -877,6 +1059,22 @@ const ReportCards = ({
                     ].monthlyAssessments[monthKey],
                     ...cell.assessments,
                   ];
+                }
+
+                // Track presence status
+                if (cell.presenceStatus !== null) {
+                  const presence =
+                    studentReports[student.studentCode].courses[tc.courseCode]
+                      .monthlyPresence[monthKey];
+                  presence.total += 1;
+
+                  if (cell.presenceStatus === "present") {
+                    presence.present += 1;
+                  } else if (cell.presenceStatus === "absent") {
+                    presence.absent += 1;
+                  } else if (cell.presenceStatus === "late") {
+                    presence.late += 1;
+                  }
                 }
               } catch (err) {
                 console.error("Error processing cell date:", cell.date, err);
@@ -1512,6 +1710,117 @@ const ReportCards = ({
     return "↓";
   }, []);
 
+  // Combined compact presence and assessment info component
+  const CompactInfoDisplay = ({
+    presenceData,
+    assessmentData,
+    showPresence,
+    showAssessments,
+  }: {
+    presenceData: Record<
+      string,
+      { present: number; absent: number; late: number; total: number }
+    >;
+    assessmentData: Record<string, AssessmentEntry[]>;
+    showPresence: boolean;
+    showAssessments: boolean;
+  }) => {
+    // No data, return null
+    if (
+      (!showPresence && !showAssessments) ||
+      (showPresence &&
+        Object.values(presenceData).every((d) => d.total === 0) &&
+        showAssessments &&
+        Object.values(assessmentData).flatMap((a) => a).length === 0)
+    ) {
+      return null;
+    }
+
+    // Calculate presence totals across all months
+    const totals = Object.values(presenceData).reduce(
+      (acc, curr) => {
+        acc.present += curr.present;
+        acc.absent += curr.absent;
+        acc.late += curr.late;
+        acc.total += curr.total;
+        return acc;
+      },
+      { present: 0, absent: 0, late: 0, total: 0 }
+    );
+
+    // Group assessments by title and get most recent
+    const groupedAssessments: Record<string, AssessmentEntry> = {};
+    if (showAssessments) {
+      Object.values(assessmentData)
+        .flat()
+        .forEach((assessment) => {
+          // If we don't have this title yet, or this one is more recent
+          if (
+            !groupedAssessments[assessment.title] ||
+            new Date(assessment.date) >
+              new Date(groupedAssessments[assessment.title].date)
+          ) {
+            groupedAssessments[assessment.title] = assessment;
+          }
+        });
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {showPresence && totals.total > 0 && (
+          <div className="inline-flex items-center text-xs bg-gray-100 rounded p-1">
+            <span className="presence-present mr-1">
+              حاضر: {toPersianDigits(totals.present)}
+              {totals.total > 0
+                ? ` (${toPersianDigits(
+                    Math.round((totals.present / totals.total) * 100)
+                  )}٪)`
+                : ""}
+            </span>
+            <span className="text-gray-300 mx-1">|</span>
+            <span className="presence-absent mr-1">
+              غایب: {toPersianDigits(totals.absent)}
+              {totals.total > 0
+                ? ` (${toPersianDigits(
+                    Math.round((totals.absent / totals.total) * 100)
+                  )}٪)`
+                : ""}
+            </span>
+            <span className="text-gray-300 mx-1">|</span>
+            <span className="presence-late">
+              تأخیر: {toPersianDigits(totals.late)}
+              {totals.total > 0
+                ? ` (${toPersianDigits(
+                    Math.round((totals.late / totals.total) * 100)
+                  )}٪)`
+                : ""}
+            </span>
+          </div>
+        )}
+
+        {showAssessments && Object.keys(groupedAssessments).length > 0 && (
+          <div className="inline-flex flex-wrap gap-1 text-xs">
+            {Object.entries(groupedAssessments).map(([title, assessment]) => (
+              <div
+                key={title}
+                className="bg-gray-100 rounded p-1 flex items-center"
+              >
+                <span className="font-medium">{title}: </span>
+                <span
+                  className={`ml-1 assessment-value text-[0.65rem] ${getAssessmentValueClass(
+                    assessment.value
+                  )}`}
+                >
+                  {assessment.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
@@ -1595,6 +1904,30 @@ const ReportCards = ({
                   />
                   <Label htmlFor="show-ranking" className="checkbox-label">
                     نمایش رتبه
+                  </Label>
+                </div>
+                <div className="option-checkbox">
+                  <input
+                    type="checkbox"
+                    id="show-presence"
+                    checked={showPresence}
+                    onChange={(e) => setShowPresence(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <Label htmlFor="show-presence" className="checkbox-label">
+                    نمایش اطلاعات حضور و غیاب
+                  </Label>
+                </div>
+                <div className="option-checkbox">
+                  <input
+                    type="checkbox"
+                    id="show-assessments"
+                    checked={showAssessments}
+                    onChange={(e) => setShowAssessments(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <Label htmlFor="show-assessments" className="checkbox-label">
+                    نمایش جدول ارزیابی‌ها
                   </Label>
                 </div>
               </div>
@@ -1790,19 +2123,128 @@ const ReportCards = ({
                                   }
 
                                   return (
-                                    <TableRow
-                                      key={courseCode}
-                                      className="hover:bg-gray-50 transition-colors"
-                                    >
-                                      <TableCell className="font-medium subject-cell border-r whitespace-nowrap">
-                                        {courseData.courseName}
-                                      </TableCell>
-                                      <TableCell className="teacher-cell border-r whitespace-nowrap">
-                                        {courseData.teacherName}
-                                      </TableCell>
-                                      {/* Months 7-12 (First half of school year) */}
-                                      {[7, 8, 9, 10, 11, 12].map(
-                                        (month, index) => (
+                                    <React.Fragment key={courseCode}>
+                                      <TableRow className="hover:bg-gray-50 transition-colors">
+                                        <TableCell className="font-medium subject-cell border-r whitespace-nowrap">
+                                          {courseData.courseName}
+                                        </TableCell>
+                                        <TableCell className="teacher-cell border-r whitespace-nowrap">
+                                          {courseData.teacherName}
+                                        </TableCell>
+                                        {/* Months 7-12 (First half of school year) */}
+                                        {[7, 8, 9, 10, 11, 12].map(
+                                          (month, index) => (
+                                            <TableCell
+                                              key={`month-${month}`}
+                                              className={`text-center border-r px-2 py-3 ${getScoreColorClass(
+                                                courseData.monthlyGrades[
+                                                  month.toString()
+                                                ]
+                                              )}`}
+                                            >
+                                              {courseData.monthlyGrades[
+                                                month.toString()
+                                              ] !== null ? (
+                                                <div className="grade-container">
+                                                  <div className="grade-value">
+                                                    {toPersianDigits(
+                                                      courseData.monthlyGrades[
+                                                        month.toString()
+                                                      ]?.toFixed(2) || ""
+                                                    )}
+                                                  </div>
+
+                                                  {/* Progress percentage */}
+                                                  {showProgress &&
+                                                    index > 0 && (
+                                                      <div
+                                                        className={
+                                                          getProgressColorClass(
+                                                            calculateProgress(
+                                                              courseData
+                                                                .monthlyGrades[
+                                                                month.toString()
+                                                              ],
+                                                              courseData
+                                                                .monthlyGrades[
+                                                                (
+                                                                  month - 1
+                                                                ).toString()
+                                                              ] ||
+                                                                (month === 7
+                                                                  ? null
+                                                                  : courseData
+                                                                      .monthlyGrades[
+                                                                      "6"
+                                                                    ])
+                                                            )
+                                                          ) +
+                                                          " progress-indicator"
+                                                        }
+                                                      >
+                                                        {(() => {
+                                                          const prevMonth =
+                                                            month === 7
+                                                              ? 6
+                                                              : month - 1;
+                                                          const progress =
+                                                            calculateProgress(
+                                                              courseData
+                                                                .monthlyGrades[
+                                                                month.toString()
+                                                              ],
+                                                              courseData
+                                                                .monthlyGrades[
+                                                                prevMonth.toString()
+                                                              ]
+                                                            );
+
+                                                          if (progress === null)
+                                                            return null;
+
+                                                          return (
+                                                            <>
+                                                              {getProgressSymbol(
+                                                                progress
+                                                              )}{" "}
+                                                              {toPersianDigits(
+                                                                Math.abs(
+                                                                  progress
+                                                                ).toFixed(1)
+                                                              )}
+                                                              %
+                                                            </>
+                                                          );
+                                                        })()}
+                                                      </div>
+                                                    )}
+
+                                                  {/* Ranking */}
+                                                  {showRanking &&
+                                                    rankings[courseCode]?.[
+                                                      month.toString()
+                                                    ]?.[
+                                                      student.studentCode
+                                                    ] && (
+                                                      <div className="rank-indicator">
+                                                        رتبه:{" "}
+                                                        {toPersianDigits(
+                                                          rankings[courseCode][
+                                                            month.toString()
+                                                          ][student.studentCode]
+                                                        )}
+                                                      </div>
+                                                    )}
+                                                </div>
+                                              ) : (
+                                                "—"
+                                              )}
+                                            </TableCell>
+                                          )
+                                        )}
+
+                                        {/* Months 1-4 (Second half of school year) */}
+                                        {[1, 2, 3, 4].map((month) => (
                                           <TableCell
                                             key={`month-${month}`}
                                             className={`text-center border-r px-2 py-3 ${getScoreColorClass(
@@ -1824,7 +2266,7 @@ const ReportCards = ({
                                                 </div>
 
                                                 {/* Progress percentage */}
-                                                {showProgress && index > 0 && (
+                                                {showProgress && (
                                                   <div
                                                     className={
                                                       getProgressColorClass(
@@ -1833,26 +2275,25 @@ const ReportCards = ({
                                                             .monthlyGrades[
                                                             month.toString()
                                                           ],
-                                                          courseData
-                                                            .monthlyGrades[
-                                                            (
-                                                              month - 1
-                                                            ).toString()
-                                                          ] ||
-                                                            (month === 7
-                                                              ? null
-                                                              : courseData
-                                                                  .monthlyGrades[
-                                                                  "6"
-                                                                ])
+                                                          month === 1
+                                                            ? courseData
+                                                                .monthlyGrades[
+                                                                "12"
+                                                              ]
+                                                            : courseData
+                                                                .monthlyGrades[
+                                                                (
+                                                                  month - 1
+                                                                ).toString()
+                                                              ]
                                                         )
                                                       ) + " progress-indicator"
                                                     }
                                                   >
                                                     {(() => {
                                                       const prevMonth =
-                                                        month === 7
-                                                          ? 6
+                                                        month === 1
+                                                          ? 12
                                                           : month - 1;
                                                       const progress =
                                                         calculateProgress(
@@ -1905,141 +2346,59 @@ const ReportCards = ({
                                               "—"
                                             )}
                                           </TableCell>
-                                        )
-                                      )}
+                                        ))}
 
-                                      {/* Months 1-4 (Second half of school year) */}
-                                      {[1, 2, 3, 4].map((month) => (
+                                        {/* Year Average */}
                                         <TableCell
-                                          key={`month-${month}`}
-                                          className={`text-center border-r px-2 py-3 ${getScoreColorClass(
-                                            courseData.monthlyGrades[
-                                              month.toString()
-                                            ]
+                                          className={`font-bold text-center border-r px-3 py-3 ${getScoreColorClass(
+                                            courseData.yearAverage
                                           )}`}
                                         >
-                                          {courseData.monthlyGrades[
-                                            month.toString()
-                                          ] !== null ? (
-                                            <div className="grade-container">
-                                              <div className="grade-value">
-                                                {toPersianDigits(
-                                                  courseData.monthlyGrades[
-                                                    month.toString()
-                                                  ]?.toFixed(2) || ""
-                                                )}
-                                              </div>
-
-                                              {/* Progress percentage */}
-                                              {showProgress && (
-                                                <div
-                                                  className={
-                                                    getProgressColorClass(
-                                                      calculateProgress(
-                                                        courseData
-                                                          .monthlyGrades[
-                                                          month.toString()
-                                                        ],
-                                                        month === 1
-                                                          ? courseData
-                                                              .monthlyGrades[
-                                                              "12"
-                                                            ]
-                                                          : courseData
-                                                              .monthlyGrades[
-                                                              (
-                                                                month - 1
-                                                              ).toString()
-                                                            ]
-                                                      )
-                                                    ) + " progress-indicator"
-                                                  }
-                                                >
-                                                  {(() => {
-                                                    const prevMonth =
-                                                      month === 1
-                                                        ? 12
-                                                        : month - 1;
-                                                    const progress =
-                                                      calculateProgress(
-                                                        courseData
-                                                          .monthlyGrades[
-                                                          month.toString()
-                                                        ],
-                                                        courseData
-                                                          .monthlyGrades[
-                                                          prevMonth.toString()
-                                                        ]
-                                                      );
-
-                                                    if (progress === null)
-                                                      return null;
-
-                                                    return (
-                                                      <>
-                                                        {getProgressSymbol(
-                                                          progress
-                                                        )}{" "}
-                                                        {toPersianDigits(
-                                                          Math.abs(
-                                                            progress
-                                                          ).toFixed(1)
-                                                        )}
-                                                        %
-                                                      </>
-                                                    );
-                                                  })()}
+                                          <div className="grade-container">
+                                            <div className="grade-value">
+                                              {courseData.yearAverage !== null
+                                                ? toPersianDigits(
+                                                    courseData.yearAverage.toFixed(
+                                                      2
+                                                    )
+                                                  )
+                                                : "—"}
+                                            </div>
+                                            {/* Show ranking for yearly course average */}
+                                            {showRanking &&
+                                              courseRanking !== null && (
+                                                <div className="rank-indicator">
+                                                  رتبه:{" "}
+                                                  {toPersianDigits(
+                                                    courseRanking
+                                                  )}
                                                 </div>
                                               )}
-
-                                              {/* Ranking */}
-                                              {showRanking &&
-                                                rankings[courseCode]?.[
-                                                  month.toString()
-                                                ]?.[student.studentCode] && (
-                                                  <div className="rank-indicator">
-                                                    رتبه:{" "}
-                                                    {toPersianDigits(
-                                                      rankings[courseCode][
-                                                        month.toString()
-                                                      ][student.studentCode]
-                                                    )}
-                                                  </div>
-                                                )}
-                                            </div>
-                                          ) : (
-                                            "—"
-                                          )}
-                                        </TableCell>
-                                      ))}
-
-                                      {/* Year Average */}
-                                      <TableCell
-                                        className={`font-bold text-center border-r px-3 py-3 ${getScoreColorClass(
-                                          courseData.yearAverage
-                                        )}`}
-                                      >
-                                        <div className="grade-container">
-                                          <div className="grade-value">
-                                            {courseData.yearAverage !== null
-                                              ? toPersianDigits(
-                                                  courseData.yearAverage.toFixed(
-                                                    2
-                                                  )
-                                                )
-                                              : "—"}
                                           </div>
-                                          {/* Show ranking for yearly course average */}
-                                          {showRanking &&
-                                            courseRanking !== null && (
-                                              <div className="rank-indicator">
-                                                رتبه:{" "}
-                                                {toPersianDigits(courseRanking)}
-                                              </div>
-                                            )}
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
+                                        </TableCell>
+                                      </TableRow>
+
+                                      {/* Add the compact info display row if needed */}
+                                      {(showPresence || showAssessments) && (
+                                        <TableRow className="border-b">
+                                          <TableCell
+                                            colSpan={14}
+                                            className="px-2 py-0.5 border-r"
+                                          >
+                                            <CompactInfoDisplay
+                                              presenceData={
+                                                courseData.monthlyPresence
+                                              }
+                                              assessmentData={
+                                                courseData.monthlyAssessments
+                                              }
+                                              showPresence={showPresence}
+                                              showAssessments={showAssessments}
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                    </React.Fragment>
                                   );
                                 }
                               )}
@@ -2306,8 +2665,9 @@ const ReportCards = ({
                   })()}
                 </div>
               ) : (
-                <div className="text-center p-8 text-gray-500">
-                  اطلاعات کارنامه برای این کلاس در دسترس نیست.
+                <div className="text-center p-8 text-gray-500 bg-white rounded-md shadow-sm border border-gray-200">
+                  لطفاً کلاس و سال تحصیلی را انتخاب کنید تا کارنامه نمایش داده
+                  شود.
                 </div>
               )}
             </CardContent>
