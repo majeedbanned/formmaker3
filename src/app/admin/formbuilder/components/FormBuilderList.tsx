@@ -81,6 +81,10 @@ interface ClassData {
     classCode: string;
     Grade?: string;
     major?: string;
+    teachers?: Array<{
+      teacherCode: string;
+      courseCode?: string;
+    }>;
   };
 }
 
@@ -240,7 +244,20 @@ export default function FormBuilderList({
       if (!response.ok) throw new Error("Failed to fetch classes and teachers");
 
       const data = await response.json();
-      setClasses(data.classes || []);
+
+      // For teacher users, filter classes to only show their classes
+      if (user?.userType === "teacher" && user?.username) {
+        const teacherClasses = data.classes.filter((cls: ClassData) =>
+          cls.data.teachers?.some(
+            (teacher) => teacher.teacherCode === user.username
+          )
+        );
+        setClasses(teacherClasses || []);
+      } else {
+        // For admin/school users, show all classes
+        setClasses(data.classes || []);
+      }
+
       setTeachers(data.teachers || []);
     } catch (error) {
       console.error("Error fetching classes and teachers:", error);

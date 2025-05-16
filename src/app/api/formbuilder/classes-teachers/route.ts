@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
         "data.className": 1,
         "data.classCode": 1,
         "data.Grade": 1,
-        "data.major": 1
+        "data.major": 1,
+        "data.teachers": 1
       })
       .toArray();
     
