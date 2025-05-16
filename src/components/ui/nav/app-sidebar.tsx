@@ -171,6 +171,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "گزارش فعالیت معلمان",
+          url: "/admin/teacheractivities",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: "گزارش حضور و غیاب",

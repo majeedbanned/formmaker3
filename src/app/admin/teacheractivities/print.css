@@ -1,0 +1,113 @@
+@media print {
+  /* General print settings */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 12px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide elements not needed in print */
+  .print:hidden,
+  button,
+  .select,
+  nav,
+  footer,
+  header,
+  .tab-selector {
+    display: none !important;
+  }
+
+  /* Make all tabs visible for printing */
+  [role="tabpanel"] {
+    display: block !important;
+    visibility: visible !important;
+    margin-bottom: 30px !important;
+    page-break-after: always !important;
+  }
+
+  /* Card styling for print */
+  .card {
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Make sure color backgrounds print */
+  .bg-blue-50, .bg-green-50, .bg-amber-50, .bg-purple-50, 
+  .bg-red-50, .bg-gray-50, .bg-indigo-50, .bg-pink-50 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Card grid layout for print */
+  .grid-cols-1,
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Table styling for print */
+  table {
+    width: 100% !important;
+    font-size: 10px !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    padding: 4px !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Chart containers for print */
+  .h-\[400px\] {
+    height: 300px !important;
+  }
+
+  /* Add page title when printing */
+  .container::before {
+    content: "گزارش فعالیت معلمان";
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+
+  /* Badge styling for print */
+  .badge {
+    border: 1px solid #ddd !important;
+    background-color: #f9fafb !important;
+    color: #000 !important;
+    padding: 2px 4px !important;
+    font-size: 8px !important;
+  }
+
+  /* Make sure RTL layout is preserved */
+  [dir="rtl"] {
+    direction: rtl !important;
+    text-align: right !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+  }
+
+  .avoid-break {
+    break-inside: avoid !important;
+  }
+} 
