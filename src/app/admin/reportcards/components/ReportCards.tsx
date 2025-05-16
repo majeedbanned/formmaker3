@@ -617,6 +617,8 @@ const ReportCards = ({
   const [showAssessments, setShowAssessments] = useState(false);
   // Add a new state for showing overall statistics
   const [showOverallStats, setShowOverallStats] = useState(false);
+  // Add a new state variable for selected student
+  const [selectedStudent, setSelectedStudent] = useState<string>("all");
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -2242,6 +2244,33 @@ const ReportCards = ({
     return "bg-red-500";
   };
 
+  // Add a function to get student options
+  const getStudentOptions = () => {
+    if (!selectedClass) return [];
+
+    const classData = classDocuments.find(
+      (doc) => doc.data.classCode === selectedClass
+    )?.data;
+
+    if (!classData) return [];
+
+    // Create options for dropdown with "all" as first option
+    const options = [
+      { value: "all", label: "همه دانش‌آموزان" },
+      ...classData.students.map((student) => ({
+        value: student.studentCode,
+        label: `${student.studentName} ${student.studentlname}`,
+      })),
+    ];
+
+    return options;
+  };
+
+  // Update useEffect to reset selected student when class changes
+  useEffect(() => {
+    setSelectedStudent("all");
+  }, [selectedClass]);
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
@@ -2277,6 +2306,36 @@ const ReportCards = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Add student selection dropdown that only appears when a class is selected */}
+              {selectedClass && (
+                <div>
+                  <Label
+                    htmlFor="student-select"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    دانش‌آموز
+                  </Label>
+                  <Select
+                    value={selectedStudent}
+                    onValueChange={setSelectedStudent}
+                  >
+                    <SelectTrigger
+                      id="student-select"
+                      className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <SelectValue placeholder="انتخاب دانش‌آموز" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStudentOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div>
                 <Label
@@ -2414,7 +2473,15 @@ const ReportCards = ({
                     // Calculate rankings once
                     const rankings = showRanking ? calculateRankings() : {};
 
-                    return studentReportCards.map((student) => (
+                    // Filter students based on selection
+                    const filteredStudents =
+                      selectedStudent === "all"
+                        ? studentReportCards
+                        : studentReportCards.filter(
+                            (student) => student.studentCode === selectedStudent
+                          );
+
+                    return filteredStudents.map((student) => (
                       <div
                         key={student.studentCode}
                         className="mb-8 p-2 border border-gray-200 rounded-md report-card-wrapper bg-white"
