@@ -254,6 +254,22 @@ const PresenceReport = ({
       flex-direction: row-reverse;
     }
     
+    /* Chart specific styles */
+    .chart-wrapper {
+      position: relative;
+      height: 20rem; /* 320px */
+      margin-top: 1.5rem;
+    }
+    
+    .chart-bar {
+      transition: all 0.3s ease;
+    }
+    
+    .chart-bar:hover {
+      opacity: 0.9;
+      transform: translateY(-3px);
+    }
+    
     @media print {
       .print-hidden {
         display: none !important;
@@ -339,7 +355,7 @@ const PresenceReport = ({
       .text-3xl {
         font-size: 18px !important;
       }
-
+ 
       /* Add page break controls */
       .page-break-before {
         page-break-before: always;
@@ -384,6 +400,19 @@ const PresenceReport = ({
       .table-container {
         page-break-inside: avoid;
       }
+      
+      /* Chart print optimizations */
+      .chart-wrapper {
+        height: 15rem !important; /* Smaller chart for print */
+      }
+      
+      .chart-bar-label {
+        font-size: 8px !important;
+      }
+      
+      .transform.-rotate-45 {
+        font-size: 7px !important;
+      }
     }
   `;
 
@@ -404,6 +433,11 @@ const PresenceReport = ({
     Record<string, { courseName: string }>
   >({});
   const [activeTab, setActiveTab] = useState("today");
+  const [dailyAbsenceData, setDailyAbsenceData] = useState<{
+    dates: string[];
+    counts: number[];
+    persianDates: string[];
+  }>({ dates: [], counts: [], persianDates: [] });
 
   // Fetch teachers and courses info
   useEffect(() => {
@@ -708,6 +742,9 @@ const PresenceReport = ({
       );
 
       setCourseStats(sortedCourseStats);
+
+      // Process daily absence data
+      processAbsenceByDay(records);
     } catch (error) {
       console.error("Error fetching presence data:", error);
     } finally {
@@ -747,6 +784,33 @@ const PresenceReport = ({
       }
     }
   };
+
+  // Process daily absence data
+  const processAbsenceByDay = (records: PresenceRecord[]) => {
+    // Group absences by date
+    const dateCountMap = new Map<string, number>();
+
+    for (const record of records) {
+      if (record.presenceStatus === "absent") {
+        const date = record.date.split("T")[0]; // Get just the date part
+        dateCountMap.set(date, (dateCountMap.get(date) || 0) + 1);
+      }
+    }
+
+    // Sort dates
+    const sortedDates = Array.from(dateCountMap.keys()).sort();
+
+    // Get counts and format Persian dates
+    const counts = sortedDates.map((date) => dateCountMap.get(date) || 0);
+    const persianDates = sortedDates.map((date) => formatDate(date));
+
+    setDailyAbsenceData({
+      dates: sortedDates,
+      counts,
+      persianDates,
+    });
+  };
+
   //dir="rtl" lang="fa"
   return (
     <div className="space-y-6">
@@ -861,12 +925,13 @@ const PresenceReport = ({
           dir="rtl"
         >
           <TabsList
-            className="grid grid-cols-3 w-full md:w-[600px] mx-auto rtl"
+            className="grid grid-cols-4 w-full md:w-[800px] mx-auto rtl"
             dir="rtl"
           >
             <TabsTrigger value="today">گزارش امروز</TabsTrigger>
             <TabsTrigger value="students">آمار دانش‌آموزان</TabsTrigger>
             <TabsTrigger value="courses">آمار دروس</TabsTrigger>
+            <TabsTrigger value="chart">نمودار غیبت روزانه</TabsTrigger>
           </TabsList>
 
           {/* Today's Report */}
@@ -1395,6 +1460,158 @@ const PresenceReport = ({
                 ) : (
                   <div className="text-center p-6 text-gray-500 empty-message">
                     داده‌ای برای نمایش وجود ندارد.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Chart Statistics */}
+          <TabsContent value="chart" className="space-y-6 tabs-content-wrapper">
+            <Card className="no-page-break">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl text-gray-800">
+                  نمودار غیبت‌های روزانه در مدرسه
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {dailyAbsenceData.dates.length > 0 ? (
+                  <>
+                    <div className="relative mt-6 h-80">
+                      {/* Date labels on X axis */}
+                      <div className="flex justify-between mx-2 pt-2 border-t border-gray-200">
+                        {dailyAbsenceData.persianDates.map((date, index) => (
+                          <div
+                            key={`date-${index}`}
+                            className="text-xs text-gray-500 transform -rotate-45 origin-top-left"
+                          >
+                            {date}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Y axis labels */}
+                      <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 pb-8">
+                        {Array.from({ length: 6 }, (_, i) => {
+                          const max = Math.max(...dailyAbsenceData.counts);
+                          const value = Math.round((max / 5) * (5 - i));
+                          return (
+                            <div
+                              key={`y-${i}`}
+                              className="transform -translate-x-2"
+                            >
+                              {toPersianDigits(value)}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Chart content */}
+                      <div className="absolute left-6 right-0 bottom-8 top-0 flex items-end">
+                        {dailyAbsenceData.counts.map((count, index) => {
+                          const maxCount = Math.max(...dailyAbsenceData.counts);
+                          const height =
+                            maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                          return (
+                            <div
+                              key={`bar-${index}`}
+                              className="flex-1 mx-1 flex flex-col items-center"
+                            >
+                              {/* Bar */}
+                              <div
+                                className="w-full bg-gradient-to-t from-red-500 to-red-300 rounded-t"
+                                style={{ height: `${height}%` }}
+                                title={`${
+                                  dailyAbsenceData.persianDates[index]
+                                }: ${toPersianDigits(count)} غیبت`}
+                              />
+
+                              {/* Count on top of bar */}
+                              <div className="text-xs font-semibold text-red-700 mt-1 mb-1">
+                                {toPersianDigits(count)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="text-center mt-16 text-sm text-gray-600">
+                      نمودار تعداد غیبت‌های روزانه در مدرسه بر اساس تاریخ
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-6 text-gray-500 empty-message">
+                    داده‌ای برای نمایش نمودار وجود ندارد.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Additional charts could be added here */}
+            <Card className="no-page-break">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl text-gray-800">
+                  آمار و تحلیل روزانه
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {dailyAbsenceData.dates.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print-grid-cols-3">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 stat-card summary-card">
+                      <div className="text-red-800 text-sm font-medium mb-1">
+                        روز با بیشترین غیبت
+                      </div>
+                      <div className="text-xl font-bold text-red-700">
+                        {(() => {
+                          const maxIndex = dailyAbsenceData.counts.indexOf(
+                            Math.max(...dailyAbsenceData.counts)
+                          );
+                          return maxIndex >= 0
+                            ? dailyAbsenceData.persianDates[maxIndex]
+                            : "-";
+                        })()}
+                      </div>
+                      <div className="text-sm text-red-600 mt-1">
+                        {toPersianDigits(Math.max(...dailyAbsenceData.counts))}{" "}
+                        غیبت
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 stat-card summary-card">
+                      <div className="text-blue-800 text-sm font-medium mb-1">
+                        میانگین غیبت روزانه
+                      </div>
+                      <div className="text-xl font-bold text-blue-700">
+                        {toPersianDigits(
+                          Math.round(
+                            dailyAbsenceData.counts.reduce(
+                              (sum, count) => sum + count,
+                              0
+                            ) / (dailyAbsenceData.counts.length || 1)
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 stat-card summary-card">
+                      <div className="text-green-800 text-sm font-medium mb-1">
+                        کل غیبت‌ها
+                      </div>
+                      <div className="text-xl font-bold text-green-700">
+                        {toPersianDigits(
+                          dailyAbsenceData.counts.reduce(
+                            (sum, count) => sum + count,
+                            0
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 text-gray-500 empty-message">
+                    داده‌ای برای نمایش آمار وجود ندارد.
                   </div>
                 )}
               </CardContent>
