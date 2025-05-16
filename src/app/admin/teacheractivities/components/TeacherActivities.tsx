@@ -8,8 +8,6 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import type { Value } from "react-multi-date-picker";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -18,61 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import TeacherSummary from "./TeacherSummary";
 import TeacherRanking from "./TeacherRanking";
 import TeacherDetailedActivity from "./TeacherDetailedActivity";
 import ActivityChart from "./ActivityChart";
 import "../print.css";
 import { useAuth } from "@/hooks/useAuth";
-
-// Helper function: Convert numbers to Persian digits
-function toPersianDigits(num: number | string) {
-  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-  return String(num)
-    .split("")
-    .map((digit) => persianDigits[parseInt(digit, 10)] || digit)
-    .join("");
-}
-
-// Helper function: Convert Gregorian to Jalali
-function gregorian_to_jalali(gy: number, gm: number, gd: number) {
-  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-  let jy = gy <= 1600 ? 0 : 979;
-  gy = gy <= 1600 ? gy - 621 : gy - 1600;
-  const gy2 = gm > 2 ? gy + 1 : gy;
-  let days =
-    365 * gy +
-    Math.floor((gy2 + 3) / 4) -
-    Math.floor((gy2 + 99) / 100) +
-    Math.floor((gy2 + 399) / 400) -
-    80 +
-    gd +
-    g_d_m[gm - 1];
-  jy += 33 * Math.floor(days / 12053);
-  days %= 12053;
-  jy += 4 * Math.floor(days / 1461);
-  days %= 1461;
-  jy += Math.floor((days - 1) / 365);
-  if (days > 0) days = (days - 1) % 365;
-  const jm =
-    days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
-  const jd = days < 186 ? (days % 31) + 1 : ((days - 186) % 30) + 1;
-  return [jy, jm, jd];
-}
-
-// Helper function: Format Jalali date
-function formatJalaliDate(date: Date) {
-  const gy = date.getFullYear();
-  const gm = date.getMonth() + 1;
-  const gd = date.getDate();
-  const [jy, jm, jd] = gregorian_to_jalali(gy, gm, gd);
-  const jYear = toPersianDigits(jy);
-  const jMonth = toPersianDigits(jm.toString().padStart(2, "0"));
-  const jDay = toPersianDigits(jd.toString().padStart(2, "0"));
-  return `${jYear}/${jMonth}/${jDay}`;
-}
 
 // Types
 export type TeacherActivity = {
@@ -350,7 +299,15 @@ const TeacherActivities: React.FC = () => {
         // Create chart data for selected teacher
         if (data.activity && data.activity.length > 0) {
           const chartData: ActivityChartData[] = data.activity.map(
-            (item: any) => ({
+            (item: {
+              date: string;
+              total: number;
+              grades: number;
+              presenceRecords: number;
+              assessments: number;
+              comments: number;
+              events: number;
+            }) => ({
               date: item.date,
               total: item.total,
               grades: item.grades,

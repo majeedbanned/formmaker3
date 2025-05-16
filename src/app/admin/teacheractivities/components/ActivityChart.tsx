@@ -74,7 +74,7 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data, loading }) => {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" dir="rtl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
@@ -102,7 +102,7 @@ const ActivityChart: React.FC<ActivityChartProps> = ({ data, loading }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* Summary Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">

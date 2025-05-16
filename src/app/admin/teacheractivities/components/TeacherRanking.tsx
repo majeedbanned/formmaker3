@@ -138,7 +138,7 @@ const TeacherRanking: React.FC<TeacherRankingProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" dir="rtl">
         <Card>
           <CardHeader>
             <Skeleton className="h-8 w-1/2" />
@@ -164,7 +164,7 @@ const TeacherRanking: React.FC<TeacherRankingProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <Card>
         <CardHeader>
           <CardTitle>رتبه‌بندی معلمان بر اساس فعالیت</CardTitle>

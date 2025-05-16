@@ -25,7 +25,7 @@ const TeacherDetailedActivity: React.FC<TeacherDetailedActivityProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" dir="rtl">
         <Skeleton className="h-12 w-1/2 mb-4" />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -58,7 +58,7 @@ const TeacherDetailedActivity: React.FC<TeacherDetailedActivityProps> = ({
   // No teacher selected message
   if (!selectedTeacher) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12" dir="rtl">
         <h3 className="text-xl font-medium mb-2">لطفاً یک معلم انتخاب کنید</h3>
         <p className="text-gray-500">
           برای مشاهده جزئیات فعالیت، یک معلم را از منوی بالا انتخاب کنید
@@ -70,7 +70,7 @@ const TeacherDetailedActivity: React.FC<TeacherDetailedActivityProps> = ({
   // No data message
   if (!teacherStats) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12" dir="rtl">
         <h3 className="text-xl font-medium mb-2">اطلاعاتی یافت نشد</h3>
         <p className="text-gray-500">
           هیچ داده‌ای برای معلم انتخاب شده در بازه زمانی مشخص شده وجود ندارد
@@ -147,7 +147,7 @@ const TeacherDetailedActivity: React.FC<TeacherDetailedActivityProps> = ({
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <h2 className="text-2xl font-bold mb-6">
         جزئیات فعالیت{" "}
         {teachers[teacherStats.teacherCode] || teacherStats.teacherCode}
