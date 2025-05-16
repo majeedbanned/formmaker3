@@ -2430,6 +2430,19 @@ const ReportCards = ({
     return position !== -1 ? position + 1 : null;
   };
 
+  // Update useEffect to set all display options to checked for students
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user?.userType === "student") {
+      setShowProgress(true);
+      setShowRanking(true);
+      setShowPresence(true);
+      setShowAssessments(true);
+      setShowOverallStats(true);
+    }
+  }, [user, authLoading]);
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
@@ -2523,70 +2536,227 @@ const ReportCards = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              <div className="flex flex-col space-y-2 pt-6">
-                <div className="option-checkbox">
-                  <input
-                    type="checkbox"
-                    id="show-progress"
-                    checked={showProgress}
-                    onChange={(e) => setShowProgress(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="show-progress" className="checkbox-label">
-                    نمایش درصد پیشرفت
-                  </Label>
+            {/* Enhanced horizontal checkboxes */}
+            <div className="mt-6">
+              <Label className="block text-sm font-medium text-gray-700 mb-3">
+                گزینه‌های نمایش
+              </Label>
+              <div className="flex flex-wrap gap-3 items-center">
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    showProgress
+                      ? "bg-blue-50 border-blue-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setShowProgress(!showProgress)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        showProgress
+                          ? "bg-blue-500 border-blue-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {showProgress && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        showProgress
+                          ? "text-blue-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      درصد پیشرفت
+                    </span>
+                  </div>
                 </div>
-                <div className="option-checkbox">
-                  <input
-                    type="checkbox"
-                    id="show-ranking"
-                    checked={showRanking}
-                    onChange={(e) => setShowRanking(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="show-ranking" className="checkbox-label">
-                    نمایش رتبه
-                  </Label>
+
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    showRanking
+                      ? "bg-purple-50 border-purple-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setShowRanking(!showRanking)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        showRanking
+                          ? "bg-purple-500 border-purple-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {showRanking && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        showRanking
+                          ? "text-purple-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      نمایش رتبه
+                    </span>
+                  </div>
                 </div>
-                <div className="option-checkbox">
-                  <input
-                    type="checkbox"
-                    id="show-presence"
-                    checked={showPresence}
-                    onChange={(e) => setShowPresence(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="show-presence" className="checkbox-label">
-                    نمایش اطلاعات حضور و غیاب
-                  </Label>
+
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    showPresence
+                      ? "bg-green-50 border-green-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setShowPresence(!showPresence)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        showPresence
+                          ? "bg-green-500 border-green-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {showPresence && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        showPresence
+                          ? "text-green-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      حضور و غیاب
+                    </span>
+                  </div>
                 </div>
-                <div className="option-checkbox">
-                  <input
-                    type="checkbox"
-                    id="show-assessments"
-                    checked={showAssessments}
-                    onChange={(e) => setShowAssessments(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="show-assessments" className="checkbox-label">
-                    نمایش جدول ارزیابی‌ها
-                  </Label>
+
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    showAssessments
+                      ? "bg-amber-50 border-amber-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setShowAssessments(!showAssessments)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        showAssessments
+                          ? "bg-amber-500 border-amber-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {showAssessments && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        showAssessments
+                          ? "text-amber-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      جدول ارزیابی‌ها
+                    </span>
+                  </div>
                 </div>
-                <div className="option-checkbox">
-                  <input
-                    type="checkbox"
-                    id="show-overall-stats"
-                    checked={showOverallStats}
-                    onChange={(e) => setShowOverallStats(e.target.checked)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label
-                    htmlFor="show-overall-stats"
-                    className="checkbox-label"
-                  >
-                    نمایش آمار کلی
-                  </Label>
+
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    showOverallStats
+                      ? "bg-indigo-50 border-indigo-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setShowOverallStats(!showOverallStats)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        showOverallStats
+                          ? "bg-indigo-500 border-indigo-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {showOverallStats && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        showOverallStats
+                          ? "text-indigo-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      آمار کلی
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
