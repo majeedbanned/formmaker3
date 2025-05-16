@@ -185,15 +185,15 @@ const data = {
           requiredPermission: "show",
         },
 
-        {
-          title: "فرم ها",
-          url: "/admin/forms",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
+        // {
+        //   title: "فرم ها",
+        //   url: "/admin/forms",
+        //   system: "importstudents",
+        //   requiredPermission: "show",
+        // },
 
         {
-          title: "ساخت فرم ها",
+          title: "+ساخت فرم ها",
           url: "/admin/formbuilder",
           system: "importstudents",
           requiredPermission: "show",
