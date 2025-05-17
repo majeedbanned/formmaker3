@@ -129,20 +129,15 @@ const data = {
         },
       ],
     },
+
     {
-      title: "امکانات",
+      title: "آزمون ها",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "*دفتر کلاسی",
-          url: "/admin/classsheet",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
-        {
-          title: "امتحانات",
+          title: "تعریف آزمون[آنلاین/حضوری]",
           url: "/admin/exam",
           system: "importstudents",
           requiredPermission: "show",
@@ -153,6 +148,33 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "بانک سوالات آنلاین",
+          url: "/admin/questionbank",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "بانک سوالات من",
+          url: "/admin/myquestionbank",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+      ],
+    },
+    {
+      title: "آزمون ها",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: "*دفتر کلاسی",
+          url: "/admin/classsheet",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+
         {
           title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
@@ -193,7 +215,7 @@ const data = {
         // },
 
         {
-          title: "+ساخت فرم ها",
+          title: "*ساخت فرم ها",
           url: "/admin/formbuilder",
           system: "importstudents",
           requiredPermission: "show",
@@ -219,18 +241,6 @@ const data = {
           requiredPermission: "show",
         },
 
-        {
-          title: "بانک سوالات",
-          url: "/admin/questionbank",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
-        {
-          title: "بانک سوالات من",
-          url: "/admin/myquestionbank",
-          system: "importstudents",
-          requiredPermission: "show",
-        },
         {
           title: "گروه ها",
           url: "/admin/studentsgroups",

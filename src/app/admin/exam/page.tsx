@@ -74,11 +74,15 @@ function StudentsPageContent() {
       isShowInList: true,
       isSearchable: true,
       required: true,
-      enabled: true,
+      enabled: false,
       visible: true,
-      readonly: false,
+      populateID: {
+        collection: "exam",
+        field: "data.examCode",
+      },
+      readonly: true,
       listLabelColor: "#2563eb",
-      defaultValue: "",
+      //  defaultValue: "",
       validation: {
         requiredMessage: "کد امتحان الزامی است",
       },
@@ -617,7 +621,7 @@ function StudentsPageContent() {
       defaultValue: user?.schoolCode,
       readonly: true,
       required: true,
-      groupUniqueness: true,
+      // groupUniqueness: true,
       enabled: true,
       visible: false,
 
