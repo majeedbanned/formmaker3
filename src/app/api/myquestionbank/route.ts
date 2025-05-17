@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const cat4 = searchParams.get('cat4');
     const difficulty = searchParams.get('difficulty');
     const type = searchParams.get('type');
+    const username = searchParams.get('username'); // Get the current user's username
     
     // Build query filter - omit empty filters for better performance
     const filter: Record<string, unknown> = {};
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
     if (cat4 && cat4.trim() !== '') filter.cat4 = cat4;
     if (difficulty && difficulty.trim() !== '') filter.difficulty = difficulty;
     if (type && type.trim() !== '') filter.type = type;
+    
+    // Filter by username if provided
+    if (username && username.trim() !== '') {
+      filter.createdBy = username;
+    }
 
     const domain = request.headers.get("x-domain") || "localhost:3000";
 

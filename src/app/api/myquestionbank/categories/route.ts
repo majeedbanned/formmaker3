@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     // If grade filter is provided, filter subcategories accordingly
     const { searchParams } = new URL(request.url);
     const gradeFilter = searchParams.get('grade');
+    const username = searchParams.get('username');
     
     // Build category filters - omit empty values
     const filter: Record<string, unknown> = {};
@@ -19,9 +20,14 @@ export async function GET(request: NextRequest) {
       filter.grade = parseInt(gradeFilter, 10);
     }
     
+    // Filter by username if provided
+    if (username && username.trim() !== '') {
+      filter.createdBy = username;
+    }
+    
     // Fetch all necessary data in parallel for better performance
     const [grades, cat1Values] = await Promise.all([
-      db.collection('categories').distinct('grade'),
+      db.collection('categories').distinct('grade', username && username.trim() !== '' ? { createdBy: username } : {}),
       db.collection('categories').distinct('cat1', filter)
     ]);
     

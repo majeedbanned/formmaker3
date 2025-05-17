@@ -204,7 +204,7 @@ export default function QuestionBankPage() {
 // Separate client component
 function QuestionBankContent(): React.ReactElement {
   // Get current user
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -309,6 +309,9 @@ function QuestionBankContent(): React.ReactElement {
 
   // Apply URL parameters to filters on component mount
   useEffect(() => {
+    // Don't fetch questions until user is loaded
+    if (isLoading) return;
+
     const page = searchParams.get("page") || "1";
     const grade = searchParams.get("grade") || "";
     const cat1 = searchParams.get("cat1") || "";
@@ -339,10 +342,16 @@ function QuestionBankContent(): React.ReactElement {
       type,
     });
     fetchCategories({ grade, cat1, cat2, cat3, cat4, difficulty, type });
-  }, [searchParams]);
+  }, [searchParams, isLoading, user]); // Add isLoading and user as dependencies
 
   // Fetch questions with pagination and filters
   const fetchQuestions = async (page: number, filterParams = filters) => {
+    // Don't fetch if user isn't loaded yet
+    if (isLoading || !user) {
+      console.log("User not loaded yet, skipping fetch");
+      return;
+    }
+
     setLoading(true);
     try {
       // Build query string
@@ -358,6 +367,11 @@ function QuestionBankContent(): React.ReactElement {
       if (filterParams.difficulty)
         queryParams.append("difficulty", filterParams.difficulty);
       if (filterParams.type) queryParams.append("type", filterParams.type);
+
+      // Add username parameter to filter by current user
+      if (user?.username) {
+        queryParams.append("username", user.username);
+      }
 
       const response = await fetch(
         `/api/myquestionbank?${queryParams.toString()}`
@@ -379,6 +393,12 @@ function QuestionBankContent(): React.ReactElement {
 
   // Fetch categories for filters
   const fetchCategories = async (filterParams = filters) => {
+    // Don't fetch if user isn't loaded yet
+    if (isLoading || !user) {
+      console.log("User not loaded yet, skipping categories fetch");
+      return;
+    }
+
     try {
       // Build query string for category dependencies
       const queryParams = new URLSearchParams();
@@ -391,6 +411,11 @@ function QuestionBankContent(): React.ReactElement {
       if (filterParams.difficulty)
         queryParams.append("difficulty", filterParams.difficulty);
       if (filterParams.type) queryParams.append("type", filterParams.type);
+
+      // Add username parameter to filter categories by current user
+      //  if (user?.username) {
+      //   queryParams.append("username", user.username);
+      // }
 
       const response = await fetch(
         `/api/myquestionbank/categories?${queryParams.toString()}`
@@ -409,6 +434,12 @@ function QuestionBankContent(): React.ReactElement {
 
   // Fetch categories for the exam
   const fetchExamCategories = async (examId: string) => {
+    // Don't fetch if user isn't loaded yet
+    if (isLoading || !user) {
+      console.log("User not loaded yet, skipping exam categories fetch");
+      return;
+    }
+
     try {
       const response = await fetch(
         `/api/myexamcat?examId=${examId}&username=${user?.username || ""}`
@@ -1270,10 +1301,29 @@ function QuestionBankContent(): React.ReactElement {
     setDeletingMainQuestionId(null);
   };
 
+  // Return loading indicator when user auth is still loading
+  if (isLoading) {
+    return (
+      <div dir="rtl" className="container mx-auto p-6">
+        <div className="flex justify-center items-center py-32">
+          <RefreshCw className="h-12 w-12 animate-spin text-primary" />
+          <span className="text-primary font-semibold mr-2">
+            در حال بارگذاری...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div dir="rtl" className="container mx-auto p-6">
       <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-bold">بانک سوالات</h1>
+        <div>
+          <h1 className="text-2xl font-bold">بانک سوالات من</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            این صفحه تنها سوالاتی که توسط شما ایجاد شده‌اند را نمایش می‌دهد
+          </p>
+        </div>
         <div className="flex items-center gap-4">
           <Button
             variant="default"
