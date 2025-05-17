@@ -149,13 +149,13 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "بانک سوالات آنلاین",
+          title: "  بانک سوالات آنلاین",
           url: "/admin/questionbank",
           system: "importstudents",
           requiredPermission: "show",
         },
         {
-          title: "بانک سوالات من",
+          title: "*بانک سوالات من",
           url: "/admin/myquestionbank",
           system: "importstudents",
           requiredPermission: "show",
