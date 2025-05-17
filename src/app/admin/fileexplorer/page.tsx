@@ -1032,302 +1032,293 @@ export default function FileExplorerPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8" dir="rtl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">مدیریت فایل‌ها</h1>
-          <div className="flex gap-4">
-            <button
-              onClick={() => setShowCreateFolder(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              title={`ایجاد پوشه در: ${currentPath || "پوشه اصلی"}`}
-            >
-              <FolderPlusIcon className="h-5 w-5 ml-1.5" />
-              ایجاد پوشه
-              {currentPath ? ` در ${currentPath.split("/").pop()}` : ""}
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              disabled={uploading}
-              title={`آپلود فایل به: ${currentPath || "پوشه اصلی"}`}
-            >
-              {uploading ? (
-                <ArrowPathIcon className="h-5 w-5 ml-1.5 animate-spin" />
-              ) : (
-                <ArrowUpTrayIcon className="h-5 w-5 ml-1.5" />
-              )}
-              آپلود فایل{" "}
-              {currentPath ? `در ${currentPath.split("/").pop()}` : ""}
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              multiple
-            />
-          </div>
-        </div>
+    <div className="container mx-auto p-4" dir="rtl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          مدیریت فایل‌ها و پوشه‌ها
+        </h1>
 
-        {/* Breadcrumb and actions */}
-        <div className="bg-white rounded-t-lg shadow-sm p-4 flex justify-between items-center">
-          <div className="flex items-center">
-            {currentPath && (
-              <button
-                onClick={navigateBack}
-                className="ml-2 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
-                title="بازگشت"
-              >
-                <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-              </button>
-            )}
-            <div className="text-gray-600">{renderBreadcrumbs()}</div>
-          </div>
-          <div className="flex items-center">
-            <div className="ml-2 text-xs text-gray-500 hidden sm:block flex items-center">
-              <span title="راهنما" className="ml-3">
-                برای ورود به پوشه‌ها، روی نام پوشه کلیک کنید
-              </span>
-              <span className="mx-3 text-blue-600 font-semibold">
-                مجموع: {formatFileSize(totalSize)}
-              </span>
-            </div>
-            <button
-              onClick={fetchItems}
-              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
-              title="بارگذاری مجدد"
-            >
-              <ArrowPathIcon
-                className={`h-5 w-5 text-gray-600 ${
-                  loading ? "animate-spin" : ""
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Upload progress */}
-        {uploading && (
-          <div className="bg-white border-t border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">
-                در حال آپلود فایل‌ها{" "}
-                {currentPath
-                  ? `به پوشه "${currentPath.split("/").pop()}"`
-                  : "به پوشه اصلی"}
-                ...
-              </span>
-              <span className="text-sm text-gray-500">{uploadProgress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
-
-        {/* File explorer content */}
-        <div className="bg-white rounded-b-lg shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-              <span className="ml-3 text-gray-500">در حال بارگذاری...</span>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-20 text-center">
-              <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
-                {currentPath
-                  ? `پوشه "${currentPath.split("/").pop()}" خالی است`
-                  : "پوشه اصلی خالی است"}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                برای شروع، یک پوشه ایجاد کنید یا فایلی را آپلود نمایید.
+        {/* Add user-specific message */}
+        {user &&
+          (user.userType === "school" || user.userType === "teacher") && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+              <p className="text-sm text-blue-700">
+                <span className="font-bold ml-1">توجه:</span>
+                در این صفحه فقط فایل‌ها و پوشه‌هایی که توسط شما آپلود شده‌اند
+                قابل مشاهده هستند.
               </p>
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  onClick={() => setShowCreateFolder(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
-                >
-                  <FolderPlusIcon className="h-5 w-5 ml-1.5" />
-                  ایجاد پوشه
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
-                >
-                  <ArrowUpTrayIcon className="h-5 w-5 ml-1.5" />
-                  آپلود فایل {currentPath ? `در اینجا` : ""}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      نام
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      نوع
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      اندازه
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      تاریخ ایجاد
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      عملیات
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {/* Folders first */}
-                  {items
-                    .filter((item) => item.type === "folder")
-                    .map((folder) => (
-                      <tr key={folder._id} className="hover:bg-gray-50">
-                        <td
-                          className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-blue-50"
-                          onClick={() => navigateToFolder(folder as FolderItem)}
-                          title="باز کردن پوشه"
-                        >
-                          <div className="flex items-center">
-                            <FolderIcon className="flex-shrink-0 h-6 w-6 text-yellow-500" />
-                            <div className="mr-3">
-                              <div className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center">
-                                {folder.name}
-                                {(folder as FolderItem).password && (
-                                  <LockClosedIcon
-                                    className="h-4 w-4 text-gray-600 ml-1"
-                                    title="پوشه محافظت شده با رمز عبور"
-                                  />
-                                )}
-                                <ChevronRightIcon className="inline-block h-4 w-4 text-gray-400 transform rotate-180 mr-1" />
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">پوشه</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">-</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(folder.createdAt).toLocaleDateString(
-                            "fa-IR"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
-                          <div className="flex gap-3 justify-end">
-                            <button
-                              onClick={() => {
-                                setSelectedItem(folder);
-                                setShowRenameModal(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="تغییر نام"
-                            >
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => confirmDelete(folder)}
-                              className="text-red-600 hover:text-red-900"
-                              title="حذف"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                  {/* Then files */}
-                  {items
-                    .filter((item) => item.type === "file")
-                    .map((file) => (
-                      <tr key={file._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {getFileIcon(
-                              getFileExtension((file as FileItem).name)
-                            )}
-                            <div className="mr-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {file.name}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">
-                            {getFileExtension(file.name)?.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500">
-                            {formatFileSize((file as FileItem).size)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(file.createdAt).toLocaleDateString("fa-IR")}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
-                          <div className="flex gap-3 justify-end">
-                            <button
-                              onClick={() => downloadFile(file as FileItem)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="دانلود"
-                            >
-                              <FolderArrowDownIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedItem(file);
-                                setShowShareModal(true);
-                              }}
-                              className="text-green-600 hover:text-green-900"
-                              title="اشتراک‌گذاری"
-                            >
-                              <ShareIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => confirmDelete(file)}
-                              className="text-red-600 hover:text-red-900"
-                              title="حذف"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
             </div>
           )}
+
+        {/* Breadcrumbs */}
+        <div className="flex items-center text-sm text-gray-500 mb-4 overflow-x-auto">
+          {renderBreadcrumbs()}
         </div>
+
+        {/* Actions bar */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setShowCreateFolder(true)}
+            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            <FolderPlusIcon className="h-5 w-5 ml-2 text-gray-500" />
+            ایجاد پوشه جدید
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ArrowPathIcon className="h-5 w-5 ml-2 text-gray-500 animate-spin" />
+            ) : (
+              <ArrowUpTrayIcon className="h-5 w-5 ml-2 text-gray-500" />
+            )}
+            آپلود فایل
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            multiple
+          />
+          {currentPath && (
+            <button
+              onClick={navigateBack}
+              className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              <ChevronRightIcon className="h-5 w-5 ml-2 text-gray-500" />
+              بازگشت
+            </button>
+          )}
+          <div className="ml-auto flex items-center">
+            <span className="text-sm text-gray-500">مجموع:</span>
+            <span className="mr-1 text-sm font-medium text-blue-600">
+              {formatFileSize(totalSize)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Upload progress */}
+      {uploading && (
+        <div className="bg-white border-t border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              در حال آپلود فایل‌ها{" "}
+              {currentPath
+                ? `به پوشه "${currentPath.split("/").pop()}"`
+                : "به پوشه اصلی"}
+              ...
+            </span>
+            <span className="text-sm text-gray-500">{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-blue-600 h-2.5 rounded-full"
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
+      {/* File explorer content */}
+      <div className="bg-white rounded-b-lg shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+            <span className="ml-3 text-gray-500">در حال بارگذاری...</span>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-20 text-center">
+            <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-lg font-medium text-gray-900">
+              {currentPath
+                ? `پوشه "${currentPath.split("/").pop()}" خالی است`
+                : "پوشه اصلی خالی است"}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              برای شروع، یک پوشه ایجاد کنید یا فایلی را آپلود نمایید.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                onClick={() => setShowCreateFolder(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+              >
+                <FolderPlusIcon className="h-5 w-5 ml-1.5" />
+                ایجاد پوشه
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+              >
+                <ArrowUpTrayIcon className="h-5 w-5 ml-1.5" />
+                آپلود فایل {currentPath ? `در اینجا` : ""}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    نام
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    نوع
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    اندازه
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    تاریخ ایجاد
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    عملیات
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {/* Folders first */}
+                {items
+                  .filter((item) => item.type === "folder")
+                  .map((folder) => (
+                    <tr key={folder._id} className="hover:bg-gray-50">
+                      <td
+                        className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-blue-50"
+                        onClick={() => navigateToFolder(folder as FolderItem)}
+                        title="باز کردن پوشه"
+                      >
+                        <div className="flex items-center">
+                          <FolderIcon className="flex-shrink-0 h-6 w-6 text-yellow-500" />
+                          <div className="mr-3">
+                            <div className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center">
+                              {folder.name}
+                              {(folder as FolderItem).password && (
+                                <LockClosedIcon
+                                  className="h-4 w-4 text-gray-600 ml-1"
+                                  title="پوشه محافظت شده با رمز عبور"
+                                />
+                              )}
+                              <ChevronRightIcon className="inline-block h-4 w-4 text-gray-400 transform rotate-180 mr-1" />
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">پوشه</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">-</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(folder.createdAt).toLocaleDateString("fa-IR")}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                        <div className="flex gap-3 justify-end">
+                          <button
+                            onClick={() => {
+                              setSelectedItem(folder);
+                              setShowRenameModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="تغییر نام"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(folder)}
+                            className="text-red-600 hover:text-red-900"
+                            title="حذف"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                {/* Then files */}
+                {items
+                  .filter((item) => item.type === "file")
+                  .map((file) => (
+                    <tr key={file._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getFileIcon(
+                            getFileExtension((file as FileItem).name)
+                          )}
+                          <div className="mr-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {file.name}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">
+                          {getFileExtension(file.name)?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-500">
+                          {formatFileSize((file as FileItem).size)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(file.createdAt).toLocaleDateString("fa-IR")}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                        <div className="flex gap-3 justify-end">
+                          <button
+                            onClick={() => downloadFile(file as FileItem)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="دانلود"
+                          >
+                            <FolderArrowDownIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedItem(file);
+                              setShowShareModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                            title="اشتراک‌گذاری"
+                          >
+                            <ShareIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(file)}
+                            className="text-red-600 hover:text-red-900"
+                            title="حذف"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Create folder modal */}
@@ -1368,6 +1359,6 @@ export default function FileExplorerPage() {
         onClose={() => setShowShareModal(false)}
         file={selectedItem?.type === "file" ? (selectedItem as FileItem) : null}
       />
-    </main>
+    </div>
   );
 }

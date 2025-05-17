@@ -48,9 +48,26 @@ export async function GET(request: NextRequest) {
     const folderCollection = connection.collection("Folder");
     const fileCollection = connection.collection("File");
 
+    // Build query filters based on user type
+    let folderQuery = { schoolCode, path };
+    let fileQuery = { schoolCode, path };
+
+    // If user is school or teacher, only show their own files and folders
+    if (user.userType === 'school' || user.userType === 'teacher') {
+      folderQuery = { 
+        ...folderQuery, 
+        username: user.username 
+      };
+      fileQuery = { 
+        ...fileQuery, 
+        username: user.username 
+      };
+      console.log(`Filtering by username: ${user.username} for user type: ${user.userType}`);
+    }
+
     // Get folders for the current path
     const folders = await folderCollection
-      .find({ schoolCode, path })
+      .find(folderQuery)
       .sort({ name: 1 })
       .toArray();
 
@@ -58,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     // Get files for the current path
     const files = await fileCollection
-      .find({ schoolCode, path })
+      .find(fileQuery)
       .sort({ name: 1 })
       .toArray();
       
