@@ -137,7 +137,7 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "تعریف آزمون[آنلاین/حضوری]",
+          title: "*تعریف آزمون[آنلاین/حضوری]",
           url: "/admin/exam",
           system: "importstudents",
           requiredPermission: "show",

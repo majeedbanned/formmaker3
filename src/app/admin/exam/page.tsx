@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
 import {
   DocumentIcon,
@@ -9,10 +9,10 @@ import {
   QrCodeIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
-import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { useAuth } from "@/hooks/useAuth";
 import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
 import ScanAnswerSheetModal from "@/components/ScanAnswerSheetModal";
+import { toast } from "sonner";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -48,11 +48,105 @@ const layout: LayoutSettings = {
 };
 
 function StudentsPageContent() {
-  const { initialFilter } = useInitialFilter();
   const { user, isLoading } = useAuth();
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
+
+  // Add state for teacher's classes
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
+  // Add state for student's teachers
+  const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+
+  // Fetch teacher's classes when component mounts
+  useEffect(() => {
+    async function fetchTeacherClasses() {
+      if (user && user.userType === "teacher" && user.username) {
+        try {
+          const response = await fetch(
+            `/api/formbuilder/teacher-classes?teacherCode=${user.username}`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch teacher classes");
+          }
+
+          const data = await response.json();
+          // Update to correctly extract classCode from the data structure
+          const classCodesList = data.classes.map(
+            (classItem: { data?: { classCode?: string } }) =>
+              classItem.data?.classCode || ""
+          );
+          // Filter out empty class codes
+          const validClassCodes = classCodesList.filter(
+            (code: string) => code.trim() !== ""
+          );
+          setTeacherClasses(validClassCodes);
+
+          if (validClassCodes.length === 0) {
+            toast.warning("شما به هیچ کلاسی اختصاص داده نشده‌اید");
+          }
+
+          console.log("Teacher classes:", validClassCodes);
+        } catch (error) {
+          console.error("Error fetching teacher classes:", error);
+          toast.error("خطا در دریافت کلاس‌های مدرس");
+        }
+      }
+    }
+
+    if (!isLoading && user) {
+      fetchTeacherClasses();
+    }
+  }, [user, isLoading]);
+
+  // Update the student teachers useEffect to directly use the teacherCodes from the API response
+  useEffect(() => {
+    async function fetchStudentTeachers() {
+      if (user && user.userType === "student" && user.username) {
+        try {
+          const response = await fetch(
+            `/api/formbuilder/student-teachers?studentCode=${user.username}`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch student's teachers");
+          }
+
+          const data = await response.json();
+
+          // Use the teacherCodes directly from the API response
+          const validTeacherCodes = data.teacherCodes || [];
+          setStudentTeachers(validTeacherCodes);
+
+          if (validTeacherCodes.length === 0) {
+            toast.warning("شما با هیچ معلمی کلاس ندارید");
+          } else {
+            console.log(
+              `دریافت ${validTeacherCodes.length} معلم برای دانش‌آموز`
+            );
+          }
+        } catch (error) {
+          console.error("Error fetching student's teachers:", error);
+          toast.error("خطا در دریافت معلم‌های دانش‌آموز");
+        }
+      }
+    }
+
+    if (!isLoading && user) {
+      fetchStudentTeachers();
+    }
+  }, [user, isLoading]);
 
   console.log("user", user);
   if (isLoading) {
@@ -114,76 +208,101 @@ function StudentsPageContent() {
       type: "text",
       required: false,
       fields: [
-        {
-          name: "students",
-          title: "دانش آموزان",
-          type: "autoCompleteText",
-          isShowInList: true,
-          isSearchable: true,
-          required: false,
-          enabled: true,
-          visible: true,
-          isMultiple: true,
+        ...(user?.userType !== "student"
+          ? [
+              {
+                name: "students",
+                title: "دانش آموزان",
+                type: "autoCompleteText",
+                isShowInList: true,
+                isSearchable: true,
+                required: false,
+                enabled: true,
+                visible: true,
+                isMultiple: true,
 
-          dataSource: {
-            collectionName: "students",
-            labelField: "studentName",
-            labelField2: "studentFamily",
-            valueField: "studentCode",
-            sortField: "studentCode",
-            sortOrder: "asc",
-            filterQuery: { schoolCode: "2295566177" },
-            // dependsOn: ["Grade", "major"],
-          },
+                dataSource: {
+                  collectionName: "students",
+                  labelField: "studentName",
+                  labelField2: "studentFamily",
+                  valueField: "studentCode",
+                  sortField: "studentCode",
+                  sortOrder: "asc" as "asc" | "desc",
+                  filterQuery:
+                    user?.userType === "teacher" && teacherClasses.length > 0
+                      ? {
+                          //  schoolCode: "2295566177"
+                          // Filter students where the classcode is in the teacher's classes
+                          "classCode.value": { $in: teacherClasses },
+                        }
+                      : {},
+                  // dependsOn: ["Grade", "major"],
+                },
 
-          autoCompleteStyle: {
-            allowNew: false,
-            maxTags: 2,
-            minLength: 2, // Only start searching after 2 characters are typed
-          },
-        },
-        {
-          name: "groups",
-          title: "گروه ها",
-          type: "shadcnmultiselect",
-          isShowInList: true,
-          isSearchable: true,
-          required: false,
-          enabled: true,
-          visible: true,
-          isMultiple: true,
+                autoCompleteStyle: {
+                  allowNew: false,
+                  maxTags: 2,
+                  minLength: 2, // Only start searching after 2 characters are typed
+                },
+              },
+            ]
+          : []),
+        ...(user?.userType !== "student" && user?.userType !== "teacher"
+          ? [
+              {
+                name: "groups",
+                title: "گروه ها",
+                type: "shadcnmultiselect",
+                isShowInList: true,
+                isSearchable: true,
+                required: false,
+                enabled: true,
+                visible: true,
+                isMultiple: true,
 
-          dataSource: {
-            collectionName: "studentsgroups",
-            labelField: "groupName",
-            valueField: "groupCode",
-            sortField: "groupCode",
-            sortOrder: "asc",
-            filterQuery: { schoolCode: "2295566177" },
-            // dependsOn: ["Grade", "major"],
-          },
-        },
-        {
-          name: "classCode",
-          title: "کلاس",
-          type: "shadcnmultiselect",
-          isShowInList: true,
-          isSearchable: true,
-          required: false,
-          enabled: true,
-          visible: true,
-          isMultiple: true,
+                dataSource: {
+                  collectionName: "studentsgroups",
+                  labelField: "groupName",
+                  valueField: "groupCode",
+                  sortField: "groupCode",
+                  sortOrder: "asc" as "asc" | "desc",
+                  filterQuery: { schoolCode: user?.schoolCode || "" },
+                  // dependsOn: ["Grade", "major"],
+                },
+              },
+            ]
+          : []),
+        ...(user?.userType !== "student"
+          ? [
+              {
+                name: "classCode",
+                title: "کلاس",
+                type: "shadcnmultiselect",
+                isShowInList: true,
+                isSearchable: true,
+                required: false,
+                enabled: true,
+                visible: true,
+                isMultiple: true,
 
-          dataSource: {
-            collectionName: "classes",
-            labelField: "className",
-            valueField: "classCode",
-            sortField: "classCode",
-            sortOrder: "asc",
-            filterQuery: { schoolCode: "2295566177" },
-            // dependsOn: ["Grade", "major"],
-          },
-        },
+                dataSource: {
+                  collectionName: "classes",
+                  labelField: "className",
+                  valueField: "classCode",
+                  sortField: "classCode",
+                  sortOrder: "asc" as "asc" | "desc",
+                  filterQuery:
+                    user?.userType === "teacher" && teacherClasses.length > 0
+                      ? {
+                          schoolCode: user?.schoolCode || "",
+                          classCode: { $in: teacherClasses },
+                        }
+                      : { schoolCode: user?.schoolCode || "" },
+                  // dependsOn: ["Grade", "major"],
+                },
+              },
+            ]
+          : []),
 
         {
           name: "teachers",
@@ -191,18 +310,30 @@ function StudentsPageContent() {
           type: "shadcnmultiselect",
           isShowInList: true,
           isSearchable: true,
-          required: false,
+          required: user?.userType === "student",
           enabled: true,
           visible: true,
           isMultiple: true,
+          validation:
+            user?.userType === "student"
+              ? {
+                  requiredMessage: "انتخاب حداقل یک معلم الزامی است",
+                }
+              : undefined,
 
           dataSource: {
             collectionName: "teachers",
             labelField: "teacherName",
             valueField: "teacherCode",
             sortField: "teacherCode",
-            sortOrder: "asc",
-            filterQuery: { schoolCode: "2295566177" },
+            sortOrder: "asc" as "asc" | "desc",
+            filterQuery:
+              user?.userType === "student" && studentTeachers.length > 0
+                ? {
+                    schoolCode: user?.schoolCode || "",
+                    teacherCode: { $in: studentTeachers },
+                  }
+                : { schoolCode: user?.schoolCode || "" },
             // dependsOn: ["Grade", "major"],
           },
         },
@@ -631,79 +762,154 @@ function StudentsPageContent() {
     },
   ] as const;
 
+  // Define a title based on user type
+  const pageTitle = () => {
+    if (user?.userType === "student") {
+      return "آزمون‌های دریافتی از معلمان";
+    } else if (user?.userType === "teacher") {
+      return "آزمون‌های کلاس ها";
+    } else {
+      return "آزمون‌ها";
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">ارسال پیام</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle()}</h1>
 
-        <CRUDComponent
-          formStructure={sampleFormStructure}
-          collectionName="exam"
-          rowActions={[
-            {
-              label: "مشاهده شرکت‌کنندگان",
-              action: (examId) => {
-                setSelectedExamId(examId);
-                setShowParticipantsModal(true);
-              },
-              icon: UsersIcon,
-            },
-            {
-              label: "افزودن سوالات ازبانک سوالات",
-              action: (examId) => {
-                window.location.href = `/admin/questionbank?examID=${examId}`;
-              },
-              icon: DocumentIcon,
-            },
-            {
-              label: "افزودن سوالات ازبانک شخصی",
-              action: (examId) => {
-                window.location.href = `/admin/myquestionbank?examID=${examId}`;
-              },
-              icon: DocumentIcon,
-            },
-            {
-              label: "چاپ سوالات",
-              action: (examId) => {
-                window.location.href = `/admin/exam/print?examID=${examId}`;
-              },
-              icon: (props) => (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+        {user?.userType === "teacher" && (
+          <div className="bg-blue-50 text-right border border-blue-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-blue-700">
+              <span className="font-bold ml-1">توجه:</span>
+              شما فقط می‌توانید برای کلاس‌هایی که به عنوان معلم به آنها اختصاص
+              داده شده‌اید آزمون تعریف کنید.
+            </p>
+          </div>
+        )}
+
+        {user?.userType === "student" && (
+          <div className="bg-green-50 border text-right border-green-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-green-700">
+              <span className="font-bold ml-1">توجه:</span>
+              به عنوان دانش‌آموز، شما فقط می‌توانید از معلم‌هایی که با آنها کلاس
+              دارید آزمون دریافت کنید.
+            </p>
+          </div>
+        )}
+
+        {user?.userType === "student" && studentTeachers.length === 0 && (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="flex justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-16 w-16 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  {...props}
-                >
-                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                  <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-              ),
-            },
-            {
-              label: "چاپ نتایج آزمون",
-              action: (examId) => {
-                window.location.href = `/admin/exam/printresults/${examId}`;
-              },
-              icon: PrinterIcon,
-            },
-            {
-              label: "اسکن پاسخ‌برگ",
-              action: (examId) => {
-                setSelectedExamId(examId);
-                setShowScanModal(true);
-              },
-              icon: QrCodeIcon,
-            },
-          ]}
-          initialFilter={initialFilter as Record<string, unknown>}
-          layout={layout}
-        />
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              امکان دریافت آزمون وجود ندارد
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              شما در حال حاضر با هیچ معلمی کلاس ندارید. لطفاً با مدیر مدرسه تماس
+              بگیرید.
+            </p>
+          </div>
+        )}
 
+        {(user?.userType !== "student" || studentTeachers.length > 0) && (
+          <CRUDComponent
+            formStructure={sampleFormStructure}
+            collectionName="exam"
+            rowActions={[
+              {
+                label: "مشاهده شرکت‌کنندگان",
+                action: (examId) => {
+                  setSelectedExamId(examId);
+                  setShowParticipantsModal(true);
+                },
+                icon: UsersIcon,
+              },
+              {
+                label: "افزودن سوالات ازبانک سوالات",
+                action: (examId) => {
+                  window.location.href = `/admin/questionbank?examID=${examId}`;
+                },
+                icon: DocumentIcon,
+              },
+              {
+                label: "افزودن سوالات ازبانک شخصی",
+                action: (examId) => {
+                  window.location.href = `/admin/myquestionbank?examID=${examId}`;
+                },
+                icon: DocumentIcon,
+              },
+              {
+                label: "چاپ سوالات",
+                action: (examId) => {
+                  window.location.href = `/admin/exam/print?examID=${examId}`;
+                },
+                icon: (props) => (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    {...props}
+                  >
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                  </svg>
+                ),
+              },
+              {
+                label: "چاپ نتایج آزمون",
+                action: (examId) => {
+                  window.location.href = `/admin/exam/printresults/${examId}`;
+                },
+                icon: PrinterIcon,
+              },
+              {
+                label: "اسکن پاسخ‌برگ",
+                action: (examId) => {
+                  setSelectedExamId(examId);
+                  setShowScanModal(true);
+                },
+                icon: QrCodeIcon,
+              },
+            ]}
+            initialFilter={{
+              schoolCode: user?.schoolCode || "",
+              ...(user?.userType === "student" && studentTeachers.length > 0
+                ? {
+                    "recipients.teachers": { $in: studentTeachers },
+                  }
+                : {}),
+              ...(user?.userType === "teacher" && teacherClasses.length > 0
+                ? {
+                    $or: [
+                      { "recipients.classCode": { $in: teacherClasses } },
+                      { "data.teacherCode": user.username },
+                    ],
+                  }
+                : {}),
+            }}
+            layout={layout}
+          />
+        )}
         {/* Exam Participants Modal */}
         <ExamParticipantsModal
           isOpen={showParticipantsModal}
