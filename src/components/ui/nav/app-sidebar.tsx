@@ -110,7 +110,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "ارسال پیام الکترونیکی",
+          title: "*ارسال پیام الکترونیکی",
           url: "/admin/messages",
           system: "importstudents",
           requiredPermission: "show",
@@ -273,7 +273,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "گفتگوی آنلاین",
+          title: "*گفتگوی آنلاین",
           url: "/admin/chatrooms",
           system: "importstudents",
           requiredPermission: "show",
