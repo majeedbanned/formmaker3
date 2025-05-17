@@ -45,18 +45,12 @@ import {
 import {
   generatePDF,
   generateCombinedPDF,
+  generateHTML,
+  generateCombinedHTML,
   defaultPDFOptions,
 } from "./PublicationDocument";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import {
-  type ClassInfo,
-  type Student,
-  type Teacher,
-  type TemplateData,
-  type PDFOptions,
-} from "./types";
 import {
   Select,
   SelectContent,
@@ -64,6 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ClassInfo, Student, Teacher, TemplateData, PDFOptions } from "./types";
 
 interface PublicationEditorProps {
   user: {
@@ -118,16 +113,20 @@ export default function PublicationEditor({
   const [templateDescription, setTemplateDescription] = useState("");
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [isGeneratingPdfs, setIsGeneratingPdfs] = useState(false);
   const [pdfOutputType, setPdfOutputType] = useState("individual");
   const [pdfOptions, setPdfOptions] = useState<PDFOptions>(defaultPDFOptions);
   const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"html" | "pdf">(
+    defaultPDFOptions.outputFormat
+  );
 
-  // Regenerate PDF preview when options change
+  // Regenerate preview when options change
   useEffect(() => {
     // Only regenerate if the preview is already open
     if (isPdfPreviewOpen && selectedStudents.length > 0) {
-      generatePDFs();
+      generatePreview();
     }
   }, [pdfOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -352,13 +351,79 @@ export default function PublicationEditor({
     }
   };
 
+  // Variables available for insertion
+  const availableVariables = [
+    {
+      label: "نام کامل دانش‌آموز",
+      value: "{{student.fullName}}",
+      description: "نام و نام خانوادگی دانش‌آموز",
+    },
+    {
+      label: "نام دانش‌آموز",
+      value: "{{student.name}}",
+      description: "فقط نام دانش‌آموز",
+    },
+    {
+      label: "نام خانوادگی دانش‌آموز",
+      value: "{{student.family}}",
+      description: "فقط نام خانوادگی دانش‌آموز",
+    },
+    {
+      label: "کد دانش‌آموز",
+      value: "{{student.code}}",
+      description: "کد دانش‌آموزی",
+    },
+    {
+      label: "نام کلاس",
+      value: "{{class.name}}",
+      description: "نام کلاس دانش‌آموز",
+    },
+    {
+      label: "کد کلاس",
+      value: "{{class.code}}",
+      description: "کد کلاس دانش‌آموز",
+    },
+    {
+      label: "نام معلم",
+      value: "{{teacher.fullName}}",
+      description: "نام و نام خانوادگی معلم",
+    },
+    {
+      label: "تاریخ فعلی",
+      value: "{{currentDate}}",
+      description: "تاریخ فعلی به شمسی",
+    },
+    { label: "نام مدرسه", value: "{{school.name}}", description: "نام مدرسه" },
+    {
+      label: "شماره ترتیبی",
+      value: "{{seq}}",
+      description: "شماره ترتیبی (برای هر دانش‌آموز افزایش می‌یابد)",
+    },
+    {
+      label: "شماره تصادفی",
+      value: "{{random}}",
+      description: "یک شماره تصادفی بین 1000 تا 9999",
+    },
+  ];
+
   // Function to replace variables in content for a specific student
-  const replaceVariables = (originalContent: string, student: Student) => {
+  const replaceVariables = (
+    originalContent: string,
+    student: Student,
+    index: number = 0
+  ) => {
     const currentDate = new Date().toLocaleDateString("fa-IR");
     const studentClass = classes.find((c) => c.classCode === student.classCode);
     const teachersStr = teachers
       .map((t) => `${t.teacherName} ${t.teacherFamily}`)
       .join(", ");
+
+    // Calculate a random number within the paper count range (or 1-100 if very few students)
+    const minRandomValue = 1;
+    const maxRandomValue = Math.max(100, selectedStudents.length);
+    const randomNumber = Math.floor(
+      minRandomValue + Math.random() * (maxRandomValue - minRandomValue)
+    );
 
     // Create a mapping of variable patterns to their values
     const variableMap: Record<string, string> = {
@@ -371,6 +436,8 @@ export default function PublicationEditor({
       "{{teacher.fullName}}": teachersStr,
       "{{currentDate}}": currentDate,
       "{{school.name}}": user.schoolName || "",
+      "{{seq}}": (index + 1).toString(),
+      "{{random}}": randomNumber.toString(),
     };
 
     // Replace each variable pattern with its corresponding value
@@ -382,8 +449,8 @@ export default function PublicationEditor({
     return result;
   };
 
-  // Generate PDFs for preview
-  const generatePDFs = async () => {
+  // Generate preview content (PDF or HTML)
+  const generatePreview = async () => {
     if (!title.trim()) {
       toast.error("لطفاً عنوان نامه را وارد کنید");
       return;
@@ -402,57 +469,122 @@ export default function PublicationEditor({
     try {
       setIsGeneratingPdfs(true);
 
-      // Clean up old URL if it exists
+      // Clean up old URLs if they exist
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
       }
 
-      let pdfBlob;
+      // Clear previous HTML content
+      setHtmlContent(null);
 
-      // Generate preview based on selected output type
-      if (pdfOutputType === "combined" && selectedStudents.length > 1) {
-        // Show a combined preview with the first 3 students (or fewer if there are fewer selected)
-        const previewStudents = selectedStudents.slice(0, 3);
-        pdfBlob = await generateCombinedPDF({
-          title,
-          content,
-          students: previewStudents,
-          date: new Date().toLocaleDateString("fa-IR"),
-          replaceVariables,
-          options: pdfOptions,
-        });
+      // Use the current output format preference
+      const outputOptions = {
+        ...pdfOptions,
+        outputFormat: previewMode,
+      };
+
+      // Generate preview based on selected output type and format
+      if (previewMode === "pdf") {
+        let pdfBlob;
+
+        if (pdfOutputType === "combined" && selectedStudents.length > 1) {
+          // Show a combined preview with the first 3 students (or fewer if there are fewer selected)
+          const previewStudents = selectedStudents.slice(0, 3);
+          const processedTitle = replaceVariables(title, previewStudents[0], 0);
+
+          pdfBlob = await generateCombinedPDF({
+            title: processedTitle,
+            content,
+            students: previewStudents,
+            date: new Date().toLocaleDateString("fa-IR"),
+            replaceVariables,
+            options: outputOptions,
+          });
+        } else {
+          // For individual mode or single student, just show the first student
+          const firstStudent = selectedStudents[0];
+          const personalizedContent = replaceVariables(
+            content,
+            firstStudent,
+            0
+          );
+          const processedTitle = replaceVariables(title, firstStudent, 0);
+
+          pdfBlob = await generatePDF({
+            title: processedTitle,
+            content: personalizedContent,
+            student: firstStudent,
+            date: new Date().toLocaleDateString("fa-IR"),
+            options: outputOptions,
+          });
+        }
+
+        // Create new URL for PDF
+        const url = URL.createObjectURL(pdfBlob);
+        setPdfUrl(url);
       } else {
-        // For individual mode or single student, just show the first student
-        const firstStudent = selectedStudents[0];
-        const personalizedContent = replaceVariables(content, firstStudent);
+        // Generate HTML preview
+        let html;
 
-        pdfBlob = await generatePDF({
-          title,
-          content: personalizedContent,
-          student: firstStudent,
-          date: new Date().toLocaleDateString("fa-IR"),
-          options: pdfOptions,
-        });
+        if (pdfOutputType === "combined" && selectedStudents.length > 1) {
+          // Show a combined preview with the first 3 students (or fewer if there are fewer selected)
+          const previewStudents = selectedStudents.slice(0, 3);
+          const processedTitle = replaceVariables(title, previewStudents[0], 0);
+
+          html = await generateCombinedHTML({
+            title: processedTitle,
+            content,
+            students: previewStudents,
+            date: new Date().toLocaleDateString("fa-IR"),
+            replaceVariables,
+            options: outputOptions,
+          });
+        } else {
+          // For individual mode or single student, just show the first student
+          const firstStudent = selectedStudents[0];
+          const personalizedContent = replaceVariables(
+            content,
+            firstStudent,
+            0
+          );
+          const processedTitle = replaceVariables(title, firstStudent, 0);
+
+          html = await generateHTML({
+            title: processedTitle,
+            content: personalizedContent,
+            student: firstStudent,
+            date: new Date().toLocaleDateString("fa-IR"),
+            options: outputOptions,
+          });
+        }
+
+        setHtmlContent(html);
       }
 
-      // Create new URL
-      const url = URL.createObjectURL(pdfBlob);
-      setPdfUrl(url);
       setIsPdfPreviewOpen(true);
     } catch (error: unknown) {
-      console.error("Error generating PDFs:", error);
-      toast.error("خطا در تولید فایل‌های PDF");
+      console.error("Error generating preview:", error);
+      toast.error("خطا در ایجاد پیش‌نمایش");
     } finally {
       setIsGeneratingPdfs(false);
     }
   };
 
-  // Handle download PDFs based on selected output type
-  const handleDownloadPDFs = async () => {
-    if (pdfOutputType === "individual") {
-      await handleDownloadIndividualPDFs();
+  // Handle download based on output format
+  const handleDownload = async () => {
+    if (pdfOptions.outputFormat === "pdf") {
+      if (pdfOutputType === "individual") {
+        await handleDownloadIndividualPDFs();
+      } else {
+        await handleDownloadCombinedPDF();
+      }
     } else {
-      await handleDownloadCombinedPDF();
+      if (pdfOutputType === "individual") {
+        await handleDownloadIndividualHTML();
+      } else {
+        await handleDownloadCombinedHTML();
+      }
     }
   };
 
@@ -470,13 +602,15 @@ export default function PublicationEditor({
       const zip = new JSZip();
 
       // Generate a PDF for each selected student
-      for (const student of selectedStudents) {
+      for (let i = 0; i < selectedStudents.length; i++) {
         try {
-          const personalizedContent = replaceVariables(content, student);
+          const student = selectedStudents[i];
+          const personalizedContent = replaceVariables(content, student, i);
+          const processedTitle = replaceVariables(title, student, i);
 
           // Generate PDF using our new function
           const pdfBlob = await generatePDF({
-            title,
+            title: processedTitle,
             content: personalizedContent,
             student,
             date: new Date().toLocaleDateString("fa-IR"),
@@ -488,7 +622,7 @@ export default function PublicationEditor({
           zip.file(fileName, pdfBlob);
         } catch (err) {
           console.error(
-            `Error generating PDF for student ${student.studentCode}:`,
+            `Error generating PDF for student ${selectedStudents[i].studentCode}:`,
             err
           );
           // Continue with other students
@@ -535,9 +669,12 @@ export default function PublicationEditor({
       setIsGeneratingPdfs(true);
       toast.info("در حال ترکیب همه نامه‌ها در یک فایل، لطفاً منتظر بمانید...");
 
+      // Process the title with variables from the first student
+      const processedTitle = replaceVariables(title, selectedStudents[0], 0);
+
       // Generate a combined PDF for all selected students
       const pdfBlob = await generateCombinedPDF({
-        title,
+        title: processedTitle,
         content,
         students: selectedStudents,
         date: new Date().toLocaleDateString("fa-IR"),
@@ -576,6 +713,136 @@ export default function PublicationEditor({
     }
   };
 
+  // Handle download all as separate HTML files in a ZIP
+  const handleDownloadIndividualHTML = async () => {
+    try {
+      setIsGeneratingPdfs(true);
+      toast.info(
+        "در حال آماده سازی فایل‌های HTML جداگانه، لطفاً منتظر بمانید..."
+      );
+
+      // Dynamic import of JSZip
+      const JSZipModule = await import("jszip");
+      const JSZip = JSZipModule.default;
+
+      // Create a new instance of JSZip
+      const zip = new JSZip();
+
+      // Generate HTML for each selected student
+      for (let i = 0; i < selectedStudents.length; i++) {
+        try {
+          const student = selectedStudents[i];
+          const personalizedContent = replaceVariables(content, student, i);
+          const processedTitle = replaceVariables(title, student, i);
+
+          // Generate HTML
+          const html = await generateHTML({
+            title: processedTitle,
+            content: personalizedContent,
+            student,
+            date: new Date().toLocaleDateString("fa-IR"),
+            options: pdfOptions,
+          });
+
+          // Add HTML to zip with a unique name
+          const fileName = `${student.studentName}_${student.studentFamily}_${student.studentCode}.html`;
+          zip.file(fileName, html);
+        } catch (err) {
+          console.error(
+            `Error generating HTML for student ${selectedStudents[i].studentCode}:`,
+            err
+          );
+          // Continue with other students
+        }
+      }
+
+      // Generate zip file as blob
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
+      // Create download link
+      const downloadLink = document.createElement("a");
+      downloadLink.href = URL.createObjectURL(zipBlob);
+
+      // Set download filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      downloadLink.download = `publications_html_${timestamp}.zip`;
+
+      // Simulate click to trigger download
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+
+      // Clean up
+      setTimeout(() => {
+        URL.revokeObjectURL(downloadLink.href);
+        document.body.removeChild(downloadLink);
+      }, 100);
+
+      toast.success("فایل‌های HTML با موفقیت دانلود شدند");
+      setIsPdfPreviewOpen(false);
+
+      // Also save to history
+      await saveToHistory();
+    } catch (error) {
+      console.error("Error downloading HTML files:", error);
+      toast.error("خطا در دانلود فایل‌های HTML");
+    } finally {
+      setIsGeneratingPdfs(false);
+    }
+  };
+
+  // Handle download combined HTML file
+  const handleDownloadCombinedHTML = async () => {
+    try {
+      setIsGeneratingPdfs(true);
+      toast.info(
+        "در حال ترکیب همه نامه‌ها در یک فایل HTML، لطفاً منتظر بمانید..."
+      );
+
+      // Process the title with variables from the first student
+      const processedTitle = replaceVariables(title, selectedStudents[0], 0);
+
+      // Generate a combined HTML for all selected students
+      const html = await generateCombinedHTML({
+        title: processedTitle,
+        content,
+        students: selectedStudents,
+        date: new Date().toLocaleDateString("fa-IR"),
+        replaceVariables,
+        options: pdfOptions,
+      });
+
+      // Create download link
+      const downloadLink = document.createElement("a");
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      downloadLink.href = URL.createObjectURL(blob);
+
+      // Set download filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      downloadLink.download = `combined_publications_${timestamp}.html`;
+
+      // Simulate click to trigger download
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+
+      // Clean up
+      setTimeout(() => {
+        URL.revokeObjectURL(downloadLink.href);
+        document.body.removeChild(downloadLink);
+      }, 100);
+
+      toast.success("فایل HTML ترکیبی با موفقیت دانلود شد");
+      setIsPdfPreviewOpen(false);
+
+      // Also save to history
+      await saveToHistory();
+    } catch (error) {
+      console.error("Error downloading combined HTML:", error);
+      toast.error("خطا در دانلود فایل HTML ترکیبی");
+    } finally {
+      setIsGeneratingPdfs(false);
+    }
+  };
+
   // Helper function to save publication history
   const saveToHistory = async () => {
     const historyData = {
@@ -597,51 +864,6 @@ export default function PublicationEditor({
       body: JSON.stringify(historyData),
     });
   };
-
-  // Variables available for insertion
-  const availableVariables = [
-    {
-      label: "نام کامل دانش‌آموز",
-      value: "{{student.fullName}}",
-      description: "نام و نام خانوادگی دانش‌آموز",
-    },
-    {
-      label: "نام دانش‌آموز",
-      value: "{{student.name}}",
-      description: "فقط نام دانش‌آموز",
-    },
-    {
-      label: "نام خانوادگی دانش‌آموز",
-      value: "{{student.family}}",
-      description: "فقط نام خانوادگی دانش‌آموز",
-    },
-    {
-      label: "کد دانش‌آموز",
-      value: "{{student.code}}",
-      description: "کد دانش‌آموزی",
-    },
-    {
-      label: "نام کلاس",
-      value: "{{class.name}}",
-      description: "نام کلاس دانش‌آموز",
-    },
-    {
-      label: "کد کلاس",
-      value: "{{class.code}}",
-      description: "کد کلاس دانش‌آموز",
-    },
-    {
-      label: "نام معلم",
-      value: "{{teacher.fullName}}",
-      description: "نام و نام خانوادگی معلم",
-    },
-    {
-      label: "تاریخ فعلی",
-      value: "{{currentDate}}",
-      description: "تاریخ فعلی به شمسی",
-    },
-    { label: "نام مدرسه", value: "{{school.name}}", description: "نام مدرسه" },
-  ];
 
   // Clean up URL when component unmounts or preview closes
   useEffect(() => {
@@ -817,107 +1039,168 @@ export default function PublicationEditor({
 
             <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
               <DialogTrigger asChild>
-                <Button onClick={generatePDFs} disabled={isGeneratingPdfs}>
+                <Button
+                  onClick={generatePreview}
+                  disabled={
+                    isGeneratingPdfs ||
+                    !title ||
+                    !content ||
+                    selectedStudents.length === 0
+                  }
+                  variant="default"
+                  className="flex gap-1 min-w-[100px]"
+                >
                   {isGeneratingPdfs ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      در حال آماده‌سازی...
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      در حال پردازش...
                     </>
                   ) : (
                     <>
-                      <Download className="mr-2 h-4 w-4" />
-                      تولید فایل‌های PDF
+                      <Variable className="h-4 w-4" />
+                      پیش‌نمایش
                     </>
                   )}
                 </Button>
               </DialogTrigger>
 
-              <DialogContent className="max-w-6xl max-h-[90vh]" dir="rtl">
-                <DialogHeader>
-                  <DialogTitle>پیش‌نمایش PDF</DialogTitle>
-                  <DialogDescription>
-                    شما می‌توانید فایل PDF را برای همه دانش‌آموزان انتخاب شده
-                    دانلود کنید.
-                  </DialogDescription>
+              <DialogContent
+                className="max-w-6xl h-[90vh] flex flex-col overflow-hidden p-6"
+                dir="rtl"
+              >
+                <DialogHeader className="flex-shrink-0 pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <DialogTitle className="text-xl">پیش‌نمایش سند</DialogTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center">
+                        <Label className="ml-2 whitespace-nowrap">
+                          نوع پیش‌نمایش:
+                        </Label>
+                        <RadioGroup
+                          value={previewMode}
+                          onValueChange={(value) =>
+                            setPreviewMode(value as "html" | "pdf")
+                          }
+                          className="flex"
+                        >
+                          <div className="flex items-center ml-4">
+                            <RadioGroupItem value="html" id="preview-html" />
+                            <Label htmlFor="preview-html" className="mr-1.5">
+                              HTML
+                            </Label>
+                          </div>
+                          <div className="flex items-center">
+                            <RadioGroupItem value="pdf" id="preview-pdf" />
+                            <Label htmlFor="preview-pdf" className="mr-1.5">
+                              PDF
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                      <Button
+                        onClick={generatePreview}
+                        variant="outline"
+                        size="sm"
+                      >
+                        بارگذاری مجدد
+                      </Button>
+                    </div>
+                  </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden rounded-md border">
-                  {pdfUrl ? (
-                    <iframe
-                      src={pdfUrl}
-                      className="w-full h-[60vh]"
-                      title="PDF Preview"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-[60vh]">
-                      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                    </div>
-                  )}
+                <div className="flex-grow overflow-hidden flex flex-col my-2">
+                  <div className="flex-grow h-[55vh] overflow-hidden border rounded-md bg-background">
+                    {isGeneratingPdfs ? (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                        <p>در حال ایجاد پیش‌نمایش...</p>
+                      </div>
+                    ) : previewMode === "pdf" && pdfUrl ? (
+                      <iframe
+                        src={pdfUrl}
+                        className="w-full h-full"
+                        title="PDF Preview"
+                        style={{ border: "none" }}
+                      />
+                    ) : previewMode === "html" && htmlContent ? (
+                      <iframe
+                        srcDoc={htmlContent}
+                        className="w-full h-full"
+                        title="HTML Preview"
+                        style={{ border: "none" }}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <p>پیش‌نمایش در دسترس نیست</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="pt-4">
-                  <div className="mb-4">
-                    <p className="text-sm font-medium mb-2">نحوه دانلود:</p>
-                    <RadioGroup
-                      value={pdfOutputType}
-                      onValueChange={setPdfOutputType}
-                      className="flex flex-col space-y-1"
-                    >
-                      <div className="flex items-center space-x-2 space-x-reverse">
-                        <RadioGroupItem value="individual" id="individual" />
-                        <Label htmlFor="individual" className="mr-2">
-                          فایل‌های جداگانه (ZIP)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 space-x-reverse">
-                        <RadioGroupItem value="combined" id="combined" />
-                        <Label htmlFor="combined" className="mr-2">
-                          یک فایل PDF با چندین صفحه
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mb-4"
-                      onClick={() => setIsPdfSettingsOpen(true)}
-                    >
-                      <Settings className="h-4 w-4 ml-2" />
-                      تنظیمات چاپ
-                    </Button>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Info className="h-4 w-4 mr-1" />
-                      {pdfOutputType === "combined" &&
-                      selectedStudents.length > 1
-                        ? "این پیش‌نمایش حداکثر 3 صفحه اول از فایل نهایی را نمایش می‌دهد."
-                        : "این پیش‌نمایش برای اولین دانش‌آموز انتخاب شده است."}
+                <div className="border-t pt-4 flex-shrink-0 flex flex-col space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium mb-2">نحوه دانلود:</p>
+                      <RadioGroup
+                        value={pdfOutputType}
+                        onValueChange={setPdfOutputType}
+                        className="flex flex-col space-y-1"
+                      >
+                        <div className="flex items-center">
+                          <RadioGroupItem value="individual" id="individual" />
+                          <Label htmlFor="individual" className="mr-2">
+                            فایل‌های جداگانه (ZIP)
+                          </Label>
+                        </div>
+                        <div className="flex items-center">
+                          <RadioGroupItem value="combined" id="combined" />
+                          <Label htmlFor="combined" className="mr-2">
+                            یک فایل ترکیبی با چندین صفحه
+                          </Label>
+                        </div>
+                      </RadioGroup>
                     </div>
 
+                    <div className="flex flex-col justify-between">
+                      <Button
+                        variant="outline"
+                        className="mb-2 self-start"
+                        onClick={() => setIsPdfSettingsOpen(true)}
+                      >
+                        <Settings className="h-4 w-4 ml-2" />
+                        تنظیمات چاپ
+                      </Button>
+
+                      <div className="text-sm text-gray-500 flex items-start">
+                        <Info className="h-4 w-4 ml-1 mt-0.5 flex-shrink-0" />
+                        <span>
+                          {pdfOutputType === "combined" &&
+                          selectedStudents.length > 1
+                            ? "این پیش‌نمایش حداکثر 3 صفحه اول از فایل نهایی را نمایش می‌دهد."
+                            : "این پیش‌نمایش برای اولین دانش‌آموز انتخاب شده است."}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter className="flex justify-end pt-2">
                     <Button
-                      onClick={handleDownloadPDFs}
+                      onClick={handleDownload}
                       disabled={isGeneratingPdfs}
+                      className="gap-1"
                     >
                       {isGeneratingPdfs ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          در حال دانلود...
-                        </>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <>
-                          <Download className="mr-2 h-4 w-4" />
-                          {pdfOutputType === "individual"
-                            ? `دانلود ${selectedStudents.length} فایل مجزا`
-                            : `دانلود یک فایل PDF (${selectedStudents.length} صفحه)`}
-                        </>
+                        <Download className="h-4 w-4" />
                       )}
+                      <span className="ml-1">
+                        {pdfOutputType === "individual"
+                          ? `دانلود ${selectedStudents.length} فایل مجزا`
+                          : `دانلود یک فایل ترکیبی (${selectedStudents.length} صفحه)`}
+                      </span>
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </div>
               </DialogContent>
             </Dialog>
@@ -929,218 +1212,249 @@ export default function PublicationEditor({
             >
               <DialogContent className="w-[500px]" dir="rtl">
                 <DialogHeader>
-                  <DialogTitle>تنظیمات PDF</DialogTitle>
+                  <DialogTitle>تنظیمات سند</DialogTitle>
                   <DialogDescription>
-                    تنظیمات ظاهری و چاپ PDF را تغییر دهید.
+                    تنظیمات مربوط به نمایش و چاپ سند را تغییر دهید
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="show-header">نمایش سربرگ</Label>
-                    <Switch
-                      id="show-header"
-                      checked={pdfOptions.showHeader}
-                      onCheckedChange={(checked) => {
+                <div className="grid gap-4 py-4">
+                  {/* Format Selection */}
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="outputFormat">نوع خروجی</Label>
+                    <RadioGroup
+                      value={pdfOptions.outputFormat}
+                      onValueChange={(value) =>
                         setPdfOptions({
                           ...pdfOptions,
-                          showHeader: checked,
-                        });
-                      }}
-                    />
+                          outputFormat: value as "html" | "pdf",
+                        })
+                      }
+                      className="flex space-x-2"
+                    >
+                      <div className="flex items-center space-x-2 ml-4">
+                        <RadioGroupItem value="html" id="format-html" />
+                        <Label htmlFor="format-html">
+                          HTML (سازگاری بیشتر)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="pdf" id="format-pdf" />
+                        <Label htmlFor="format-pdf">PDF</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="show-footer">نمایش پاورقی</Label>
-                    <Switch
-                      id="show-footer"
-                      checked={pdfOptions.showFooter}
-                      onCheckedChange={(checked) => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          showFooter: checked,
-                        });
-                      }}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="paperSize">اندازه کاغذ</Label>
+                      <Select
+                        value={pdfOptions.paperSize}
+                        onValueChange={(value: "A4" | "A5" | "Letter") =>
+                          setPdfOptions({ ...pdfOptions, paperSize: value })
+                        }
+                      >
+                        <SelectTrigger id="paperSize">
+                          <SelectValue placeholder="انتخاب اندازه کاغذ" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="A4">A4</SelectItem>
+                          <SelectItem value="A5">A5</SelectItem>
+                          <SelectItem value="Letter">Letter</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="orientation">جهت کاغذ</Label>
+                      <Select
+                        value={pdfOptions.orientation}
+                        onValueChange={(value: "portrait" | "landscape") =>
+                          setPdfOptions({ ...pdfOptions, orientation: value })
+                        }
+                      >
+                        <SelectTrigger id="orientation">
+                          <SelectValue placeholder="انتخاب جهت کاغذ" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="portrait">عمودی</SelectItem>
+                          <SelectItem value="landscape">افقی</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="show-watermark">نمایش واترمارک</Label>
-                    <Switch
-                      id="show-watermark"
-                      checked={pdfOptions.showWatermark}
-                      onCheckedChange={(checked) => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          showWatermark: checked,
-                        });
-                      }}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="font">نوع فونت</Label>
+                      <Select
+                        value={pdfOptions.font}
+                        onValueChange={(value: string) =>
+                          setPdfOptions({ ...pdfOptions, font: value })
+                        }
+                      >
+                        <SelectTrigger id="font">
+                          <SelectValue placeholder="انتخاب فونت" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="Vazirmatn">وزیر متن</SelectItem>
+                          <SelectItem value="IRANSans">ایران سنس</SelectItem>
+                          <SelectItem value="Tahoma">تاهما</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="margin">حاشیه (mm)</Label>
+                      <Input
+                        id="margin"
+                        type="number"
+                        value={pdfOptions.margin}
+                        onChange={(e) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            margin: parseInt(e.target.value) || 20,
+                          })
+                        }
+                        min="5"
+                        max="50"
+                      />
+                    </div>
                   </div>
 
-                  <div className="col-span-2">
-                    <Label htmlFor="footer-text" className="mb-1 block">
-                      متن پاورقی
-                    </Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="templates-per-page">
+                        قالب در هر صفحه
+                      </Label>
+                      <Select
+                        value={pdfOptions.templatesPerPage.toString()}
+                        onValueChange={(value: string) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            templatesPerPage: parseInt(value),
+                          })
+                        }
+                      >
+                        <SelectTrigger id="templates-per-page">
+                          <SelectValue placeholder="انتخاب تعداد قالب" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="1">۱ قالب</SelectItem>
+                          <SelectItem value="2">۲ قالب</SelectItem>
+                          <SelectItem value="4">۴ قالب</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="headerColor">رنگ هدر</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="headerColor"
+                          type="color"
+                          value={pdfOptions.headerColor}
+                          onChange={(e) =>
+                            setPdfOptions({
+                              ...pdfOptions,
+                              headerColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-8 p-1"
+                        />
+                        <Input
+                          type="text"
+                          value={pdfOptions.headerColor}
+                          onChange={(e) =>
+                            setPdfOptions({
+                              ...pdfOptions,
+                              headerColor: e.target.value,
+                            })
+                          }
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="showHeader"
+                        checked={pdfOptions.showHeader}
+                        onCheckedChange={(checked) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            showHeader: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="showHeader">نمایش هدر</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="showFooter"
+                        checked={pdfOptions.showFooter}
+                        onCheckedChange={(checked) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            showFooter: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="showFooter">نمایش فوتر</Label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="showWatermark"
+                        checked={pdfOptions.showWatermark}
+                        onCheckedChange={(checked) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            showWatermark: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="showWatermark">نمایش واترمارک</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="showStudentInfo"
+                        checked={pdfOptions.showStudentInfo}
+                        onCheckedChange={(checked) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            showStudentInfo: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="showStudentInfo">
+                        نمایش اطلاعات دانش‌آموز
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="footerText">متن فوتر</Label>
                     <Input
-                      id="footer-text"
+                      id="footerText"
                       value={pdfOptions.footerText}
-                      onChange={(e) => {
+                      onChange={(e) =>
                         setPdfOptions({
                           ...pdfOptions,
                           footerText: e.target.value,
-                        });
-                      }}
-                      dir="rtl"
+                        })
+                      }
                     />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="paper-size" className="mb-1 block">
-                      اندازه کاغذ
-                    </Label>
-                    <Select
-                      value={pdfOptions.paperSize}
-                      onValueChange={(value: "A4" | "A5" | "Letter") => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          paperSize: value,
-                        });
-                      }}
-                    >
-                      <SelectTrigger id="paper-size">
-                        <SelectValue placeholder="انتخاب اندازه کاغذ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A4">A4</SelectItem>
-                        <SelectItem value="A5">A5</SelectItem>
-                        <SelectItem value="Letter">Letter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="orientation" className="mb-1 block">
-                      جهت کاغذ
-                    </Label>
-                    <Select
-                      value={pdfOptions.orientation}
-                      onValueChange={(value: "portrait" | "landscape") => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          orientation: value,
-                        });
-                      }}
-                    >
-                      <SelectTrigger id="orientation">
-                        <SelectValue placeholder="انتخاب جهت کاغذ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="portrait">عمودی</SelectItem>
-                        <SelectItem value="landscape">افقی</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="columns" className="mb-1 block">
-                      تعداد ستون
-                    </Label>
-                    <Select
-                      value={pdfOptions.columnsPerPage.toString()}
-                      onValueChange={(value) => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          columnsPerPage: parseInt(value),
-                        });
-                      }}
-                    >
-                      <SelectTrigger id="columns">
-                        <SelectValue placeholder="تعداد ستون" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">۱ ستون</SelectItem>
-                        <SelectItem value="2">۲ ستون</SelectItem>
-                        <SelectItem value="3">۳ ستون</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="font" className="mb-1 block">
-                      فونت
-                    </Label>
-                    <Select
-                      value={pdfOptions.font}
-                      onValueChange={(value) => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          font: value,
-                        });
-                      }}
-                    >
-                      <SelectTrigger id="font">
-                        <SelectValue placeholder="انتخاب فونت" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Vazirmatn">وزیر متن</SelectItem>
-                        <SelectItem value="IRANSans">ایران سنس</SelectItem>
-                        <SelectItem value="Tahoma">تاهوما</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="margin" className="mb-1 block">
-                      حاشیه (میلی‌متر)
-                    </Label>
-                    <Input
-                      id="margin"
-                      type="number"
-                      min="10"
-                      max="50"
-                      value={pdfOptions.margin}
-                      onChange={(e) => {
-                        setPdfOptions({
-                          ...pdfOptions,
-                          margin: parseInt(e.target.value) || 20,
-                        });
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="header-color" className="mb-1 block">
-                      رنگ سربرگ
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="header-color"
-                        type="color"
-                        value={pdfOptions.headerColor}
-                        onChange={(e) => {
-                          setPdfOptions({
-                            ...pdfOptions,
-                            headerColor: e.target.value,
-                          });
-                        }}
-                        className="w-12 p-1 h-9"
-                      />
-                      <Input
-                        value={pdfOptions.headerColor}
-                        onChange={(e) => {
-                          setPdfOptions({
-                            ...pdfOptions,
-                            headerColor: e.target.value,
-                          });
-                        }}
-                        className="w-full mr-2 text-center"
-                      />
-                    </div>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button onClick={() => setIsPdfSettingsOpen(false)}>
-                    بستن
+                    تایید
                   </Button>
                 </DialogFooter>
               </DialogContent>

@@ -22,13 +22,16 @@ export interface PDFOptions {
   showHeader: boolean;
   showFooter: boolean;
   showWatermark: boolean;
+  showStudentInfo: boolean;
   headerColor: string;
   footerText: string;
   columnsPerPage: number;
+  templatesPerPage: number;
   paperSize: "A4" | "A5" | "Letter";
   orientation: "portrait" | "landscape";
   font: string;
   margin: number;
+  outputFormat: "html" | "pdf";
 }
 
 export interface TemplateData {
