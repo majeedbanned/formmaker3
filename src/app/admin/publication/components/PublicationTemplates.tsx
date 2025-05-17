@@ -98,7 +98,35 @@ export default function PublicationTemplates({
       }
 
       const data = await response.json();
-      setTemplates(data.templates || []);
+      console.log("Fetched templates:", data.templates);
+
+      // Add a check to ensure each template has an id
+      if (data.templates && data.templates.length > 0) {
+        const firstTemplate = data.templates[0];
+        console.log("First template:", firstTemplate);
+        console.log(
+          "First template ID:",
+          firstTemplate.id,
+          "Type:",
+          typeof firstTemplate.id
+        );
+
+        // Map templates to ensure they have proper id field
+        const processedTemplates = data.templates.map(
+          (template: Partial<TemplateData> & { _id?: string }) => {
+            // Make sure template has a proper id or _id property
+            if (!template.id && template._id) {
+              console.log("Converting _id to id for template:", template._id);
+              return { ...template, id: template._id };
+            }
+            return template;
+          }
+        );
+
+        setTemplates(processedTemplates);
+      } else {
+        setTemplates([]);
+      }
     } catch (error) {
       console.error("Error fetching templates:", error);
       toast.error("خطا در دریافت قالب‌ها");
@@ -138,6 +166,16 @@ export default function PublicationTemplates({
   };
 
   const handleTemplateSelect = (template: TemplateData) => {
+    console.log("Selecting template:", template);
+    console.log("Template ID:", template.id);
+
+    // Ensure template has a valid ID
+    if (!template.id) {
+      console.error("Template is missing ID:", template);
+      toast.error("خطا در انتخاب قالب: شناسه قالب نامعتبر است");
+      return;
+    }
+
     setSelectedTemplate(template);
     onSelectTemplate(template);
   };
@@ -229,17 +267,45 @@ export default function PublicationTemplates({
                   </Button>
 
                   {template.creatorId === user.id && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      حذف
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          console.log(
+                            "Edit button clicked for template:",
+                            template
+                          );
+                          console.log("Template ID:", template.id);
+
+                          // Ensure template has all necessary data for editing
+                          if (!template.id) {
+                            console.error("Cannot edit template without ID");
+                            toast.error(
+                              "خطا: قالب انتخاب شده دارای شناسه نامعتبر است"
+                            );
+                            return;
+                          }
+
+                          setSelectedTemplate(template);
+                          handleTemplateSelect(template);
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        ویرایش
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTemplate(template);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        حذف
+                      </Button>
+                    </>
                   )}
                 </div>
 

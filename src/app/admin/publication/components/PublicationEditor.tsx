@@ -69,6 +69,7 @@ interface PublicationEditorProps {
     username?: string;
   };
   initialTemplate?: TemplateData;
+  onTemplateUpdate?: () => void;
 }
 
 interface ClassData {
@@ -97,6 +98,7 @@ interface StudentData {
 export default function PublicationEditor({
   user,
   initialTemplate,
+  onTemplateUpdate,
 }: PublicationEditorProps) {
   const [title, setTitle] = useState(initialTemplate?.title || "");
   const [content, setContent] = useState(initialTemplate?.content || "");
@@ -121,6 +123,7 @@ export default function PublicationEditor({
   const [previewMode, setPreviewMode] = useState<"html" | "pdf">(
     defaultPDFOptions.outputFormat
   );
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Regenerate preview when options change
   useEffect(() => {
@@ -129,6 +132,37 @@ export default function PublicationEditor({
       generatePreview();
     }
   }, [pdfOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update editor content when initialTemplate changes
+  useEffect(() => {
+    console.log("initialTemplate changed:", initialTemplate);
+    console.log("initialTemplate id:", initialTemplate?.id);
+    console.log(
+      "initialTemplate type:",
+      initialTemplate ? typeof initialTemplate.id : "no template"
+    );
+
+    if (initialTemplate) {
+      setTitle(initialTemplate.title || "");
+      setContent(initialTemplate.content || "");
+
+      // Determine if this is an edit operation
+      const isEditModeActive = !!initialTemplate.id;
+      setIsEditMode(isEditModeActive);
+      console.log("Edit mode:", isEditModeActive);
+
+      // Set template title and description for quick save
+      if (initialTemplate.originalTitle) {
+        setTemplateTitle(initialTemplate.title || "");
+        setTemplateDescription(initialTemplate.description || "");
+      }
+
+      // Show a success message
+      toast.success(`قالب "${initialTemplate.title}" بارگذاری شد`);
+    } else {
+      setIsEditMode(false);
+    }
+  }, [initialTemplate]);
 
   // Fetch classes and students on component mount
   useEffect(() => {
@@ -326,8 +360,20 @@ export default function PublicationEditor({
         creatorType: user.userType,
       };
 
-      const response = await fetch("/api/formbuilder/publication-templates", {
-        method: "POST",
+      // Check if we're updating an existing template
+      const isUpdating = isEditMode && initialTemplate && initialTemplate.id;
+
+      let url = "/api/formbuilder/publication-templates";
+      let method = "POST";
+
+      // If updating, modify the URL and method
+      if (isUpdating) {
+        url = `/api/formbuilder/publication-templates/${initialTemplate.id}`;
+        method = "PUT";
+      }
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           "x-domain": window.location.host,
@@ -336,13 +382,22 @@ export default function PublicationEditor({
       });
 
       if (!response.ok) {
-        throw new Error("خطا در ذخیره قالب");
+        throw new Error(
+          isUpdating ? "خطا در به‌روزرسانی قالب" : "خطا در ذخیره قالب"
+        );
       }
 
-      toast.success("قالب با موفقیت ذخیره شد");
+      toast.success(
+        isUpdating ? "قالب با موفقیت به‌روزرسانی شد" : "قالب با موفقیت ذخیره شد"
+      );
       setIsTemplateDialogOpen(false);
       setTemplateTitle("");
       setTemplateDescription("");
+
+      // Call the callback to refresh the templates list
+      if (onTemplateUpdate) {
+        onTemplateUpdate();
+      }
     } catch (error) {
       console.error("Error saving template:", error);
       toast.error("خطا در ذخیره قالب");
@@ -974,17 +1029,38 @@ export default function PublicationEditor({
                 onOpenChange={setIsTemplateDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      console.log("Template ID:", initialTemplate?.id);
+                      console.log("Initial Template:", initialTemplate);
+                      console.log("Is Edit Mode:", isEditMode);
+
+                      // Pre-populate fields if we're editing an existing template
+                      if (initialTemplate && initialTemplate.id) {
+                        setTemplateTitle(initialTemplate.title || "");
+                        setTemplateDescription(
+                          initialTemplate.description || ""
+                        );
+                      } else {
+                        // New template - set to current title as default
+                        setTemplateTitle(title || "");
+                      }
+                    }}
+                  >
                     <Save className="h-4 w-4 mr-2" />
-                    ذخیره به عنوان قالب
+                    {isEditMode ? "به‌روزرسانی قالب" : "ذخیره به عنوان قالب"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent dir="rtl" className="text-right">
                   <DialogHeader>
-                    <DialogTitle>ذخیره به عنوان قالب</DialogTitle>
+                    <DialogTitle>
+                      {isEditMode ? "به‌روزرسانی قالب" : "ذخیره به عنوان قالب"}
+                    </DialogTitle>
                     <DialogDescription>
-                      این قالب را می‌توانید در آینده برای نامه‌های مشابه استفاده
-                      کنید.
+                      {isEditMode
+                        ? "تغییرات خود را در این قالب ذخیره کنید."
+                        : "این قالب را می‌توانید در آینده برای نامه‌های مشابه استفاده کنید."}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -1028,7 +1104,7 @@ export default function PublicationEditor({
                       ) : (
                         <>
                           <Save className="mr-2 h-4 w-4" />
-                          ذخیره قالب
+                          {isEditMode ? "به‌روزرسانی" : "ذخیره قالب"}
                         </>
                       )}
                     </Button>

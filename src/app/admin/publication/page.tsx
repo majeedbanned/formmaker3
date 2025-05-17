@@ -1,16 +1,27 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PublicationEditor from "./components/PublicationEditor";
 import PublicationTemplates from "./components/PublicationTemplates";
 import PublicationHistory from "./components/PublicationHistory";
 import { Loader2 } from "lucide-react";
+import { TemplateData } from "./components/types";
 
 function PublicationPageContent() {
   const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("editor");
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateData | null>(
+    null
+  );
+  const [templatesKey, setTemplatesKey] = useState(Date.now());
+
+  // Function to refresh templates list
+  const refreshTemplates = useCallback(() => {
+    // Update the key to force re-render of the templates component
+    setTemplatesKey(Date.now());
+  }, []);
 
   if (isLoading) {
     return (
@@ -56,6 +67,18 @@ function PublicationPageContent() {
     );
   }
 
+  // Handle template selection
+  const handleSelectTemplate = (template: TemplateData) => {
+    console.log("Selected template for editing:", template);
+    console.log("Template ID:", template.id);
+
+    // Set the template with an artificial delay to ensure component re-renders properly
+    setTimeout(() => {
+      setSelectedTemplate(template);
+      setActiveTab("editor");
+    }, 50);
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -67,7 +90,13 @@ function PublicationPageContent() {
           <Tabs
             defaultValue="editor"
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={(val) => {
+              // Reset selected template if moving back to templates tab
+              if (val === "templates") {
+                setSelectedTemplate(null);
+              }
+              setActiveTab(val);
+            }}
             className="w-full"
             dir="rtl"
           >
@@ -78,15 +107,23 @@ function PublicationPageContent() {
             </TabsList>
 
             <TabsContent value="editor">
-              <PublicationEditor user={user} />
+              <PublicationEditor
+                user={user}
+                initialTemplate={selectedTemplate}
+                onTemplateUpdate={refreshTemplates}
+                key={
+                  selectedTemplate
+                    ? `template-${selectedTemplate.id}`
+                    : "new-publication"
+                }
+              />
             </TabsContent>
 
             <TabsContent value="templates">
               <PublicationTemplates
                 user={user}
-                onSelectTemplate={(template) => {
-                  setActiveTab("editor");
-                }}
+                onSelectTemplate={handleSelectTemplate}
+                key={templatesKey}
               />
             </TabsContent>
 
