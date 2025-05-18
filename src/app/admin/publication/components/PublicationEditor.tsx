@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import RichTextEditor from "@/components/ui/rich-text-editor";
+import TinyMCEEditor from "@/components/ui/tinymce-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Popover,
@@ -59,6 +59,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClassInfo, Student, Teacher, TemplateData, PDFOptions } from "./types";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 
 interface PublicationEditorProps {
   user: {
@@ -1037,6 +1038,14 @@ export default function PublicationEditor({
                 محتوای نامه
               </Label>
             </div>
+
+            {/* <TinyMCEEditor
+              value={content}
+              onChange={setContent}
+              placeholder="محتوای نامه را وارد کنید..."
+              dir="rtl"
+              height={400}
+            /> */}
 
             <RichTextEditor
               value={content}
