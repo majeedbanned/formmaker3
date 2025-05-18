@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import TinyMCEEditor from "@/components/ui/tinymce-editor";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Popover,
@@ -59,7 +59,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClassInfo, Student, Teacher, TemplateData, PDFOptions } from "./types";
-import RichTextEditor from "@/components/ui/rich-text-editor";
 
 interface PublicationEditorProps {
   user: {
@@ -126,6 +125,11 @@ export default function PublicationEditor({
   );
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Reference to store update timeout
+  const previewUpdateTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
   // Regenerate preview when options change
   useEffect(() => {
     // Only regenerate if the preview is already open
@@ -139,54 +143,83 @@ export default function PublicationEditor({
     }
   }, [pdfOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update editor content when initialTemplate changes
+  // Handle content change from the editor with proper state updates
+  const handleContentChange = (newContent: string) => {
+    console.log("Content changed from editor, new length:", newContent.length);
+    // Force immediate state update for proper synchronization
+    setContent(newContent);
+
+    // If preview is already open, update it after a short delay to ensure state is updated
+    if (isPdfPreviewOpen && selectedStudents.length > 0) {
+      // Queue an update to the preview after a short delay
+      if (previewUpdateTimeout.current) {
+        clearTimeout(previewUpdateTimeout.current);
+      }
+      previewUpdateTimeout.current = setTimeout(() => {
+        if (newContent && newContent.trim() !== "") {
+          // Only regenerate if we have actual content
+          console.log("Auto-updating preview due to content change");
+          setHtmlContent(null); // Clear previous HTML content
+          setPdfUrl(null); // Clear previous PDF
+          generatePreview(); // Generate new preview
+        }
+      }, 1000); // Wait 1 second after typing stops
+    }
+  };
+
+  // Update editor content ONLY when initialTemplate initially changes
   useEffect(() => {
-    console.log("initialTemplate changed:", initialTemplate);
-    console.log("initialTemplate id:", initialTemplate?.id);
+    if (!initialTemplate) {
+      setIsEditMode(false);
+      return;
+    }
+
+    console.log("Initial template loading:", initialTemplate.id);
+
+    // Set initial content and title once
+    setTitle(initialTemplate.title || "");
+    setContent(initialTemplate.content || "");
     console.log(
-      "initialTemplate type:",
-      initialTemplate ? typeof initialTemplate.id : "no template"
+      "Content set from template (initial load):",
+      (initialTemplate.content || "").substring(0, 100) + "..."
     );
 
-    if (initialTemplate) {
-      setTitle(initialTemplate.title || "");
-      setContent(initialTemplate.content || "");
-
-      // Load saved print options if they exist
-      if (initialTemplate.printOptions) {
-        console.log(
-          "Loading saved print options:",
-          initialTemplate.printOptions
-        );
-        setPdfOptions(initialTemplate.printOptions);
-      }
-
-      // Determine if this is an edit operation
-      const isEditModeActive = !!initialTemplate.id;
-      setIsEditMode(isEditModeActive);
-      console.log("Edit mode:", isEditModeActive);
-
-      // Set template title and description for quick save
-      if (initialTemplate.originalTitle) {
-        setTemplateTitle(initialTemplate.title || "");
-        setTemplateDescription(initialTemplate.description || "");
-      }
-
-      // Show a success message
-      toast.success(`قالب "${initialTemplate.title}" بارگذاری شد`);
-
-      // If preview is already open, regenerate it with new template settings
-      if (isPdfPreviewOpen && selectedStudents.length > 0) {
-        setHtmlContent(null);
-        setPdfUrl(null);
-        setTimeout(() => {
-          generatePreview();
-        }, 100);
-      }
-    } else {
-      setIsEditMode(false);
+    // Load saved print options if they exist
+    if (initialTemplate.printOptions) {
+      console.log("Loading saved print options:", initialTemplate.printOptions);
+      setPdfOptions(initialTemplate.printOptions);
     }
-  }, [initialTemplate, isPdfPreviewOpen, selectedStudents.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Determine if this is an edit operation
+    const isEditModeActive = !!initialTemplate.id;
+    setIsEditMode(isEditModeActive);
+    console.log("Edit mode:", isEditModeActive);
+
+    // Set template title and description for quick save
+    if (initialTemplate.originalTitle) {
+      setTemplateTitle(initialTemplate.title || "");
+      setTemplateDescription(initialTemplate.description || "");
+    }
+
+    // Show a success message
+    toast.success(`قالب "${initialTemplate.title}" بارگذاری شد`);
+  }, [initialTemplate?.id]); // Only depend on the template ID, not the entire object
+
+  // Handle preview regeneration separately (no content reloading)
+  useEffect(() => {
+    // If preview is already open after a template was loaded, regenerate it with new settings
+    if (isPdfPreviewOpen && selectedStudents.length > 0 && initialTemplate) {
+      console.log(
+        "Regenerating preview due to visibility or student selection changes"
+      );
+      // Don't reset content here - use the current content state
+      setHtmlContent(null);
+      setPdfUrl(null);
+      setTimeout(() => {
+        generatePreview();
+      }, 100);
+    }
+  }, [isPdfPreviewOpen, selectedStudents.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch classes and students on component mount
   useEffect(() => {
@@ -531,12 +564,19 @@ export default function PublicationEditor({
 
   // Generate preview content (PDF or HTML)
   const generatePreview = async () => {
+    // Get the latest content directly from state to ensure we have current value
+    const currentContent = content;
+    console.log(
+      "Generating preview with content length:",
+      currentContent.length
+    );
+
     if (!title.trim()) {
       toast.error("لطفاً عنوان نامه را وارد کنید");
       return;
     }
 
-    if (!content.trim()) {
+    if (!currentContent.trim()) {
       toast.error("لطفاً محتوای نامه را وارد کنید");
       return;
     }
@@ -564,6 +604,11 @@ export default function PublicationEditor({
         outputFormat: previewMode,
       };
 
+      console.log(
+        "Using latest editor content for preview, length:",
+        currentContent.length
+      );
+
       // Generate preview based on selected output type and format
       if (previewMode === "pdf") {
         let pdfBlob;
@@ -575,7 +620,7 @@ export default function PublicationEditor({
 
           pdfBlob = await generateCombinedPDF({
             title: processedTitle,
-            content,
+            content: currentContent, // Use the latest content
             students: previewStudents,
             date: new Date().toLocaleDateString("fa-IR"),
             replaceVariables,
@@ -585,7 +630,7 @@ export default function PublicationEditor({
           // For individual mode or single student, just show the first student
           const firstStudent = selectedStudents[0];
           const personalizedContent = replaceVariables(
-            content,
+            currentContent, // Use the latest content
             firstStudent,
             0
           );
@@ -614,7 +659,7 @@ export default function PublicationEditor({
 
           html = await generateCombinedHTML({
             title: processedTitle,
-            content,
+            content: currentContent, // Use the latest content
             students: previewStudents,
             date: new Date().toLocaleDateString("fa-IR"),
             replaceVariables,
@@ -624,7 +669,7 @@ export default function PublicationEditor({
           // For individual mode or single student, just show the first student
           const firstStudent = selectedStudents[0];
           const personalizedContent = replaceVariables(
-            content,
+            currentContent, // Use the latest content
             firstStudent,
             0
           );
@@ -674,6 +719,13 @@ export default function PublicationEditor({
       setIsGeneratingPdfs(true);
       toast.info("در حال آماده سازی فایل‌های جداگانه، لطفاً منتظر بمانید...");
 
+      // Get the latest content
+      const currentContent = content;
+      console.log(
+        "Downloading individual PDFs with content length:",
+        currentContent.length
+      );
+
       // Dynamic import of JSZip
       const JSZipModule = await import("jszip");
       const JSZip = JSZipModule.default;
@@ -685,7 +737,11 @@ export default function PublicationEditor({
       for (let i = 0; i < selectedStudents.length; i++) {
         try {
           const student = selectedStudents[i];
-          const personalizedContent = replaceVariables(content, student, i);
+          const personalizedContent = replaceVariables(
+            currentContent,
+            student,
+            i
+          );
           const processedTitle = replaceVariables(title, student, i);
 
           // Generate PDF using our new function
@@ -749,13 +805,20 @@ export default function PublicationEditor({
       setIsGeneratingPdfs(true);
       toast.info("در حال ترکیب همه نامه‌ها در یک فایل، لطفاً منتظر بمانید...");
 
+      // Get the latest content
+      const currentContent = content;
+      console.log(
+        "Downloading combined PDF with content length:",
+        currentContent.length
+      );
+
       // Process the title with variables from the first student
       const processedTitle = replaceVariables(title, selectedStudents[0], 0);
 
       // Generate a combined PDF for all selected students
       const pdfBlob = await generateCombinedPDF({
         title: processedTitle,
-        content,
+        content: currentContent,
         students: selectedStudents,
         date: new Date().toLocaleDateString("fa-IR"),
         replaceVariables,
@@ -801,6 +864,13 @@ export default function PublicationEditor({
         "در حال آماده سازی فایل‌های HTML جداگانه، لطفاً منتظر بمانید..."
       );
 
+      // Get the latest content
+      const currentContent = content;
+      console.log(
+        "Downloading individual HTML with content length:",
+        currentContent.length
+      );
+
       // Dynamic import of JSZip
       const JSZipModule = await import("jszip");
       const JSZip = JSZipModule.default;
@@ -812,7 +882,11 @@ export default function PublicationEditor({
       for (let i = 0; i < selectedStudents.length; i++) {
         try {
           const student = selectedStudents[i];
-          const personalizedContent = replaceVariables(content, student, i);
+          const personalizedContent = replaceVariables(
+            currentContent,
+            student,
+            i
+          );
           const processedTitle = replaceVariables(title, student, i);
 
           // Generate HTML
@@ -878,13 +952,20 @@ export default function PublicationEditor({
         "در حال ترکیب همه نامه‌ها در یک فایل HTML، لطفاً منتظر بمانید..."
       );
 
+      // Get the latest content
+      const currentContent = content;
+      console.log(
+        "Downloading combined HTML with content length:",
+        currentContent.length
+      );
+
       // Process the title with variables from the first student
       const processedTitle = replaceVariables(title, selectedStudents[0], 0);
 
       // Generate a combined HTML for all selected students
       const html = await generateCombinedHTML({
         title: processedTitle,
-        content,
+        content: currentContent,
         students: selectedStudents,
         date: new Date().toLocaleDateString("fa-IR"),
         replaceVariables,
@@ -961,6 +1042,15 @@ export default function PublicationEditor({
       setPdfUrl(null);
     }
   }, [isPdfPreviewOpen, pdfUrl]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUpdateTimeout.current) {
+        clearTimeout(previewUpdateTimeout.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-full">
@@ -1039,19 +1129,12 @@ export default function PublicationEditor({
               </Label>
             </div>
 
-            {/* <TinyMCEEditor
-              value={content}
-              onChange={setContent}
-              placeholder="محتوای نامه را وارد کنید..."
-              dir="rtl"
-              height={400}
-            /> */}
-
             <RichTextEditor
               value={content}
-              onChange={setContent}
+              onChange={handleContentChange}
               placeholder="محتوای نامه را وارد کنید..."
               dir="rtl"
+              className="min-h-[400px]"
             />
           </div>
 
@@ -1149,7 +1232,48 @@ export default function PublicationEditor({
             <Dialog open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
               <DialogTrigger asChild>
                 <Button
-                  onClick={generatePreview}
+                  onClick={(e) => {
+                    // Prevent default to stop automatic dialog opening
+                    e.preventDefault();
+
+                    // Log the current content
+                    console.log(
+                      "Preview button clicked, content length:",
+                      content.length
+                    );
+
+                    // Explicitly force content update
+                    const currentContent = content;
+
+                    // Only after we have the latest content, generate the preview
+                    if (
+                      !isGeneratingPdfs &&
+                      title.trim() &&
+                      currentContent.trim() &&
+                      selectedStudents.length > 0
+                    ) {
+                      // First set the dialog to open
+                      setIsPdfPreviewOpen(true);
+
+                      // Then generate the preview with a slight delay to ensure dialog is open
+                      setTimeout(() => {
+                        console.log("Generating preview after button click");
+                        // Clear previous content
+                        setHtmlContent(null);
+                        setPdfUrl(null);
+                        generatePreview();
+                      }, 100);
+                    } else {
+                      // Show appropriate error message
+                      if (!title.trim()) {
+                        toast.error("لطفاً عنوان نامه را وارد کنید");
+                      } else if (!currentContent.trim()) {
+                        toast.error("لطفاً محتوای نامه را وارد کنید");
+                      } else if (selectedStudents.length === 0) {
+                        toast.error("لطفاً حداقل یک دانش‌آموز را انتخاب کنید");
+                      }
+                    }
+                  }}
                   disabled={
                     isGeneratingPdfs ||
                     !title ||
@@ -1218,7 +1342,16 @@ export default function PublicationEditor({
                         </RadioGroup>
                       </div>
                       <Button
-                        onClick={generatePreview}
+                        onClick={() => {
+                          console.log(
+                            "Reload button clicked, getting latest content"
+                          );
+                          // Clear previous content
+                          setHtmlContent(null);
+                          setPdfUrl(null);
+                          // Generate preview with latest content
+                          generatePreview();
+                        }}
                         variant="outline"
                         size="sm"
                       >
