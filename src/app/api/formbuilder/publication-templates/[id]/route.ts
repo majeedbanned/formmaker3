@@ -72,6 +72,7 @@ export async function PUT(
       description: requestData.description,
       content: requestData.content,
       originalTitle: requestData.originalTitle,
+      printOptions: requestData.printOptions,
       updatedAt: new Date().toISOString(),
     };
 

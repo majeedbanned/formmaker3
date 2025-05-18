@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, description, originalTitle, schoolCode } = body;
+    const { title, content, description, originalTitle, schoolCode, printOptions } = body;
 
     if (!title || !content || !schoolCode) {
       return NextResponse.json(
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       schoolCode,
       creatorId: user.id,
       creatorType: user.userType,
+      printOptions: printOptions,
       createdAt: new Date().toISOString(),
     });
 

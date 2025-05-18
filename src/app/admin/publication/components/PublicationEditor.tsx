@@ -129,7 +129,12 @@ export default function PublicationEditor({
   useEffect(() => {
     // Only regenerate if the preview is already open
     if (isPdfPreviewOpen && selectedStudents.length > 0) {
-      generatePreview();
+      // Force a complete regeneration to ensure proper template layout
+      setPdfUrl(null);
+      setHtmlContent(null);
+      setTimeout(() => {
+        generatePreview();
+      }, 50);
     }
   }, [pdfOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -146,6 +151,15 @@ export default function PublicationEditor({
       setTitle(initialTemplate.title || "");
       setContent(initialTemplate.content || "");
 
+      // Load saved print options if they exist
+      if (initialTemplate.printOptions) {
+        console.log(
+          "Loading saved print options:",
+          initialTemplate.printOptions
+        );
+        setPdfOptions(initialTemplate.printOptions);
+      }
+
       // Determine if this is an edit operation
       const isEditModeActive = !!initialTemplate.id;
       setIsEditMode(isEditModeActive);
@@ -159,10 +173,19 @@ export default function PublicationEditor({
 
       // Show a success message
       toast.success(`قالب "${initialTemplate.title}" بارگذاری شد`);
+
+      // If preview is already open, regenerate it with new template settings
+      if (isPdfPreviewOpen && selectedStudents.length > 0) {
+        setHtmlContent(null);
+        setPdfUrl(null);
+        setTimeout(() => {
+          generatePreview();
+        }, 100);
+      }
     } else {
       setIsEditMode(false);
     }
-  }, [initialTemplate]);
+  }, [initialTemplate, isPdfPreviewOpen, selectedStudents.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch classes and students on component mount
   useEffect(() => {
@@ -358,6 +381,7 @@ export default function PublicationEditor({
         schoolCode: user.schoolCode,
         creatorId: user.id,
         creatorType: user.userType,
+        printOptions: pdfOptions,
       };
 
       // Check if we're updating an existing template
@@ -1059,8 +1083,8 @@ export default function PublicationEditor({
                     </DialogTitle>
                     <DialogDescription>
                       {isEditMode
-                        ? "تغییرات خود را در این قالب ذخیره کنید."
-                        : "این قالب را می‌توانید در آینده برای نامه‌های مشابه استفاده کنید."}
+                        ? "تغییرات خود را در این قالب و تنظیمات چاپ ذخیره کنید."
+                        : "این قالب و تنظیمات چاپ آن را می‌توانید در آینده برای نامه‌های مشابه استفاده کنید."}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -1154,9 +1178,20 @@ export default function PublicationEditor({
                         </Label>
                         <RadioGroup
                           value={previewMode}
-                          onValueChange={(value) =>
-                            setPreviewMode(value as "html" | "pdf")
-                          }
+                          onValueChange={(value) => {
+                            const newMode = value as "html" | "pdf";
+                            setPreviewMode(newMode);
+
+                            // Force regenerate the preview when switching modes
+                            if (newMode === "html") {
+                              setHtmlContent(null);
+                            } else {
+                              setPdfUrl(null);
+                            }
+
+                            // Let state update, then regenerate
+                            setTimeout(() => generatePreview(), 50);
+                          }}
                           className="flex"
                         >
                           <div className="flex items-center ml-4">
@@ -1293,6 +1328,16 @@ export default function PublicationEditor({
                     تنظیمات مربوط به نمایش و چاپ سند را تغییر دهید
                   </DialogDescription>
                 </DialogHeader>
+
+                {/* Info alert about settings being saved with template */}
+                <Alert className="text-right mb-2">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    این تنظیمات به همراه قالب شما ذخیره خواهند شد و هنگام
+                    استفاده مجدد از این قالب به صورت خودکار بارگذاری می‌شوند.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="grid gap-4 py-4">
                   {/* Format Selection */}
                   <div className="flex flex-col space-y-1.5">
@@ -1404,12 +1449,21 @@ export default function PublicationEditor({
                       </Label>
                       <Select
                         value={pdfOptions.templatesPerPage.toString()}
-                        onValueChange={(value: string) =>
+                        onValueChange={(value: string) => {
+                          // Update the templates per page setting
                           setPdfOptions({
                             ...pdfOptions,
                             templatesPerPage: parseInt(value),
-                          })
-                        }
+                          });
+
+                          // If preview is open, ensure it refreshes completely
+                          if (isPdfPreviewOpen && selectedStudents.length > 0) {
+                            if (previewMode === "html") {
+                              setHtmlContent(null);
+                              setTimeout(() => generatePreview(), 50);
+                            }
+                          }
+                        }}
                       >
                         <SelectTrigger id="templates-per-page">
                           <SelectValue placeholder="انتخاب تعداد قالب" />
@@ -1418,6 +1472,12 @@ export default function PublicationEditor({
                           <SelectItem value="1">۱ قالب</SelectItem>
                           <SelectItem value="2">۲ قالب</SelectItem>
                           <SelectItem value="4">۴ قالب</SelectItem>
+                          <SelectItem value="6">۶ قالب</SelectItem>
+                          <SelectItem value="8">۸ قالب</SelectItem>
+                          <SelectItem value="10">۱۰ قالب</SelectItem>
+                          <SelectItem value="12">۱۲ قالب</SelectItem>
+                          <SelectItem value="14">۱۴ قالب</SelectItem>
+                          <SelectItem value="16">۱۶ قالب</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1485,6 +1545,20 @@ export default function PublicationEditor({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox
+                        id="showTitle"
+                        checked={pdfOptions.showTitle}
+                        onCheckedChange={(checked) =>
+                          setPdfOptions({
+                            ...pdfOptions,
+                            showTitle: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="showTitle">نمایش عنوان</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
                         id="showWatermark"
                         checked={pdfOptions.showWatermark}
                         onCheckedChange={(checked) =>
@@ -1496,7 +1570,9 @@ export default function PublicationEditor({
                       />
                       <Label htmlFor="showWatermark">نمایش واترمارک</Label>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="showStudentInfo"

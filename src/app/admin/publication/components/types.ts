@@ -23,6 +23,7 @@ export interface PDFOptions {
   showFooter: boolean;
   showWatermark: boolean;
   showStudentInfo: boolean;
+  showTitle: boolean;
   headerColor: string;
   footerText: string;
   columnsPerPage: number;
@@ -44,6 +45,7 @@ export interface TemplateData {
   creatorType?: string;
   originalTitle?: string;
   schoolCode?: string;
+  printOptions?: PDFOptions;
 }
 
 export interface PublicationHistoryItem {

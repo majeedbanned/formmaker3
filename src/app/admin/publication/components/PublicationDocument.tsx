@@ -25,6 +25,7 @@ export const defaultPDFOptions: PDFOptions = {
   showFooter: true,
   showWatermark: true,
   showStudentInfo: true,
+  showTitle: true, // Show title by default
   headerColor: "#f0f0f0", // Light gray
   footerText: "این سند به صورت خودکار تولید شده است",
   columnsPerPage: 1,
@@ -281,10 +282,12 @@ export const generatePDF = async (
     // Reset text color for content
     pdf.setTextColor(0, 0, 0);
 
-    // Add title
-    if (fontLoaded) pdf.setFont(pdfOptions.font, "bold");
-    pdf.setFontSize(16);
-    pdf.text(title, pageWidth - margin, margin + 5, { align: "right" });
+    // Add title if enabled
+    if (pdfOptions.showTitle) {
+      if (fontLoaded) pdf.setFont(pdfOptions.font, "bold");
+      pdf.setFontSize(16);
+      pdf.text(title, pageWidth - margin, margin + 5, { align: "right" });
+    }
 
     // Add student information if enabled
     let contentStartY = margin + 40; // Default starting position
@@ -625,7 +628,6 @@ export const generateCombinedPDF = async (props: {
           student,
           studentIndex + i
         );
-        const studentTitle = replaceVariables(title, student, studentIndex + i);
         const parsedContent = parseContent(personalizedContent);
 
         // Calculate position for this template
@@ -638,10 +640,16 @@ export const generateCombinedPDF = async (props: {
         // Save current state to restore after this template
         pdf.saveGraphicsState();
 
-        // Add title
-        if (fontLoaded) pdf.setFont(pdfOptions.font, "bold");
-        pdf.setFontSize(templatesPerPage > 1 ? 12 : 16);
-        pdf.text(studentTitle, templateRight, y + 5, { align: "right" });
+        // Generate title with student variables
+        const studentTitle = replaceVariables(title, student, studentIndex + i);
+
+        // Add title if enabled
+        if (pdfOptions.showTitle) {
+          // Add title
+          if (fontLoaded) pdf.setFont(pdfOptions.font, "bold");
+          pdf.setFontSize(templatesPerPage > 1 ? 12 : 16);
+          pdf.text(studentTitle, templateRight, y + 5, { align: "right" });
+        }
 
         let contentStartY = y + 10;
 
@@ -1000,10 +1008,14 @@ export const generateHTML = async (
     </head>
     <body>
       <div class="page">
+        ${
+          pdfOptions.showWatermark
+            ? '<div class="watermark">نسخه الکترونیکی</div>'
+            : ""
+        }
         ${pdfOptions.showHeader ? '<div class="header"></div>' : ""}
-        ${pdfOptions.showWatermark ? '<div class="watermark">رسمی</div>' : ""}
         
-        <div class="title">${title}</div>
+        ${pdfOptions.showTitle ? `<div class="title">${title}</div>` : ""}
         
         ${
           pdfOptions.showStudentInfo
@@ -1223,6 +1235,7 @@ export const generateCombinedHTML = async (props: {
 
         .template-grid {
           display: grid;
+          /* Define default grid layout that will be overridden by inline styles */
           grid-template-columns: repeat(${
             pdfOptions.templatesPerPage <= 2 ? pdfOptions.templatesPerPage : 2
           }, 1fr);
@@ -1233,6 +1246,8 @@ export const generateCombinedHTML = async (props: {
           }, auto);
           gap: 20px;
           margin-bottom: 20px;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .template {
@@ -1279,9 +1294,19 @@ export const generateCombinedHTML = async (props: {
       htmlContent += `
         <div class="page">
           ${pdfOptions.showHeader ? '<div class="header"></div>' : ""}
-          ${pdfOptions.showWatermark ? '<div class="watermark">رسمی</div>' : ""}
+          ${
+            pdfOptions.showWatermark
+              ? '<div class="watermark">نسخه الکترونیکی</div>'
+              : ""
+          }
           
-          <div class="template-grid">
+          <div class="template-grid" style="display: grid !important; grid-template-columns: repeat(${
+            pdfOptions.templatesPerPage <= 2 ? pdfOptions.templatesPerPage : 2
+          }, 1fr) !important; grid-template-rows: repeat(${
+        pdfOptions.templatesPerPage <= 2
+          ? 1
+          : Math.ceil(pdfOptions.templatesPerPage / 2)
+      }, auto) !important; gap: 2px !important; width: 100% !important; box-sizing: border-box !important;">
       `;
 
       // Add each student's content to the grid
@@ -1297,7 +1322,11 @@ export const generateCombinedHTML = async (props: {
 
         htmlContent += `
           <div class="template">
-            <div class="title">${processedTitle}</div>
+            ${
+              pdfOptions.showTitle
+                ? `<div class="title">${processedTitle}</div>`
+                : ""
+            }
             
             ${
               pdfOptions.showStudentInfo
@@ -1344,9 +1373,17 @@ export const generateCombinedHTML = async (props: {
       htmlContent += `
         <div class="page">
           ${pdfOptions.showHeader ? '<div class="header"></div>' : ""}
-          ${pdfOptions.showWatermark ? '<div class="watermark">رسمی</div>' : ""}
+          ${
+            pdfOptions.showWatermark
+              ? '<div class="watermark">نسخه الکترونیکی</div>'
+              : ""
+          }
           
-          <div class="title">${processedTitle}</div>
+          ${
+            pdfOptions.showTitle
+              ? `<div class="title">${processedTitle}</div>`
+              : ""
+          }
           
           ${
             pdfOptions.showStudentInfo
