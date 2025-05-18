@@ -182,6 +182,12 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: " انتشارات",
+          url: "/admin/publication",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
           title: "+گزارش نمرات سالانه",
           url: "/admin/monthlygradeoverall",
           system: "importstudents",

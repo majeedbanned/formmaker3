@@ -437,7 +437,7 @@ export const generateCombinedPDF = async (props: {
     content: string,
     student: Student,
     index: number
-  ) => string;
+  ) => Promise<string>;
   options?: Partial<PDFOptions>;
 }): Promise<Blob> => {
   const {
@@ -623,7 +623,7 @@ export const generateCombinedPDF = async (props: {
       // Process students for this page
       for (let i = 0; i < studentsOnPage; i++) {
         const student = students[studentIndex + i];
-        const personalizedContent = replaceVariables(
+        const personalizedContent = await replaceVariables(
           content,
           student,
           studentIndex + i
@@ -641,7 +641,11 @@ export const generateCombinedPDF = async (props: {
         pdf.saveGraphicsState();
 
         // Generate title with student variables
-        const studentTitle = replaceVariables(title, student, studentIndex + i);
+        const studentTitle = await replaceVariables(
+          title,
+          student,
+          studentIndex + i
+        );
 
         // Add title if enabled
         if (pdfOptions.showTitle) {
@@ -840,6 +844,9 @@ export const generateHTML = async (
   // Merge default options with provided options
   const pdfOptions: PDFOptions = { ...defaultPDFOptions, ...options };
 
+  // Get domain for absolute URLs
+  const domain = window.location.origin;
+
   // Create HTML document
   const htmlContent = `
     <!DOCTYPE html>
@@ -851,14 +858,18 @@ export const generateHTML = async (
       <style>
         @font-face {
           font-family: "${pdfOptions.font}";
-          src: url("/fonts/${pdfOptions.font}-Regular.ttf") format("truetype");
+          src: url("${domain}/fonts/${
+    pdfOptions.font
+  }-Regular.ttf") format("truetype");
           font-weight: normal;
           font-style: normal;
         }
         
         @font-face {
           font-family: "${pdfOptions.font}";
-          src: url("/fonts/${pdfOptions.font}-Bold.ttf") format("truetype");
+          src: url("${domain}/fonts/${
+    pdfOptions.font
+  }-Bold.ttf") format("truetype");
           font-weight: bold;
           font-style: normal;
         }
@@ -1068,7 +1079,7 @@ export const generateCombinedHTML = async (props: {
     content: string,
     student: Student,
     index: number
-  ) => string;
+  ) => Promise<string>;
   options?: Partial<PDFOptions>;
 }): Promise<string> => {
   const {
@@ -1083,6 +1094,9 @@ export const generateCombinedHTML = async (props: {
   // Merge default options with provided options
   const pdfOptions: PDFOptions = { ...defaultPDFOptions, ...options };
 
+  // Get domain for absolute URLs
+  const domain = window.location.origin;
+
   // Create HTML document
   let htmlContent = `
     <!DOCTYPE html>
@@ -1094,14 +1108,18 @@ export const generateCombinedHTML = async (props: {
       <style>
         @font-face {
           font-family: "${pdfOptions.font}";
-          src: url("/fonts/${pdfOptions.font}-Regular.ttf") format("truetype");
+          src: url("${domain}/fonts/${
+    pdfOptions.font
+  }-Regular.ttf") format("truetype");
           font-weight: normal;
           font-style: normal;
         }
         
         @font-face {
           font-family: "${pdfOptions.font}";
-          src: url("/fonts/${pdfOptions.font}-Bold.ttf") format("truetype");
+          src: url("${domain}/fonts/${
+    pdfOptions.font
+  }-Bold.ttf") format("truetype");
           font-weight: bold;
           font-style: normal;
         }
@@ -1313,12 +1331,16 @@ export const generateCombinedHTML = async (props: {
       for (let i = 0; i < pageStudents.length; i++) {
         const student = pageStudents[i];
         const studentIndex = page * studentsPerPage + i;
-        const personalizedContent = replaceVariables(
+        const personalizedContent = await replaceVariables(
           content,
           student,
           studentIndex
         );
-        const processedTitle = replaceVariables(title, student, studentIndex);
+        const processedTitle = await replaceVariables(
+          title,
+          student,
+          studentIndex
+        );
 
         htmlContent += `
           <div class="template">
@@ -1367,8 +1389,8 @@ export const generateCombinedHTML = async (props: {
     // Create a separate page for each student
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
-      const personalizedContent = replaceVariables(content, student, i);
-      const processedTitle = replaceVariables(title, student, i);
+      const personalizedContent = await replaceVariables(content, student, i);
+      const processedTitle = await replaceVariables(title, student, i);
 
       htmlContent += `
         <div class="page">

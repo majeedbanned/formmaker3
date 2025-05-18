@@ -59,6 +59,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClassInfo, Student, Teacher, TemplateData, PDFOptions } from "./types";
+import QRCode from "qrcode";
 
 interface PublicationEditorProps {
   user: {
@@ -464,6 +465,25 @@ export default function PublicationEditor({
     }
   };
 
+  // Function to generate QR code as data URL
+  const generateQRCode = async (text: string): Promise<string> => {
+    try {
+      const dataUrl = await QRCode.toDataURL(text, {
+        errorCorrectionLevel: "H",
+        margin: 1,
+        width: 150,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+      return dataUrl;
+    } catch (err) {
+      console.error("Error generating QR code:", err);
+      return ""; // Return empty string in case of error
+    }
+  };
+
   // Variables available for insertion
   const availableVariables = [
     {
@@ -485,6 +505,16 @@ export default function PublicationEditor({
       label: "کد دانش‌آموز",
       value: "{{student.code}}",
       description: "کد دانش‌آموزی",
+    },
+    {
+      label: "کد QR دانش‌آموز",
+      value: "{{student.qrcode}}",
+      description: "کد QR حاوی کد دانش‌آموزی",
+    },
+    {
+      label: "تصویر دانش‌آموز",
+      value: "{{student.avatar}}",
+      description: "تصویر پروفایل دانش‌آموز",
     },
     {
       label: "نام کلاس",
@@ -520,7 +550,7 @@ export default function PublicationEditor({
   ];
 
   // Function to replace variables in content for a specific student
-  const replaceVariables = (
+  const replaceVariables = async (
     originalContent: string,
     student: Student,
     index: number = 0
@@ -538,12 +568,71 @@ export default function PublicationEditor({
       minRandomValue + Math.random() * (maxRandomValue - minRandomValue)
     );
 
+    // Generate QR code for student code
+    let qrCodeDataUrl = "";
+    try {
+      qrCodeDataUrl = await generateQRCode(student.studentCode);
+      console.log("Generated QR code for student:", student.studentCode);
+    } catch (err) {
+      console.error("Failed to generate QR code:", err);
+    }
+
+    // Get student avatar from API or use default image
+    let avatarUrl = "";
+    const domain = window.location.origin;
+    try {
+      // Try to fetch student details to get avatar
+      const response = await fetch(
+        `/api/formbuilder/student-details?studentCode=${student.studentCode}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+      console.log("response", response);
+      if (response.ok) {
+        const studentDetails = await response.json();
+        console.log("studentDetails", studentDetails);
+        // Check if avatar path exists in the response
+        if (studentDetails.student?.data?.avatar?.path) {
+          // Extract the path part from the avatar URL
+          const avatarPath = studentDetails.student.data.avatar.path;
+          // Check if path already has domain
+          if (avatarPath.startsWith("http")) {
+            avatarUrl = avatarPath;
+          } else {
+            // Add domain to path if it's a relative URL
+            avatarUrl = avatarPath.startsWith("/")
+              ? `${domain}${avatarPath}`
+              : `${domain}/${avatarPath}`;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch student avatar:", err);
+    }
+
+    // Default avatar if none found
+    if (!avatarUrl) {
+      avatarUrl = `${domain}/images/default-avatar.png`;
+    }
+
+    // Create QR code and avatar HTML
+    const qrCodeHtml = qrCodeDataUrl
+      ? `<img src="${qrCodeDataUrl}" alt="QR Code" style="max-width: 75px; height: auto;" />`
+      : "";
+
+    const avatarHtml = `<img src="${avatarUrl}" alt="تصویر دانش‌آموز" style="max-width: 70px; height: auto; border-radius: 50%;" />`;
+
     // Create a mapping of variable patterns to their values
     const variableMap: Record<string, string> = {
       "{{student.fullName}}": `${student.studentName} ${student.studentFamily}`,
       "{{student.name}}": student.studentName,
       "{{student.family}}": student.studentFamily,
       "{{student.code}}": student.studentCode,
+      "{{student.qrcode}}": qrCodeHtml,
+      "{{student.avatar}}": avatarHtml,
       "{{class.name}}": studentClass?.className || "",
       "{{class.code}}": student.classCode || "",
       "{{teacher.fullName}}": teachersStr,
@@ -616,7 +705,11 @@ export default function PublicationEditor({
         if (pdfOutputType === "combined" && selectedStudents.length > 1) {
           // Show a combined preview with the first 3 students (or fewer if there are fewer selected)
           const previewStudents = selectedStudents.slice(0, 3);
-          const processedTitle = replaceVariables(title, previewStudents[0], 0);
+          const processedTitle = await replaceVariables(
+            title,
+            previewStudents[0],
+            0
+          );
 
           pdfBlob = await generateCombinedPDF({
             title: processedTitle,
@@ -629,12 +722,12 @@ export default function PublicationEditor({
         } else {
           // For individual mode or single student, just show the first student
           const firstStudent = selectedStudents[0];
-          const personalizedContent = replaceVariables(
+          const personalizedContent = await replaceVariables(
             currentContent, // Use the latest content
             firstStudent,
             0
           );
-          const processedTitle = replaceVariables(title, firstStudent, 0);
+          const processedTitle = await replaceVariables(title, firstStudent, 0);
 
           pdfBlob = await generatePDF({
             title: processedTitle,
@@ -655,7 +748,11 @@ export default function PublicationEditor({
         if (pdfOutputType === "combined" && selectedStudents.length > 1) {
           // Show a combined preview with the first 3 students (or fewer if there are fewer selected)
           const previewStudents = selectedStudents.slice(0, 3);
-          const processedTitle = replaceVariables(title, previewStudents[0], 0);
+          const processedTitle = await replaceVariables(
+            title,
+            previewStudents[0],
+            0
+          );
 
           html = await generateCombinedHTML({
             title: processedTitle,
@@ -668,12 +765,12 @@ export default function PublicationEditor({
         } else {
           // For individual mode or single student, just show the first student
           const firstStudent = selectedStudents[0];
-          const personalizedContent = replaceVariables(
+          const personalizedContent = await replaceVariables(
             currentContent, // Use the latest content
             firstStudent,
             0
           );
-          const processedTitle = replaceVariables(title, firstStudent, 0);
+          const processedTitle = await replaceVariables(title, firstStudent, 0);
 
           html = await generateHTML({
             title: processedTitle,
@@ -737,12 +834,12 @@ export default function PublicationEditor({
       for (let i = 0; i < selectedStudents.length; i++) {
         try {
           const student = selectedStudents[i];
-          const personalizedContent = replaceVariables(
+          const personalizedContent = await replaceVariables(
             currentContent,
             student,
             i
           );
-          const processedTitle = replaceVariables(title, student, i);
+          const processedTitle = await replaceVariables(title, student, i);
 
           // Generate PDF using our new function
           const pdfBlob = await generatePDF({
@@ -813,7 +910,11 @@ export default function PublicationEditor({
       );
 
       // Process the title with variables from the first student
-      const processedTitle = replaceVariables(title, selectedStudents[0], 0);
+      const processedTitle = await replaceVariables(
+        title,
+        selectedStudents[0],
+        0
+      );
 
       // Generate a combined PDF for all selected students
       const pdfBlob = await generateCombinedPDF({
@@ -882,12 +983,12 @@ export default function PublicationEditor({
       for (let i = 0; i < selectedStudents.length; i++) {
         try {
           const student = selectedStudents[i];
-          const personalizedContent = replaceVariables(
+          const personalizedContent = await replaceVariables(
             currentContent,
             student,
             i
           );
-          const processedTitle = replaceVariables(title, student, i);
+          const processedTitle = await replaceVariables(title, student, i);
 
           // Generate HTML
           const html = await generateHTML({
@@ -960,7 +1061,11 @@ export default function PublicationEditor({
       );
 
       // Process the title with variables from the first student
-      const processedTitle = replaceVariables(title, selectedStudents[0], 0);
+      const processedTitle = await replaceVariables(
+        title,
+        selectedStudents[0],
+        0
+      );
 
       // Generate a combined HTML for all selected students
       const html = await generateCombinedHTML({
