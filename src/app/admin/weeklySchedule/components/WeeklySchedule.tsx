@@ -232,6 +232,32 @@ const WeeklySchedule = ({
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
     
+    /* Teacher's own classes highlighting */
+    .teacher-own-class {
+      border-radius: 6px;
+      background-color: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      padding: 4px;
+      position: relative;
+    }
+    
+    .teacher-own-class::before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #34D399;
+      border-radius: 4px 0 0 4px;
+    }
+    
+    .teacher-indicator {
+      font-weight: bold;
+      color: #059669;
+      font-size: 0.8rem;
+    }
+    
     /* Elements only visible on screen */
     .no-print {
       display: block;
@@ -348,6 +374,25 @@ const WeeklySchedule = ({
       /* Overview mode specific styling */
       .overview-cell {
         break-inside: avoid !important;
+      }
+      
+      /* Teacher's own classes in print */
+      .teacher-own-class {
+        border: 1px solid #34D399 !important;
+        background-color: rgba(52, 211, 153, 0.05) !important;
+        padding: 3px !important;
+        border-radius: 3px !important;
+        position: relative !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .teacher-indicator {
+        font-weight: bold !important;
+        color: #059669 !important;
+        font-size: 7pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
       
       /* Single day print styling */
@@ -803,12 +848,29 @@ const WeeklySchedule = ({
                         }`}
                       >
                         {cellData.map((item, idx) => (
-                          <div key={idx} className="w-full mb-2">
+                          <div
+                            key={idx}
+                            className={`w-full mb-2 ${
+                              role === "teacher" &&
+                              view === "class" &&
+                              item.teacherCode === userCode
+                                ? "teacher-own-class"
+                                : ""
+                            }`}
+                          >
                             <div className="course-name">
                               {getCourseName(item.courseCode)}
                             </div>
                             <div className="teacher-name">
                               {getTeacherName(item.teacherCode)}
+                              {role === "teacher" &&
+                                view === "class" &&
+                                item.teacherCode === userCode && (
+                                  <span className="teacher-indicator">
+                                    {" "}
+                                    (شما){" "}
+                                  </span>
+                                )}
                             </div>
                             {(view === "teacher" || view === "overview") &&
                               item.className && (
@@ -857,12 +919,26 @@ const WeeklySchedule = ({
                     }`}
                   >
                     {scheduleData[timeSlot][selectedDay]?.map((item, idx) => (
-                      <div key={idx} className="w-full mb-2">
+                      <div
+                        key={idx}
+                        className={`w-full mb-2 ${
+                          role === "teacher" &&
+                          view === "class" &&
+                          item.teacherCode === userCode
+                            ? "teacher-own-class"
+                            : ""
+                        }`}
+                      >
                         <div className="course-name">
                           {getCourseName(item.courseCode)}
                         </div>
                         <div className="teacher-name">
                           {getTeacherName(item.teacherCode)}
+                          {role === "teacher" &&
+                            view === "class" &&
+                            item.teacherCode === userCode && (
+                              <span className="teacher-indicator"> (شما) </span>
+                            )}
                         </div>
                         {(view === "teacher" || view === "overview") &&
                           item.className && (
