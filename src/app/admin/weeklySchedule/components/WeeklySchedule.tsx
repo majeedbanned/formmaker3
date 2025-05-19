@@ -175,6 +175,63 @@ const WeeklySchedule = ({
       background-color: #f9fafb;
     }
     
+    /* Single day view styling */
+    .single-day-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4px;
+      margin-top: 1rem;
+      direction: rtl;
+      width: 100%;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .single-day-header {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 4px;
+      background-color: #f3f4f6;
+      border-radius: 4px;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px 0;
+    }
+    
+    .time-header, .day-header {
+      padding: 8px;
+      text-align: center;
+      font-weight: bold;
+      border-radius: 4px;
+      background-color: #f3f4f6;
+    }
+    
+    .single-day-row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    
+    .single-day-cell {
+      min-height: 80px;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    
+    .single-day-cell:hover {
+      background-color: #f9fafb;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
     /* Elements only visible on screen */
     .no-print {
       display: block;
@@ -192,7 +249,8 @@ const WeeklySchedule = ({
         visibility: hidden;
       }
       
-      .schedule-grid, .schedule-grid * {
+      .schedule-grid, .schedule-grid *, 
+      .single-day-grid, .single-day-grid * {
         visibility: visible;
       }
       
@@ -290,6 +348,43 @@ const WeeklySchedule = ({
       /* Overview mode specific styling */
       .overview-cell {
         break-inside: avoid !important;
+      }
+      
+      /* Single day print styling */
+      .single-day-grid {
+        width: 100% !important;
+        max-width: none !important;
+        border-collapse: collapse !important;
+      }
+      
+      .single-day-header {
+        display: grid !important;
+        grid-template-columns: 80px 1fr !important;
+        gap: 4px !important;
+        border: 1px solid #000 !important;
+      }
+      
+      .time-header, .day-header {
+        background-color: #f0f0f0 !important;
+        font-weight: bold !important;
+        border: 1px solid #000 !important;
+        padding: 4px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .single-day-row {
+        display: grid !important;
+        grid-template-columns: 80px 1fr !important;
+        gap: 4px !important;
+        margin-bottom: 2px !important;
+      }
+      
+      .single-day-cell {
+        border: 1px solid #000 !important;
+        padding: 4px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     }
   `;
@@ -653,45 +748,115 @@ const WeeklySchedule = ({
       {loading ? (
         <div className="text-center p-8">در حال بارگذاری...</div>
       ) : (
-        <div className="schedule-grid">
-          {/* Empty corner cell */}
-          <div className="schedule-header"></div>
+        <div className={`${selectedDay ? "single-day-grid" : "schedule-grid"}`}>
+          {/* Day header row */}
+          {!selectedDay ? (
+            <>
+              {/* Empty corner cell */}
+              <div className="schedule-header"></div>
 
-          {/* Day headers */}
-          {DAYS_OF_WEEK.filter(
-            (day) => !selectedDay || day === selectedDay
-          ).map((day) => (
-            <div
-              key={day}
-              className={`schedule-header ${
-                day === currentDay ? "current-day" : ""
-              }`}
-            >
-              {day}
+              {/* Day headers */}
+              {DAYS_OF_WEEK.map((day) => (
+                <div
+                  key={day}
+                  className={`schedule-header ${
+                    day === currentDay ? "current-day" : ""
+                  }`}
+                >
+                  {day}
+                </div>
+              ))}
+            </>
+          ) : (
+            // For single day view, show a special header
+            <div className="single-day-header">
+              <div className="time-header">زمان</div>
+              <div
+                className={`day-header ${
+                  selectedDay === currentDay ? "current-day" : ""
+                }`}
+              >
+                {selectedDay}
+              </div>
             </div>
-          ))}
+          )}
 
           {/* Time slots and schedule cells */}
           {TIME_SLOTS.map((timeSlot) => (
             <React.Fragment key={timeSlot}>
-              {/* Time slot */}
-              <div className="time-slot">{timeSlot}</div>
+              {!selectedDay ? (
+                // Full week view
+                <>
+                  {/* Time slot */}
+                  <div className="time-slot">{timeSlot}</div>
 
-              {/* Schedule cells for each day */}
-              {DAYS_OF_WEEK.filter(
-                (day) => !selectedDay || day === selectedDay
-              ).map((day) => {
-                const cellData = scheduleData[timeSlot][day];
-                return (
+                  {/* Schedule cells for each day */}
+                  {DAYS_OF_WEEK.map((day) => {
+                    const cellData = scheduleData[timeSlot][day];
+                    return (
+                      <div
+                        key={`${timeSlot}-${day}`}
+                        className={`schedule-cell ${
+                          cellData.length === 0 ? "empty-cell" : ""
+                        } ${day === currentDay ? "current-day" : ""} ${
+                          view === "overview" ? "overview-cell" : ""
+                        }`}
+                      >
+                        {cellData.map((item, idx) => (
+                          <div key={idx} className="w-full mb-2">
+                            <div className="course-name">
+                              {getCourseName(item.courseCode)}
+                            </div>
+                            <div className="teacher-name">
+                              {getTeacherName(item.teacherCode)}
+                            </div>
+                            {(view === "teacher" || view === "overview") &&
+                              item.className && (
+                                <Badge
+                                  variant="outline"
+                                  className="mt-1 badge-print"
+                                  style={{
+                                    backgroundColor:
+                                      view === "overview"
+                                        ? `hsl(${
+                                            (parseInt(item.classCode || "0") *
+                                              137.5) %
+                                            360
+                                          }, 70%, 95%)`
+                                        : undefined,
+                                    borderColor:
+                                      view === "overview"
+                                        ? `hsl(${
+                                            (parseInt(item.classCode || "0") *
+                                              137.5) %
+                                            360
+                                          }, 70%, 85%)`
+                                        : undefined,
+                                  }}
+                                >
+                                  {item.className}
+                                </Badge>
+                              )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                // Single day view
+                <div className="single-day-row">
+                  <div className="time-slot">{timeSlot}</div>
                   <div
-                    key={`${timeSlot}-${day}`}
-                    className={`schedule-cell ${
-                      cellData.length === 0 ? "empty-cell" : ""
-                    } ${day === currentDay ? "current-day" : ""} ${
+                    className={`single-day-cell ${
+                      scheduleData[timeSlot][selectedDay]?.length === 0
+                        ? "empty-cell"
+                        : ""
+                    } ${selectedDay === currentDay ? "current-day" : ""} ${
                       view === "overview" ? "overview-cell" : ""
                     }`}
                   >
-                    {cellData.map((item, idx) => (
+                    {scheduleData[timeSlot][selectedDay]?.map((item, idx) => (
                       <div key={idx} className="w-full mb-2">
                         <div className="course-name">
                           {getCourseName(item.courseCode)}
@@ -729,8 +894,8 @@ const WeeklySchedule = ({
                       </div>
                     ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
             </React.Fragment>
           ))}
         </div>
