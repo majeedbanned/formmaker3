@@ -153,7 +153,6 @@ export async function POST(request: NextRequest) {
         title,
         description: description || '',
         persianDate,
-        createdBy: user.username,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
