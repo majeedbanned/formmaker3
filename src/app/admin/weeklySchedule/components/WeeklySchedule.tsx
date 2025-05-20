@@ -844,6 +844,29 @@ const WeeklySchedule = ({
     }
   };
 
+  // Add an effect to reset course selection when class changes
+  useEffect(() => {
+    // Reset course when class changes
+    setSelectedEditCourse("");
+  }, [selectedEditClass]);
+
+  // Add a helper function to show filtered course count
+  const getFilteredCoursesCount = () => {
+    if (!selectedEditClass) return courses.length;
+
+    const selectedClassData = classes.find(
+      (classItem) => classItem.data.classCode === selectedEditClass
+    );
+
+    if (!selectedClassData) return courses.length;
+
+    return courses.filter(
+      (course) =>
+        course.data.major === selectedClassData.data.major &&
+        course.data.Grade === selectedClassData.data.Grade
+    ).length;
+  };
+
   return (
     <div className="schedule-container">
       <style>{customStyles}</style>
@@ -1320,24 +1343,51 @@ const WeeklySchedule = ({
                   درس
                 </Label>
                 <div className="col-span-3">
-                  <Select
-                    value={selectedEditCourse}
-                    onValueChange={setSelectedEditCourse}
-                  >
-                    <SelectTrigger id="edit-course">
-                      <SelectValue placeholder="انتخاب درس" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem
-                          key={course.data.courseCode}
-                          value={course.data.courseCode}
-                        >
-                          {course.data.courseName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1">
+                    <Select
+                      value={selectedEditCourse}
+                      onValueChange={setSelectedEditCourse}
+                    >
+                      <SelectTrigger id="edit-course">
+                        <SelectValue placeholder="انتخاب درس" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses
+                          .filter((course) => {
+                            // If no class is selected, show all courses
+                            if (!selectedEditClass) return true;
+
+                            // Find the selected class to get its major and grade
+                            const selectedClassData = classes.find(
+                              (classItem) =>
+                                classItem.data.classCode === selectedEditClass
+                            );
+
+                            if (!selectedClassData) return true;
+
+                            // Filter by matching major and grade
+                            return (
+                              course.data.major ===
+                                selectedClassData.data.major &&
+                              course.data.Grade === selectedClassData.data.Grade
+                            );
+                          })
+                          .map((course) => (
+                            <SelectItem
+                              key={course.data.courseCode}
+                              value={course.data.courseCode}
+                            >
+                              {course.data.courseName}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedEditClass && (
+                      <p className="text-xs text-muted-foreground text-left">
+                        {getFilteredCoursesCount()} درس مناسب برای این کلاس
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
