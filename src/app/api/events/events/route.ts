@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate required fields
-    const { teacherCode, courseCode, classCode, date, timeSlot, title, description, persianDate } = body;
+    const { teacherCode, courseCode, classCode, date, timeSlot, title, description, persianDate, isSchoolEvent } = body;
     
     if (!teacherCode || !courseCode || !classCode || !date || !timeSlot || !title || !persianDate) {
       return NextResponse.json(
@@ -153,6 +153,10 @@ export async function POST(request: NextRequest) {
         title,
         description: description || '',
         persianDate,
+        // Add created by field to track who created the event
+        createdBy: user.username,
+        // Set isSchoolEvent flag if user is school admin or it was explicitly set
+        isSchoolEvent: user.userType === "school" || isSchoolEvent === true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

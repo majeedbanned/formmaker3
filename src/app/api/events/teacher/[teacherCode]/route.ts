@@ -18,27 +18,25 @@ export async function GET(
       );
     }
 
+    // Get teacherCode from params
     const { teacherCode } = params;
     
-    // Teachers can only view their own events
-    if (user.userType === "teacher" && user.username !== teacherCode) {
+    // Verify user has permission to view these events
+    const canAccessTeacherEvents = 
+      user.userType === "school" || // School admin can access all teacher events
+      (user.userType === "teacher" && user.username === teacherCode); // Teachers can only access their own events
+    
+    if (!canAccessTeacherEvents) {
       return NextResponse.json(
-        { error: "Forbidden" },
+        { error: "Forbidden: You don't have permission to access these events" },
         { status: 403 }
       );
     }
 
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const courseCode = searchParams.get("courseCode");
-    const classCode = searchParams.get("classCode");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
     logger.info(`Fetching events for teacher: ${teacherCode}, domain: ${domain}`);
-
+    
     try {
       // Connect to the domain-specific database
       const connection = await connectToDatabase(domain);
@@ -46,27 +44,11 @@ export async function GET(
       // Get the events collection
       const eventsCollection = connection.collection("events");
 
-      // Build the query filter
-      const filter: Record<string, any> = {
+      // Build the query filter to get events for this teacher
+      const filter = {
         schoolCode: user.schoolCode,
-        teacherCode
+        teacherCode: teacherCode
       };
-
-      // Apply additional filters if provided
-      if (courseCode) {
-        filter.courseCode = courseCode;
-      }
-      
-      if (classCode) {
-        filter.classCode = classCode;
-      }
-      
-      // Apply date range filters
-      if (startDate || endDate) {
-        filter.date = {};
-        if (startDate) filter.date.$gte = startDate;
-        if (endDate) filter.date.$lte = endDate;
-      }
 
       // Fetch events
       const events = await eventsCollection.find(filter).sort({ date: 1, timeSlot: 1 }).toArray();

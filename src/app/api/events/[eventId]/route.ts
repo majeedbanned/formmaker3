@@ -76,16 +76,7 @@ export async function PUT(
       );
     }
 
-    // Only allow school or teacher roles
-    if (user.userType !== "school" && user.userType !== "teacher") {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
     const { eventId } = params;
-    const body = await request.json();
 
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
@@ -99,11 +90,15 @@ export async function PUT(
       );
     }
 
+    // Get request body
+    const body = await request.json();
+    
     // Validate required fields
-    const { title, persianDate } = body;
-    if (!title || !persianDate) {
+    const { teacherCode, courseCode, classCode, date, timeSlot, title, persianDate, isSchoolEvent } = body;
+    
+    if (!teacherCode || !courseCode || !classCode || !date || !timeSlot || !title || !persianDate) {
       return NextResponse.json(
-        { error: "Title and persianDate are required" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -123,45 +118,55 @@ export async function PUT(
 
       if (!existingEvent) {
         return NextResponse.json(
-          { error: "Event not found or you don't have permission to update it" },
+          { error: "Event not found or you don't have permission to edit it" },
           { status: 404 }
         );
       }
 
-      // For teachers, check if they own the event or created it
-      if (user.userType === "teacher" && 
-          existingEvent.teacherCode !== user.username && 
-          existingEvent.createdBy !== user.username) {
+      // Check user permissions
+      if (user.userType === "teacher") {
+        // Teachers can only edit their own events or events they created
+        if (existingEvent.teacherCode !== user.username && existingEvent.createdBy !== user.username) {
+          return NextResponse.json(
+            { error: "You don't have permission to edit this event" },
+            { status: 403 }
+          );
+        }
+      } else if (user.userType !== "school") {
+        // Students or other users can't edit events
         return NextResponse.json(
-          { error: "You don't have permission to update this event" },
+          { error: "You don't have permission to edit events" },
           { status: 403 }
         );
       }
 
+      // Create update data
+      const updateData = {
+        ...body,
+        // Preserve the original creator
+        createdBy: existingEvent.createdBy,
+        // Only allow school users to set isSchoolEvent flag
+        isSchoolEvent: user.userType === "school" ? (isSchoolEvent === true) : existingEvent.isSchoolEvent,
+        updatedAt: new Date()
+      };
+
       // Update the event
-      const updateResult = await eventsCollection.updateOne(
+      const result = await eventsCollection.updateOne(
         { _id: new ObjectId(eventId) },
-        { 
-          $set: { 
-            ...body,
-            updatedAt: new Date() 
-          } 
-        }
+        { $set: updateData }
       );
 
-      if (updateResult.matchedCount === 0) {
+      if (result.matchedCount === 0) {
         return NextResponse.json(
           { error: "Event not found" },
           { status: 404 }
         );
       }
 
-      // Fetch the updated event
-      const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
-
       logger.info(`Successfully updated event with ID: ${eventId}`);
-      // Return the updated event
-      return NextResponse.json(updatedEvent);
+      
+      // Return success
+      return NextResponse.json({ success: true });
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(

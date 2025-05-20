@@ -45,6 +45,7 @@ interface Event {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isSchoolEvent?: boolean;
 }
 
 interface Teacher {
@@ -150,7 +151,7 @@ const ensureString = (value: string | undefined): string => {
 
 // Safely get property from a potential data object
 const getDataProperty = <T,>(
-  obj: any,
+  obj: Record<string, any>,
   propertyName: string,
   defaultValue: T
 ): T => {
@@ -271,8 +272,11 @@ export default function AgendaView({
 
       // Construct API endpoint based on user type
       let endpoint = "/api/events/events";
+
       if (userType === "teacher" && teacherCode) {
         endpoint = `/api/events/teacher/${teacherCode}`;
+      } else if (userType === "student") {
+        endpoint = "/api/events/student";
       }
 
       const response = await fetch(endpoint);
@@ -281,7 +285,18 @@ export default function AgendaView({
       }
 
       const data = await response.json();
-      setEvents(data);
+
+      // Mark events created by school for special highlighting
+      const processedEvents = data.map((event: Event) => ({
+        ...event,
+        isSchoolEvent:
+          userType === "school" ||
+          event.createdBy === "school" ||
+          event.teacherCode === "school" ||
+          event.isSchoolEvent === true,
+      }));
+
+      setEvents(processedEvents);
 
       // Initialize current month from today's date
       setCurrentMonth(new Date());
@@ -523,6 +538,9 @@ export default function AgendaView({
 
   // Open the form for creating a new event
   const openNewEventForm = (persianDay: string) => {
+    // Students cannot create events
+    if (userType === "student") return;
+
     resetForm();
     setSelectedDay(persianDay);
     setFormData((prev) => ({ ...prev, persianDate: persianDay }));
@@ -630,6 +648,8 @@ export default function AgendaView({
         ...eventDataToSend,
         date: gregorianDate, // Add the Gregorian date
         schoolCode: schoolCode || formData.schoolCode, // Ensure schoolCode is included
+        // For school users, mark as special school event
+        ...(userType === "school" ? { isSchoolEvent: true } : {}),
       };
 
       console.log("Submitting event data:", eventData);
@@ -700,11 +720,23 @@ export default function AgendaView({
 
   // Check if user can edit an event
   const canEditEvent = (event: Event) => {
-    return (
-      userType === "school" ||
-      (userType === "teacher" && event.teacherCode === teacherCode) ||
-      event.createdBy === teacherCode
-    );
+    if (userType === "school") {
+      // School admins can edit all events
+      return true;
+    } else if (userType === "teacher") {
+      // Teachers can edit their own events or events they created
+      return (
+        event.teacherCode === teacherCode || event.createdBy === teacherCode
+      );
+    } else {
+      // Students can't edit any events
+      return false;
+    }
+  };
+
+  // Determine if user can create new events
+  const canCreateEvents = () => {
+    return userType === "school" || userType === "teacher";
   };
 
   // Get available classes for the selected teacher
@@ -933,7 +965,7 @@ export default function AgendaView({
             <CardTitle className="text-2xl font-bold text-gray-800">
               تقویم رویدادها
             </CardTitle>
-            {userType === "school" && (
+            {canCreateEvents() && (
               <Button
                 className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700"
                 onClick={() => {
@@ -1006,9 +1038,11 @@ export default function AgendaView({
                   <div
                     key={index}
                     className={cn(
-                      "bg-white p-1.5 min-h-[150px] transition-colors cursor-pointer",
+                      "bg-white p-1.5 min-h-[150px] transition-colors",
                       !dayData.isCurrentMonth && "bg-gray-50 text-gray-400",
-                      dayData.isToday && "bg-blue-50"
+                      dayData.isToday && "bg-blue-50",
+                      // Only show pointer cursor for users who can create events
+                      userType !== "student" && "cursor-pointer"
                     )}
                     onClick={() => openNewEventForm(dayData.persianDay)}
                   >
@@ -1047,12 +1081,28 @@ export default function AgendaView({
                               e.stopPropagation();
                               handleEventClick(event);
                             }}
-                            className="text-xs p-1.5 rounded bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
-                            style={{ borderRight: "3px solid #3b82f6" }}
+                            className={`text-xs p-1.5 rounded bg-white border ${
+                              event.isSchoolEvent
+                                ? "border-red-100 shadow-sm hover:shadow-md"
+                                : "border-blue-100 shadow-sm hover:shadow-md"
+                            } transition-all cursor-pointer relative overflow-hidden`}
+                            style={{
+                              borderRight: `3px solid ${
+                                event.isSchoolEvent ? "#ef4444" : "#3b82f6"
+                              }`,
+                            }}
                           >
                             {/* Title with colored background */}
                             <div className="font-medium text-gray-800 mb-0.5 truncate">
                               {event.title}
+                              {event.isSchoolEvent && (
+                                <Badge
+                                  variant="outline"
+                                  className="ml-1 bg-red-50 text-red-500 border-red-200"
+                                >
+                                  مدرسه
+                                </Badge>
+                              )}
                             </div>
 
                             {/* Event details */}
