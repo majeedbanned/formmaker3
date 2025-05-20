@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Printer } from "lucide-react";
+import { Printer, Edit } from "lucide-react";
+import { toast } from "sonner";
+import { ScheduleEditor } from "./ScheduleEditor";
 
 // Define types
 type ClassData = {
@@ -97,6 +99,18 @@ const WeeklySchedule = ({
   const [view, setView] = useState<"class" | "teacher" | "overview">(
     role === "school" ? "overview" : "class"
   );
+
+  // State for schedule editor
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<{
+    classCode: string;
+    className: string;
+    teacherCode: string;
+    teacherName: string;
+    courseCode: string;
+    courseName: string;
+    weeklySchedule: { day: string; timeSlot: string }[];
+  } | null>(null);
 
   // Custom styles for the component
   const customStyles = `
@@ -652,9 +666,145 @@ const WeeklySchedule = ({
   const scheduleData = generateScheduleData();
   const currentDay = getCurrentDayName();
 
+  // Handle edit button click for a schedule item
+  const handleEditSchedule = (
+    classCode: string,
+    className: string,
+    teacherCode: string,
+    courseCode: string
+  ) => {
+    // Only school admins can edit
+    if (role !== "school") return;
+
+    // Find the class
+    const classData = classes.find((c) => c.data.classCode === classCode);
+    if (!classData) {
+      toast.error("کلاس مورد نظر یافت نشد");
+      return;
+    }
+
+    // Find the teacher
+    const teacherData = teachers.find(
+      (t) => t.data.teacherCode === teacherCode
+    );
+    if (!teacherData) {
+      toast.error("معلم مورد نظر یافت نشد");
+      return;
+    }
+
+    // Find the course
+    const courseData = courses.find((c) => c.data.courseCode === courseCode);
+    if (!courseData) {
+      toast.error("درس مورد نظر یافت نشد");
+      return;
+    }
+
+    // Find the teacher's schedule in the class
+    const teacherSchedule = classData.data.teachers.find(
+      (t) => t.teacherCode === teacherCode && t.courseCode === courseCode
+    );
+
+    setEditingSchedule({
+      classCode,
+      className: classData.data.className,
+      teacherCode,
+      teacherName: teacherData.data.teacherName,
+      courseCode,
+      courseName: courseData.data.courseName,
+      weeklySchedule: teacherSchedule?.weeklySchedule || [],
+    });
+
+    setEditorOpen(true);
+  };
+
+  // Save updated schedule
+  const saveSchedule = async (
+    newSchedule: { day: string; timeSlot: string }[]
+  ) => {
+    if (!editingSchedule) return;
+
+    try {
+      const response = await fetch("/api/classes/updateWeeklySchedule", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          classCode: editingSchedule.classCode,
+          teacherCode: editingSchedule.teacherCode,
+          courseCode: editingSchedule.courseCode,
+          weeklySchedule: newSchedule,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update schedule");
+      }
+
+      // Update local classes data
+      setClasses((prevClasses) => {
+        return prevClasses.map((classItem) => {
+          if (classItem.data.classCode !== editingSchedule.classCode) {
+            return classItem;
+          }
+
+          const updatedTeachers = classItem.data.teachers.map((teacher) => {
+            if (
+              teacher.teacherCode === editingSchedule.teacherCode &&
+              teacher.courseCode === editingSchedule.courseCode
+            ) {
+              return {
+                ...teacher,
+                weeklySchedule: newSchedule,
+              };
+            }
+            return teacher;
+          });
+
+          return {
+            ...classItem,
+            data: {
+              ...classItem.data,
+              teachers: updatedTeachers,
+            },
+          };
+        });
+      });
+
+      toast.success("برنامه هفتگی با موفقیت به‌روزرسانی شد");
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "خطا در به‌روزرسانی برنامه هفتگی"
+      );
+    }
+  };
+
   return (
     <div className="schedule-container">
       <style>{customStyles}</style>
+
+      {/* Schedule Editor Dialog */}
+      {editingSchedule && (
+        <ScheduleEditor
+          open={editorOpen}
+          onClose={() => setEditorOpen(false)}
+          teacherData={{
+            teacherCode: editingSchedule.teacherCode,
+            teacherName: editingSchedule.teacherName,
+          }}
+          courseData={{
+            courseCode: editingSchedule.courseCode,
+            courseName: editingSchedule.courseName,
+          }}
+          currentSchedule={editingSchedule.weeklySchedule}
+          onSave={saveSchedule}
+        />
+      )}
 
       {/* Filters section */}
       <div className="filter-section no-print mb-6 space-y-4">
@@ -850,7 +1000,7 @@ const WeeklySchedule = ({
                         {cellData.map((item, idx) => (
                           <div
                             key={idx}
-                            className={`w-full mb-2 ${
+                            className={`relative w-full mb-2 ${
                               role === "teacher" &&
                               view === "class" &&
                               item.teacherCode === userCode
@@ -858,6 +1008,24 @@ const WeeklySchedule = ({
                                 : ""
                             }`}
                           >
+                            {/* Edit button - only for school admin */}
+                            {role === "school" && item.classCode && (
+                              <button
+                                onClick={() =>
+                                  handleEditSchedule(
+                                    item.classCode || "",
+                                    item.className || "",
+                                    item.teacherCode,
+                                    item.courseCode
+                                  )
+                                }
+                                className="absolute top-1 left-1 text-gray-400 hover:text-blue-500 no-print"
+                                title="ویرایش برنامه"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </button>
+                            )}
+
                             <div className="course-name">
                               {getCourseName(item.courseCode)}
                             </div>
@@ -921,7 +1089,7 @@ const WeeklySchedule = ({
                     {scheduleData[timeSlot][selectedDay]?.map((item, idx) => (
                       <div
                         key={idx}
-                        className={`w-full mb-2 ${
+                        className={`relative w-full mb-2 ${
                           role === "teacher" &&
                           view === "class" &&
                           item.teacherCode === userCode
@@ -929,6 +1097,24 @@ const WeeklySchedule = ({
                             : ""
                         }`}
                       >
+                        {/* Edit button - only for school admin */}
+                        {role === "school" && item.classCode && (
+                          <button
+                            onClick={() =>
+                              handleEditSchedule(
+                                item.classCode || "",
+                                item.className || "",
+                                item.teacherCode,
+                                item.courseCode
+                              )
+                            }
+                            className="absolute top-1 left-1 text-gray-400 hover:text-blue-500 no-print"
+                            title="ویرایش برنامه"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </button>
+                        )}
+
                         <div className="course-name">
                           {getCourseName(item.courseCode)}
                         </div>
