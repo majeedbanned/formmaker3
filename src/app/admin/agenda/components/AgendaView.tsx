@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { vazirmatn } from "@/lib/fonts";
 import {
   CalendarDaysIcon,
@@ -19,6 +20,15 @@ import {
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // Define types
 interface Event {
@@ -34,25 +44,64 @@ interface Event {
   schoolCode: string;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 interface Teacher {
   _id: string;
-  username: string;
-  firstName: string;
-  lastName: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  teacherCode?: string;
+  teacherName?: string;
+  data?: {
+    teacherCode: string;
+    teacherName: string;
+    schoolCode: string;
+  };
+}
+
+interface ClassData {
+  classCode: string;
+  className: string;
+  teachers: ClassTeacher[];
+  schoolCode: string;
+  major?: string;
+  Grade?: string;
+  [key: string]: string | string[] | ClassTeacher[] | boolean | undefined;
 }
 
 interface Class {
   _id: string;
-  classCode: string;
-  className: string;
+  classCode?: string;
+  className?: string;
+  data?: ClassData;
+}
+
+interface ClassTeacher {
+  teacherCode: string;
+  courseCode: string;
+  weeklySchedule: {
+    day: string;
+    timeSlot: string;
+  }[];
+  weeklySchedule_expanded?: boolean;
+}
+
+interface CourseData {
+  courseCode: string;
+  courseName: string;
+  schoolCode: string;
+  major?: string;
+  Grade?: string;
+  [key: string]: string | number | undefined;
 }
 
 interface Course {
   _id: string;
-  courseCode: string;
-  courseName: string;
+  courseCode?: string;
+  courseName?: string;
+  data?: CourseData;
 }
 
 interface AgendaViewProps {
@@ -83,6 +132,89 @@ const groupEventsByDate = (events: Event[]) => {
   return groupedEvents;
 };
 
+// Get Persian weekday names in proper RTL order
+const weekdayNames = [
+  "شنبه",
+  "یکشنبه",
+  "دوشنبه",
+  "سه شنبه",
+  "چهارشنبه",
+  "پنجشنبه",
+  "جمعه",
+];
+
+// Helper function to ensure non-undefined strings
+const ensureString = (value: string | undefined): string => {
+  return value || "";
+};
+
+// Safely get property from a potential data object
+const getDataProperty = <T,>(
+  obj: any,
+  propertyName: string,
+  defaultValue: T
+): T => {
+  if (obj && obj.data && obj.data[propertyName] !== undefined) {
+    return obj.data[propertyName] as T;
+  }
+  if (obj && obj[propertyName] !== undefined) {
+    return obj[propertyName] as T;
+  }
+  return defaultValue;
+};
+
+// Process the classes data to extract teacher-class-course relationships
+const processClassesData = (
+  classesData: Class[]
+): {
+  [key: string]: { classCode: string; courses: string[] }[];
+} => {
+  const teacherClassMap: {
+    [key: string]: { classCode: string; courses: string[] }[];
+  } = {};
+
+  classesData.forEach((cls) => {
+    // Extract class data
+    const data = cls.data || (cls as unknown as ClassData);
+    const classCode = data.classCode;
+    const teachers = data.teachers || [];
+
+    // For each teacher in the class
+    teachers.forEach((teacher: ClassTeacher) => {
+      const tCode = teacher.teacherCode;
+      const courseCode = teacher.courseCode;
+
+      if (!teacherClassMap[tCode]) {
+        teacherClassMap[tCode] = [];
+      }
+
+      // Check if this class is already in teacher's classes
+      const existingClassIndex = teacherClassMap[tCode].findIndex(
+        (c) => c.classCode === classCode
+      );
+
+      if (existingClassIndex === -1) {
+        // Add new class with course
+        teacherClassMap[tCode].push({
+          classCode,
+          courses: [courseCode],
+        });
+      } else {
+        // Add course to existing class if not already there
+        if (
+          !teacherClassMap[tCode][existingClassIndex].courses.includes(
+            courseCode
+          )
+        ) {
+          teacherClassMap[tCode][existingClassIndex].courses.push(courseCode);
+        }
+      }
+    });
+  });
+
+  return teacherClassMap;
+};
+
 export default function AgendaView({
   schoolCode,
   userType,
@@ -97,6 +229,29 @@ export default function AgendaView({
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [formData, setFormData] = useState<Partial<Event>>({
+    title: "",
+    description: "",
+    persianDate: "",
+    timeSlot: "",
+    teacherCode: teacherCode || "",
+    courseCode: "",
+    classCode: "",
+    schoolCode: schoolCode || "",
+  });
+
+  // Store teacher classes for filtering
+  const [teacherClasses, setTeacherClasses] = useState<{
+    [key: string]: { classCode: string; courses: string[] }[];
+  }>({});
+
+  // Selected teacher for the form when admin is creating events
+  const [selectedTeacher, setSelectedTeacher] = useState<string>(
+    teacherCode || ""
+  );
 
   // Get current Persian date for initialization
   const getTodayPersianDate = () => {
@@ -153,17 +308,21 @@ export default function AgendaView({
       }
 
       // Fetch courses
-      const coursesResponse = await fetch("/api/courses");
+      const coursesResponse = await fetch("/api/courses/courses");
       if (coursesResponse.ok) {
         const coursesData = await coursesResponse.json();
         setCourses(coursesData);
       }
 
       // Fetch classes
-      const classesResponse = await fetch("/api/classes");
+      const classesResponse = await fetch("/api/classes/classes");
       if (classesResponse.ok) {
         const classesData = await classesResponse.json();
         setClasses(classesData);
+
+        // Process teacher-class-course relationships
+        const teacherClassMap = processClassesData(classesData);
+        setTeacherClasses(teacherClassMap);
       }
     } catch (error) {
       console.error("Error fetching reference data:", error);
@@ -326,17 +485,6 @@ export default function AgendaView({
     return days;
   };
 
-  // Get Persian weekday names in proper RTL order
-  const weekdayNames = [
-    "شنبه",
-    "یکشنبه",
-    "دوشنبه",
-    "سه شنبه",
-    "چهارشنبه",
-    "پنجشنبه",
-    "جمعه",
-  ];
-
   // Extract the persian day number only
   const extractDayNumber = (persianDate: string) => {
     const parts = persianDate.split("/");
@@ -357,6 +505,315 @@ export default function AgendaView({
     setShowEventDetails(false);
     setSelectedEvent(null);
   };
+
+  // Reset form
+  const resetForm = () => {
+    const initialTeacherCode = userType === "teacher" ? teacherCode : "";
+    setFormData({
+      title: "",
+      description: "",
+      persianDate: "",
+      timeSlot: "",
+      teacherCode: initialTeacherCode || "",
+      courseCode: "",
+      classCode: "",
+      schoolCode: schoolCode || "",
+    });
+    setSelectedTeacher(initialTeacherCode || "");
+    setEditMode(false);
+  };
+
+  // Open the form for creating a new event
+  const openNewEventForm = (persianDay: string) => {
+    resetForm();
+    setSelectedDay(persianDay);
+    setFormData((prev) => ({ ...prev, persianDate: persianDay }));
+    setShowEventForm(true);
+    setEditMode(false);
+  };
+
+  // Open the form for editing an existing event
+  const openEditEventForm = (event: Event) => {
+    setFormData({
+      _id: event._id,
+      title: event.title,
+      description: event.description,
+      persianDate: event.persianDate,
+      date: event.date,
+      timeSlot: event.timeSlot,
+      teacherCode: event.teacherCode,
+      courseCode: event.courseCode,
+      classCode: event.classCode,
+      schoolCode: event.schoolCode,
+    });
+    setSelectedTeacher(event.teacherCode);
+    setShowEventDetails(false);
+    setShowEventForm(true);
+    setEditMode(true);
+  };
+
+  // Handle form input changes
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name: string, value: string) => {
+    if (name === "teacherCode") {
+      setSelectedTeacher(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        classCode: "", // Reset selected class
+        courseCode: "", // Reset selected course
+      }));
+    } else if (name === "classCode") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        courseCode: "", // Reset selected course when class changes
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Close event form
+  const closeEventForm = () => {
+    setShowEventForm(false);
+    resetForm();
+  };
+
+  // Handle form submission
+  const handleSubmitEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      // Validation
+      if (
+        !formData.title ||
+        !formData.persianDate ||
+        !formData.timeSlot ||
+        !formData.teacherCode ||
+        !formData.classCode ||
+        !formData.courseCode
+      ) {
+        toast.error("لطفا فیلدهای ضروری را تکمیل کنید");
+        return;
+      }
+
+      // Convert Persian date to Gregorian for storage
+      // Format should be YYYY-MM-DD
+      // Note: In a real implementation, you would use a proper Persian to Gregorian conversion library
+      // For now, we'll use current date as a placeholder
+      const gregorianDate = new Date().toISOString().split("T")[0]; // Default to today
+
+      // Create or update event
+      const endpoint = editMode
+        ? `/api/events/${formData._id}`
+        : "/api/events/events";
+      const method = editMode ? "PUT" : "POST";
+
+      // Create a copy of the formData without the _id field for updates
+      // MongoDB doesn't allow updating the _id field
+      const eventDataToSend = { ...formData };
+      if (editMode) {
+        // Remove _id from the data being sent for updates
+        delete eventDataToSend._id;
+      }
+
+      // Ensure all required fields are included
+      const eventData = {
+        ...eventDataToSend,
+        date: gregorianDate, // Add the Gregorian date
+        schoolCode: schoolCode || formData.schoolCode, // Ensure schoolCode is included
+      };
+
+      console.log("Submitting event data:", eventData);
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Server error:", errorData);
+        throw new Error(
+          `${editMode ? "ویرایش" : "ایجاد"} رویداد با خطا مواجه شد: ${
+            errorData.error || response.statusText
+          }`
+        );
+      }
+
+      // Refresh events
+      await fetchEvents();
+
+      // Show success message
+      toast.success(`رویداد با موفقیت ${editMode ? "ویرایش" : "ایجاد"} شد`);
+
+      // Close form
+      closeEventForm();
+    } catch (error) {
+      console.error("Error saving event:", error);
+      toast.error(
+        "خطا در ذخیره رویداد: " +
+          (error instanceof Error ? error.message : "خطای نامشخص")
+      );
+    }
+  };
+
+  // Delete event
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("آیا از حذف این رویداد اطمینان دارید؟")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("حذف رویداد با خطا مواجه شد");
+      }
+
+      // Refresh events
+      await fetchEvents();
+
+      // Close details modal
+      setShowEventDetails(false);
+
+      // Show success message
+      toast.success("رویداد با موفقیت حذف شد");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("خطا در حذف رویداد");
+    }
+  };
+
+  // Check if user can edit an event
+  const canEditEvent = (event: Event) => {
+    return (
+      userType === "school" ||
+      (userType === "teacher" && event.teacherCode === teacherCode) ||
+      event.createdBy === teacherCode
+    );
+  };
+
+  // Get available classes for the selected teacher
+  const availableClasses = useMemo(() => {
+    const teacherToUse = selectedTeacher || teacherCode || "";
+    if (!teacherToUse || !teacherClasses[teacherToUse]) {
+      return [];
+    }
+
+    // Get class codes for this teacher
+    const classCodes = teacherClasses[teacherToUse].map(
+      (item) => item.classCode
+    );
+
+    // Filter classes collection to get only the classes this teacher teaches
+    return classes.filter((cls) => {
+      const classCode = ensureString(
+        cls.classCode || (cls.data && cls.data.classCode)
+      );
+      return classCodes.includes(classCode);
+    });
+  }, [classes, teacherClasses, selectedTeacher, teacherCode]);
+
+  // Get available courses for the selected teacher and class
+  const availableCourses = useMemo(() => {
+    const teacherToUse = selectedTeacher || teacherCode || "";
+    const selectedClass = formData.classCode;
+
+    if (!teacherToUse || !selectedClass) {
+      return [];
+    }
+
+    // Find the selected class data to get major and grade
+    const selectedClassData = classes.find((cls) => {
+      const classCode = getDataProperty(cls, "classCode", "");
+      return classCode === selectedClass;
+    });
+
+    if (!selectedClassData) {
+      return [];
+    }
+
+    const classMajor = getDataProperty(selectedClassData, "major", "");
+    const classGrade = getDataProperty(selectedClassData, "Grade", "");
+
+    // If the teacher has specific courses in this class
+    if (teacherClasses[teacherToUse]) {
+      // Find the courses for this teacher and class
+      const teacherClass = teacherClasses[teacherToUse].find(
+        (item) => item.classCode === selectedClass
+      );
+
+      if (teacherClass) {
+        // Get the course codes for this teacher and class
+        const courseCodes = teacherClass.courses;
+
+        // Filter courses collection to get only:
+        // 1. The courses this teacher teaches in this class
+        // 2. That match the class major and grade
+        return courses.filter((course) => {
+          const courseData = course.data || course;
+          const courseCode = ensureString(
+            course.courseCode || (course.data && course.data.courseCode)
+          );
+
+          // First check if teacher teaches this course in this class
+          const isTeacherCourse = courseCodes.includes(courseCode);
+
+          // Then check if course matches class major and grade
+          const matchesMajor =
+            !classMajor ||
+            !getDataProperty(courseData, "major", "") ||
+            getDataProperty(courseData, "major", "") === classMajor;
+          const matchesGrade =
+            !classGrade ||
+            !getDataProperty(courseData, "Grade", "") ||
+            getDataProperty(courseData, "Grade", "") === classGrade;
+
+          return isTeacherCourse && matchesMajor && matchesGrade;
+        });
+      }
+    }
+
+    // If teacher has no specific courses in this class,
+    // just return courses that match the major and grade
+    return courses.filter((course) => {
+      const courseData = course.data || course;
+
+      const matchesMajor =
+        !classMajor ||
+        !getDataProperty(courseData, "major", "") ||
+        getDataProperty(courseData, "major", "") === classMajor;
+      const matchesGrade =
+        !classGrade ||
+        !getDataProperty(courseData, "Grade", "") ||
+        getDataProperty(courseData, "Grade", "") === classGrade;
+
+      return matchesMajor && matchesGrade;
+    });
+  }, [
+    courses,
+    classes,
+    teacherClasses,
+    selectedTeacher,
+    teacherCode,
+    formData.classCode,
+  ]);
 
   if (loading) {
     return (
@@ -396,7 +853,13 @@ export default function AgendaView({
               تقویم رویدادها
             </CardTitle>
             {userType === "school" && (
-              <Button className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700">
+              <Button
+                className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  resetForm();
+                  setShowEventForm(true);
+                }}
+              >
                 <PlusIcon className="h-5 w-5 ml-1" />
                 افزودن رویداد جدید
               </Button>
@@ -462,10 +925,11 @@ export default function AgendaView({
                   <div
                     key={index}
                     className={cn(
-                      "bg-white p-1.5 min-h-[110px] transition-colors",
+                      "bg-white p-1.5 min-h-[110px] transition-colors cursor-pointer",
                       !dayData.isCurrentMonth && "bg-gray-50 text-gray-400",
                       dayData.isToday && "bg-blue-50"
                     )}
+                    onClick={() => openNewEventForm(dayData.persianDay)}
                   >
                     <div className="flex justify-between items-start">
                       <span
@@ -491,14 +955,20 @@ export default function AgendaView({
                       {dayData.events.slice(0, 3).map((event) => (
                         <div
                           key={event._id}
-                          onClick={() => handleEventClick(event)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventClick(event);
+                          }}
                           className="text-xs p-1 rounded bg-blue-50 border border-blue-100 truncate cursor-pointer hover:bg-blue-100 transition-colors"
                         >
                           <span className="font-medium">{event.title}</span>
                         </div>
                       ))}
                       {dayData.events.length > 3 && (
-                        <div className="text-xs text-center text-blue-600">
+                        <div
+                          className="text-xs text-center text-blue-600"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {dayData.events.length - 3} رویداد دیگر...
                         </div>
                       )}
@@ -513,7 +983,10 @@ export default function AgendaView({
 
       {/* Event Details Modal */}
       {showEventDetails && selectedEvent && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+          onClick={closeEventDetails}
+        >
           <div
             className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
@@ -576,14 +1049,13 @@ export default function AgendaView({
                 </div>
               </div>
 
-              {(userType === "school" ||
-                (userType === "teacher" &&
-                  selectedEvent.teacherCode === teacherCode)) && (
+              {canEditEvent(selectedEvent) && (
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-1"
+                    onClick={() => openEditEventForm(selectedEvent)}
                   >
                     <PencilIcon className="h-4 w-4 text-blue-600" />
                     ویرایش
@@ -592,6 +1064,7 @@ export default function AgendaView({
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-1 text-red-600 hover:bg-red-50"
+                    onClick={() => handleDeleteEvent(selectedEvent._id)}
                   >
                     <TrashIcon className="h-4 w-4" />
                     حذف
@@ -599,6 +1072,244 @@ export default function AgendaView({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Form Modal */}
+      {showEventForm && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+          onClick={closeEventForm}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">
+                  {editMode ? "ویرایش رویداد" : "افزودن رویداد جدید"}
+                </h3>
+                <Button variant="ghost" size="sm" onClick={closeEventForm}>
+                  ✕
+                </Button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitEvent}>
+              <div className="p-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">عنوان رویداد</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title || ""}
+                    onChange={handleInputChange}
+                    placeholder="عنوان رویداد را وارد کنید"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="persianDate">تاریخ</Label>
+                  <Input
+                    id="persianDate"
+                    name="persianDate"
+                    value={formData.persianDate || ""}
+                    onChange={handleInputChange}
+                    placeholder="تاریخ را به صورت 1402/02/15 وارد کنید"
+                    required
+                    readOnly={!!selectedDay}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timeSlot">زنگ</Label>
+                  <Select
+                    value={formData.timeSlot || ""}
+                    onValueChange={(value) =>
+                      handleSelectChange("timeSlot", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب زنگ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                        <SelectItem key={num} value={num.toString()}>
+                          زنگ {num}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {userType === "school" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="teacherCode">استاد</Label>
+                    <Select
+                      value={formData.teacherCode || ""}
+                      onValueChange={(value) =>
+                        handleSelectChange("teacherCode", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="انتخاب استاد" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.map((teacher) => (
+                          <SelectItem
+                            key={teacher._id}
+                            value={ensureString(
+                              teacher.username ||
+                                teacher.teacherCode ||
+                                (teacher.data && teacher.data.teacherCode)
+                            )}
+                          >
+                            {teacher.firstName}{" "}
+                            {teacher.lastName ||
+                              teacher.teacherName ||
+                              (teacher.data && teacher.data.teacherName)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="classCode">کلاس</Label>
+                  <Select
+                    value={formData.classCode || ""}
+                    onValueChange={(value) =>
+                      handleSelectChange("classCode", value)
+                    }
+                    disabled={!formData.teacherCode && userType === "school"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب کلاس" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableClasses.map((cls) => {
+                        const majorValue = getDataProperty(cls, "major", "");
+                        const gradeValue = getDataProperty(cls, "Grade", "");
+                        const majorInfo = majorValue ? ` - ${majorValue}` : "";
+                        const gradeInfo = gradeValue
+                          ? ` (پایه ${gradeValue})`
+                          : "";
+
+                        return (
+                          <SelectItem
+                            key={cls._id}
+                            value={ensureString(
+                              cls.classCode || (cls.data && cls.data.classCode)
+                            )}
+                          >
+                            {cls.className || (cls.data && cls.data.className)}
+                            <span className="text-xs text-gray-500 mr-1">
+                              {majorInfo}
+                              {gradeInfo}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {availableClasses.length === 0 && formData.teacherCode && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      این استاد در هیچ کلاسی تدریس نمی‌کند.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="courseCode">درس</Label>
+                  <Select
+                    value={formData.courseCode || ""}
+                    onValueChange={(value) =>
+                      handleSelectChange("courseCode", value)
+                    }
+                    disabled={!formData.classCode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب درس" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCourses.map((course) => {
+                        const gradeValue = getDataProperty(course, "Grade", "");
+                        const gradeInfo = gradeValue
+                          ? ` (پایه ${gradeValue})`
+                          : "";
+
+                        return (
+                          <SelectItem
+                            key={course._id}
+                            value={ensureString(
+                              course.courseCode ||
+                                (course.data && course.data.courseCode)
+                            )}
+                          >
+                            {course.courseName ||
+                              (course.data && course.data.courseName)}
+                            <span className="text-xs text-gray-500 mr-1">
+                              {gradeInfo}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {availableCourses.length === 0 && formData.classCode && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      هیچ درسی متناسب با رشته و پایه این کلاس برای این استاد
+                      یافت نشد.
+                    </p>
+                  )}
+                  {formData.classCode && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      درس‌ها براساس رشته و پایه کلاس انتخابی فیلتر شده‌اند.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">توضیحات</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description || ""}
+                    onChange={handleInputChange}
+                    placeholder="توضیحات رویداد را وارد کنید"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closeEventForm}
+                  >
+                    انصراف
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={
+                      !formData.title ||
+                      !formData.persianDate ||
+                      !formData.timeSlot ||
+                      !formData.teacherCode ||
+                      !formData.classCode ||
+                      !formData.courseCode
+                    }
+                  >
+                    {editMode ? "ویرایش رویداد" : "افزودن رویداد"}
+                  </Button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}
