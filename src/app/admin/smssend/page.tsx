@@ -365,7 +365,8 @@ function StudentsPageContent() {
       validation: {
         requiredMessage: "متن پیام الزامی است",
       },
-      placeholder: "متن پیام را وارد کنید...",
+      placeholder:
+        "متن پیام را وارد کنید... (این پیام به صورت پیامک نیز به شماره‌های دریافت کنندگان ارسال می‌شود)",
       className: "min-h-[200px]",
     },
 
@@ -394,11 +395,11 @@ function StudentsPageContent() {
   // Define a title based on user type
   const pageTitle = () => {
     if (user?.userType === "student") {
-      return "ارسال پیام به معلمان";
+      return "ارسال پیام و پیامک به معلمان";
     } else if (user?.userType === "teacher") {
-      return "ارسال پیام به کلاس ها";
+      return "ارسال پیام و پیامک به کلاس ها";
     } else {
-      return "ارسال پیام";
+      return "ارسال پیام و پیامک";
     }
   };
 
@@ -465,7 +466,7 @@ function StudentsPageContent() {
               senderCode: user?.username || "",
             }}
             layout={layout}
-            onAfterAdd={async (entity: any) => {
+            onAfterAdd={async (entity: Entity) => {
               // console.log("Entity added:", entity);
 
               try {
@@ -494,7 +495,7 @@ function StudentsPageContent() {
                 // 1. Add direct student recipients
                 if (entity.recipients?.students?.length > 0) {
                   const studentRecipients = entity.recipients.students.map(
-                    (student: any) => ({
+                    (student: Record<string, string>) => ({
                       ...baseMessage,
                       receivercode: student.value,
                     })
@@ -505,7 +506,7 @@ function StudentsPageContent() {
                 // 2. Add teacher recipients
                 if (entity.recipients?.teachers?.length > 0) {
                   const teacherRecipients = entity.recipients.teachers.map(
-                    (teacher: any) => ({
+                    (teacher: Record<string, string>) => ({
                       ...baseMessage,
                       receivercode: teacher.value,
                     })
@@ -517,7 +518,7 @@ function StudentsPageContent() {
                 if (entity.recipients?.groups?.length > 0) {
                   // Call an API endpoint to get students in these groups
                   const groupCodes = entity.recipients.groups.map(
-                    (group: any) => group.value
+                    (group: Record<string, string>) => group.value
                   );
                   const groupResponse = await fetch(
                     "/api/messages/student-groups",
@@ -550,7 +551,7 @@ function StudentsPageContent() {
                 if (entity.recipients?.classCode?.length > 0) {
                   // Call an API endpoint to get students in these classes
                   const classCodes = entity.recipients.classCode.map(
-                    (classItem: any) => classItem.value
+                    (classItem: Record<string, string>) => classItem.value
                   );
                   const classResponse = await fetch(
                     "/api/messages/class-students",
@@ -686,6 +687,83 @@ function StudentsPageContent() {
                         "Total unique phone numbers:",
                         uniquePhones.length
                       );
+
+                      // Send SMS to all unique phone numbers
+                      if (uniquePhones.length > 0) {
+                        try {
+                          // Prepare phone numbers (ensure they start with correct format)
+                          const formattedPhones = uniquePhones.map((phone) => {
+                            // Make sure each phone starts with 0
+                            let formattedPhone = phone.trim();
+                            if (formattedPhone.startsWith("+98")) {
+                              formattedPhone =
+                                "0" + formattedPhone.substring(3);
+                            } else if (formattedPhone.startsWith("98")) {
+                              formattedPhone =
+                                "0" + formattedPhone.substring(2);
+                            } else if (!formattedPhone.startsWith("0")) {
+                              formattedPhone = "0" + formattedPhone;
+                            }
+                            return formattedPhone;
+                          });
+
+                          // Use default SMS sender number or allow user to specify one in the future
+                          const fromNumber = "9998762911"; // Default SMS sender number
+
+                          // Send the SMS
+                          const smsResponse = await fetch("/api/sms/send", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              "x-domain": window.location.host,
+                            },
+                            body: JSON.stringify({
+                              fromNumber: fromNumber,
+                              toNumbers: formattedPhones,
+                              message: entity.message,
+                            }),
+                          });
+
+                          if (smsResponse.ok) {
+                            const smsResult = await smsResponse.json();
+                            console.log("SMS sent successfully:", smsResult);
+
+                            // Save SMS log to database
+                            await fetch("/api/messages/log-sms", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "x-domain": window.location.host,
+                              },
+                              body: JSON.stringify({
+                                messageId: entity.recordId,
+                                fromNumber: fromNumber,
+                                toNumbers: formattedPhones,
+                                message: entity.message,
+                                recipientCount: formattedPhones.length,
+                                senderCode: entity.senderCode,
+                                schoolCode: entity.schoolCode,
+                                smsResult: smsResult,
+                              }),
+                            });
+
+                            toast.success(
+                              `پیامک به ${formattedPhones.length} شماره با موفقیت ارسال شد`
+                            );
+                          } else {
+                            const errorData = await smsResponse.json();
+                            console.error("SMS sending failed:", errorData);
+                            toast.error("خطا در ارسال پیامک");
+                          }
+                        } catch (smsError) {
+                          console.error("Error sending SMS:", smsError);
+                          toast.error("خطا در ارسال پیامک");
+                        }
+                      } else {
+                        toast.warning(
+                          "هیچ شماره تلفنی برای ارسال پیامک یافت نشد"
+                        );
+                      }
 
                       // You can store these phone numbers for SMS sending or further processing
                     } else {
