@@ -243,7 +243,7 @@ function StudentsPageContent() {
                   labelField2: "studentFamily",
                   valueField: "studentCode",
                   sortField: "studentCode",
-                  sortOrder: "asc",
+                  sortOrder: "asc" as const,
                   // For teachers, filter students who are in their classes
                   filterQuery:
                     user?.userType === "teacher" && teacherClasses.length > 0
@@ -305,7 +305,7 @@ function StudentsPageContent() {
                   labelField: "className",
                   valueField: "classCode",
                   sortField: "classCode",
-                  sortOrder: "asc",
+                  sortOrder: "asc" as const,
                   filterQuery:
                     user?.userType === "teacher" && teacherClasses.length > 0
                       ? {
@@ -339,7 +339,7 @@ function StudentsPageContent() {
             labelField: "teacherName",
             valueField: "teacherCode",
             sortField: "teacherCode",
-            sortOrder: "asc",
+            sortOrder: "asc" as const,
             filterQuery:
               user?.userType === "student" && studentTeachers.length > 0
                 ? {
@@ -590,7 +590,114 @@ function StudentsPageContent() {
                 }
 
                 console.log("allRecipients", allRecipients);
+
+                // NEW CODE: Retrieve phone numbers for all recipients from students and teachers collections
+                // Extract all recipient codes
+                const recipientCodes = allRecipients.map(
+                  (recipient) => recipient.receivercode
+                );
+                if (recipientCodes.length > 0) {
+                  try {
+                    // Get phone numbers for all recipients
+                    const phoneResponse = await fetch(
+                      "/api/messages/recipient-phones",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          recipientCodes,
+                          schoolCode: entity.schoolCode,
+                        }),
+                      }
+                    );
+
+                    if (phoneResponse.ok) {
+                      const { phones } = await phoneResponse.json();
+
+                      // Extract and process phone numbers to remove duplicates
+                      const allPhones: string[] = [];
+
+                      // Process student phones
+                      if (phones.studentPhones) {
+                        phones.studentPhones.forEach(
+                          (student: Record<string, any>) => {
+                            // Add phone from phoneNumber field if exists
+                            if (student.data?.phoneNumber) {
+                              allPhones.push(student.data.phoneNumber);
+                            }
+
+                            // Add phones from phones array if exists
+                            if (
+                              student.data?.phones &&
+                              Array.isArray(student.data.phones)
+                            ) {
+                              student.data.phones.forEach(
+                                (phone: Record<string, string>) => {
+                                  if (phone.number) {
+                                    allPhones.push(phone.number);
+                                  }
+                                }
+                              );
+                            }
+                          }
+                        );
+                      }
+
+                      // Process teacher phones
+                      if (phones.teacherPhones) {
+                        phones.teacherPhones.forEach(
+                          (teacher: Record<string, any>) => {
+                            // Add phone from phoneNumber field if exists
+                            if (teacher.data?.phoneNumber) {
+                              allPhones.push(teacher.data.phoneNumber);
+                            }
+
+                            // Add phones from phones array if exists
+                            if (
+                              teacher.data?.phones &&
+                              Array.isArray(teacher.data.phones)
+                            ) {
+                              teacher.data.phones.forEach(
+                                (phone: Record<string, string>) => {
+                                  if (phone.number) {
+                                    allPhones.push(phone.number);
+                                  }
+                                }
+                              );
+                            }
+                          }
+                        );
+                      }
+
+                      // Remove duplicates and empty values
+                      const uniquePhones = [
+                        ...new Set(
+                          allPhones.filter(
+                            (phone) => phone && phone.trim() !== ""
+                          )
+                        ),
+                      ];
+
+                      console.log(
+                        "All recipient phone numbers (unique):",
+                        uniquePhones
+                      );
+                      console.log(
+                        "Total unique phone numbers:",
+                        uniquePhones.length
+                      );
+
+                      // You can store these phone numbers for SMS sending or further processing
+                    } else {
+                      console.error("Failed to fetch recipient phones");
+                    }
+                  } catch (error) {
+                    console.error("Error fetching recipient phones:", error);
+                  }
+                }
+
                 if (allRecipients.length > 0) {
+                  // Existing code for handling recipients
                 } else {
                   toast.error("هیچ گیرنده‌ای برای پیام انتخاب نشده است");
                 }
