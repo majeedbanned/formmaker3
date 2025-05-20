@@ -187,6 +187,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "+رویدادها",
+          url: "/admin/agenda",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: " انتشارات",
