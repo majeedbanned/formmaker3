@@ -182,6 +182,13 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "+گزارش جدول هفتگی",
+          url: "/admin/weeklySchedule",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+
+        {
           title: " انتشارات",
           url: "/admin/publication",
           system: "importstudents",
