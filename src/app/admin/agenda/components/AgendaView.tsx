@@ -295,7 +295,7 @@ export default function AgendaView({
           event.teacherCode === "school" ||
           event.isSchoolEvent === true,
       }));
-
+      console.log("processedEvents", processedEvents);
       setEvents(processedEvents);
 
       // Initialize current month from today's date

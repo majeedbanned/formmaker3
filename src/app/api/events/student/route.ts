@@ -11,7 +11,7 @@ interface ExtendedUser {
   username: string;
   name?: string;
   role?: string;
-  classcode?: Array<{value: string, [key: string]: unknown}>;
+  classCode?: Array<{value: string, [key: string]: unknown}>;
 }
 
 // GET - Fetch events for a student's classes
@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
       
       // Cast user to extended type to access classcode property
       const extendedUser = user as unknown as ExtendedUser;
+    //  console.log("extendedUser",extendedUser);
       
       // Extract class codes from user.classcode array if it exists
-      if (Array.isArray(extendedUser.classcode)) {
-        studentClassCodes = extendedUser.classcode
+      if (Array.isArray(extendedUser.classCode)) {
+        studentClassCodes = extendedUser.classCode
           .filter(item => item && typeof item === 'object' && item.value)
           .map(item => item.value);
       }

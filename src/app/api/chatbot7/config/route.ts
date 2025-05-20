@@ -40,7 +40,8 @@ export async function getCurrentUser() {
   if (!token) {
     return null;
   }
-
+  //const yyy=await verifyJWT(token);
+//console.log("yxxy",yyy)
   try {
     const payload = await verifyJWT(token) as {
       userId: string;
@@ -49,6 +50,8 @@ export async function getCurrentUser() {
       username: string;
       name: string;
       role: string;
+      classCode: Array<{value: string, [key: string]: unknown}>;
+      groups: Array<{value: string, [key: string]: unknown}>;
     };
 
     return {
@@ -58,6 +61,8 @@ export async function getCurrentUser() {
       username: payload.username,
       name: payload.name,
       role: payload.role,
+      classCode: payload.classCode,
+      groups: payload.groups,
     };
   } catch (error) {
     console.error("Error verifying token:", error);
