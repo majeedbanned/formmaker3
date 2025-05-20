@@ -261,9 +261,7 @@ export default function AgendaView({
       month: "2-digit",
       day: "2-digit",
     }).format(now);
-    return persianDate.replace(/[٠-٩]/g, (d) =>
-      String.fromCharCode(d.charCodeAt(0) - 1728)
-    );
+    return toEnglishDigits(persianDate);
   };
 
   // Fetch events
@@ -814,35 +812,69 @@ export default function AgendaView({
     teacherCode,
     formData.classCode,
   ]);
+  const toEnglishDigits = (str: string) =>
+    str
+      .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1728))
+      .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
 
   // Calculate days remaining to an event
+  // ① Make sure the helper below exists somewhere above this function:
+  //
+  // const toEnglishDigits = (str: string) =>
+  //   str
+  //     .replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728)) // Persian
+  //     .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1632)); // Arabic-Indic
+
   const calculateDaysRemaining = (persianDate: string): number => {
     try {
-      // In a real implementation, you would convert both Persian dates to Gregorian
-      // For now, we'll use a simplified approach that works for demo purposes
+      /* -------- 1  normalise digits and quick equality check -------- */
+      const eventPersian = toEnglishDigits(persianDate.trim());
+      const todayPersian = toEnglishDigits(getTodayPersianDate().trim());
+      if (eventPersian === todayPersian) return 0;
 
-      // Get current Persian date
-      const todayPersian = getTodayPersianDate();
+      /* -------- 2  validate YYYY/MM/DD format -------- */
+      const dateRegex = /^\d{4}\/\d{2}\/\d{2}$/;
+      if (!dateRegex.test(eventPersian) || !dateRegex.test(todayPersian)) {
+        console.error("Unexpected date format:", {
+          eventPersian,
+          todayPersian,
+        });
+        return 0;
+      }
 
-      // Simple string comparison approach (works because Persian dates have YYYY/MM/DD format)
-      if (persianDate === todayPersian) return 0;
-
-      // Parse dates into YYYY, MM, DD components
-      const [eventYear, eventMonth, eventDay] = persianDate
+      /* -------- 3  parse components -------- */
+      const [eventYear, eventMonth, eventDay] = eventPersian
         .split("/")
-        .map((n) => parseInt(n, 10));
+        .map(Number);
       const [todayYear, todayMonth, todayDay] = todayPersian
         .split("/")
-        .map((n) => parseInt(n, 10));
+        .map(Number);
 
-      // Very simplified calculation (doesn't account for actual calendar differences)
-      const yearDiff = (eventYear - todayYear) * 365;
-      const monthDiff = (eventMonth - todayMonth) * 30;
-      const dayDiff = eventDay - todayDay;
+      /* -------- 4  basic range sanity-check -------- */
+      const valid = (y: number, m: number, d: number) =>
+        y >= 1300 && y <= 1500 && m >= 1 && m <= 12 && d >= 1 && d <= 31;
+      if (
+        !valid(eventYear, eventMonth, eventDay) ||
+        !valid(todayYear, todayMonth, todayDay)
+      )
+        return 0;
 
-      return yearDiff + monthDiff + dayDiff;
-    } catch (error) {
-      console.error("Error calculating days remaining:", error);
+      /* -------- 5  rough Jalali day-count (ignores leap years) -------- */
+      const jalaliMonthDays = (month: number) =>
+        month <= 6 ? 31 : month <= 11 ? 30 : 29;
+
+      const totalDays = (y: number, m: number, d: number) => {
+        let days = y * 365 + d;
+        for (let i = 1; i < m; i++) days += jalaliMonthDays(i);
+        return days;
+      };
+
+      const eventTotal = totalDays(eventYear, eventMonth, eventDay);
+      const todayTotal = totalDays(todayYear, todayMonth, todayDay);
+
+      return eventTotal - todayTotal;
+    } catch (err) {
+      console.error("calculateDaysRemaining error:", err);
       return 0;
     }
   };
