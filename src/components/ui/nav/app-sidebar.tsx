@@ -110,6 +110,12 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: " 2ارسال پیامک",
+          url: "/admin/smssend",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
           title: "*ارسال پیام الکترونیکی",
           url: "/admin/messages",
           system: "importstudents",
