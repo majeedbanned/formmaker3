@@ -13,6 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 // Define types
 type ClassData = {
@@ -70,9 +79,9 @@ const DAYS_OF_WEEK = [
   "شنبه",
   "یکشنبه",
   "دوشنبه",
-  "سه‌شنبه",
+  "سه شنبه",
   "چهارشنبه",
-  "پنج‌شنبه",
+  "پنج شنبه",
   "جمعه",
 ];
 
@@ -87,6 +96,7 @@ const WeeklySchedule = ({
   role: string;
   userCode: string;
 }) => {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
@@ -97,6 +107,16 @@ const WeeklySchedule = ({
   const [view, setView] = useState<"class" | "teacher" | "overview">(
     role === "school" ? "overview" : "class"
   );
+
+  // New state variables for editing
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState<"add" | "remove">("add");
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+  const [selectedEditDay, setSelectedEditDay] = useState<string>("");
+  const [selectedEditClass, setSelectedEditClass] = useState<string>("");
+  const [selectedEditTeacher, setSelectedEditTeacher] = useState<string>("");
+  const [selectedEditCourse, setSelectedEditCourse] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Custom styles for the component
   const customStyles = `
@@ -437,26 +457,53 @@ const WeeklySchedule = ({
   // Helper function to get current day name
   const getCurrentDayName = (): string => {
     const days = [
+      "شنبه",
       "یکشنبه",
       "دوشنبه",
-      "سه‌شنبه",
+      "سه شنبه",
       "چهارشنبه",
-      "پنج‌شنبه",
+      "پنج شنبه",
       "جمعه",
-      "شنبه",
     ];
     const dayIndex = new Date().getDay();
     return days[dayIndex];
   };
 
-  // Fetch data based on role
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  // Define fetchData function before it's used
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-        // Fetch courses
-        const coursesResponse = await fetch("/api/courses/getcourses", {
+      // Fetch courses
+      const coursesResponse = await fetch("/api/courses/getcourses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({ schoolCode }),
+      });
+      const coursesData = await coursesResponse.json();
+      setCourses(coursesData);
+
+      // Fetch teachers
+      const teachersResponse = await fetch("/api/teachers/getteachers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({ schoolCode }),
+      });
+      const teachersData = await teachersResponse.json();
+      setTeachers(teachersData);
+
+      // Fetch classes based on role
+      let classesData: ClassData[] = [];
+
+      if (role === "school") {
+        // School admin sees all classes
+        const classesResponse = await fetch("/api/classes/getclasses", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -464,79 +511,50 @@ const WeeklySchedule = ({
           },
           body: JSON.stringify({ schoolCode }),
         });
-        const coursesData = await coursesResponse.json();
-        setCourses(coursesData);
-
-        // Fetch teachers
-        const teachersResponse = await fetch("/api/teachers/getteachers", {
+        classesData = await classesResponse.json();
+      } else if (role === "teacher") {
+        // Teacher sees only their classes
+        const classesResponse = await fetch("/api/classes/getteacherclasses", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-domain": window.location.host,
           },
-          body: JSON.stringify({ schoolCode }),
+          body: JSON.stringify({ schoolCode, teacherCode: userCode }),
         });
-        const teachersData = await teachersResponse.json();
-        setTeachers(teachersData);
-
-        // Fetch classes based on role
-        let classesData: ClassData[] = [];
-
-        if (role === "school") {
-          // School admin sees all classes
-          const classesResponse = await fetch("/api/classes/getclasses", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-domain": window.location.host,
-            },
-            body: JSON.stringify({ schoolCode }),
-          });
-          classesData = await classesResponse.json();
-        } else if (role === "teacher") {
-          // Teacher sees only their classes
-          const classesResponse = await fetch(
-            "/api/classes/getteacherclasses",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-domain": window.location.host,
-              },
-              body: JSON.stringify({ schoolCode, teacherCode: userCode }),
-            }
-          );
-          classesData = await classesResponse.json();
-          setSelectedTeacher(userCode);
-        } else if (role === "student") {
-          // Student sees only their class
-          const classesResponse = await fetch("/api/classes/getstudentclass", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-domain": window.location.host,
-            },
-            body: JSON.stringify({ schoolCode, studentCode: userCode }),
-          });
-          classesData = await classesResponse.json();
-          if (classesData.length > 0) {
-            setSelectedClass(classesData[0].data.classCode);
-          }
-        }
-
-        setClasses(classesData);
-
-        // Set default selected class if available
-        if (classesData.length > 0 && !selectedClass) {
+        classesData = await classesResponse.json();
+        setSelectedTeacher(userCode);
+      } else if (role === "student") {
+        // Student sees only their class
+        const classesResponse = await fetch("/api/classes/getstudentclass", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-domain": window.location.host,
+          },
+          body: JSON.stringify({ schoolCode, studentCode: userCode }),
+        });
+        classesData = await classesResponse.json();
+        if (classesData.length > 0) {
           setSelectedClass(classesData[0].data.classCode);
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      setClasses(classesData);
+
+      // Set default selected class if available
+      if (classesData.length > 0 && !selectedClass) {
+        setSelectedClass(classesData[0].data.classCode);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data based on role
+  useEffect(() => {
     if (schoolCode) {
       fetchData();
     }
@@ -651,6 +669,180 @@ const WeeklySchedule = ({
 
   const scheduleData = generateScheduleData();
   const currentDay = getCurrentDayName();
+
+  // New function to handle cell click for editing
+  const handleCellClick = (timeSlot: string, day: string) => {
+    // Only allow school admins to edit schedule
+    if (role !== "school") return;
+
+    // Set the edit data
+    setSelectedTimeSlot(timeSlot);
+    setSelectedEditDay(day);
+
+    // In class view, we know which class to edit
+    if (view === "class" && selectedClass) {
+      setSelectedEditClass(selectedClass);
+    } else {
+      // In other views, we need to select a class
+      setSelectedEditClass("");
+    }
+
+    // Reset other fields
+    setSelectedEditTeacher("");
+    setSelectedEditCourse("");
+
+    // Check if the cell already has content
+    const cellData = scheduleData[timeSlot][day];
+    if (cellData && cellData.length > 0) {
+      // Cell has content, but we'll default to add mode and show deletion options within the dialog
+      setEditMode("add");
+    } else {
+      // Empty cell, default to add mode
+      setEditMode("add");
+    }
+
+    // Open the dialog
+    setIsEditDialogOpen(true);
+  };
+
+  // Function to handle saving schedule changes
+  const handleSaveSchedule = async () => {
+    // Validate required fields
+    if (!selectedEditClass || !selectedEditDay || !selectedTimeSlot) {
+      toast({
+        title: "خطا در ورودی",
+        description: "لطفا تمام فیلدهای مورد نیاز را پر کنید",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For add mode, validate teacher and course
+    if (editMode === "add" && (!selectedEditTeacher || !selectedEditCourse)) {
+      toast({
+        title: "خطا در ورودی",
+        description: "برای افزودن برنامه، لطفا معلم و درس را انتخاب کنید",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Prepare request data
+      const requestData = {
+        classCode: selectedEditClass,
+        day: selectedEditDay,
+        timeSlot: selectedTimeSlot,
+        operation: editMode,
+        ...(editMode === "add" && {
+          teacherCode: selectedEditTeacher,
+          courseCode: selectedEditCourse,
+        }),
+      };
+
+      // Call the API
+      const response = await fetch("/api/classes/updateSchedule", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "عملیات موفق",
+          description: result.message,
+        });
+
+        // Close the dialog and refresh data
+        setIsEditDialogOpen(false);
+
+        // Reload the data to show the changes
+        fetchData();
+      } else {
+        toast({
+          title: "خطا",
+          description: result.error || "خطا در بروزرسانی برنامه",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      toast({
+        title: "خطا",
+        description: "خطا در ارتباط با سرور",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Function to handle deleting a specific schedule item
+  const handleDeleteScheduleItem = async (
+    classCode: string,
+    /* eslint-disable-next-line */
+    teacherCode: string,
+    /* eslint-disable-next-line */
+    courseCode: string
+  ) => {
+    if (!selectedEditDay || !selectedTimeSlot) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Prepare request data
+      const requestData = {
+        classCode,
+        day: selectedEditDay,
+        timeSlot: selectedTimeSlot,
+        operation: "remove" as const,
+      };
+
+      // Call the API
+      const response = await fetch("/api/classes/updateSchedule", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "عملیات موفق",
+          description: "برنامه با موفقیت حذف شد",
+        });
+
+        // Reload the data to show the changes
+        fetchData();
+      } else {
+        toast({
+          title: "خطا",
+          description: result.error || "خطا در حذف برنامه",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      toast({
+        title: "خطا",
+        description: "خطا در ارتباط با سرور",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="schedule-container">
@@ -845,7 +1037,14 @@ const WeeklySchedule = ({
                           cellData.length === 0 ? "empty-cell" : ""
                         } ${day === currentDay ? "current-day" : ""} ${
                           view === "overview" ? "overview-cell" : ""
+                        } ${
+                          role === "school"
+                            ? "cursor-pointer hover:bg-gray-100"
+                            : ""
                         }`}
+                        onClick={() =>
+                          role === "school" && handleCellClick(timeSlot, day)
+                        }
                       >
                         {cellData.map((item, idx) => (
                           <div
@@ -916,7 +1115,15 @@ const WeeklySchedule = ({
                         : ""
                     } ${selectedDay === currentDay ? "current-day" : ""} ${
                       view === "overview" ? "overview-cell" : ""
+                    } ${
+                      role === "school"
+                        ? "cursor-pointer hover:bg-gray-100"
+                        : ""
                     }`}
+                    onClick={() =>
+                      role === "school" &&
+                      handleCellClick(timeSlot, selectedDay)
+                    }
                   >
                     {scheduleData[timeSlot][selectedDay]?.map((item, idx) => (
                       <div
@@ -975,6 +1182,177 @@ const WeeklySchedule = ({
             </React.Fragment>
           ))}
         </div>
+      )}
+
+      {/* Schedule Edit Dialog */}
+      {role === "school" && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px] text-right" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>ویرایش برنامه</DialogTitle>
+              <DialogDescription>
+                {`${selectedEditDay || ""} - زنگ ${selectedTimeSlot || ""}`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Dialog content */}
+            <div className="grid gap-4 py-4">
+              {/* Show existing items for this time slot/day */}
+              {selectedTimeSlot &&
+                selectedEditDay &&
+                scheduleData[selectedTimeSlot][selectedEditDay]?.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-md font-medium mb-2">
+                      برنامه‌های موجود:
+                    </h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                      {scheduleData[selectedTimeSlot][selectedEditDay].map(
+                        (item, idx) => {
+                          const classItem = item.classCode
+                            ? classes.find(
+                                (c) => c.data.classCode === item.classCode
+                              )?.data.className
+                            : classes.find(
+                                (c) => c.data.classCode === selectedEditClass
+                              )?.data.className;
+
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between bg-gray-50 p-2 rounded border"
+                            >
+                              <div className="flex-1">
+                                <div className="font-bold">
+                                  {getCourseName(item.courseCode)}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {getTeacherName(item.teacherCode)}
+                                </div>
+                                {classItem && (
+                                  <div className="text-xs text-gray-500">
+                                    {classItem}
+                                  </div>
+                                )}
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 ml-0"
+                                onClick={() =>
+                                  handleDeleteScheduleItem(
+                                    item.classCode || selectedEditClass,
+                                    item.teacherCode,
+                                    item.courseCode
+                                  )
+                                }
+                                disabled={isSubmitting}
+                              >
+                                حذف
+                              </Button>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              <h3 className="text-md font-medium mb-2">افزودن برنامه جدید:</h3>
+
+              {/* Class selector */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-class" className="text-right col-span-1">
+                  کلاس
+                </Label>
+                <div className="col-span-3">
+                  <Select
+                    value={selectedEditClass}
+                    onValueChange={setSelectedEditClass}
+                    disabled={view === "class" && !!selectedClass}
+                  >
+                    <SelectTrigger id="edit-class">
+                      <SelectValue placeholder="انتخاب کلاس" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((classItem) => (
+                        <SelectItem
+                          key={classItem.data.classCode}
+                          value={classItem.data.classCode}
+                        >
+                          {classItem.data.className}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Teacher selector */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-teacher" className="text-right col-span-1">
+                  معلم
+                </Label>
+                <div className="col-span-3">
+                  <Select
+                    value={selectedEditTeacher}
+                    onValueChange={setSelectedEditTeacher}
+                  >
+                    <SelectTrigger id="edit-teacher">
+                      <SelectValue placeholder="انتخاب معلم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((teacher) => (
+                        <SelectItem
+                          key={teacher.data.teacherCode}
+                          value={teacher.data.teacherCode}
+                        >
+                          {teacher.data.teacherName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Course selector */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-course" className="text-right col-span-1">
+                  درس
+                </Label>
+                <div className="col-span-3">
+                  <Select
+                    value={selectedEditCourse}
+                    onValueChange={setSelectedEditCourse}
+                  >
+                    <SelectTrigger id="edit-course">
+                      <SelectValue placeholder="انتخاب درس" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem
+                          key={course.data.courseCode}
+                          value={course.data.courseCode}
+                        >
+                          {course.data.courseName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="submit"
+                onClick={handleSaveSchedule}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "در حال ذخیره..." : "افزودن برنامه"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
