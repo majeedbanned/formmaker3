@@ -6,6 +6,7 @@ import {
   ChatBubbleLeftRightIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
+import { RefreshCw } from "lucide-react";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
@@ -55,6 +56,36 @@ function StudentsPageContent() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
   const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+  // Add state for SMS credit
+  const [smsCredit, setSmsCredit] = useState<string>("0");
+  const [isLoadingCredit, setIsLoadingCredit] = useState<boolean>(false);
+
+  // Fetch SMS credit
+  useEffect(() => {
+    fetchSmsCredit();
+  }, []);
+
+  const fetchSmsCredit = async () => {
+    try {
+      setIsLoadingCredit(true);
+      const response = await fetch("/api/sms/credit", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSmsCredit(data.credit);
+      } else {
+        console.error("Failed to fetch SMS credit");
+      }
+    } catch (error) {
+      console.error("Error fetching SMS credit:", error);
+    } finally {
+      setIsLoadingCredit(false);
+    }
+  };
 
   // Fetch teacher's classes when component mounts
   useEffect(() => {
@@ -409,7 +440,33 @@ function StudentsPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle()}</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">{pageTitle()}</h1>
+          <div className="bg-white shadow rounded-lg px-4 py-3 flex items-center">
+            <div className="text-right">
+              <p className="text-sm text-gray-500">اعتبار پیامک</p>
+              <p className="text-lg font-semibold">
+                {isLoadingCredit ? (
+                  <span className="flex items-center">
+                    <span className="h-4 w-4 mr-2 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></span>
+                    درحال بارگیری...
+                  </span>
+                ) : (
+                  `${Number(smsCredit).toLocaleString()} ریال`
+                )}
+              </p>
+            </div>
+            <button
+              onClick={fetchSmsCredit}
+              className="mr-3 text-blue-500 hover:text-blue-700"
+              disabled={isLoadingCredit}
+            >
+              <RefreshCw
+                className={`h-5 w-5 ${isLoadingCredit ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
+        </div>
 
         {user?.userType === "teacher" && (
           <div className="bg-blue-50 text-right border border-blue-200 rounded-md p-3 mb-4">
