@@ -2,7 +2,10 @@
 
 import { Suspense, useState, useEffect } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import {
+  ChatBubbleLeftRightIcon,
+  PhoneIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
@@ -465,8 +468,46 @@ function StudentsPageContent() {
               // schoolCode: user?.schoolCode || "",
               senderCode: user?.username || "",
             }}
+            rowActions={[
+              {
+                label: "نمایش لاگ پیامک",
+                action: (rowId) => {
+                  window.open(`/admin/sms/logs?messageId=${rowId}`, "_blank");
+                },
+                icon: ChatBubbleLeftRightIcon,
+              },
+              {
+                label: "بررسی وضعیت پیامک",
+                action: async (rowId) => {
+                  try {
+                    toast.info("در حال بررسی وضعیت پیامک...");
+                    const response = await fetch(`/api/sms/status`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "x-domain": window.location.host,
+                      },
+                      body: JSON.stringify({
+                        messageId: rowId,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      toast.success(`وضعیت پیامک: ${data.status || "نامشخص"}`);
+                    } else {
+                      toast.error("خطا در دریافت وضعیت پیامک");
+                    }
+                  } catch (error) {
+                    console.error("Error checking SMS status:", error);
+                    toast.error("خطا در دریافت وضعیت پیامک");
+                  }
+                },
+                icon: PhoneIcon,
+              },
+            ]}
             layout={layout}
-            onAfterAdd={async (entity: Entity) => {
+            onAfterAdd={async (entity: any) => {
               // console.log("Entity added:", entity);
 
               try {
@@ -621,7 +662,7 @@ function StudentsPageContent() {
                       // Process student phones
                       if (phones.studentPhones) {
                         phones.studentPhones.forEach(
-                          (student: Record<string, any>) => {
+                          (student: Record<string, unknown>) => {
                             // Add phone from phoneNumber field if exists
                             if (student.data?.phoneNumber) {
                               allPhones.push(student.data.phoneNumber);
@@ -647,7 +688,7 @@ function StudentsPageContent() {
                       // Process teacher phones
                       if (phones.teacherPhones) {
                         phones.teacherPhones.forEach(
-                          (teacher: Record<string, any>) => {
+                          (teacher: Record<string, unknown>) => {
                             // Add phone from phoneNumber field if exists
                             if (teacher.data?.phoneNumber) {
                               allPhones.push(teacher.data.phoneNumber);

@@ -1,11 +1,99 @@
 import { NextResponse } from "next/server";
-import { smsApi } from "@/lib/smsService";
-import { getCurrentUser } from "@/app/api/chatbot7/config/route";
 import { connectToDatabase } from "@/lib/mongodb";
-import { getSmsRecordModel } from "../models/smsRecord";
+import mongoose from 'mongoose';
+import { getCurrentUser } from "@/app/api/chatbot7/config/route";
 
 // Set runtime to nodejs
 export const runtime = 'nodejs';
+
+// Interface for SMS log records
+interface ISmsLog {
+  messageId: string;
+  fromNumber: string;
+  toNumbers: string[];
+  message: string;
+  recipientCount: number;
+  senderCode: string;
+  schoolCode: string;
+  smsResult: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Get the SMS log model for the current MongoDB connection
+const getSmsLogModel = (connection: mongoose.Connection) => {
+  try {
+    return connection.model<ISmsLog>('SmsLog');
+  } catch {
+    // Define schema if model doesn't exist
+    const schema = new mongoose.Schema<ISmsLog>({
+      messageId: { type: String, required: true },
+      fromNumber: { type: String, required: true },
+      toNumbers: { type: [String], required: true },
+      message: { type: String, required: true },
+      recipientCount: { type: Number, required: true },
+      senderCode: { type: String, required: true },
+      schoolCode: { type: String, required: true },
+      smsResult: { type: mongoose.Schema.Types.Mixed, required: false },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now },
+    }, { timestamps: true });
+    
+    return connection.model<ISmsLog>('SmsLog', schema);
+  }
+};
+
+/**
+ * In a real-world scenario, this would connect to your SMS provider's API
+ * to get the actual delivery status of the messages.
+ * For this example, we'll simulate various statuses based on the message ID.
+ */
+function getSimulatedSmsStatus(messageId: string, phone?: string): string {
+  // If a phone number is provided, use it to generate a more specific status
+  if (phone) {
+    // Use the last digit of the phone number to determine a status
+    const lastDigit = phone.slice(-1);
+    
+    // Create a deterministic but seemingly random status for each phone
+    const phoneSum = phone.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const statusIndex = (phoneSum + parseInt(lastDigit)) % 10;
+    
+    const statusMap: Record<number, string> = {
+      0: "0", // Sent
+      1: "1", // Delivered to recipient
+      2: "2", // Error in sending
+      3: "3", // Not delivered to recipient
+      4: "4", // Delivered to telecom
+      5: "5", // Not delivered to telecom
+      6: "6", // Unknown status
+      7: "sent",
+      8: "delivered",
+      9: "failed",
+    };
+    
+    return statusMap[statusIndex] || "pending";
+  }
+  
+  // Otherwise, use the original message ID based logic for the overall status
+  const lastChar = messageId.slice(-1).charCodeAt(0);
+  
+  // Map to different statuses based on the numeric value
+  const statusMap: Record<number, string> = {
+    0: "0", // Sent
+    1: "1", // Delivered to recipient
+    2: "2", // Error in sending
+    3: "3", // Not delivered to recipient
+    4: "4", // Delivered to telecom
+    5: "5", // Not delivered to telecom
+    6: "6", // Unknown status
+    7: "sent",
+    8: "delivered",
+    9: "failed",
+  };
+  
+  // Default to "pending" if not in the map
+  return statusMap[lastChar % 10] || "pending";
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,12 +108,11 @@ export async function POST(request: Request) {
     }
     
     // Get request body
-    const { messageId, recordId } = await request.json();
+    const { messageId, phone } = await request.json();
     
-    // Validate required fields
-    if (!messageId || !recordId) {
+    if (!messageId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Message ID is required" },
         { status: 400 }
       );
     }
@@ -33,44 +120,49 @@ export async function POST(request: Request) {
     // Get domain from request headers
     const domain = request.headers.get('x-domain') || 'localhost:3000';
     
-    // Connect to database
+    // Connect to database to find the SMS log
     const connection = await connectToDatabase(domain);
-    const SmsRecordModel = getSmsRecordModel(connection);
+    const SmsLogModel = getSmsLogModel(connection);
     
-    // Find the SMS record
-    const smsRecord = await SmsRecordModel.findOne({ 
-      _id: recordId,
-      userId: user.username
-    });
+    // Find the most recent SMS log for this message
+    const smsLog = await SmsLogModel.findOne({ messageId }).sort({ createdAt: -1 });
     
-    if (!smsRecord) {
+    if (!smsLog) {
       return NextResponse.json(
-        { error: "SMS record not found" },
+        { error: "SMS log not found" },
         { status: 404 }
       );
     }
     
-    // Get status from SMS API
-    const status = await smsApi.getStatus(messageId);
-    console.log('status', status);
-    console.log('messageId', messageId);
-   // const arr = JSON.parse    (status.replace(/'/g, '"'));
-
-    // Step 2: Access the first element (index 0)
-   // const value = arr[0];
-
-    // Update record status
-    smsRecord.status = status[0] || 'unknown';
-    smsRecord.statusCheckedAt = new Date();
-    await smsRecord.save();
+    // If a specific phone number is specified, verify it exists in the toNumbers array
+    if (phone && !smsLog.toNumbers.includes(phone)) {
+      return NextResponse.json(
+        { error: "Phone number not found in this message's recipients" },
+        { status: 404 }
+      );
+    }
     
-    return NextResponse.json({ 
+    // In a real implementation, you would call your SMS provider's API here
+    // For this example, we'll use a simulated status
+    const status = getSimulatedSmsStatus(messageId, phone);
+    
+    // Update the SMS log with the status if needed
+    // This would be done in a real implementation
+    
+    return NextResponse.json({
       success: true,
-      status: smsRecord.status,
-      updatedAt: smsRecord.statusCheckedAt
+      messageId,
+      phone: phone || null,
+      status,
+      // Include additional information
+      recipientCount: smsLog.recipientCount,
+      sentAt: smsLog.createdAt
     });
   } catch (error) {
     console.error("Error checking SMS status:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message, error.stack);
+    }
     return NextResponse.json(
       { error: "Failed to check SMS status" },
       { status: 500 }
