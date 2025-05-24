@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -43,7 +43,8 @@ interface PhoneStatus {
   isChecking: boolean;
 }
 
-export default function SmsLogsPage() {
+// Separate component that uses useSearchParams
+function SmsLogsContent() {
   const searchParams = useSearchParams();
   const messageId = searchParams.get("messageId");
 
@@ -505,5 +506,23 @@ export default function SmsLogsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Main component that wraps SmsLogsContent in a Suspense boundary
+export default function SmsLogsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-500" />
+            <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+          </div>
+        </div>
+      }
+    >
+      <SmsLogsContent />
+    </Suspense>
   );
 }
