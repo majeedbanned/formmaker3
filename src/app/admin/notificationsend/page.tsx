@@ -351,10 +351,9 @@ function StudentsPageContent() {
         },
       ],
     },
-
     {
-      name: "message",
-      title: "متن پیام",
+      name: "title",
+      title: "عنوان نوتیفیکیشن",
       type: "textbox",
 
       isShowInList: true,
@@ -363,10 +362,27 @@ function StudentsPageContent() {
       enabled: true,
       visible: true,
       validation: {
-        requiredMessage: "متن پیام الزامی است",
+        requiredMessage: "عنوان نوتیفیکیشن الزامی است",
       },
       placeholder:
-        "متن پیام را وارد کنید... (این پیام به صورت پیامک نیز به شماره‌های دریافت کنندگان ارسال می‌شود)",
+        "عنوان نوتیفیکیشن را وارد کنید... (این پیام به صورت پیامک نیز به شماره‌های دریافت کنندگان ارسال می‌شود)",
+      className: "min-h-[200px]",
+    },
+    {
+      name: "message",
+      title: "متن نوتیفیکیشن",
+      type: "textbox",
+
+      isShowInList: true,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "متن نوتیفیکیشن الزامی است",
+      },
+      placeholder:
+        "متن نوتیفیکیشن را وارد کنید... (این پیام به صورت پیامک نیز به شماره‌های دریافت کنندگان ارسال می‌شود)",
       className: "min-h-[200px]",
     },
 
@@ -588,6 +604,67 @@ function StudentsPageContent() {
                 }
                 //send notification to allRecipients
                 console.log("allRecipients", allRecipients);
+
+                // Send push notifications to recipients
+                try {
+                  // First insert all recipients to messagelist collection
+                  const messagesResponse = await fetch(
+                    "/api/messages/insert-batch",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        messages: allRecipients,
+                        schoolCode: entity.schoolCode,
+                      }),
+                    }
+                  );
+
+                  if (!messagesResponse.ok) {
+                    throw new Error(
+                      "Failed to insert messages to messagelist collection"
+                    );
+                  }
+
+                  // Now send push notifications to all recipients
+                  // Extract all recipient codes
+                  const recipientCodes = allRecipients.map(
+                    (r) => r.receivercode
+                  );
+
+                  // Send notifications to all tokens associated with these recipients
+                  const notificationResponse = await fetch(
+                    "/api/notifications/send",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        recipientCodes,
+                        schoolCode: entity.schoolCode,
+                        title: entity.title,
+                        body: entity.message,
+                        data: {
+                          screen: "/messages",
+                          messageId: entity.recordId,
+                        },
+                      }),
+                    }
+                  );
+
+                  if (notificationResponse.ok) {
+                    const result = await notificationResponse.json();
+                    console.log("Notification sending result:", result);
+                    toast.success(
+                      "پیام با موفقیت ارسال شد و اعلان‌ها ارسال شدند"
+                    );
+                  } else {
+                    console.error("Failed to send notifications");
+                    toast.warning("پیام ارسال شد اما اعلان‌ها ارسال نشدند");
+                  }
+                } catch (error) {
+                  console.error("Error sending notifications:", error);
+                  toast.error("خطا در ارسال اعلان‌ها");
+                }
 
                 // 5. Insert all recipients to messagelist collection
               } catch (error) {
