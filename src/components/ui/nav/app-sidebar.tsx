@@ -129,7 +129,7 @@ const data = {
         },
         {
           title: " ارسال نوتیفیکیشن",
-          url: "/admin/notifications",
+          url: "/admin/notificationsend",
           system: "importstudents",
           requiredPermission: "show",
         },
