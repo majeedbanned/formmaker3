@@ -11,6 +11,36 @@ import { toast } from "sonner";
 
 // Import to get Persian date
 import { getPersianDate } from "@/utils/dateUtils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  InformationCircleIcon,
+  CheckCircleIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
+import type { RowAction } from "@/types/crud";
+
+// Define interface for the notification details
+interface NotificationDetail {
+  _id: string;
+  title?: string;
+  message?: string;
+  sender?: string;
+  persiandate?: string;
+  recipients?: Array<{
+    receivercode: string;
+    name: string;
+    status?: "sent" | "delivered" | "read" | "failed";
+    isRead?: boolean;
+    timestamp?: string;
+  }>;
+  [key: string]: unknown;
+}
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -52,6 +82,21 @@ function StudentsPageContent() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
   const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+  // Add state for the notification details popup
+  const [showNotificationDetails, setShowNotificationDetails] = useState(false);
+  const [selectedNotification, setSelectedNotification] =
+    useState<NotificationDetail | null>(null);
+  const [notificationStats, setNotificationStats] = useState<{
+    totalRecipients: number;
+    sentCount: number;
+    readCount: number;
+    deliveredCount: number;
+  }>({
+    totalRecipients: 0,
+    sentCount: 0,
+    readCount: 0,
+    deliveredCount: 0,
+  });
 
   // Fetch teacher's classes when component mounts
   useEffect(() => {
@@ -418,6 +463,48 @@ function StudentsPageContent() {
     }
   };
 
+  // New function to fetch notification details
+  const fetchNotificationDetails = async (notificationId: string) => {
+    try {
+      const response = await fetch(
+        `/api/notifications/details?id=${notificationId}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch notification details");
+      }
+
+      const data = await response.json();
+      setSelectedNotification(data.notification);
+      setNotificationStats({
+        totalRecipients: data.stats.totalRecipients || 0,
+        sentCount: data.stats.sentCount || 0,
+        readCount: data.stats.readCount || 0,
+        deliveredCount: data.stats.deliveredCount || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching notification details:", error);
+      toast.error("خطا در دریافت جزئیات اعلان");
+    }
+  };
+
+  // New row actions
+  const rowActions: RowAction[] = [
+    {
+      label: "مشاهده جزئیات",
+      action: (rowId: string) => {
+        fetchNotificationDetails(rowId);
+        setShowNotificationDetails(true);
+      },
+      icon: InformationCircleIcon,
+    },
+  ];
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -481,6 +568,7 @@ function StudentsPageContent() {
               senderCode: user?.username || "",
             }}
             layout={layout}
+            rowActions={rowActions}
             onAfterAdd={async (entity: any) => {
               console.log("Entity added:", entity);
 
@@ -675,6 +763,161 @@ function StudentsPageContent() {
           />
         )}
       </div>
+
+      {/* Notification Details Dialog */}
+      <Dialog
+        open={showNotificationDetails}
+        onOpenChange={(open) => {
+          setShowNotificationDetails(open);
+          if (!open) {
+            setSelectedNotification(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-right">جزئیات اعلان</DialogTitle>
+          </DialogHeader>
+          {selectedNotification && (
+            <div className="space-y-4 text-right">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h3 className="font-bold text-lg mb-2">
+                  {selectedNotification.title}
+                </h3>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+                <div className="mt-2 text-sm text-gray-500">
+                  <span>فرستنده: {selectedNotification.sender}</span> |
+                  <span> تاریخ: {selectedNotification.persiandate}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 justify-evenly mt-4">
+                <div className="flex flex-col items-center p-3 bg-blue-50 rounded-md">
+                  <UsersIcon className="h-6 w-6 text-blue-500 mb-1" />
+                  <div className="text-sm font-medium">دریافت کنندگان</div>
+                  <div className="text-lg font-bold">
+                    {notificationStats.totalRecipients}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-indigo-50 rounded-md">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-indigo-500 mb-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                  </svg>
+                  <div className="text-sm font-medium">ارسال شده</div>
+                  <div className="text-lg font-bold">
+                    {notificationStats.sentCount}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-green-50 rounded-md">
+                  <CheckCircleIcon className="h-6 w-6 text-green-500 mb-1" />
+                  <div className="text-sm font-medium">تحویل شده</div>
+                  <div className="text-lg font-bold">
+                    {notificationStats.deliveredCount}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-amber-50 rounded-md">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-amber-500 mb-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                  <div className="text-sm font-medium">خوانده شده</div>
+                  <div className="text-lg font-bold">
+                    {notificationStats.readCount}
+                  </div>
+                </div>
+              </div>
+
+              {selectedNotification.recipients &&
+                selectedNotification.recipients.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-bold mb-2">وضعیت دریافت‌کنندگان</h4>
+                    <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              دریافت کننده
+                            </th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              وضعیت
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedNotification.recipients.map(
+                            (recipient: any, index: number) => (
+                              <tr key={index}>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                  {recipient.name || recipient.receivercode}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm">
+                                  {recipient.status === "read" && (
+                                    <Badge className="bg-green-100 text-green-800">
+                                      خوانده شده
+                                    </Badge>
+                                  )}
+                                  {recipient.status === "delivered" && (
+                                    <Badge className="bg-blue-100 text-blue-800">
+                                      تحویل شده
+                                    </Badge>
+                                  )}
+                                  {recipient.status === "sent" && (
+                                    <Badge className="bg-indigo-100 text-indigo-800">
+                                      ارسال شده
+                                    </Badge>
+                                  )}
+                                  {recipient.status === "failed" && (
+                                    <Badge className="bg-red-100 text-red-800">
+                                      خطا در ارسال
+                                    </Badge>
+                                  )}
+                                  {!recipient.status && (
+                                    <Badge className="bg-gray-100 text-gray-800">
+                                      نامشخص
+                                    </Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
