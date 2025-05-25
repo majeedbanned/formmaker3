@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     // Parse the request body
     const body = await request.json();
     const { recipientCodes, schoolCode, title, body: messageBody, data } = body;
-
+   // console.log("recipientCodes", recipientCodes);
     // Validate required fields
     if (!recipientCodes || !Array.isArray(recipientCodes) || recipientCodes.length === 0) {
       return NextResponse.json({ message: "recipientCodes array is required" }, { status: 400 });
@@ -57,15 +57,15 @@ export async function POST(request: Request) {
     let tokens: string[] = [];
 
     // Find all tokens for school admins
-    if (schoolCode) {
-      const schoolsCollection = connection.collection('schools');
-      const school = await schoolsCollection.findOne({ 'data.schoolCode': schoolCode });
+    // if (schoolCode) {
+    //   const schoolsCollection = connection.collection('schools');
+    //   const school = await schoolsCollection.findOne({ 'data.schoolCode': schoolCode });
       
-      if (school && school.data?.tokens && Array.isArray(school.data.tokens)) {
-        const schoolTokens = school.data.tokens.map((t: TokenObject) => t.token).filter(Boolean);
-        tokens = [...tokens, ...schoolTokens];
-      }
-    }
+    //   if (school && school.data?.tokens && Array.isArray(school.data.tokens)) {
+    //     const schoolTokens = school.data.tokens.map((t: TokenObject) => t.token).filter(Boolean);
+    //     tokens = [...tokens, ...schoolTokens];
+    //   }
+    // }
 
     // Find all tokens for teachers in the recipientCodes list
     const teachersCollection = connection.collection('teachers');
@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       }
     });
 
+  //  console.log("tokens", tokens);
     // Remove duplicates
     tokens = [...new Set(tokens)];
 
