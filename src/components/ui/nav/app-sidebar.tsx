@@ -180,6 +180,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "+گزارش زمان خط",
+          url: "/admin/dailytimeline",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: "+گزارش نمرات ماهانه",
