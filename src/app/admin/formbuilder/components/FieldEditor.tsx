@@ -221,7 +221,7 @@ export function FieldEditor({
     );
 
     if (hasDuplicateName) {
-      setValidationError("Field name must be unique");
+      setValidationError("نام فیلد باید منحصر به فرد باشد");
       return;
     }
 
@@ -497,14 +497,14 @@ export function FieldEditor({
           {/* Validation Tab */}
           <TabsContent value="validation" className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Validation Schema</Label>
+              <Label>شرح اعتبارسنجی</Label>
               <div className="bg-gray-100 p-2 rounded-md text-sm font-mono">
                 {validationSchema}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="field-regex">Custom Regex Pattern</Label>
+              <Label htmlFor="field-regex">الگوی اعتبارسنجی</Label>
               <Input
                 id="field-regex"
                 value={(editedField.validation?.regex as string) || ""}
@@ -519,7 +519,7 @@ export function FieldEditor({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="validation-message">Validation Message</Label>
+              <Label htmlFor="validation-message">پیام اعتبارسنجی</Label>
               <Input
                 id="validation-message"
                 value={
@@ -541,12 +541,12 @@ export function FieldEditor({
             {/* Conditional rendering */}
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="conditional-logic">
-                <AccordionTrigger>Conditional Logic</AccordionTrigger>
+                <AccordionTrigger>منطق شرطی</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="conditional-field">
-                        Show this field when
+                        این فیلد را نمایش بده هنگامی که
                       </Label>
                       <Select
                         value={editedField.condition?.field || ""}
@@ -569,7 +569,7 @@ export function FieldEditor({
 
                     {editedField.condition?.field && (
                       <div className="space-y-2">
-                        <Label htmlFor="conditional-value">Equals</Label>
+                        <Label htmlFor="conditional-value">برابر باشد با</Label>
                         <Input
                           id="conditional-value"
                           value={String(editedField.condition?.equals || "")}
@@ -813,7 +813,7 @@ export function FieldEditor({
             {editedField.type === "group" && (
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="nested-fields">
-                  <AccordionTrigger>Nested Fields</AccordionTrigger>
+                  <AccordionTrigger>فیلدهای تو در تو</AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -830,7 +830,7 @@ export function FieldEditor({
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="repeatable-field">Repeatable</Label>
+                        <Label htmlFor="repeatable-field">تکراری</Label>
                         <Switch
                           id="repeatable-field"
                           checked={editedField.repeatable || false}
@@ -1147,7 +1147,7 @@ export function FieldEditor({
 
             {/* Layout options */}
             <div className="space-y-2">
-              <Label htmlFor="field-layout">Layout</Label>
+              <Label htmlFor="field-layout">نحوه نمایش</Label>
               <Select
                 value={editedField.layout || "default"}
                 onValueChange={(value) => updateField("layout", value)}
@@ -1156,10 +1156,10 @@ export function FieldEditor({
                   <SelectValue placeholder="Select layout" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">Default</SelectItem>
-                  <SelectItem value="row">Row</SelectItem>
-                  <SelectItem value="column">Column</SelectItem>
-                  <SelectItem value="grid">Grid</SelectItem>
+                  <SelectItem value="default">پیش فرض</SelectItem>
+                  <SelectItem value="row">ردیف</SelectItem>
+                  <SelectItem value="column">ستون</SelectItem>
+                  <SelectItem value="grid">شبکه</SelectItem>
                 </SelectContent>
               </Select>
             </div>

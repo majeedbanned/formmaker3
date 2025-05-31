@@ -546,14 +546,14 @@ export default function FormBuilderList({
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading forms...</div>;
+    return <div className="text-center py-8">در حال دریافت فرم ها...</div>;
   }
 
   if (forms.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-lg text-gray-500 mb-4">No forms found</p>
-        <p className="text-gray-400">Create a new form to get started</p>
+        <p className="text-lg text-gray-500 mb-4">هیچ فرمی یافت نشد</p>
+        <p className="text-gray-400">یک فرم جدید بسازید تا شروع کنید</p>
       </div>
     );
   }
