@@ -2,8 +2,16 @@
 
 import { Suspense, useState, useEffect } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
-import { FormField, LayoutSettings } from "@/types/crud";
+import {
+  DocumentIcon,
+  ShareIcon,
+  ChartBarIcon,
+  XMarkIcon,
+  EyeIcon,
+  ClockIcon,
+  UserIcon,
+} from "@heroicons/react/24/outline";
+import { FormField, LayoutSettings, RowAction } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +19,267 @@ import { toast } from "sonner";
 
 // Import to get Persian date
 import { getPersianDate } from "@/utils/dateUtils";
+
+// Statistics Modal Component
+function StatisticsModal({
+  isOpen,
+  onClose,
+  mailId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  mailId: string | null;
+}) {
+  const [statistics, setStatistics] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "read" | "unread">(
+    "overview"
+  );
+
+  useEffect(() => {
+    if (isOpen && mailId) {
+      fetchStatistics();
+    }
+  }, [isOpen, mailId]);
+
+  const fetchStatistics = async () => {
+    if (!mailId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/messages/statistics?mailId=${mailId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch statistics");
+      }
+      const data = await response.json();
+      setStatistics(data);
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+      toast.error("خطا در دریافت آمار پیام");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center p-6 border-b">
+          <h3 className="text-xl font-bold text-gray-900">آمار پیام</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        ) : statistics ? (
+          <div className="p-6">
+            {/* Message Info */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h4 className="font-bold text-lg mb-2">
+                {statistics.messageInfo.title}
+              </h4>
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                <div>
+                  <span className="font-medium">فرستنده:</span>{" "}
+                  {statistics.messageInfo.sendername}
+                </div>
+                <div>
+                  <span className="font-medium">تاریخ ارسال:</span>{" "}
+                  {statistics.messageInfo.persiandate}
+                </div>
+              </div>
+            </div>
+
+            {/* Statistics Overview */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {statistics.totalRecipients}
+                </div>
+                <div className="text-sm text-blue-800">کل گیرندگان</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {statistics.readCount}
+                </div>
+                <div className="text-sm text-green-800">خوانده شده</div>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {statistics.unreadCount}
+                </div>
+                <div className="text-sm text-orange-800">خوانده نشده</div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  میزان خوانده شدن
+                </span>
+                <span className="text-sm text-gray-500">
+                  {statistics.readPercentage}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${statistics.readPercentage}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="border-b border-gray-200 mb-4">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab("overview")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "overview"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <ChartBarIcon className="h-5 w-5 inline ml-2" />
+                  خلاصه
+                </button>
+                <button
+                  onClick={() => setActiveTab("read")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "read"
+                      ? "border-green-500 text-green-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <EyeIcon className="h-5 w-5 inline ml-2" />
+                  خوانده شده ({statistics.readCount})
+                </button>
+                <button
+                  onClick={() => setActiveTab("unread")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "unread"
+                      ? "border-orange-500 text-orange-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <ClockIcon className="h-5 w-5 inline ml-2" />
+                  خوانده نشده ({statistics.unreadCount})
+                </button>
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <div className="max-h-96 overflow-y-auto">
+              {activeTab === "overview" && (
+                <div className="space-y-4">
+                  <div className="text-center text-gray-600">
+                    آمار کلی پیام در بالا نمایش داده شده است. برای مشاهده جزئیات
+                    بیشتر، تب‌های "خوانده شده" یا "خوانده نشده" را انتخاب کنید.
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "read" && (
+                <div className="space-y-3">
+                  {statistics.readRecipients.map(
+                    (recipient: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-green-50 border border-green-200 rounded-lg p-3"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center space-x-3">
+                            <UserIcon className="h-5 w-5 text-green-600" />
+                            <div>
+                              <div className="font-medium text-green-800">
+                                {recipient.name}
+                              </div>
+                              <div className="text-sm text-green-600">
+                                {recipient.type === "student"
+                                  ? "دانش‌آموز"
+                                  : "معلم"}{" "}
+                                - کلاس: {recipient.classCode}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-left">
+                            <div className="text-sm text-green-600">
+                              {recipient.readPersianDate}
+                            </div>
+                            <div className="text-xs text-green-500">
+                              {new Date(recipient.readTime).toLocaleTimeString(
+                                "fa-IR"
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                  {statistics.readRecipients.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      هیچ گیرنده‌ای هنوز پیام را نخوانده است
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "unread" && (
+                <div className="space-y-3">
+                  {statistics.unreadRecipients.map(
+                    (recipient: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-orange-50 border border-orange-200 rounded-lg p-3"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <UserIcon className="h-5 w-5 text-orange-600" />
+                          <div>
+                            <div className="font-medium text-orange-800">
+                              {recipient.name}
+                            </div>
+                            <div className="text-sm text-orange-600">
+                              {recipient.type === "student"
+                                ? "دانش‌آموز"
+                                : "معلم"}{" "}
+                              - کلاس: {recipient.classCode}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                  {statistics.unreadRecipients.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      همه گیرندگان پیام را خوانده‌اند
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">خطا در بارگذاری آمار</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -52,6 +321,9 @@ function StudentsPageContent() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
   const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+  // Statistics modal state
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
 
   // Fetch teacher's classes when component mounts
   useEffect(() => {
@@ -415,6 +687,18 @@ function StudentsPageContent() {
   // Use the updated form structure with filtered classes for teachers
   const sampleFormStructure = baseFormStructure;
 
+  // Define row actions
+  const rowActions: RowAction[] = [
+    {
+      label: "مشاهده آمار پیام",
+      icon: ChartBarIcon,
+      action: (rowId: string, rowData?: Record<string, unknown>) => {
+        setSelectedMailId(rowId);
+        setShowStatistics(true);
+      },
+    },
+  ];
+
   // Define a title based on user type
   const pageTitle = () => {
     if (user?.userType === "student") {
@@ -489,6 +773,7 @@ function StudentsPageContent() {
               senderCode: user?.username || "",
             }}
             layout={layout}
+            rowActions={rowActions}
             onAfterAdd={async (entity: any) => {
               console.log("Entity added:", entity);
 
@@ -870,6 +1155,13 @@ function StudentsPageContent() {
           />
         )}
       </div>
+
+      {/* Statistics Modal */}
+      <StatisticsModal
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        mailId={selectedMailId}
+      />
     </main>
   );
 }
