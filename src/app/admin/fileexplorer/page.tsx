@@ -1722,6 +1722,16 @@ export default function FileExplorerPage() {
         </h1>
 
         {/* Add user-specific message */}
+        {user && user.userType === "student" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-amber-700">
+              <span className="font-bold ml-1">توجه:</span>
+              شما به عنوان دانش‌آموز فقط مجاز به مشاهده و دانلود فایل‌ها هستید.
+              امکان آپلود فایل یا ایجاد پوشه برای شما وجود ندارد.
+            </p>
+          </div>
+        )}
+
         {user &&
           (user.userType === "school" || user.userType === "teacher") && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -1740,32 +1750,39 @@ export default function FileExplorerPage() {
 
         {/* Actions bar */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => setShowCreateFolder(true)}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          >
-            <FolderPlusIcon className="h-5 w-5 ml-2 text-gray-500" />
-            ایجاد پوشه جدید
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-            disabled={uploading}
-          >
-            {uploading ? (
-              <ArrowPathIcon className="h-5 w-5 ml-2 text-gray-500 animate-spin" />
-            ) : (
-              <ArrowUpTrayIcon className="h-5 w-5 ml-2 text-gray-500" />
+          {/* Only show create folder and upload buttons for teachers and school users */}
+          {user &&
+            (user.userType === "teacher" || user.userType === "school") && (
+              <>
+                <button
+                  onClick={() => setShowCreateFolder(true)}
+                  className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                >
+                  <FolderPlusIcon className="h-5 w-5 ml-2 text-gray-500" />
+                  ایجاد پوشه جدید
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ArrowPathIcon className="h-5 w-5 ml-2 text-gray-500 animate-spin" />
+                  ) : (
+                    <ArrowUpTrayIcon className="h-5 w-5 ml-2 text-gray-500" />
+                  )}
+                  آپلود فایل
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  multiple
+                />
+              </>
             )}
-            آپلود فایل
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            className="hidden"
-            multiple
-          />
+
           {currentPath && (
             <button
               onClick={navigateBack}
@@ -1821,25 +1838,33 @@ export default function FileExplorerPage() {
                 ? `پوشه "${currentPath.split("/").pop()}" خالی است`
                 : "پوشه اصلی خالی است"}
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              برای شروع، یک پوشه ایجاد کنید یا فایلی را آپلود نمایید.
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                onClick={() => setShowCreateFolder(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
-              >
-                <FolderPlusIcon className="h-5 w-5 ml-1.5" />
-                ایجاد پوشه
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
-              >
-                <ArrowUpTrayIcon className="h-5 w-5 ml-1.5" />
-                آپلود فایل {currentPath ? `در اینجا` : ""}
-              </button>
-            </div>
+            {user?.userType === "student" ? (
+              <p className="mt-1 text-sm text-gray-500">
+                هیچ فایل یا پوشه‌ای در این قسمت موجود نیست.
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 text-sm text-gray-500">
+                  برای شروع، یک پوشه ایجاد کنید یا فایلی را آپلود نمایید.
+                </p>
+                <div className="mt-6 flex justify-center gap-3">
+                  <button
+                    onClick={() => setShowCreateFolder(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                  >
+                    <FolderPlusIcon className="h-5 w-5 ml-1.5" />
+                    ایجاد پوشه
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5 ml-1.5" />
+                    آپلود فایل {currentPath ? `در اینجا` : ""}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

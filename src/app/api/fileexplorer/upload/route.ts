@@ -166,6 +166,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Restrict students from uploading files
+    if (user.userType === "student") {
+      return new NextResponse(
+        JSON.stringify({ message: "Students are not allowed to upload files" }),
+        { status: 403 }
+      );
+    }
+
     // Get school code from user
     const schoolCode = user.schoolCode;
     const username = user.username; // Get username for storing with files

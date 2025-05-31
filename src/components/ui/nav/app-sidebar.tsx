@@ -286,7 +286,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "*بانک فایل ها",
+          title: "+بانک فایل ها",
           url: "/admin/fileexplorer",
           system: "importstudents",
           requiredPermission: "show",

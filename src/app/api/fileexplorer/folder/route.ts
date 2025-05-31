@@ -23,6 +23,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Restrict students from creating folders
+    if (user.userType === "student") {
+      return new NextResponse(
+        JSON.stringify({ message: "Students are not allowed to create folders" }),
+        { status: 403 }
+      );
+    }
+
     // Get school code from user
     const schoolCode = user.schoolCode;
     const username = user.username; // Get username for storing with folders

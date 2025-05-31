@@ -30,6 +30,40 @@ interface MongoQuery {
   $or?: Array<Record<string, unknown>>;
 }
 
+// Define creator info interface
+interface CreatorInfo {
+  username: string;
+  name: string;
+  avatar?: string;
+  userType: string;
+}
+
+// Define MongoDB result types
+interface TeacherResult {
+  data?: {
+    teacherCode?: string;
+    teacherName?: string;
+    avatar?: { path?: string; filename?: string };
+  };
+}
+
+interface StudentResult {
+  data?: {
+    studentCode?: string;
+    studentName?: string;
+    studentFamily?: string;
+    avatar?: { path?: string; filename?: string };
+  };
+}
+
+interface SchoolResult {
+  data?: {
+    username?: string;
+    schoolName?: string;
+    avatar?: { path?: string; filename?: string };
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user and verify authentication
@@ -174,19 +208,115 @@ export async function GET(request: NextRequest) {
       
     console.log(`Found ${files.length} files at path "${path}"`);
 
-    // Transform data for the response - include permissions and username
+    // Get unique creator usernames for efficient lookup
+    const allItems = [...folders, ...files];
+    const creatorUsernames = [...new Set(allItems.map(item => item.username).filter(Boolean))];
+    
+    // Fetch creator information efficiently
+    const creatorInfoMap: Record<string, CreatorInfo> = {};
+    
+    if (creatorUsernames.length > 0) {
+      // Fetch from all collections in parallel
+      const [teachers, students, schools] = await Promise.all([
+        connection.collection("teachers")
+          .find({ 
+            "data.teacherCode": { $in: creatorUsernames },
+            "data.schoolCode": schoolCode 
+          })
+          .project({
+            "data.teacherCode": 1,
+            "data.teacherName": 1,
+            "data.avatar": 1
+          })
+          .toArray(),
+        
+        connection.collection("students")
+          .find({ 
+            "data.studentCode": { $in: creatorUsernames },
+            "data.schoolCode": schoolCode 
+          })
+          .project({
+            "data.studentCode": 1,
+            "data.studentName": 1,
+            "data.studentFamily": 1,
+            "data.avatar": 1
+          })
+          .toArray(),
+        
+        connection.collection("schools")
+          .find({ 
+            "data.username": { $in: creatorUsernames },
+            "data.schoolCode": schoolCode 
+          })
+          .project({
+            "data.username": 1,
+            "data.schoolName": 1,
+            "data.avatar": 1
+          })
+          .toArray()
+      ]);
+
+      // Map teacher data
+      teachers.forEach((teacher: TeacherResult) => {
+        if (teacher.data?.teacherCode) {
+          creatorInfoMap[teacher.data.teacherCode] = {
+            username: teacher.data.teacherCode,
+            name: teacher.data.teacherName || teacher.data.teacherCode,
+            avatar: teacher.data.avatar?.path || teacher.data.avatar?.filename,
+            userType: 'teacher'
+          };
+        }
+      });
+
+      // Map student data
+      students.forEach((student: StudentResult) => {
+        if (student.data?.studentCode) {
+          const fullName = `${student.data.studentName || ''} ${student.data.studentFamily || ''}`.trim();
+          creatorInfoMap[student.data.studentCode] = {
+            username: student.data.studentCode,
+            name: fullName || student.data.studentCode,
+            avatar: student.data.avatar?.path || student.data.avatar?.filename,
+            userType: 'student'
+          };
+        }
+      });
+
+      // Map school data
+      schools.forEach((school: SchoolResult) => {
+        if (school.data?.username) {
+          creatorInfoMap[school.data.username] = {
+            username: school.data.username,
+            name: school.data.schoolName || school.data.username,
+            avatar: school.data.avatar?.path || school.data.avatar?.filename,
+            userType: 'school'
+          };
+        }
+      });
+    }
+
+    // Transform data for the response - include permissions, username and creator info
     const folderList = folders.map(folder => ({
       ...folder,
       type: "folder",
       permissions: folder.permissions || [],
-      username: folder.username || "unknown"
+      username: folder.username || "unknown",
+      creatorInfo: creatorInfoMap[folder.username] || {
+        username: folder.username || "unknown",
+        name: folder.username || "نامشخص",
+        userType: 'unknown'
+      }
     }));
 
     const fileList = files.map(file => ({
       ...file,
       type: "file",
       permissions: file.permissions || [],
-      username: file.username || "unknown"
+      username: file.username || "unknown",
+      creatorInfo: creatorInfoMap[file.username] || {
+        username: file.username || "unknown",
+        name: file.username || "نامشخص",
+        userType: 'unknown'
+      }
     }));
 
     // Combine folders and files
