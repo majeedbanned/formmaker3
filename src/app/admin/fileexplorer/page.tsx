@@ -18,6 +18,9 @@ import {
   LockClosedIcon,
   ShareIcon,
   ClipboardDocumentIcon,
+  UserGroupIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -31,6 +34,7 @@ interface FileItem {
   createdAt: string;
   extension: string;
   publicUrl: string;
+  permissions?: Permission[];
 }
 
 interface FolderItem {
@@ -40,9 +44,53 @@ interface FolderItem {
   path: string;
   createdAt: string;
   password?: string;
+  permissions?: Permission[];
+}
+
+interface Permission {
+  type: "class" | "group" | "teacher" | "student";
+  code: string;
+  name: string;
+}
+
+interface PermissionOption {
+  type: "class" | "group" | "teacher";
+  code: string;
+  name: string;
+  selected: boolean;
 }
 
 type ExplorerItem = FileItem | FolderItem;
+
+// Add these interfaces at the top after the existing type definitions
+interface ClassData {
+  data: {
+    classCode: string;
+    className: string;
+  };
+}
+
+interface GroupData {
+  data: {
+    groupCode: string;
+    groupName: string;
+  };
+}
+
+interface TeacherData {
+  data: {
+    teacherCode: string;
+    teacherName: string;
+  };
+}
+
+// Add this interface after the other interface definitions
+interface CurrentUser {
+  schoolCode: string;
+  username: string;
+  userType: string;
+  [key: string]: unknown;
+}
 
 // Create modal component
 function CreateFolderModal({
@@ -655,6 +703,453 @@ function ShareModal({
   );
 }
 
+// Permission Modal Component
+function PermissionModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  item,
+  userType,
+  currentUser,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (permissions: Permission[]) => void;
+  item: ExplorerItem | null;
+  userType: string;
+  currentUser: CurrentUser | null;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [options, setOptions] = useState<PermissionOption[]>([]);
+  const [expandedSections, setExpandedSections] = useState<{
+    classes: boolean;
+    groups: boolean;
+    teachers: boolean;
+  }>({ classes: true, groups: true, teachers: true });
+
+  // Fetch available permission options based on user type
+  useEffect(() => {
+    if (!isOpen || !currentUser) return;
+
+    const fetchOptions = async () => {
+      setLoading(true);
+      try {
+        const permissionOptions: PermissionOption[] = [];
+
+        if (userType === "school") {
+          // School can see all classes, groups, and teachers
+          const [classesRes, groupsRes, teachersRes] = await Promise.all([
+            fetch(`/api/admin/classes?schoolCode=${currentUser.schoolCode}`),
+            fetch(`/api/admin/groups?schoolCode=${currentUser.schoolCode}`),
+            fetch(`/api/admin/teachers?schoolCode=${currentUser.schoolCode}`),
+          ]);
+
+          if (classesRes.ok) {
+            const classes: ClassData[] = await classesRes.json();
+            classes.forEach((cls: ClassData) => {
+              permissionOptions.push({
+                type: "class",
+                code: cls.data.classCode,
+                name: cls.data.className,
+                selected: false,
+              });
+            });
+          }
+
+          if (groupsRes.ok) {
+            const groups: GroupData[] = await groupsRes.json();
+            groups.forEach((group: GroupData) => {
+              permissionOptions.push({
+                type: "group",
+                code: group.data.groupCode,
+                name: group.data.groupName,
+                selected: false,
+              });
+            });
+          }
+
+          if (teachersRes.ok) {
+            const teachers: TeacherData[] = await teachersRes.json();
+            teachers.forEach((teacher: TeacherData) => {
+              permissionOptions.push({
+                type: "teacher",
+                code: teacher.data.teacherCode,
+                name: teacher.data.teacherName,
+                selected: false,
+              });
+            });
+          }
+        } else if (userType === "teacher") {
+          // Teacher can see their classes and other teachers
+          const [classesRes, teachersRes] = await Promise.all([
+            fetch(
+              `/api/admin/teacher-classes?teacherCode=${currentUser.username}&schoolCode=${currentUser.schoolCode}`
+            ),
+            fetch(`/api/admin/teachers?schoolCode=${currentUser.schoolCode}`),
+          ]);
+
+          if (classesRes.ok) {
+            const classes: ClassData[] = await classesRes.json();
+            classes.forEach((cls: ClassData) => {
+              permissionOptions.push({
+                type: "class",
+                code: cls.data.classCode,
+                name: cls.data.className,
+                selected: false,
+              });
+            });
+          }
+
+          if (teachersRes.ok) {
+            const teachers: TeacherData[] = await teachersRes.json();
+            teachers.forEach((teacher: TeacherData) => {
+              permissionOptions.push({
+                type: "teacher",
+                code: teacher.data.teacherCode,
+                name: teacher.data.teacherName,
+                selected: false,
+              });
+            });
+          }
+        }
+
+        // Set existing permissions as selected
+        if (item?.permissions) {
+          permissionOptions.forEach((option) => {
+            const existingPermission = item.permissions?.find(
+              (p) => p.type === option.type && p.code === option.code
+            );
+            if (existingPermission) {
+              option.selected = true;
+            }
+          });
+        }
+
+        setOptions(permissionOptions);
+      } catch (error) {
+        console.error("Error fetching permission options:", error);
+        toast.error("خطا در بارگیری گزینه‌های دسترسی");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOptions();
+  }, [isOpen, currentUser, userType, item]);
+
+  const toggleOption = (index: number) => {
+    setOptions((prev) =>
+      prev.map((option, i) =>
+        i === index ? { ...option, selected: !option.selected } : option
+      )
+    );
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
+  const handleConfirm = () => {
+    const selectedPermissions: Permission[] = options
+      .filter((option) => option.selected)
+      .map((option) => ({
+        type: option.type,
+        code: option.code,
+        name: option.name,
+      }));
+
+    onConfirm(selectedPermissions);
+    onClose();
+  };
+
+  const selectAll = (type: "class" | "group" | "teacher") => {
+    setOptions((prev) =>
+      prev.map((option) =>
+        option.type === type ? { ...option, selected: true } : option
+      )
+    );
+  };
+
+  const deselectAll = (type: "class" | "group" | "teacher") => {
+    setOptions((prev) =>
+      prev.map((option) =>
+        option.type === type ? { ...option, selected: false } : option
+      )
+    );
+  };
+
+  const groupedOptions = {
+    classes: options.filter((opt) => opt.type === "class"),
+    groups: options.filter((opt) => opt.type === "group"),
+    teachers: options.filter((opt) => opt.type === "teacher"),
+  };
+
+  if (!isOpen || !item) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden"
+        dir="rtl"
+      >
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center">
+            <UserGroupIcon className="h-6 w-6 ml-2 text-blue-600" />
+            مدیریت دسترسی - {item.name}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="mr-3 text-gray-500">در حال بارگیری...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
+                <span className="font-bold">توجه:</span> با انتخاب هر گروه، کلاس
+                یا معلم، دسترسی به این{" "}
+                {item.type === "folder" ? "پوشه" : "فایل"} به آن‌ها داده خواهد
+                شد.
+              </div>
+
+              {/* Classes Section */}
+              {groupedOptions.classes.length > 0 && (
+                <div className="border border-gray-200 rounded-lg">
+                  <div
+                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer"
+                    onClick={() => toggleSection("classes")}
+                  >
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      کلاس‌ها ({groupedOptions.classes.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectAll("class");
+                        }}
+                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                      >
+                        انتخاب همه
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deselectAll("class");
+                        }}
+                        className="text-xs px-2 py-1 bg-gray-600 text-white rounded"
+                      >
+                        حذف همه
+                      </button>
+                      {expandedSections.classes ? (
+                        <ChevronUpIcon className="h-4 w-4" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedSections.classes && (
+                    <div className="p-4 grid grid-cols-2 gap-2">
+                      {groupedOptions.classes.map((option) => {
+                        const actualIndex = options.findIndex(
+                          (opt) =>
+                            opt.type === option.type && opt.code === option.code
+                        );
+                        return (
+                          <label
+                            key={`${option.type}-${option.code}`}
+                            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={option.selected}
+                              onChange={() => toggleOption(actualIndex)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 mr-2">
+                              {option.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Groups Section */}
+              {groupedOptions.groups.length > 0 && (
+                <div className="border border-gray-200 rounded-lg">
+                  <div
+                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer"
+                    onClick={() => toggleSection("groups")}
+                  >
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      گروه‌ها ({groupedOptions.groups.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectAll("group");
+                        }}
+                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                      >
+                        انتخاب همه
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deselectAll("group");
+                        }}
+                        className="text-xs px-2 py-1 bg-gray-600 text-white rounded"
+                      >
+                        حذف همه
+                      </button>
+                      {expandedSections.groups ? (
+                        <ChevronUpIcon className="h-4 w-4" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedSections.groups && (
+                    <div className="p-4 grid grid-cols-2 gap-2">
+                      {groupedOptions.groups.map((option) => {
+                        const actualIndex = options.findIndex(
+                          (opt) =>
+                            opt.type === option.type && opt.code === option.code
+                        );
+                        return (
+                          <label
+                            key={`${option.type}-${option.code}`}
+                            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={option.selected}
+                              onChange={() => toggleOption(actualIndex)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 mr-2">
+                              {option.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Teachers Section */}
+              {groupedOptions.teachers.length > 0 && (
+                <div className="border border-gray-200 rounded-lg">
+                  <div
+                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer"
+                    onClick={() => toggleSection("teachers")}
+                  >
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      معلمان ({groupedOptions.teachers.length})
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectAll("teacher");
+                        }}
+                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                      >
+                        انتخاب همه
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deselectAll("teacher");
+                        }}
+                        className="text-xs px-2 py-1 bg-gray-600 text-white rounded"
+                      >
+                        حذف همه
+                      </button>
+                      {expandedSections.teachers ? (
+                        <ChevronUpIcon className="h-4 w-4" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedSections.teachers && (
+                    <div className="p-4 grid grid-cols-2 gap-2">
+                      {groupedOptions.teachers.map((option) => {
+                        const actualIndex = options.findIndex(
+                          (opt) =>
+                            opt.type === option.type && opt.code === option.code
+                        );
+                        return (
+                          <label
+                            key={`${option.type}-${option.code}`}
+                            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={option.selected}
+                              onChange={() => toggleOption(actualIndex)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 mr-2">
+                              {option.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {options.length === 0 && !loading && (
+                <div className="text-center py-8">
+                  <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">
+                    هیچ گزینه‌ای برای تنظیم دسترسی موجود نیست
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            تایید دسترسی
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FileExplorerPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<ExplorerItem[]>([]);
@@ -666,6 +1161,7 @@ export default function FileExplorerPage() {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExplorerItem | null>(null);
   const [totalSize, setTotalSize] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -925,6 +1421,53 @@ export default function FileExplorerPage() {
   const confirmDelete = (item: ExplorerItem) => {
     setSelectedItem(item);
     setShowDeleteConfirm(true);
+  };
+
+  // Handle permission changes
+  const handlePermissionChange = async (permissions: Permission[]) => {
+    if (!selectedItem) return;
+
+    try {
+      const endpoint =
+        selectedItem.type === "folder"
+          ? "/api/fileexplorer/folder/permissions"
+          : "/api/fileexplorer/file/permissions";
+
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedItem._id,
+          permissions: permissions,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to update permissions for ${selectedItem.type}`
+        );
+      }
+
+      toast.success("دسترسی‌ها با موفقیت به‌روزرسانی شد");
+      fetchItems(); // Refresh the file list
+    } catch (error) {
+      console.error(
+        `Error updating permissions for ${selectedItem?.type}:`,
+        error
+      );
+      toast.error("خطا در به‌روزرسانی دسترسی‌ها");
+    }
+  };
+
+  // Show permission modal
+  const showPermissions = (item: ExplorerItem) => {
+    // Only school and teacher users can manage permissions
+    if (user?.userType === "student") {
+      toast.error("شما مجاز به تغییر دسترسی‌ها نیستید");
+      return;
+    }
+    setSelectedItem(item);
+    setShowPermissionModal(true);
   };
 
   // Initial data load
@@ -1233,6 +1776,17 @@ export default function FileExplorerPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                         <div className="flex gap-3 justify-end">
+                          {/* Permission button - only for school and teacher users */}
+                          {(user?.userType === "school" ||
+                            user?.userType === "teacher") && (
+                            <button
+                              onClick={() => showPermissions(folder)}
+                              className="text-purple-600 hover:text-purple-900"
+                              title="مدیریت دسترسی"
+                            >
+                              <UserGroupIcon className="h-5 w-5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setSelectedItem(folder);
@@ -1287,6 +1841,17 @@ export default function FileExplorerPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                         <div className="flex gap-3 justify-end">
+                          {/* Permission button - only for school and teacher users */}
+                          {(user?.userType === "school" ||
+                            user?.userType === "teacher") && (
+                            <button
+                              onClick={() => showPermissions(file)}
+                              className="text-purple-600 hover:text-purple-900"
+                              title="مدیریت دسترسی"
+                            >
+                              <UserGroupIcon className="h-5 w-5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => downloadFile(file as FileItem)}
                             className="text-blue-600 hover:text-blue-900"
@@ -1358,6 +1923,16 @@ export default function FileExplorerPage() {
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         file={selectedItem?.type === "file" ? (selectedItem as FileItem) : null}
+      />
+
+      {/* Permission modal */}
+      <PermissionModal
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        onConfirm={handlePermissionChange}
+        item={selectedItem}
+        userType={user?.userType || ""}
+        currentUser={user}
       />
     </div>
   );
