@@ -426,7 +426,7 @@ function StudentsPageContent() {
       defaultValue: user?.schoolCode,
       readonly: true,
       required: true,
-      groupUniqueness: true,
+      // groupUniqueness: true,
       enabled: true,
       visible: false,
 
