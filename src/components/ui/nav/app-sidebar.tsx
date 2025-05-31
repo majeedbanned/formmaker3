@@ -246,7 +246,7 @@ const data = {
         // },
 
         {
-          title: "*ساخت فرم ها",
+          title: "+ساخت فرم ها",
           url: "/admin/formbuilder",
           system: "importstudents",
           requiredPermission: "show",
