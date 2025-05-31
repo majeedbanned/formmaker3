@@ -87,13 +87,25 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
   const [currentDate, setCurrentDate] = useState(
     new DateObject({ calendar: persian, locale: persian_fa })
   );
-  const [viewMode, setViewMode] = useState<"calendar" | "summary">("calendar");
+  const [viewMode, setViewMode] = useState<
+    "calendar" | "summary" | "statistics"
+  >("calendar");
   const [selectedDay, setSelectedDay] = useState<{
     date: string;
     coursesData: Map<string, StudentGradeData[]>;
     dayNumber: number;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<string>("");
+  const [selectedStatsFilter, setSelectedStatsFilter] = useState<
+    "all" | "month" | "semester"
+  >("all");
+  const [managedWidgets, setManagedWidgets] = useState<string[]>([
+    "grades",
+    "attendance",
+    "courses",
+    "trends",
+    "achievements",
+  ]);
 
   // Process data by Persian date and group by course
   const dataByDate = useMemo(() => {
@@ -140,6 +152,155 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
       ),
     };
   }, [gradeData]);
+
+  // Detailed statistics
+  const detailedStats = useMemo(() => {
+    const filteredData =
+      selectedStatsFilter === "month"
+        ? gradeData.filter((item) => {
+            const itemDateParts = item.persianDate.split("/");
+            const itemYear = parseInt(
+              itemDateParts[0].replace(/[۰-۹]/g, (w) =>
+                "۰۱۲۳۴۵۶۷۸۹".indexOf(w).toString()
+              )
+            );
+            const itemMonth = parseInt(
+              itemDateParts[1].replace(/[۰-۹]/g, (w) =>
+                "۰۱۲۳۴۵۶۷۸۹".indexOf(w).toString()
+              )
+            );
+            return (
+              itemMonth === currentDate.month.number &&
+              itemYear === currentDate.year
+            );
+          })
+        : selectedStatsFilter === "semester"
+        ? gradeData.filter((item) => {
+            const itemDateParts = item.persianDate.split("/");
+            const itemYear = parseInt(
+              itemDateParts[0].replace(/[۰-۹]/g, (w) =>
+                "۰۱۲۳۴۵۶۷۸۹".indexOf(w).toString()
+              )
+            );
+            return itemYear === currentDate.year;
+          })
+        : gradeData;
+
+    // Course Performance
+    const courseStats = new Map<
+      string,
+      {
+        sessions: number;
+        averageGrade: number;
+        attendanceRate: number;
+        totalGrades: number[];
+        assessments: number;
+        lastActivity: string;
+      }
+    >();
+
+    filteredData.forEach((item) => {
+      const courseName = item.courseName || item.courseCode;
+      if (!courseStats.has(courseName)) {
+        courseStats.set(courseName, {
+          sessions: 0,
+          averageGrade: 0,
+          attendanceRate: 0,
+          totalGrades: [],
+          assessments: 0,
+          lastActivity: item.persianDate,
+        });
+      }
+
+      const stats = courseStats.get(courseName)!;
+      stats.sessions++;
+      stats.totalGrades.push(...item.grades.map((g) => g.value));
+      stats.assessments += item.assessments.length;
+      if (item.presenceStatus === "present") {
+        stats.attendanceRate++;
+      }
+      if (item.persianDate > stats.lastActivity) {
+        stats.lastActivity = item.persianDate;
+      }
+    });
+
+    // Calculate averages
+    courseStats.forEach((stats) => {
+      stats.averageGrade =
+        stats.totalGrades.length > 0
+          ? stats.totalGrades.reduce((a, b) => a + b, 0) /
+            stats.totalGrades.length
+          : 0;
+      stats.attendanceRate =
+        stats.sessions > 0 ? (stats.attendanceRate / stats.sessions) * 100 : 0;
+    });
+
+    // Time-based analysis
+    const monthlyData = new Map<
+      string,
+      { grades: number[]; sessions: number; attendance: number }
+    >();
+    filteredData.forEach((item) => {
+      const monthKey = item.persianMonth;
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, { grades: [], sessions: 0, attendance: 0 });
+      }
+      const monthStats = monthlyData.get(monthKey)!;
+      monthStats.grades.push(...item.grades.map((g) => g.value));
+      monthStats.sessions++;
+      if (item.presenceStatus === "present") {
+        monthStats.attendance++;
+      }
+    });
+
+    // Grade distribution
+    const allGrades = filteredData.flatMap((item) =>
+      item.grades.map((g) => g.value)
+    );
+    const gradeDistribution = {
+      excellent: allGrades.filter((g) => g >= 17).length,
+      good: allGrades.filter((g) => g >= 14 && g < 17).length,
+      average: allGrades.filter((g) => g >= 12 && g < 14).length,
+      poor: allGrades.filter((g) => g < 12).length,
+    };
+
+    // Best performing metrics
+    const bestCourse = Array.from(courseStats.entries()).sort(
+      ([, a], [, b]) => b.averageGrade - a.averageGrade
+    )[0];
+
+    const mostActiveCourse = Array.from(courseStats.entries()).sort(
+      ([, a], [, b]) => b.sessions - a.sessions
+    )[0];
+
+    const totalPresent = filteredData.filter(
+      (item) => item.presenceStatus === "present"
+    ).length;
+    const totalLate = filteredData.filter(
+      (item) => item.presenceStatus === "late"
+    ).length;
+    const totalAbsent = filteredData.filter(
+      (item) => item.presenceStatus === "absent"
+    ).length;
+
+    return {
+      courseStats,
+      monthlyData,
+      gradeDistribution,
+      bestCourse,
+      mostActiveCourse,
+      attendanceBreakdown: {
+        present: totalPresent,
+        late: totalLate,
+        absent: totalAbsent,
+      },
+      totalFilteredSessions: filteredData.length,
+      averageGradeFiltered:
+        allGrades.length > 0
+          ? allGrades.reduce((a, b) => a + b, 0) / allGrades.length
+          : 0,
+    };
+  }, [gradeData, selectedStatsFilter, currentDate]);
 
   const navigateMonth = (direction: "next" | "prev") => {
     const newDate = new DateObject(currentDate);
@@ -1026,6 +1187,340 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
     );
   };
 
+  const toggleWidget = (widgetId: string) => {
+    setManagedWidgets((prev) =>
+      prev.includes(widgetId)
+        ? prev.filter((id) => id !== widgetId)
+        : [...prev, widgetId]
+    );
+  };
+
+  const renderStatisticsView = () => {
+    return (
+      <div className="space-y-6" dir="rtl">
+        {/* Statistics Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">آمار و تحلیل عملکرد</h2>
+              <p className="text-purple-100 mt-1">
+                تحلیل جامع فعالیت‌های تحصیلی شما
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedStatsFilter}
+                onChange={(e) =>
+                  setSelectedStatsFilter(
+                    e.target.value as "all" | "month" | "semester"
+                  )
+                }
+                className="bg-white/20 text-white rounded-lg px-4 py-2 border border-white/30"
+              >
+                <option value="all">کل دوره</option>
+                <option value="semester">سال جاری</option>
+                <option value="month">ماه جاری</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Widget Management */}
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">
+            مدیریت نمایش آمار
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "grades", name: "نمرات", icon: "🎓" },
+              { id: "attendance", name: "حضور و غیاب", icon: "✅" },
+              { id: "courses", name: "عملکرد دروس", icon: "📚" },
+              { id: "trends", name: "روند پیشرفت", icon: "📈" },
+              { id: "achievements", name: "دستاورد ها", icon: "🏆" },
+            ].map((widget) => (
+              <button
+                key={widget.id}
+                onClick={() => toggleWidget(widget.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                  managedWidgets.includes(widget.id)
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <span>{widget.icon}</span>
+                {widget.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Statistics Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Grades Widget */}
+          {managedWidgets.includes("grades") && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <AcademicCapIcon className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  تحلیل نمرات
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <p className="text-2xl font-bold text-green-700">
+                    {toPersianDigits(
+                      detailedStats.averageGradeFiltered.toFixed(1)
+                    )}
+                  </p>
+                  <p className="text-green-600">میانگین کلی</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xl font-bold text-blue-700">
+                      {toPersianDigits(
+                        detailedStats.gradeDistribution.excellent
+                      )}
+                    </p>
+                    <p className="text-blue-600 text-sm">عالی (۱۷+)</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-xl font-bold text-green-700">
+                      {toPersianDigits(detailedStats.gradeDistribution.good)}
+                    </p>
+                    <p className="text-green-600 text-sm">خوب (۱۴-۱۶)</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-xl font-bold text-yellow-700">
+                      {toPersianDigits(detailedStats.gradeDistribution.average)}
+                    </p>
+                    <p className="text-yellow-600 text-sm">متوسط (۱۲-۱۳)</p>
+                  </div>
+                  <div className="text-center p-3 bg-red-50 rounded-lg">
+                    <p className="text-xl font-bold text-red-700">
+                      {toPersianDigits(detailedStats.gradeDistribution.poor)}
+                    </p>
+                    <p className="text-red-600 text-sm">ضعیف (&lt;۱۲)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Attendance Widget */}
+          {managedWidgets.includes("attendance") && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <UserIcon className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  حضور و غیاب
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-xl font-bold text-green-700">
+                      {toPersianDigits(
+                        detailedStats.attendanceBreakdown.present
+                      )}
+                    </p>
+                    <p className="text-green-600 text-sm">حاضر</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-xl font-bold text-yellow-700">
+                      {toPersianDigits(detailedStats.attendanceBreakdown.late)}
+                    </p>
+                    <p className="text-yellow-600 text-sm">تأخیر</p>
+                  </div>
+                  <div className="text-center p-3 bg-red-50 rounded-lg">
+                    <p className="text-xl font-bold text-red-700">
+                      {toPersianDigits(
+                        detailedStats.attendanceBreakdown.absent
+                      )}
+                    </p>
+                    <p className="text-red-600 text-sm">غایب</p>
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-700">
+                    {toPersianDigits(
+                      detailedStats.totalFilteredSessions > 0
+                        ? (
+                            (detailedStats.attendanceBreakdown.present /
+                              detailedStats.totalFilteredSessions) *
+                            100
+                          ).toFixed(0)
+                        : 0
+                    )}
+                    %
+                  </p>
+                  <p className="text-blue-600">درصد حضور</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Course Performance Widget */}
+          {managedWidgets.includes("courses") && (
+            <div className="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <BookOpenIcon className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  عملکرد دروس
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                {Array.from(detailedStats.courseStats.entries()).map(
+                  ([courseName, stats]) => (
+                    <div
+                      key={courseName}
+                      className="border border-gray-100 rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-gray-800">
+                          {courseName}
+                        </h4>
+                        <span className="text-sm text-gray-500">
+                          {toPersianDigits(stats.sessions)} جلسه
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div className="text-center p-2 bg-green-50 rounded">
+                          <p className="font-bold text-green-700">
+                            {toPersianDigits(stats.averageGrade.toFixed(1))}
+                          </p>
+                          <p className="text-green-600">میانگین</p>
+                        </div>
+                        <div className="text-center p-2 bg-blue-50 rounded">
+                          <p className="font-bold text-blue-700">
+                            {toPersianDigits(stats.attendanceRate.toFixed(0))}%
+                          </p>
+                          <p className="text-blue-600">حضور</p>
+                        </div>
+                        <div className="text-center p-2 bg-purple-50 rounded">
+                          <p className="font-bold text-purple-700">
+                            {toPersianDigits(stats.assessments)}
+                          </p>
+                          <p className="text-purple-600">ارزیابی</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Best Performance Widget */}
+          {managedWidgets.includes("achievements") && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <ChartBarIcon className="w-6 h-6 text-yellow-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  دستاوردها
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                {detailedStats.bestCourse && (
+                  <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🏆</span>
+                      <p className="font-medium text-gray-800">بهترین عملکرد</p>
+                    </div>
+                    <p className="text-yellow-700 font-semibold">
+                      {detailedStats.bestCourse[0]}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      میانگین:{" "}
+                      {toPersianDigits(
+                        detailedStats.bestCourse[1].averageGrade.toFixed(1)
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {detailedStats.mostActiveCourse && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">📚</span>
+                      <p className="font-medium text-gray-800">فعال‌ترین درس</p>
+                    </div>
+                    <p className="text-blue-700 font-semibold">
+                      {detailedStats.mostActiveCourse[0]}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {toPersianDigits(
+                        detailedStats.mostActiveCourse[1].sessions
+                      )}{" "}
+                      جلسه
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Monthly Trends Widget */}
+          {managedWidgets.includes("trends") && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <CalendarIcon className="w-6 h-6 text-indigo-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  روند ماهانه
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {Array.from(detailedStats.monthlyData.entries()).map(
+                  ([month, data]) => (
+                    <div
+                      key={month}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <span className="font-medium text-gray-800">{month}</span>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-green-600">
+                          میانگین:{" "}
+                          {toPersianDigits(
+                            data.grades.length > 0
+                              ? (
+                                  data.grades.reduce((a, b) => a + b, 0) /
+                                  data.grades.length
+                                ).toFixed(1)
+                              : "0"
+                          )}
+                        </span>
+                        <span className="text-blue-600">
+                          جلسات: {toPersianDigits(data.sessions)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* Navigation Tabs */}
@@ -1057,12 +1552,26 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
               خلاصه عملکرد
             </button>
           </Tooltip>
+          <Tooltip content="مشاهده آمار تفصیلی و تحلیل عملکرد">
+            <button
+              onClick={() => setViewMode("statistics")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                viewMode === "statistics"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+              }`}
+            >
+              <AcademicCapIcon className="w-4 h-4" />
+              آمار تفصیلی
+            </button>
+          </Tooltip>
         </div>
       </div>
 
       {/* Content */}
       {viewMode === "calendar" && renderCalendarView()}
       {viewMode === "summary" && renderSummaryView()}
+      {viewMode === "statistics" && renderStatisticsView()}
     </div>
   );
 };
