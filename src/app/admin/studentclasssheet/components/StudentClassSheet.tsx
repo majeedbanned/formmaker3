@@ -17,6 +17,7 @@ import {
   InformationCircleIcon,
   BookOpenIcon,
   PencilIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 // Types
@@ -87,6 +88,12 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
     new DateObject({ calendar: persian, locale: persian_fa })
   );
   const [viewMode, setViewMode] = useState<"calendar" | "summary">("calendar");
+  const [selectedDay, setSelectedDay] = useState<{
+    date: string;
+    coursesData: Map<string, StudentGradeData[]>;
+    dayNumber: number;
+  } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("");
 
   // Process data by Persian date and group by course
   const dataByDate = useMemo(() => {
@@ -219,6 +226,247 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
     </div>
   );
 
+  const handleCellClick = (
+    dateKey: string,
+    coursesData: Map<string, StudentGradeData[]>,
+    dayNumber: number
+  ) => {
+    if (coursesData.size > 0) {
+      setSelectedDay({ date: dateKey, coursesData, dayNumber });
+      const firstCourse = Array.from(coursesData.keys())[0];
+      setActiveTab(firstCourse);
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedDay(null);
+    setActiveTab("");
+  };
+
+  const renderDetailModal = () => {
+    if (!selectedDay) return null;
+
+    const courses = Array.from(selectedDay.coursesData.entries());
+
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        onClick={closeModal}
+      >
+        <div
+          className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          dir="rtl"
+        >
+          {/* Modal Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">
+                  جزئیات روز {toPersianDigits(selectedDay.dayNumber)}
+                </h2>
+                <p className="text-blue-100 mt-1">{selectedDay.date}</p>
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Course Tabs */}
+          <div className="border-b border-gray-200">
+            <div className="flex overflow-x-auto">
+              {courses.map(([courseName, sessions]) => (
+                <button
+                  key={courseName}
+                  onClick={() => setActiveTab(courseName)}
+                  className={`px-6 py-4 font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
+                    activeTab === courseName
+                      ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
+                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  <BookOpenIcon className="w-4 h-4" />
+                  {courseName}
+                  <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">
+                    {toPersianDigits(sessions.length)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Course Content */}
+          <div className="p-6 overflow-y-auto max-h-[60vh]">
+            {courses.map(([courseName, sessions]) => (
+              <div
+                key={courseName}
+                className={activeTab === courseName ? "block" : "hidden"}
+              >
+                <div className="space-y-6">
+                  {sessions.map((session, sessionIndex) => (
+                    <div
+                      key={sessionIndex}
+                      className="bg-gray-50 rounded-lg p-6 border border-gray-200"
+                    >
+                      {/* Session Header */}
+                      <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <ClockIcon className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg text-gray-800">
+                              جلسه {toPersianDigits(sessionIndex + 1)}
+                            </h3>
+                            <p className="text-gray-600">
+                              ساعت {toPersianDigits(session.timeSlot)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getPresenceIcon(session.presenceStatus, "w-6 h-6")}
+                          <span className="text-sm font-medium">
+                            {session.presenceStatus === "present"
+                              ? "حاضر"
+                              : session.presenceStatus === "absent"
+                              ? "غایب"
+                              : session.presenceStatus === "late"
+                              ? "تأخیر"
+                              : "نامشخص"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Teacher Info */}
+                      {session.teacherName && (
+                        <div className="mb-4 p-3 bg-white rounded-lg border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <UserIcon className="w-5 h-5 text-gray-500" />
+                            <span className="font-medium text-gray-700">
+                              استاد:
+                            </span>
+                            <span className="text-gray-800">
+                              {session.teacherName}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Grades Section */}
+                      {session.grades.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <AcademicCapIcon className="w-5 h-5 text-green-600" />
+                            <h4 className="font-semibold text-gray-800">
+                              نمرات
+                            </h4>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {session.grades.map((grade, gradeIndex) => (
+                              <div
+                                key={gradeIndex}
+                                className="bg-white p-4 rounded-lg border border-gray-100"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span
+                                    className={`px-3 py-2 rounded-lg font-bold text-lg border ${getGradeColor(
+                                      grade.value,
+                                      grade.totalPoints
+                                    )}`}
+                                  >
+                                    {toPersianDigits(grade.value)}
+                                    {grade.totalPoints &&
+                                      `/${toPersianDigits(grade.totalPoints)}`}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    {toPersianDigits(
+                                      getGradePercentage(
+                                        grade.value,
+                                        grade.totalPoints
+                                      ).toFixed(0)
+                                    )}
+                                    %
+                                  </span>
+                                </div>
+                                {grade.description && (
+                                  <p className="text-gray-600 text-sm">
+                                    {grade.description}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Assessments Section */}
+                      {session.assessments.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <ChartBarIcon className="w-5 h-5 text-purple-600" />
+                            <h4 className="font-semibold text-gray-800">
+                              ارزیابی‌ها
+                            </h4>
+                          </div>
+                          <div className="space-y-3">
+                            {session.assessments.map(
+                              (assessment, assessIndex) => (
+                                <div
+                                  key={assessIndex}
+                                  className="bg-white p-4 rounded-lg border border-gray-100"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h5 className="font-medium text-gray-800">
+                                        {assessment.title}
+                                      </h5>
+                                      <p className="text-purple-600 font-semibold">
+                                        {assessment.value}
+                                      </p>
+                                    </div>
+                                    {assessment.weight && (
+                                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">
+                                        ضریب:{" "}
+                                        {toPersianDigits(assessment.weight)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Notes Section */}
+                      {session.note && (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <PencilIcon className="w-5 h-5 text-orange-600" />
+                            <h4 className="font-semibold text-gray-800">
+                              یادداشت استاد
+                            </h4>
+                          </div>
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <p className="text-gray-700">{session.note}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCalendarView = () => {
     const calendarDays = getCalendarDays();
 
@@ -291,10 +539,13 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
             return (
               <div
                 key={index}
-                className={`min-h-[140px] border border-gray-200 p-2 transition-all hover:bg-gray-50 ${
+                className={`min-h-[140px] max-h-[140px] border border-gray-200 p-2 transition-all hover:bg-gray-50 overflow-hidden cursor-pointer ${
                   !isCurrentMonth ? "bg-gray-50 text-gray-400" : "bg-white"
-                } ${isToday ? "ring-2 ring-blue-500 bg-blue-50" : ""}`}
+                } ${isToday ? "ring-2 ring-blue-500 bg-blue-50" : ""} ${
+                  coursesData.size > 0 ? "hover:shadow-md" : ""
+                }`}
                 dir="rtl"
+                onClick={() => handleCellClick(dateKey, coursesData, day.day)}
               >
                 {/* Day Number */}
                 <div
@@ -307,221 +558,224 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
 
                 {/* Day Content - Grouped by Course */}
                 {isCurrentMonth && coursesData.size > 0 && (
-                  <div className="space-y-2">
-                    {Array.from(coursesData.entries()).map(
-                      ([courseName, sessions], courseIndex) => (
-                        <div
-                          key={courseIndex}
-                          className="border border-gray-100 rounded-md p-1 bg-gray-50"
-                        >
-                          {/* Course Header */}
-                          <div className="flex items-center justify-between mb-1">
-                            <Tooltip content={`درس: ${courseName}`}>
-                              <div className="flex items-center gap-1">
-                                <BookOpenIcon className="w-3 h-3 text-gray-600" />
-                                <span className="font-medium text-xs text-gray-700 truncate max-w-[80px]">
-                                  {courseName}
-                                </span>
-                              </div>
-                            </Tooltip>
-                            <span className="text-xs text-gray-500">
-                              {toPersianDigits(sessions.length)} جلسه
-                            </span>
-                          </div>
+                  <div className="h-[100px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    <div className="space-y-1 pr-1">
+                      {Array.from(coursesData.entries()).map(
+                        ([courseName, sessions], courseIndex) => (
+                          <div
+                            key={courseIndex}
+                            className="border border-gray-100 rounded-md p-1 bg-gray-50 flex-shrink-0"
+                          >
+                            {/* Course Header */}
+                            <div className="flex items-center justify-between mb-1">
+                              <Tooltip content={`درس: ${courseName}`}>
+                                <div className="flex items-center gap-1">
+                                  <BookOpenIcon className="w-3 h-3 text-gray-600" />
+                                  <span className="font-medium text-xs text-gray-700 truncate max-w-[60px]">
+                                    {courseName}
+                                  </span>
+                                </div>
+                              </Tooltip>
+                              <span className="text-xs text-gray-500">
+                                {toPersianDigits(sessions.length)}
+                              </span>
+                            </div>
 
-                          {/* Sessions for this course */}
-                          <div className="space-y-1">
-                            {sessions.map(
-                              (
-                                session: StudentGradeData,
-                                sessionIndex: number
-                              ) => (
-                                <div
-                                  key={sessionIndex}
-                                  className="text-xs bg-white rounded p-1"
-                                >
-                                  {/* Session Info */}
-                                  <div className="flex items-center justify-between mb-1">
-                                    <Tooltip
-                                      content={`زمان کلاس: ${session.timeSlot}`}
-                                    >
-                                      <div className="flex items-center gap-1">
-                                        <ClockIcon className="w-3 h-3 text-gray-500" />
-                                        <span className="text-gray-600">
-                                          {toPersianDigits(session.timeSlot)}
-                                        </span>
-                                      </div>
-                                    </Tooltip>
-                                    <Tooltip
-                                      content={
-                                        session.presenceStatus === "present"
-                                          ? "حاضر بوده‌اید"
-                                          : session.presenceStatus === "absent"
-                                          ? "غایب بوده‌اید"
-                                          : session.presenceStatus === "late"
-                                          ? "با تأخیر حاضر شده‌اید"
-                                          : "وضعیت حضور ثبت نشده"
-                                      }
-                                    >
-                                      {getPresenceIcon(
-                                        session.presenceStatus,
-                                        "w-3 h-3"
-                                      )}
-                                    </Tooltip>
-                                  </div>
+                            {/* Sessions for this course */}
+                            <div className="space-y-1">
+                              {sessions.map(
+                                (
+                                  session: StudentGradeData,
+                                  sessionIndex: number
+                                ) => (
+                                  <div
+                                    key={sessionIndex}
+                                    className="text-xs bg-white rounded p-1"
+                                  >
+                                    {/* Session Info */}
+                                    <div className="flex items-center justify-between mb-1">
+                                      <Tooltip
+                                        content={`زمان کلاس: ${session.timeSlot}`}
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <ClockIcon className="w-3 h-3 text-gray-500" />
+                                          <span className="text-gray-600">
+                                            {toPersianDigits(session.timeSlot)}
+                                          </span>
+                                        </div>
+                                      </Tooltip>
+                                      <Tooltip
+                                        content={
+                                          session.presenceStatus === "present"
+                                            ? "حاضر بوده‌اید"
+                                            : session.presenceStatus ===
+                                              "absent"
+                                            ? "غایب بوده‌اید"
+                                            : session.presenceStatus === "late"
+                                            ? "با تأخیر حاضر شده‌اید"
+                                            : "وضعیت حضور ثبت نشده"
+                                        }
+                                      >
+                                        {getPresenceIcon(
+                                          session.presenceStatus,
+                                          "w-3 h-3"
+                                        )}
+                                      </Tooltip>
+                                    </div>
 
-                                  {/* Grades */}
-                                  {session.grades.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mb-1">
-                                      <div className="flex items-center gap-1">
-                                        <AcademicCapIcon className="w-3 h-3 text-gray-500" />
-                                        <span className="text-gray-500 text-xs">
-                                          نمرات:
-                                        </span>
-                                      </div>
-                                      {session.grades
-                                        .slice(0, 2)
-                                        .map(
-                                          (
-                                            grade: GradeEntry,
-                                            gradeIndex: number
-                                          ) => (
-                                            <Tooltip
-                                              key={gradeIndex}
-                                              content={`نمره: ${toPersianDigits(
-                                                grade.value
-                                              )}${
-                                                grade.totalPoints
-                                                  ? ` از ${toPersianDigits(
-                                                      grade.totalPoints
-                                                    )}`
-                                                  : ""
-                                              } - درصد: ${toPersianDigits(
-                                                getGradePercentage(
-                                                  grade.value,
+                                    {/* Grades */}
+                                    {session.grades.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mb-1">
+                                        <div className="flex items-center gap-1">
+                                          <AcademicCapIcon className="w-3 h-3 text-gray-500" />
+                                          <span className="text-gray-500 text-xs">
+                                            نمرات:
+                                          </span>
+                                        </div>
+                                        {session.grades
+                                          .slice(0, 2)
+                                          .map(
+                                            (
+                                              grade: GradeEntry,
+                                              gradeIndex: number
+                                            ) => (
+                                              <Tooltip
+                                                key={gradeIndex}
+                                                content={`نمره: ${toPersianDigits(
+                                                  grade.value
+                                                )}${
                                                   grade.totalPoints
-                                                ).toFixed(0)
-                                              )}% - ${
-                                                grade.description ||
-                                                "بدون توضیح"
-                                              }`}
-                                            >
-                                              <span
-                                                className={`px-1 py-0.5 rounded text-xs font-medium border ${getGradeColor(
-                                                  grade.value,
-                                                  grade.totalPoints
-                                                )}`}
+                                                    ? ` از ${toPersianDigits(
+                                                        grade.totalPoints
+                                                      )}`
+                                                    : ""
+                                                } - درصد: ${toPersianDigits(
+                                                  getGradePercentage(
+                                                    grade.value,
+                                                    grade.totalPoints
+                                                  ).toFixed(0)
+                                                )}% - ${
+                                                  grade.description ||
+                                                  "بدون توضیح"
+                                                }`}
                                               >
-                                                {toPersianDigits(grade.value)}
-                                                {grade.totalPoints &&
-                                                  `/${toPersianDigits(
+                                                <span
+                                                  className={`px-1 py-0.5 rounded text-xs font-medium border ${getGradeColor(
+                                                    grade.value,
                                                     grade.totalPoints
                                                   )}`}
-                                              </span>
-                                            </Tooltip>
-                                          )
-                                        )}
-                                      {session.grades.length > 2 && (
-                                        <Tooltip
-                                          content={`${toPersianDigits(
-                                            session.grades.length - 2
-                                          )} نمره دیگر`}
-                                        >
-                                          <span className="text-xs text-blue-600 cursor-pointer">
-                                            +
-                                            {toPersianDigits(
+                                                >
+                                                  {toPersianDigits(grade.value)}
+                                                  {grade.totalPoints &&
+                                                    `/${toPersianDigits(
+                                                      grade.totalPoints
+                                                    )}`}
+                                                </span>
+                                              </Tooltip>
+                                            )
+                                          )}
+                                        {session.grades.length > 2 && (
+                                          <Tooltip
+                                            content={`${toPersianDigits(
                                               session.grades.length - 2
-                                            )}
-                                          </span>
-                                        </Tooltip>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Assessments */}
-                                  {session.assessments.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mb-1">
-                                      <div className="flex items-center gap-1">
-                                        <ChartBarIcon className="w-3 h-3 text-gray-500" />
-                                        <span className="text-gray-500 text-xs">
-                                          ارزیابی:
-                                        </span>
-                                      </div>
-                                      {session.assessments
-                                        .slice(0, 1)
-                                        .map(
-                                          (
-                                            assessment: AssessmentEntry,
-                                            assessIndex: number
-                                          ) => (
-                                            <Tooltip
-                                              key={assessIndex}
-                                              content={`ارزیابی: ${
-                                                assessment.title
-                                              } - مقدار: ${assessment.value}${
-                                                assessment.weight
-                                                  ? ` - ضریب: ${assessment.weight}`
-                                                  : ""
-                                              }`}
-                                            >
-                                              <span className="px-1 py-0.5 bg-purple-100 text-purple-700 rounded text-xs border border-purple-200">
-                                                {assessment.title}:{" "}
-                                                {assessment.value}
-                                              </span>
-                                            </Tooltip>
-                                          )
+                                            )} نمره دیگر`}
+                                          >
+                                            <span className="text-xs text-blue-600 cursor-pointer">
+                                              +
+                                              {toPersianDigits(
+                                                session.grades.length - 2
+                                              )}
+                                            </span>
+                                          </Tooltip>
                                         )}
-                                      {session.assessments.length > 1 && (
-                                        <Tooltip
-                                          content={`${toPersianDigits(
-                                            session.assessments.length - 1
-                                          )} ارزیابی دیگر`}
-                                        >
-                                          <span className="text-xs text-purple-600 cursor-pointer">
-                                            +
-                                            {toPersianDigits(
-                                              session.assessments.length - 1
-                                            )}
+                                      </div>
+                                    )}
+
+                                    {/* Assessments */}
+                                    {session.assessments.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mb-1">
+                                        <div className="flex items-center gap-1">
+                                          <ChartBarIcon className="w-3 h-3 text-gray-500" />
+                                          <span className="text-gray-500 text-xs">
+                                            ارزیابی:
                                           </span>
-                                        </Tooltip>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Teacher Note */}
-                                  {session.note && (
-                                    <Tooltip
-                                      content={`یادداشت استاد: ${session.note}`}
-                                    >
-                                      <div className="flex items-center gap-1">
-                                        <PencilIcon className="w-3 h-3 text-gray-500" />
-                                        <div className="text-xs text-gray-600 bg-yellow-50 p-1 rounded truncate border border-yellow-200">
-                                          {session.note.substring(0, 15)}...
                                         </div>
+                                        {session.assessments
+                                          .slice(0, 1)
+                                          .map(
+                                            (
+                                              assessment: AssessmentEntry,
+                                              assessIndex: number
+                                            ) => (
+                                              <Tooltip
+                                                key={assessIndex}
+                                                content={`ارزیابی: ${
+                                                  assessment.title
+                                                } - مقدار: ${assessment.value}${
+                                                  assessment.weight
+                                                    ? ` - ضریب: ${assessment.weight}`
+                                                    : ""
+                                                }`}
+                                              >
+                                                <span className="px-1 py-0.5 bg-purple-100 text-purple-700 rounded text-xs border border-purple-200">
+                                                  {assessment.title}:{" "}
+                                                  {assessment.value}
+                                                </span>
+                                              </Tooltip>
+                                            )
+                                          )}
+                                        {session.assessments.length > 1 && (
+                                          <Tooltip
+                                            content={`${toPersianDigits(
+                                              session.assessments.length - 1
+                                            )} ارزیابی دیگر`}
+                                          >
+                                            <span className="text-xs text-purple-600 cursor-pointer">
+                                              +
+                                              {toPersianDigits(
+                                                session.assessments.length - 1
+                                              )}
+                                            </span>
+                                          </Tooltip>
+                                        )}
                                       </div>
-                                    </Tooltip>
-                                  )}
+                                    )}
 
-                                  {/* Teacher Name */}
-                                  {session.teacherName && (
-                                    <Tooltip
-                                      content={`استاد: ${session.teacherName}`}
-                                    >
-                                      <div className="flex items-center gap-1 mt-1">
-                                        <UserIcon className="w-3 h-3 text-gray-400" />
-                                        <span className="text-xs text-gray-500 truncate">
-                                          {session.teacherName}
-                                        </span>
-                                      </div>
-                                    </Tooltip>
-                                  )}
-                                </div>
-                              )
-                            )}
+                                    {/* Teacher Note */}
+                                    {session.note && (
+                                      <Tooltip
+                                        content={`یادداشت استاد: ${session.note}`}
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <PencilIcon className="w-3 h-3 text-gray-500" />
+                                          <div className="text-xs text-gray-600 bg-yellow-50 p-1 rounded truncate border border-yellow-200">
+                                            {session.note.substring(0, 15)}...
+                                          </div>
+                                        </div>
+                                      </Tooltip>
+                                    )}
+
+                                    {/* Teacher Name */}
+                                    {session.teacherName && (
+                                      <Tooltip
+                                        content={`استاد: ${session.teacherName}`}
+                                      >
+                                        <div className="flex items-center gap-1 mt-1">
+                                          <UserIcon className="w-3 h-3 text-gray-400" />
+                                          <span className="text-xs text-gray-500 truncate">
+                                            {session.teacherName}
+                                          </span>
+                                        </div>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    )}
+                        )
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -569,7 +823,16 @@ const StudentClassSheet: React.FC<StudentClassSheetProps> = ({ gradeData }) => {
               <span>نام درس</span>
             </div>
           </div>
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 flex items-center gap-2">
+              <InformationCircleIcon className="w-4 h-4" />
+              برای مشاهده جزئیات کامل، روی هر خانه کلیک کنید
+            </p>
+          </div>
         </div>
+
+        {/* Modal */}
+        {renderDetailModal()}
       </div>
     );
   };
