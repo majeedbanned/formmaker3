@@ -175,8 +175,14 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "*دفتر کلاسی",
+          title: "+دفتر کلاسی",
           url: "/admin/classsheet",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+        {
+          title: "+دفتر کلاس دانش آموز",
+          url: "/admin/studentclasssheet",
           system: "importstudents",
           requiredPermission: "show",
         },
