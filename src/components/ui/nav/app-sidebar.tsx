@@ -98,6 +98,21 @@ const data = {
     },
 
     {
+      title: "مدیریت مالی",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: "سیستم حسابداری",
+          url: "/admin/accounting",
+          system: "school",
+          requiredPermission: "show",
+        },
+      ],
+    },
+
+    {
       title: "ارتباطات",
       url: "#",
       icon: SquareTerminal,
@@ -257,14 +272,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
-        ,
         {
           title: "پرینت",
           url: "/admin/prints",
           system: "importstudents",
           requiredPermission: "show",
         },
-        ,
         {
           title: "کویری",
           url: "/admin/query",
@@ -354,9 +367,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return data.navMain
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) =>
-          hasPermission(item.system, item.requiredPermission)
-        ),
+        items: section.items
+          .filter(
+            (item) =>
+              item && hasPermission(item.system, item.requiredPermission)
+          )
+          .map((item) => ({
+            title: item.title,
+            url: item.url,
+          })),
       }))
       .filter((section) => section.items.length > 0);
   }, [user, hasPermission]);
