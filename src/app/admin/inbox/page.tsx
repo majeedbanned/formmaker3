@@ -697,12 +697,28 @@ export default function InboxPage() {
                   <p className="mt-1 text-sm text-gray-600 truncate">
                     {message.data.sendername}
                   </p>
+                  {/* Show attachment details if message has files */}
+                  {message.data.files && message.data.files.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
+                      <DocumentTextIcon className="h-4 w-4" />
+                      <span>
+                        {message.data.files.length === 1
+                          ? "۱ فایل ضمیمه"
+                          : `${message.data.files.length} فایل ضمیمه`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex shrink-0 ml-4 gap-2">
                   {/* Show attachment icon if message has files */}
                   {message.data.files && message.data.files.length > 0 && (
-                    <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full">
+                      <DocumentTextIcon className="h-4 w-4 text-blue-500" />
+                      <span className="text-xs text-blue-600 font-medium">
+                        {message.data.files.length}
+                      </span>
+                    </div>
                   )}
                   <button
                     onClick={(e) => {
