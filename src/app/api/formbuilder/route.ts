@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { logger } from '@/lib/logger';
 import { ObjectId } from 'mongodb';
+import { getCurrentUser } from '@/app/api/chatbot7/config/route';
 
 // Get all forms with pagination and filtering capabilities
 export async function GET(request: NextRequest) {
@@ -19,24 +20,90 @@ export async function GET(request: NextRequest) {
     const domain = request.headers.get('x-domain') || 'localhost:3000';
     logger.info(`Processing formbuilder API request for domain: ${domain}`);
     
+    // Get current authenticated user
+    const user = await getCurrentUser();
+    
     try {
       // Connect to the domain-specific MongoDB database
       const connection = await connectToDatabase(domain);
       
-      // Build the query filter
+      // Build the query filter based on user type
       const filter: Record<string, unknown> = {};
       
-      // Add creator filter if provided
-      if (createdBy) {
+      if (user && user.userType === 'student') {
+        // For students: show forms where assignedClassCodes contains their class codes
+        const studentClassCodes: string[] = [];
+        if (user.classCode && Array.isArray(user.classCode)) {
+          for (const cls of user.classCode) {
+            if (cls && typeof cls === 'object' && 'value' in cls && typeof cls.value === 'string') {
+              studentClassCodes.push(cls.value);
+            }
+          }
+        }
+        
+        if (studentClassCodes.length > 0) {
+          filter.assignedClassCodes = { $in: studentClassCodes };
+        } else {
+          // If student has no class codes, return empty result
+          filter._id = { $exists: false };
+        }
+      } else if (user && user.userType === 'teacher') {
+        // For teachers: show their own forms + forms where assignedTeacherCodes contains their teacher code
+        const teacherCode = user.username;
+        
+        // Get teacher's classes by querying the classes collection
+        const classesCollection = connection.collection('classes');
+        const teacherClassesResult = await classesCollection.find({
+          'data.teachers.teacherCode': teacherCode
+        }).toArray();
+        
+        const teacherClassCodes: string[] = [];
+        for (const cls of teacherClassesResult) {
+          if (cls && typeof cls === 'object' && 'data' in cls && 
+              cls.data && typeof cls.data === 'object' && 'classCode' in cls.data &&
+              typeof cls.data.classCode === 'string') {
+            teacherClassCodes.push(cls.data.classCode);
+          }
+        }
+        
+      //  console.log("teacherClassCodes",teacherClassCodes)
+        filter.$or = [
+          { 'metadata.createdBy': teacherCode }, // Their own forms
+          { assignedTeacherCodes: { $in: [teacherCode] } }, // Forms assigned to them
+        //  { assignedClassCodes: { $in: teacherClassCodes } } // Forms assigned to their classes
+        ];
+      } else if (user && user.userType === 'school') {
+        // For school admin: show all forms (no additional filtering)
+        // Keep existing behavior for school admins
+      } else {
+        // If no user or unknown user type, return empty result
+        filter._id = { $exists: false };
+      }
+      
+      // Add creator filter if provided (for backward compatibility)
+      if (createdBy && user?.userType === 'school') {
         filter['metadata.createdBy'] = createdBy;
       }
       
       // Add search functionality if provided
       if (search) {
-        filter['$or'] = [
-          { title: { $regex: search, $options: 'i' } },
-          { 'fields.label': { $regex: search, $options: 'i' } }
-        ];
+        const searchCondition = {
+          $or: [
+            { title: { $regex: search, $options: 'i' } },
+            { 'fields.label': { $regex: search, $options: 'i' } }
+          ]
+        };
+        
+        if (filter.$or) {
+          // If we already have an $or condition, wrap everything in an $and
+          filter.$and = [
+            { $or: filter.$or },
+            searchCondition
+          ];
+          delete filter.$or;
+        } else {
+          Object.assign(filter, searchCondition);
+        }
       }
       
       // Calculate pagination values

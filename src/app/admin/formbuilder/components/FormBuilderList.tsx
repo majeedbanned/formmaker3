@@ -197,18 +197,9 @@ export default function FormBuilderList({
 
     try {
       setLoading(true);
-      // Add the username as a query parameter to filter forms
-      const queryParams = new URLSearchParams();
 
-      if (user.userType === "teacher" || user.userType === "student") {
-        queryParams.append("createdBy", user.username);
-      }
-
-      const url = `/api/formbuilder${
-        queryParams.toString() ? `?${queryParams.toString()}` : ""
-      }`;
-
-      const response = await fetch(url);
+      // Remove client-side filtering since it's now handled server-side based on user type
+      const response = await fetch("/api/formbuilder");
       if (!response.ok) throw new Error("Failed to fetch forms");
 
       const data = await response.json();
