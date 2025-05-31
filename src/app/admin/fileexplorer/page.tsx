@@ -36,6 +36,7 @@ interface FileItem {
   publicUrl: string;
   permissions?: Permission[];
   username: string;
+  creatorInfo?: CreatorInfo;
 }
 
 interface FolderItem {
@@ -47,6 +48,7 @@ interface FolderItem {
   password?: string;
   permissions?: Permission[];
   username: string;
+  creatorInfo?: CreatorInfo;
 }
 
 interface Permission {
@@ -60,6 +62,14 @@ interface PermissionOption {
   code: string;
   name: string;
   selected: boolean;
+}
+
+// Add creator info interface
+interface CreatorInfo {
+  username: string;
+  name: string;
+  avatar?: string;
+  userType: string;
 }
 
 type ExplorerItem = FileItem | FolderItem;
@@ -1154,6 +1164,96 @@ function PermissionModal({
   );
 }
 
+// Creator display component with avatar and name
+function CreatorDisplay({
+  creatorInfo,
+  currentUsername,
+}: {
+  creatorInfo?: CreatorInfo;
+  currentUsername?: string;
+}) {
+  if (!creatorInfo) {
+    return <span className="text-xs text-gray-500">نامشخص</span>;
+  }
+
+  const isCurrentUser = creatorInfo.username === currentUsername;
+  const displayName = isCurrentUser ? "شما" : creatorInfo.name;
+
+  // Generate a color for the avatar based on username
+  const getAvatarColor = (username: string) => {
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-red-500",
+      "bg-yellow-500",
+      "bg-teal-500",
+    ];
+    const hash = username.split("").reduce((a, b) => {
+      a = (a << 5) - a + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getUserTypeIcon = (userType: string) => {
+    switch (userType) {
+      case "teacher":
+        return "👨‍🏫";
+      case "student":
+        return "👨‍🎓";
+      case "school":
+        return "🏫";
+      default:
+        return "👤";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Avatar */}
+      <div className="relative">
+        {creatorInfo.avatar ? (
+          <img
+            src={creatorInfo.avatar}
+            alt={displayName}
+            className="w-6 h-6 rounded-full object-cover"
+            onError={(e) => {
+              // Fallback to initials on image error
+              const target = e.target as HTMLElement;
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `<div class="w-6 h-6 rounded-full ${getAvatarColor(
+                  creatorInfo.username
+                )} flex items-center justify-center text-white text-xs font-medium">${creatorInfo.name.charAt(
+                  0
+                )}</div>`;
+              }
+            }}
+          />
+        ) : (
+          <div
+            className={`w-6 h-6 rounded-full ${getAvatarColor(
+              creatorInfo.username
+            )} flex items-center justify-center text-white text-xs font-medium`}
+          >
+            {creatorInfo.name.charAt(0)}
+          </div>
+        )}
+        {/* User type indicator */}
+        <div className="absolute -bottom-1 -right-1 text-xs">
+          {getUserTypeIcon(creatorInfo.userType)}
+        </div>
+      </div>
+
+      {/* Name */}
+      <span className="text-xs text-gray-600 font-medium">{displayName}</span>
+    </div>
+  );
+}
+
 export default function FileExplorerPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<ExplorerItem[]>([]);
@@ -1425,7 +1525,10 @@ export default function FileExplorerPage() {
   const confirmDelete = (item: ExplorerItem) => {
     // Only school users can delete all files
     // Teachers and students can only delete their own files
-    if (user?.userType !== "school" && item.username !== user.username) {
+    if (
+      !user ||
+      (user.userType !== "school" && item.username !== user.username)
+    ) {
       toast.error("شما فقط مجاز به حذف فایل‌های خود هستید");
       return;
     }
@@ -1499,14 +1602,6 @@ export default function FileExplorerPage() {
 
     setSelectedItem(item);
     setShowRenameModal(true);
-  };
-
-  // Helper function to get creator display name
-  const getCreatorDisplay = (username: string) => {
-    if (username === user?.username) {
-      return "شما";
-    }
-    return username;
   };
 
   // Helper function to check if user can modify item
@@ -1810,10 +1905,10 @@ export default function FileExplorerPage() {
                             {/* Creator label */}
                             <div className="text-xs text-gray-500 mt-1">
                               ایجادکننده:{" "}
-                              {getCreatorDisplay(
-                                (folder as ExplorerItem & { username: string })
-                                  .username
-                              )}
+                              <CreatorDisplay
+                                creatorInfo={folder.creatorInfo}
+                                currentUsername={user?.username}
+                              />
                             </div>
                           </div>
                         </div>
@@ -1883,10 +1978,10 @@ export default function FileExplorerPage() {
                             {/* Creator label */}
                             <div className="text-xs text-gray-500 mt-1">
                               ایجادکننده:{" "}
-                              {getCreatorDisplay(
-                                (file as ExplorerItem & { username: string })
-                                  .username
-                              )}
+                              <CreatorDisplay
+                                creatorInfo={file.creatorInfo}
+                                currentUsername={user?.username}
+                              />
                             </div>
                           </div>
                         </div>
@@ -2005,7 +2100,15 @@ export default function FileExplorerPage() {
         onConfirm={handlePermissionChange}
         item={selectedItem}
         userType={user?.userType || ""}
-        currentUser={user}
+        currentUser={
+          user
+            ? {
+                schoolCode: user.schoolCode,
+                username: user.username,
+                userType: user.userType,
+              }
+            : null
+        }
       />
     </div>
   );
