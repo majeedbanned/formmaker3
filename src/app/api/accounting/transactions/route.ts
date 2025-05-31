@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only school admins can access accounting
-    if (user.userType !== "school") {
+    // Allow school admins, students, and teachers to access accounting
+    if (!["school", "student", "teacher"].includes(user.userType)) {
       return NextResponse.json(
-        { error: "Unauthorized. Only school admins can access accounting." },
+        { error: "Unauthorized. Only school admins, students, and teachers can access accounting." },
         { status: 403 }
       );
     }
@@ -45,8 +45,16 @@ export async function GET(request: NextRequest) {
     // Build query filter
     const query: Record<string, unknown> = { schoolCode: user.schoolCode };
     
-    if (personType) query.personType = personType;
-    if (personId) query.personId = personId;
+    // For students and teachers, restrict to their own transactions only
+    if (user.userType === "student" || user.userType === "teacher") {
+      query.personType = user.userType;
+      query.personId = user.id;
+    } else {
+      // For school admins, allow filtering by person
+      if (personType) query.personType = personType;
+      if (personId) query.personId = personId;
+    }
+    
     if (transactionType) query.transactionType = transactionType;
     if (category) query.category = category;
     if (paymentMethod) query.paymentMethod = paymentMethod;

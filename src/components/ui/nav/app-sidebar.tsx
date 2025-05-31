@@ -201,13 +201,19 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+
         {
           title: "+گزارش زمان خط",
           url: "/admin/dailytimeline",
           system: "importstudents",
           requiredPermission: "show",
         },
-
+        {
+          title: "+سیستم حسابداری",
+          url: "/admin/accounting",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
         {
           title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",

@@ -15,15 +15,24 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only school admins can access accounting
-    if (user.userType !== "school") {
+    // Allow school admins, students, and teachers to access person summary
+    if (!["school", "student", "teacher"].includes(user.userType)) {
       return NextResponse.json(
-        { error: "Unauthorized. Only school admins can access accounting." },
+        { error: "Unauthorized. Only school admins, students, and teachers can access person summary." },
         { status: 403 }
       );
     }
 
     const { personId } = params;
+
+    // Students and teachers can only access their own data
+    if ((user.userType === "student" || user.userType === "teacher") && personId !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized. You can only access your own financial data." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
