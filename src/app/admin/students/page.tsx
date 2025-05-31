@@ -272,7 +272,7 @@ function StudentsPageContent() {
       required: true,
       groupUniqueness: true,
       enabled: true,
-      visible: false,
+      visible: true,
 
       validation: {
         requiredMessage: "کد مدرسه الزامی است",
