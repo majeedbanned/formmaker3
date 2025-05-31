@@ -11,6 +11,14 @@ import {
   ChevronRightIcon,
   ArrowUturnLeftIcon,
   XMarkIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  CheckIcon,
+  PlusIcon,
+  ShareIcon,
+  CalendarIcon,
+  AdjustmentsHorizontalIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { toast } from "sonner";
@@ -258,6 +266,31 @@ export default function InboxPage() {
   const [limit, setLimit] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [messageType, setMessageType] = useState<"inbox" | "sent">("inbox");
+
+  // Advanced features state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "sender" | "title" | "read">(
+    "date"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });
+  const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">(
+    "all"
+  );
+  const [attachmentFilter, setAttachmentFilter] = useState<
+    "all" | "with" | "without"
+  >("all");
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(
+    new Set()
+  );
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showComposeDialog, setShowComposeDialog] = useState(false);
+  const [showForwardDialog, setShowForwardDialog] = useState(false);
+  const [messageToForward, setMessageToForward] = useState<Message | null>(
+    null
+  );
 
   // State for dialogs
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -266,17 +299,106 @@ export default function InboxPage() {
 
   // Apply filters to messages
   useEffect(() => {
-    if (showStarredOnly) {
-      setFilteredMessages(messages.filter((msg) => msg.data.isFavorite));
-    } else {
-      setFilteredMessages(messages);
-    }
-  }, [messages, showStarredOnly]);
+    let filtered = [...messages];
 
-  // Reset to page 1 when toggling starred filter
+    // Search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(
+        (msg) =>
+          msg.data.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          msg.data.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          msg.data.sendername
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          msg.data.receivercode
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Read status filter
+    if (readFilter !== "all") {
+      filtered = filtered.filter((msg) =>
+        readFilter === "read" ? msg.data.isRead : !msg.data.isRead
+      );
+    }
+
+    // Attachment filter
+    if (attachmentFilter !== "all") {
+      filtered = filtered.filter((msg) => {
+        const hasAttachments = msg.data.files && msg.data.files.length > 0;
+        return attachmentFilter === "with" ? hasAttachments : !hasAttachments;
+      });
+    }
+
+    // Date filter
+    if (dateFilter.from) {
+      filtered = filtered.filter((msg) => {
+        const msgDate = new Date(msg.data.createdAt);
+        const fromDate = new Date(dateFilter.from);
+        return msgDate >= fromDate;
+      });
+    }
+    if (dateFilter.to) {
+      filtered = filtered.filter((msg) => {
+        const msgDate = new Date(msg.data.createdAt);
+        const toDate = new Date(dateFilter.to);
+        return msgDate <= toDate;
+      });
+    }
+
+    // Starred filter
+    if (showStarredOnly) {
+      filtered = filtered.filter((msg) => msg.data.isFavorite);
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      switch (sortBy) {
+        case "title":
+          aVal = a.data.title;
+          bVal = b.data.title;
+          break;
+        case "sender":
+          aVal =
+            messageType === "inbox" ? a.data.sendername : a.data.receivercode;
+          bVal =
+            messageType === "inbox" ? b.data.sendername : b.data.receivercode;
+          break;
+        case "read":
+          aVal = a.data.isRead ? 1 : 0;
+          bVal = b.data.isRead ? 1 : 0;
+          break;
+        default: // date
+          aVal = new Date(a.data.createdAt).getTime();
+          bVal = new Date(b.data.createdAt).getTime();
+      }
+
+      if (sortOrder === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+
+    setFilteredMessages(filtered);
+  }, [
+    messages,
+    searchQuery,
+    readFilter,
+    attachmentFilter,
+    dateFilter,
+    showStarredOnly,
+    sortBy,
+    sortOrder,
+    messageType,
+  ]);
+
+  // Reset to page 1 when toggling starred filter or message type
   useEffect(() => {
     setPage(1);
-  }, [showStarredOnly]);
+  }, [showStarredOnly, messageType]);
 
   // Fetch messages
   const fetchMessages = async () => {
@@ -284,9 +406,12 @@ export default function InboxPage() {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/messages/inbox?page=${page}&limit=${limit}&receivercode=${user.username}`
-      );
+      const endpoint =
+        messageType === "inbox"
+          ? `/api/messages/inbox?page=${page}&limit=${limit}&receivercode=${user.username}`
+          : `/api/messages/sent?page=${page}&limit=${limit}&sendercode=${user.username}`;
+
+      const response = await fetch(endpoint);
       if (!response.ok) {
         throw new Error("Failed to fetch messages");
       }
@@ -524,7 +649,7 @@ export default function InboxPage() {
     if (!authLoading && user) {
       fetchMessages();
     }
-  }, [user, authLoading, page, limit]);
+  }, [user, authLoading, page, limit, messageType]);
 
   if (authLoading) {
     return (
@@ -555,13 +680,15 @@ export default function InboxPage() {
             بازگشت به لیست
           </button>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowReplyDialog(true)}
-              className="text-blue-500 hover:text-blue-600 flex items-center gap-1"
-            >
-              <ArrowUturnLeftIcon className="h-5 w-5" />
-              <span>پاسخ</span>
-            </button>
+            {messageType === "inbox" && (
+              <button
+                onClick={() => setShowReplyDialog(true)}
+                className="text-blue-500 hover:text-blue-600 flex items-center gap-1"
+              >
+                <ArrowUturnLeftIcon className="h-5 w-5" />
+                <span>پاسخ</span>
+              </button>
+            )}
             <button
               onClick={() => toggleFavorite(selectedMessage._id)}
               className="text-yellow-500 hover:text-yellow-600"
@@ -586,7 +713,11 @@ export default function InboxPage() {
             {selectedMessage.data.title}
           </h2>
           <div className="flex justify-between text-gray-600 mt-2">
-            <span>فرستنده: {selectedMessage.data.sendername}</span>
+            <span>
+              {messageType === "inbox"
+                ? `فرستنده: ${selectedMessage.data.sendername}`
+                : `گیرنده: ${selectedMessage.data.receivercode}`}
+            </span>
             <span>تاریخ: {selectedMessage.data.persiandate}</span>
           </div>
           {selectedMessage.data.readTime && (
@@ -645,7 +776,9 @@ export default function InboxPage() {
           <p className="text-xl text-gray-600">
             {showStarredOnly
               ? "هیچ پیام نشان شده‌ای وجود ندارد."
-              : "هیچ پیامی وجود ندارد."}
+              : messageType === "inbox"
+              ? "هیچ پیامی وجود ندارد."
+              : "هیچ پیام ارسالی وجود ندارد."}
           </p>
         </div>
       );
@@ -660,6 +793,26 @@ export default function InboxPage() {
                 className="flex items-start px-4 py-4 sm:px-6 cursor-pointer"
                 onClick={() => handleMessageSelect(message)}
               >
+                {/* Bulk selection checkbox */}
+                <div className="flex shrink-0 ml-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedMessages.has(message._id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      const newSelected = new Set(selectedMessages);
+                      if (e.target.checked) {
+                        newSelected.add(message._id);
+                      } else {
+                        newSelected.delete(message._id);
+                      }
+                      setSelectedMessages(newSelected);
+                      setShowBulkActions(newSelected.size > 0);
+                    }}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                </div>
+
                 {/* Star icon on the right (first in RTL) */}
                 <div className="flex shrink-0 ml-4">
                   <button
@@ -695,7 +848,9 @@ export default function InboxPage() {
                     </div>
                   </div>
                   <p className="mt-1 text-sm text-gray-600 truncate">
-                    {message.data.sendername}
+                    {messageType === "inbox"
+                      ? `فرستنده: ${message.data.sendername}`
+                      : `گیرنده: ${message.data.receivercode}`}
                   </p>
                   {/* Show attachment details if message has files */}
                   {message.data.files && message.data.files.length > 0 && (
@@ -823,8 +978,34 @@ export default function InboxPage() {
     <main className="min-h-screen bg-gray-50 py-8" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">صندوق پیام‌ها</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {messageType === "inbox" ? "صندوق پیام‌ها" : "پیام‌های ارسالی"}
+          </h1>
           <div className="flex gap-4 items-center">
+            {/* Message type toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMessageType("inbox")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  messageType === "inbox"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                صندوق ورودی
+              </button>
+              <button
+                onClick={() => setMessageType("sent")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  messageType === "sent"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                پیام‌های ارسالی
+              </button>
+            </div>
+
             {/* Filter for starred messages */}
             <button
               onClick={() => setShowStarredOnly(!showStarredOnly)}
@@ -856,6 +1037,222 @@ export default function InboxPage() {
           </div>
         </div>
 
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="جستجو در پیام‌ها..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2">
+              <AdjustmentsHorizontalIcon className="h-5 w-5 text-gray-500" />
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => {
+                  const [field, order] = e.target.value.split("-");
+                  setSortBy(field as "date" | "sender" | "title" | "read");
+                  setSortOrder(order as "asc" | "desc");
+                }}
+                className="border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="date-desc">جدیدترین</option>
+                <option value="date-asc">قدیمی‌ترین</option>
+                <option value="title-asc">عنوان (الف-ی)</option>
+                <option value="title-desc">عنوان (ی-الف)</option>
+                <option value="sender-asc">
+                  {messageType === "inbox"
+                    ? "فرستنده (الف-ی)"
+                    : "گیرنده (الف-ی)"}
+                </option>
+                <option value="sender-desc">
+                  {messageType === "inbox"
+                    ? "فرستنده (ی-الف)"
+                    : "گیرنده (ی-الف)"}
+                </option>
+                <option value="read-asc">خوانده نشده اول</option>
+                <option value="read-desc">خوانده شده اول</option>
+              </select>
+            </div>
+
+            {/* Advanced Filters Toggle */}
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
+                showAdvancedFilters
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <FunnelIcon className="h-5 w-5" />
+              فیلترهای پیشرفته
+            </button>
+
+            {/* Compose Message Button */}
+            <button
+              onClick={() => setShowComposeDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              <PencilSquareIcon className="h-5 w-5" />
+              پیام جدید
+            </button>
+          </div>
+
+          {/* Advanced Filters Panel */}
+          {showAdvancedFilters && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Read Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    وضعیت خوانده شدن
+                  </label>
+                  <select
+                    value={readFilter}
+                    onChange={(e) =>
+                      setReadFilter(e.target.value as "all" | "read" | "unread")
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">همه</option>
+                    <option value="unread">خوانده نشده</option>
+                    <option value="read">خوانده شده</option>
+                  </select>
+                </div>
+
+                {/* Attachment Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    فایل ضمیمه
+                  </label>
+                  <select
+                    value={attachmentFilter}
+                    onChange={(e) =>
+                      setAttachmentFilter(
+                        e.target.value as "all" | "with" | "without"
+                      )
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">همه</option>
+                    <option value="with">دارای ضمیمه</option>
+                    <option value="without">بدون ضمیمه</option>
+                  </select>
+                </div>
+
+                {/* Date From */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    از تاریخ
+                  </label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="date"
+                      value={dateFilter.from}
+                      onChange={(e) =>
+                        setDateFilter((prev) => ({
+                          ...prev,
+                          from: e.target.value,
+                        }))
+                      }
+                      className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Date To */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    تا تاریخ
+                  </label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="date"
+                      value={dateFilter.to}
+                      onChange={(e) =>
+                        setDateFilter((prev) => ({
+                          ...prev,
+                          to: e.target.value,
+                        }))
+                      }
+                      className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setReadFilter("all");
+                    setAttachmentFilter("all");
+                    setDateFilter({ from: "", to: "" });
+                    setSortBy("date");
+                    setSortOrder("desc");
+                  }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                >
+                  پاک کردن همه فیلترها
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bulk Actions Panel */}
+        {showBulkActions && selectedMessages.size > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <span className="text-blue-800">
+                {selectedMessages.size} پیام انتخاب شده
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    selectedMessages.forEach((id) => toggleFavorite(id));
+                    setSelectedMessages(new Set());
+                    setShowBulkActions(false);
+                  }}
+                  className="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                >
+                  نشان کردن همه
+                </button>
+                <button
+                  onClick={() => {
+                    selectedMessages.forEach((id) => confirmDeleteMessage(id));
+                    setSelectedMessages(new Set());
+                    setShowBulkActions(false);
+                  }}
+                  className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200"
+                >
+                  حذف همه
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedMessages(new Set());
+                    setShowBulkActions(false);
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                >
+                  لغو انتخاب
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {viewMode === "list" ? renderMessageList() : renderMessageDetail()}
 
         {/* Confirmation Dialog */}
@@ -874,6 +1271,75 @@ export default function InboxPage() {
           onSend={sendReply}
           originalMessage={selectedMessage}
         />
+
+        {/* Compose Dialog */}
+        {showComposeDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl"
+              dir="rtl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-900">پیام جدید</h3>
+                <button
+                  onClick={() => setShowComposeDialog(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    گیرنده
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="کد کاربری گیرنده..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    موضوع
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="موضوع پیام..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    متن پیام
+                  </label>
+                  <textarea
+                    rows={6}
+                    placeholder="متن پیام خود را بنویسید..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowComposeDialog(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  انصراف
+                </button>
+                <button
+                  onClick={() => {
+                    setShowComposeDialog(false);
+                    toast.success("پیام ارسال شد");
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  ارسال پیام
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
