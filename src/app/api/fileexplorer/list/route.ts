@@ -22,6 +22,14 @@ interface GroupData {
   value: string;
 }
 
+// Define MongoDB query type
+interface MongoQuery {
+  schoolCode: string;
+  path: string;
+  username?: string;
+  $or?: Array<Record<string, unknown>>;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user and verify authentication
@@ -60,8 +68,8 @@ export async function GET(request: NextRequest) {
     const fileCollection = connection.collection("File");
 
     // Build query filters based on user type
-    let folderQuery: Record<string, any> = { schoolCode, path };
-    let fileQuery: Record<string, any> = { schoolCode, path };
+    let folderQuery: MongoQuery = { schoolCode, path };
+    let fileQuery: MongoQuery = { schoolCode, path };
 
     // Permission-based filtering for students
     if (user.userType === 'student') {
@@ -143,16 +151,11 @@ export async function GET(request: NextRequest) {
         ]
       };
     } else if (user.userType === 'school') {
-      // School admins can see all files in their school
-      folderQuery = { 
-        ...folderQuery, 
-        username: user.username 
-      };
-      fileQuery = { 
-        ...fileQuery, 
-        username: user.username 
-      };
-      console.log(`Filtering by username: ${user.username} for user type: ${user.userType}`);
+      // School admins can see ALL files and folders in their school (not just their own)
+      // This allows them to manage all content in the school
+      folderQuery = { schoolCode, path };
+      fileQuery = { schoolCode, path };
+      console.log(`School admin can see all files for school: ${schoolCode}`);
     }
 
     // Get folders for the current path
@@ -171,17 +174,19 @@ export async function GET(request: NextRequest) {
       
     console.log(`Found ${files.length} files at path "${path}"`);
 
-    // Transform data for the response - include permissions
+    // Transform data for the response - include permissions and username
     const folderList = folders.map(folder => ({
       ...folder,
       type: "folder",
-      permissions: folder.permissions || []
+      permissions: folder.permissions || [],
+      username: folder.username || "unknown"
     }));
 
     const fileList = files.map(file => ({
       ...file,
       type: "file",
-      permissions: file.permissions || []
+      permissions: file.permissions || [],
+      username: file.username || "unknown"
     }));
 
     // Combine folders and files

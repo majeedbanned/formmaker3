@@ -35,6 +35,7 @@ interface FileItem {
   extension: string;
   publicUrl: string;
   permissions?: Permission[];
+  username: string;
 }
 
 interface FolderItem {
@@ -45,6 +46,7 @@ interface FolderItem {
   createdAt: string;
   password?: string;
   permissions?: Permission[];
+  username: string;
 }
 
 interface Permission {
@@ -89,6 +91,8 @@ interface CurrentUser {
   schoolCode: string;
   username: string;
   userType: string;
+  classCode?: Array<{ label?: string; value: string }>;
+  groups?: Array<{ label?: string; value: string }>;
   [key: string]: unknown;
 }
 
@@ -1419,6 +1423,13 @@ export default function FileExplorerPage() {
 
   // Show delete confirmation
   const confirmDelete = (item: ExplorerItem) => {
+    // Only school users can delete all files
+    // Teachers and students can only delete their own files
+    if (user?.userType !== "school" && item.username !== user.username) {
+      toast.error("شما فقط مجاز به حذف فایل‌های خود هستید");
+      return;
+    }
+
     setSelectedItem(item);
     setShowDeleteConfirm(true);
   };
@@ -1461,13 +1472,47 @@ export default function FileExplorerPage() {
 
   // Show permission modal
   const showPermissions = (item: ExplorerItem) => {
-    // Only school and teacher users can manage permissions
-    if (user?.userType === "student") {
-      toast.error("شما مجاز به تغییر دسترسی‌ها نیستید");
+    // Only school users can manage permissions for all files
+    // Teachers and students can only manage permissions for their own files
+    if (user?.userType === "student" && item.username !== user.username) {
+      toast.error("شما فقط مجاز به تغییر دسترسی فایل‌های خود هستید");
       return;
     }
+
+    if (user?.userType === "teacher" && item.username !== user.username) {
+      toast.error("شما فقط مجاز به تغییر دسترسی فایل‌های خود هستید");
+      return;
+    }
+
     setSelectedItem(item);
     setShowPermissionModal(true);
+  };
+
+  // Show rename modal - with ownership check
+  const showRename = (item: ExplorerItem) => {
+    // Only school users can rename all files
+    // Teachers and students can only rename their own files
+    if (user?.userType !== "school" && item.username !== user?.username) {
+      toast.error("شما فقط مجاز به تغییر نام فایل‌های خود هستید");
+      return;
+    }
+
+    setSelectedItem(item);
+    setShowRenameModal(true);
+  };
+
+  // Helper function to get creator display name
+  const getCreatorDisplay = (username: string) => {
+    if (username === user?.username) {
+      return "شما";
+    }
+    return username;
+  };
+
+  // Helper function to check if user can modify item
+  const canModifyItem = (item: ExplorerItem) => {
+    if (!user) return false;
+    return user.userType === "school" || item.username === user.username;
   };
 
   // Initial data load
@@ -1517,7 +1562,7 @@ export default function FileExplorerPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -1762,6 +1807,14 @@ export default function FileExplorerPage() {
                               )}
                               <ChevronRightIcon className="inline-block h-4 w-4 text-gray-400 transform rotate-180 mr-1" />
                             </div>
+                            {/* Creator label */}
+                            <div className="text-xs text-gray-500 mt-1">
+                              ایجادکننده:{" "}
+                              {getCreatorDisplay(
+                                (folder as ExplorerItem & { username: string })
+                                  .username
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1776,9 +1829,10 @@ export default function FileExplorerPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                         <div className="flex gap-3 justify-end">
-                          {/* Permission button - only for school and teacher users */}
+                          {/* Permission button - only for school users or file owners */}
                           {(user?.userType === "school" ||
-                            user?.userType === "teacher") && (
+                            (user?.userType === "teacher" &&
+                              canModifyItem(folder))) && (
                             <button
                               onClick={() => showPermissions(folder)}
                               className="text-purple-600 hover:text-purple-900"
@@ -1787,23 +1841,26 @@ export default function FileExplorerPage() {
                               <UserGroupIcon className="h-5 w-5" />
                             </button>
                           )}
-                          <button
-                            onClick={() => {
-                              setSelectedItem(folder);
-                              setShowRenameModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="تغییر نام"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(folder)}
-                            className="text-red-600 hover:text-red-900"
-                            title="حذف"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                          {/* Rename button - only for owners or school admin */}
+                          {canModifyItem(folder) && (
+                            <button
+                              onClick={() => showRename(folder)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="تغییر نام"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          {/* Delete button - only for owners or school admin */}
+                          {canModifyItem(folder) && (
+                            <button
+                              onClick={() => confirmDelete(folder)}
+                              className="text-red-600 hover:text-red-900"
+                              title="حذف"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1823,6 +1880,14 @@ export default function FileExplorerPage() {
                             <div className="text-sm font-medium text-gray-900">
                               {file.name}
                             </div>
+                            {/* Creator label */}
+                            <div className="text-xs text-gray-500 mt-1">
+                              ایجادکننده:{" "}
+                              {getCreatorDisplay(
+                                (file as ExplorerItem & { username: string })
+                                  .username
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1841,9 +1906,10 @@ export default function FileExplorerPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                         <div className="flex gap-3 justify-end">
-                          {/* Permission button - only for school and teacher users */}
+                          {/* Permission button - only for school users or file owners */}
                           {(user?.userType === "school" ||
-                            user?.userType === "teacher") && (
+                            (user?.userType === "teacher" &&
+                              canModifyItem(file))) && (
                             <button
                               onClick={() => showPermissions(file)}
                               className="text-purple-600 hover:text-purple-900"
@@ -1852,6 +1918,7 @@ export default function FileExplorerPage() {
                               <UserGroupIcon className="h-5 w-5" />
                             </button>
                           )}
+                          {/* Download button - available for all */}
                           <button
                             onClick={() => downloadFile(file as FileItem)}
                             className="text-blue-600 hover:text-blue-900"
@@ -1859,23 +1926,29 @@ export default function FileExplorerPage() {
                           >
                             <FolderArrowDownIcon className="h-5 w-5" />
                           </button>
-                          <button
-                            onClick={() => {
-                              setSelectedItem(file);
-                              setShowShareModal(true);
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                            title="اشتراک‌گذاری"
-                          >
-                            <ShareIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(file)}
-                            className="text-red-600 hover:text-red-900"
-                            title="حذف"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                          {/* Share button - only for owners or school admin */}
+                          {canModifyItem(file) && (
+                            <button
+                              onClick={() => {
+                                setSelectedItem(file);
+                                setShowShareModal(true);
+                              }}
+                              className="text-green-600 hover:text-green-900"
+                              title="اشتراک‌گذاری"
+                            >
+                              <ShareIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          {/* Delete button - only for owners or school admin */}
+                          {canModifyItem(file) && (
+                            <button
+                              onClick={() => confirmDelete(file)}
+                              className="text-red-600 hover:text-red-900"
+                              title="حذف"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
