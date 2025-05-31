@@ -149,7 +149,10 @@ export default function TransactionForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      dir="rtl"
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -218,9 +221,9 @@ export default function TransactionForm({
                   onChange={(e) =>
                     handleInputChange("transactionType", e.target.value)
                   }
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 ml-2"
                 />
-                <span className="mr-2 text-red-600 font-medium">
+                <span className="text-red-600 font-medium">
                   بدهکار (برداشت)
                 </span>
               </label>
@@ -233,9 +236,9 @@ export default function TransactionForm({
                   onChange={(e) =>
                     handleInputChange("transactionType", e.target.value)
                   }
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 ml-2"
                 />
-                <span className="mr-2 text-green-600 font-medium">
+                <span className="text-green-600 font-medium">
                   بستانکار (واریز)
                 </span>
               </label>
@@ -252,7 +255,7 @@ export default function TransactionForm({
               value={formData.amount}
               onChange={(e) => handleInputChange("amount", e.target.value)}
               placeholder="مبلغ را وارد کنید..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
               required
             />
           </div>
@@ -267,7 +270,7 @@ export default function TransactionForm({
               value={formData.description}
               onChange={(e) => handleInputChange("description", e.target.value)}
               placeholder="شرح تراکنش را وارد کنید..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
               required
             />
           </div>
@@ -280,7 +283,7 @@ export default function TransactionForm({
             <select
               value={formData.category}
               onChange={(e) => handleInputChange("category", e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
             >
               <option value="">انتخاب دسته‌بندی...</option>
               {categories.map((cat) => (
@@ -301,7 +304,7 @@ export default function TransactionForm({
               onChange={(e) =>
                 handleInputChange("paymentMethod", e.target.value)
               }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
             >
               <option value="">انتخاب روش پرداخت...</option>
               {paymentMethods.map((method) => (
@@ -324,14 +327,14 @@ export default function TransactionForm({
               }
               calendar={persian}
               locale={persian_fa}
-              calendarPosition="bottom-right"
+              calendarPosition="bottom-left"
               className="w-full"
               render={(value, openCalendar) => (
                 <input
                   value={value}
                   onClick={openCalendar}
                   readOnly
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer text-right"
                   placeholder="انتخاب تاریخ..."
                 />
               )}
@@ -350,7 +353,7 @@ export default function TransactionForm({
                 handleInputChange("receiptNumber", e.target.value)
               }
               placeholder="شماره رسید..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
             />
           </div>
 
@@ -366,7 +369,7 @@ export default function TransactionForm({
                 handleInputChange("referenceNumber", e.target.value)
               }
               placeholder="شماره مرجع..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
             />
           </div>
 
@@ -380,7 +383,7 @@ export default function TransactionForm({
               onChange={(e) => handleInputChange("notes", e.target.value)}
               placeholder="یادداشت اضافی..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-right"
             />
           </div>
 

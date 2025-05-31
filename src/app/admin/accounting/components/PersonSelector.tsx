@@ -132,7 +132,7 @@ export default function PersonSelector({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="نام، نام خانوادگی یا کد را وارد کنید..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 text-right"
           />
           <svg
             className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -170,7 +170,7 @@ export default function PersonSelector({
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <div className="flex-1">
+                      <div className="flex-1 text-right">
                         <div className="font-medium text-gray-900">
                           {student.name}
                         </div>
@@ -197,7 +197,7 @@ export default function PersonSelector({
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      <div className="flex-1">
+                      <div className="flex-1 text-right">
                         <div className="font-medium text-gray-900">
                           {teacher.name}
                         </div>

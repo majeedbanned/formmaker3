@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import PersonSelector from "./components/PersonSelector";
 import TransactionList from "./components/TransactionList";
@@ -27,7 +27,10 @@ export default function AccountingPage() {
 
   if (!user || user.userType !== "school") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div
+        className="min-h-screen flex items-center justify-center bg-gray-50"
+        dir="rtl"
+      >
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">دسترسی محدود</h1>
           <p className="text-gray-600">
@@ -39,7 +42,7 @@ export default function AccountingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4" dir="rtl">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -55,8 +58,8 @@ export default function AccountingPage() {
         <AccountingSummary refreshTrigger={refreshTrigger} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Person Selection */}
-          <div className="lg:col-span-1">
+          {/* Right Column - Person Selection */}
+          <div className="lg:col-span-1 order-1 lg:order-2">
             <PersonSelector
               selectedPerson={selectedPerson}
               onPersonSelect={setSelectedPerson}
@@ -71,8 +74,8 @@ export default function AccountingPage() {
             )}
           </div>
 
-          {/* Right Column - Transactions */}
-          <div className="lg:col-span-2">
+          {/* Left Column - Transactions */}
+          <div className="lg:col-span-2 order-2 lg:order-1">
             {selectedPerson ? (
               <>
                 {/* Action Buttons */}

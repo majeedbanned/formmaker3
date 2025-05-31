@@ -261,17 +261,17 @@ export default function TransactionList({
                       </span>
                     </div>
 
-                    <div className="text-gray-800 font-medium mb-2">
+                    <div className="text-gray-800 font-medium mb-2 text-right">
                       {transaction.description}
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                      <div>
+                      <div className="text-right">
                         <span className="font-medium">تاریخ:</span>
                         <div>{formatDate(transaction.transactionDate)}</div>
                       </div>
                       {transaction.category && (
-                        <div>
+                        <div className="text-right">
                           <span className="font-medium">دسته‌بندی:</span>
                           <div>
                             {categoryLabels[transaction.category] ||
@@ -280,7 +280,7 @@ export default function TransactionList({
                         </div>
                       )}
                       {transaction.paymentMethod && (
-                        <div>
+                        <div className="text-right">
                           <span className="font-medium">روش پرداخت:</span>
                           <div>
                             {paymentMethodLabels[transaction.paymentMethod] ||
@@ -289,7 +289,7 @@ export default function TransactionList({
                         </div>
                       )}
                       {transaction.receiptNumber && (
-                        <div>
+                        <div className="text-right">
                           <span className="font-medium">شماره رسید:</span>
                           <div>{transaction.receiptNumber}</div>
                         </div>
@@ -297,14 +297,14 @@ export default function TransactionList({
                     </div>
 
                     {transaction.notes && (
-                      <div className="mt-2 text-sm text-gray-600">
+                      <div className="mt-2 text-sm text-gray-600 text-right">
                         <span className="font-medium">یادداشت:</span>{" "}
                         {transaction.notes}
                       </div>
                     )}
                   </div>
 
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 mr-4">
                     <button
                       onClick={() => deleteTransaction(transaction._id)}
                       className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-colors duration-200"
