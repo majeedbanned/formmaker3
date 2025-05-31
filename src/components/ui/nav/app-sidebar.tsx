@@ -116,7 +116,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "*ارسال پیام الکترونیکی",
+          title: "+ارسال پیام الکترونیکی",
           url: "/admin/messages",
           system: "importstudents",
           requiredPermission: "show",
@@ -280,7 +280,7 @@ const data = {
         },
 
         {
-          title: "صندوق پیام",
+          title: "+صندوق پیام",
           url: "/admin/inbox",
           system: "importstudents",
           requiredPermission: "show",
