@@ -22,18 +22,28 @@ interface Transaction {
   transactionDate: string;
   notes: string;
   createdAt: string;
+  documents?: Array<{
+    originalName: string;
+    filename: string;
+    filepath: string;
+    size: number;
+    type: string;
+    uploadedAt: Date;
+  }>;
 }
 
 interface TransactionListProps {
   selectedPerson: Person;
   refreshTrigger: number;
   onRefresh: () => void;
+  onEditTransaction: (transaction: Transaction) => void;
 }
 
 export default function TransactionList({
   selectedPerson,
   refreshTrigger,
   onRefresh,
+  onEditTransaction,
 }: TransactionListProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +79,53 @@ export default function TransactionList({
     card: "کارتی",
     scholarship: "بورسیه",
     other: "سایر",
+  };
+
+  // Get file icon based on type
+  const getFileIcon = (type: string) => {
+    if (type.startsWith("image/")) {
+      return (
+        <svg
+          className="w-4 h-4 text-blue-500"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+            clipRule="evenodd"
+          />
+        </svg>
+      );
+    } else if (type === "application/pdf") {
+      return (
+        <svg
+          className="w-4 h-4 text-red-500"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+            clipRule="evenodd"
+          />
+        </svg>
+      );
+    } else {
+      return (
+        <svg
+          className="w-4 h-4 text-gray-500"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+            clipRule="evenodd"
+          />
+        </svg>
+      );
+    }
   };
 
   // Fetch transactions
@@ -302,9 +359,57 @@ export default function TransactionList({
                         {transaction.notes}
                       </div>
                     )}
+
+                    {/* Documents Section */}
+                    {transaction.documents &&
+                      transaction.documents.length > 0 && (
+                        <div className="mt-3 text-right">
+                          <span className="text-sm font-medium text-gray-700 mb-2 block">
+                            پیوست‌ها:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {transaction.documents.map((doc, index) => (
+                              <a
+                                key={index}
+                                href={doc.filepath}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 text-sm text-gray-700 hover:text-gray-900"
+                                title={`${doc.originalName} - ${Math.round(
+                                  doc.size / 1024
+                                )} KB`}
+                              >
+                                {getFileIcon(doc.type)}
+                                <span className="max-w-24 truncate">
+                                  {doc.originalName}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   <div className="flex gap-2 mr-4">
+                    <button
+                      onClick={() => onEditTransaction(transaction)}
+                      className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors duration-200"
+                      title="ویرایش تراکنش"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
                     <button
                       onClick={() => deleteTransaction(transaction._id)}
                       className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-colors duration-200"

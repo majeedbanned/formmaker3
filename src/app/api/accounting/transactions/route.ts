@@ -144,7 +144,8 @@ export async function POST(request: NextRequest) {
       transactionDate,
       isRecurring = false,
       recurringConfig = null,
-      notes = ""
+      notes = "",
+      documents = []
     } = body;
 
     // Validate required fields
@@ -212,7 +213,8 @@ export async function POST(request: NextRequest) {
       createdByType: user.userType,
       createdAt: new Date(),
       updatedAt: new Date(),
-      notes
+      notes,
+      documents: documents || []
     };
 
     // Insert transaction

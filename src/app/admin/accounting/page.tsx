@@ -9,6 +9,19 @@ import PersonSummary from "./components/PersonSummary";
 import AccountingSummary from "./components/AccountingSummary";
 import BulkTransactionForm from "./components/BulkTransactionForm";
 
+interface Transaction {
+  _id: string;
+  transactionType: "debit" | "credit";
+  amount: number;
+  description: string;
+  paymentMethod: string;
+  category: string;
+  receiptNumber: string;
+  referenceNumber: string;
+  transactionDate: string;
+  notes: string;
+}
+
 export default function AccountingPage() {
   const { user } = useAuth();
   const [selectedPerson, setSelectedPerson] = useState<{
@@ -20,11 +33,33 @@ export default function AccountingPage() {
   } | null>(null);
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showBulkTransactionForm, setShowBulkTransactionForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<
+    Transaction | undefined
+  >(undefined);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Refresh data
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // Handle edit transaction
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setShowTransactionForm(true);
+  };
+
+  // Handle form close
+  const handleFormClose = () => {
+    setShowTransactionForm(false);
+    setEditingTransaction(undefined);
+  };
+
+  // Handle form success
+  const handleFormSuccess = () => {
+    setShowTransactionForm(false);
+    setEditingTransaction(undefined);
+    refreshData();
   };
 
   if (!user || user.userType !== "school") {
@@ -185,6 +220,7 @@ export default function AccountingPage() {
                   selectedPerson={selectedPerson}
                   refreshTrigger={refreshTrigger}
                   onRefresh={refreshData}
+                  onEditTransaction={handleEditTransaction}
                 />
               </>
             ) : (
@@ -247,11 +283,9 @@ export default function AccountingPage() {
         {showTransactionForm && selectedPerson && (
           <TransactionForm
             person={selectedPerson}
-            onClose={() => setShowTransactionForm(false)}
-            onSuccess={() => {
-              setShowTransactionForm(false);
-              refreshData();
-            }}
+            onClose={handleFormClose}
+            onSuccess={handleFormSuccess}
+            transaction={editingTransaction}
           />
         )}
 
