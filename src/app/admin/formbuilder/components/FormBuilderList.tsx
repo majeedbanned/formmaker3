@@ -640,82 +640,100 @@ export default function FormBuilderList({
                           گزینه‌های فرم
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onEdit(form)}
-                          className="cursor-pointer hover:bg-gray-50"
-                        >
-                          <Edit className="h-4 w-4 ml-2 text-indigo-500" />
-                          <span>ویرایش فرم</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onPreview(form)}
-                          className="cursor-pointer hover:bg-gray-50"
-                        >
-                          <Eye className="h-4 w-4 ml-2 text-blue-500" />
-                          <span>پیش‌نمایش فرم</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleSettingsClick(form)}
-                          className="cursor-pointer hover:bg-gray-50"
-                        >
-                          <Settings className="h-4 w-4 ml-2 text-gray-500" />
-                          <span>تنظیمات فرم</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link
-                            className="flex items-center cursor-pointer hover:bg-gray-50"
-                            target="_blank"
-                            href={`/admin/formbuilder/view?id=${form._id}`}
-                          >
-                            <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
-                            <span>مشاهده مستقل فرم</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer hover:bg-gray-50">
-                          <FormSubmissionViewer
-                            formId={form._id!}
-                            formTitle={form.title}
-                            trigger={
-                              <div className="flex items-center w-full">
-                                <FileText className="h-4 w-4 ml-2 text-amber-500" />
-                                <span>مشاهده پاسخ‌ها</span>
-                              </div>
-                            }
-                          />
-                        </DropdownMenuItem>
 
-                        {/* Add export options */}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-xs text-gray-500">
-                          دریافت پاسخ‌ها
-                        </DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleExportSubmissions(form._id!, "json")
-                          }
-                          className="cursor-pointer hover:bg-gray-50"
-                        >
-                          <FileJson className="h-4 w-4 ml-2 text-violet-500" />
-                          <span>دریافت با فرمت JSON</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleExportSubmissions(form._id!, "csv")
-                          }
-                          className="cursor-pointer hover:bg-gray-50"
-                        >
-                          <FileText className="h-4 w-4 ml-2 text-emerald-500" />
-                          <span>دریافت با فرمت CSV</span>
-                        </DropdownMenuItem>
+                        {/* Show only "مشاهده مستقل فرم" for students */}
+                        {user?.userType === "student" ? (
+                          <DropdownMenuItem asChild>
+                            <Link
+                              className="flex items-center cursor-pointer hover:bg-gray-50"
+                              target="_blank"
+                              href={`/admin/formbuilder/view?id=${form._id}`}
+                            >
+                              <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
+                              <span>مشاهده مستقل فرم</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        ) : (
+                          // Show all options for teachers and school admins
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => onEdit(form)}
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <Edit className="h-4 w-4 ml-2 text-indigo-500" />
+                              <span>ویرایش فرم</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => onPreview(form)}
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <Eye className="h-4 w-4 ml-2 text-blue-500" />
+                              <span>پیش‌نمایش فرم</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSettingsClick(form)}
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <Settings className="h-4 w-4 ml-2 text-gray-500" />
+                              <span>تنظیمات فرم</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                className="flex items-center cursor-pointer hover:bg-gray-50"
+                                target="_blank"
+                                href={`/admin/formbuilder/view?id=${form._id}`}
+                              >
+                                <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
+                                <span>مشاهده مستقل فرم</span>
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer hover:bg-gray-50">
+                              <FormSubmissionViewer
+                                formId={form._id!}
+                                formTitle={form.title}
+                                trigger={
+                                  <div className="flex items-center w-full">
+                                    <FileText className="h-4 w-4 ml-2 text-amber-500" />
+                                    <span>مشاهده پاسخ‌ها</span>
+                                  </div>
+                                }
+                              />
+                            </DropdownMenuItem>
 
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteClick(form._id!)}
-                          className="text-red-600 hover:text-red-700 cursor-pointer hover:bg-red-50"
-                        >
-                          <Trash className="h-4 w-4 ml-2" />
-                          <span>حذف فرم</span>
-                        </DropdownMenuItem>
+                            {/* Add export options */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-gray-500">
+                              دریافت پاسخ‌ها
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleExportSubmissions(form._id!, "json")
+                              }
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <FileJson className="h-4 w-4 ml-2 text-violet-500" />
+                              <span>دریافت با فرمت JSON</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleExportSubmissions(form._id!, "csv")
+                              }
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <FileText className="h-4 w-4 ml-2 text-emerald-500" />
+                              <span>دریافت با فرمت CSV</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(form._id!)}
+                              className="text-red-600 hover:text-red-700 cursor-pointer hover:bg-red-50"
+                            >
+                              <Trash className="h-4 w-4 ml-2" />
+                              <span>حذف فرم</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
