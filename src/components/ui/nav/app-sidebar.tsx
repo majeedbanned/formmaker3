@@ -215,6 +215,13 @@ const data = {
           requiredPermission: "show",
         },
         {
+          title: "+تراکنش های حسابداری",
+          url: "/admin/accountantreport",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+
+        {
           title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
           system: "importstudents",
