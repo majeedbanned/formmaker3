@@ -204,25 +204,32 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 h-[calc(100vh-150px)] rtl overflow-hidden">
+    <div
+      className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)] overflow-hidden"
+      dir="rtl"
+    >
       {/* Chatroom list (right column) */}
-      <div className="md:col-span-1 h-full overflow-hidden flex flex-col">
-        <ChatroomList
-          chatrooms={chatrooms}
-          selectedChatroomId={selectedChatroomId}
-          onSelectChatroom={handleSelectChatroom}
-          isLoading={isLoadingChatrooms}
-        />
+      <div className="lg:col-span-1 h-full overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
+          <ChatroomList
+            chatrooms={chatrooms}
+            selectedChatroomId={selectedChatroomId}
+            onSelectChatroom={handleSelectChatroom}
+            isLoading={isLoadingChatrooms}
+          />
+        </div>
       </div>
 
       {/* Chat window (left column) */}
-      <div className="md:col-span-2 h-full overflow-hidden flex flex-col">
-        <ChatWindow
-          user={user}
-          selectedChatroom={selectedChatroom}
-          messages={messages}
-          isLoading={isLoadingMessages}
-        />
+      <div className="lg:col-span-3 h-full overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
+          <ChatWindow
+            user={user}
+            selectedChatroom={selectedChatroom}
+            messages={messages}
+            isLoading={isLoadingMessages}
+          />
+        </div>
       </div>
     </div>
   );
