@@ -215,7 +215,7 @@ const data = {
           requiredPermission: "show",
         },
         {
-          title: "+تراکنش های حسابداری",
+          title: "++تراکنش های حسابداری",
           url: "/admin/accountantreport",
           system: "importstudents",
           requiredPermission: "show",
