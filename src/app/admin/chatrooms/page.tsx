@@ -160,6 +160,10 @@ function StudentsPageContent() {
       required: true,
       enabled: true,
       visible: true,
+      populateID: {
+        collection: "chatrooms",
+        field: "data.chatroomCode",
+      },
       readonly: false,
       listLabelColor: "#2563eb",
       defaultValue: "",
@@ -331,7 +335,7 @@ function StudentsPageContent() {
       defaultValue: user?.schoolCode,
       readonly: true,
       required: true,
-      groupUniqueness: true,
+      // groupUniqueness: true,
       enabled: true,
       visible: false,
 
