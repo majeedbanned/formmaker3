@@ -5,6 +5,8 @@ export interface User {
   userType: string;
   schoolCode: string;
   role: string;
+  classCode?: { label: string; value: string }[];
+  groups?: { label: string; value: string }[];
 }
 
 export interface ChatroomRecipient {

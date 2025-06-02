@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
       username: string;
       name: string;
       role: string;
+      classCode?: { label: string; value: string }[];
+      groups?: { label: string; value: string }[];
     };
 
     // Ensure user has schoolCode
@@ -52,42 +54,80 @@ export async function GET(request: NextRequest) {
     
     console.log(`Fetching chatrooms for school: ${schoolCode}, user: ${payload.userId}, userType: ${payload.userType}`);
     
-    // Build filter object
-    let filter = {};
+    // Get all chatrooms for the school first
+    const allChatrooms = await chatroomsCollection
+      .find({ "data.schoolCode": schoolCode })
+      .sort({ "updatedAt": -1 })
+      .toArray();
+    
+    let filteredChatrooms: typeof allChatrooms = [];
     
     // Apply different filters based on user type
     if (payload.userType === 'school') {
       // School admins can see all chatrooms for their school
-      filter = { "data.schoolCode": schoolCode };
+      filteredChatrooms = allChatrooms;
     } else if (payload.userType === 'teacher') {
       // Teachers can see chatrooms where they are listed as recipients
-      filter = {
-        "data.schoolCode": schoolCode,
-        $or: [
-          { "data.recipients.teachers": payload.userId },
-          // Include chatrooms targeted at the teacher's classes if we had that info
-        ]
-      };
+      filteredChatrooms = allChatrooms.filter(chatroom => {
+        const recipients = chatroom.data.recipients;
+        if (!recipients) return false;
+        
+        // Check if teacher is directly listed in teachers recipients
+        if (recipients.teachers && Array.isArray(recipients.teachers)) {
+          return recipients.teachers.some((teacher: string | { label: string; value: string }) => {
+            // Handle both string values and object with value property
+            const teacherValue = typeof teacher === 'string' ? teacher : teacher.value;
+            return teacherValue === payload.userId || teacherValue === payload.username;
+          });
+        }
+        
+        return false;
+      });
     } else if (payload.userType === 'student') {
-      // Students can see chatrooms where they are listed as recipients
-      filter = {
-        "data.schoolCode": schoolCode,
-        $or: [
-          { "data.recipients.students": payload.userId },
-          // Include chatrooms targeted at the student's class or groups if we had that info
-        ]
-      };
+      // Students can see chatrooms where they have access to
+      filteredChatrooms = allChatrooms.filter(chatroom => {
+        const recipients = chatroom.data.recipients;
+        if (!recipients) return false;
+        
+        // Check if student is directly listed in students recipients
+        if (recipients.students && Array.isArray(recipients.students)) {
+          const hasDirectAccess = recipients.students.some((student: string | { label: string; value: string }) => {
+            const studentValue = typeof student === 'string' ? student : student.value;
+            return studentValue === payload.userId || studentValue === payload.username;
+          });
+          if (hasDirectAccess) return true;
+        }
+        
+        // Check if student's class is in the recipients
+        if (recipients.classCode && Array.isArray(recipients.classCode) && payload.classCode) {
+          const studentClassCodes = payload.classCode.map(c => c.value);
+          const hasClassAccess = recipients.classCode.some((classItem: string | { label: string; value: string }) => {
+            const classValue = typeof classItem === 'string' ? classItem : classItem.value;
+            return studentClassCodes.includes(classValue);
+          });
+          if (hasClassAccess) return true;
+        }
+        
+        // Check if student's group is in the recipients
+        if (recipients.groups && Array.isArray(recipients.groups) && payload.groups) {
+          const studentGroupIds = payload.groups.map(g => g.value);
+          const hasGroupAccess = recipients.groups.some((group: string | { label: string; value: string }) => {
+            const groupValue = typeof group === 'string' ? group : group.value;
+            return studentGroupIds.includes(groupValue);
+          });
+          if (hasGroupAccess) return true;
+        }
+        
+        return false;
+      });
+    } else {
+      // Unknown user type, no access
+      filteredChatrooms = [];
     }
     
-    // Query chatrooms
-    const chatrooms = await chatroomsCollection
-      .find()
-      .sort({ "data.updatedAt": -1 })
-      .toArray();
+    console.log(`Found ${filteredChatrooms.length} accessible chatrooms out of ${allChatrooms.length} total`);
     
-    console.log(`Found ${chatrooms.length} chatrooms`);
-    
-    return NextResponse.json({ chatrooms });
+    return NextResponse.json({ chatrooms: filteredChatrooms });
   } catch (error) {
     console.error("Error retrieving chatrooms:", error);
     return NextResponse.json(
