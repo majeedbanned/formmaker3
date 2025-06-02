@@ -6,6 +6,7 @@ interface ChatroomListProps {
   selectedChatroomId: string | null;
   onSelectChatroom: (chatroomId: string) => void;
   isLoading: boolean;
+  unreadCounts: Record<string, number>;
 }
 
 const ChatroomList: React.FC<ChatroomListProps> = ({
@@ -13,6 +14,7 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
   selectedChatroomId,
   onSelectChatroom,
   isLoading,
+  unreadCounts,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredChatrooms, setFilteredChatrooms] = useState<Chatroom[]>([]);
@@ -142,9 +144,20 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
                         >
                           {room.data.chatroomName}
                         </span>
-                        {selectedChatroomId === room._id && (
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        )}
+                        <div className="flex items-center space-x-reverse space-x-2">
+                          {/* Unread count badge - only show if not currently selected */}
+                          {unreadCounts[room._id] > 0 &&
+                            selectedChatroomId !== room._id && (
+                              <div className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                                {unreadCounts[room._id] > 99
+                                  ? "99+"
+                                  : unreadCounts[room._id]}
+                              </div>
+                            )}
+                          {selectedChatroomId === room._id && (
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500">

@@ -18,6 +18,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingChatrooms, setIsLoadingChatrooms] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   // Get selected chatroom object
   const selectedChatroom =
@@ -71,6 +72,45 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
     };
   }, [user]);
 
+  // Set up global socket listeners (unread counts updates)
+  useEffect(() => {
+    const setupSocketListeners = (): (() => void) | null => {
+      const socket = getSocket();
+      if (!socket) return null;
+
+      // Handle unread counts updates - this should always be active
+      const handleUnreadCountsUpdated = (
+        newUnreadCounts: Record<string, number>
+      ) => {
+        console.log("Received unread counts update:", newUnreadCounts);
+        setUnreadCounts(newUnreadCounts);
+      };
+
+      socket.on("unread-counts-updated", handleUnreadCountsUpdated);
+
+      return () => {
+        socket.off("unread-counts-updated", handleUnreadCountsUpdated);
+      };
+    };
+
+    // Try to set up listeners immediately
+    let cleanup = setupSocketListeners();
+
+    // If socket isn't ready, try again after a short delay
+    if (!cleanup) {
+      const timeout = setTimeout(() => {
+        cleanup = setupSocketListeners();
+      }, 500);
+
+      return () => {
+        clearTimeout(timeout);
+        if (cleanup) cleanup();
+      };
+    }
+
+    return cleanup;
+  }, []);
+
   // Handle new messages, deletions, and edits
   useEffect(() => {
     const socket = getSocket();
@@ -80,6 +120,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
     const handleNewMessage = (message: ChatMessage) => {
       if (message.chatroomId === selectedChatroomId) {
         setMessages((prevMessages) => [...prevMessages, message]);
+
+        // Mark the message as read since the chatroom is currently active
+        socket.emit("mark-messages-read", { chatroomId: selectedChatroomId });
+
+        // Clear unread count for this chatroom since user is actively viewing it
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [selectedChatroomId]: 0,
+        }));
       }
     };
 
@@ -160,11 +209,40 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
 
       const data = await response.json();
       setChatrooms(data.chatrooms || []);
+
+      // Load unread counts after loading chatrooms
+      loadUnreadCounts();
     } catch (error) {
       console.error("Error loading chatrooms:", error);
       toast.error("خطا در بارگذاری لیست گفتگوها");
     } finally {
       setIsLoadingChatrooms(false);
+    }
+  };
+
+  // Load unread counts for all chatrooms
+  const loadUnreadCounts = async () => {
+    try {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit(
+          "get-unread-counts",
+          null,
+          (response: {
+            success: boolean;
+            unreadCounts?: Record<string, number>;
+            error?: string;
+          }) => {
+            if (response.success && response.unreadCounts) {
+              setUnreadCounts(response.unreadCounts);
+            } else {
+              console.error("Error loading unread counts:", response.error);
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error loading unread counts:", error);
     }
   };
 
@@ -195,6 +273,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
 
         if (response.success && response.messages) {
           setMessages(response.messages);
+
+          // Clear unread count for this chatroom since user just joined
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [chatroomId]: 0,
+          }));
         } else {
           console.error("Error joining room:", response.error);
           toast.error("خطا در ورود به اتاق گفتگو");
@@ -216,6 +300,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
             selectedChatroomId={selectedChatroomId}
             onSelectChatroom={handleSelectChatroom}
             isLoading={isLoadingChatrooms}
+            unreadCounts={unreadCounts}
           />
         </div>
       </div>
