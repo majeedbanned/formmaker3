@@ -32,7 +32,12 @@ import {
   XCircleIcon,
   ChartBarIcon,
   DocumentTextIcon,
+  UserIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
 
 /* ───── Day.js config ──────────────────────────────────────────────────── */
 dayjs.extend(jalaliday);
@@ -85,6 +90,9 @@ export default function OnlineExamPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
 
+  // Add user authentication
+  const { user, isLoading: authLoading } = useAuth();
+
   /* ── Tick each second   (pause when tab hidden) ──────────────────────── */
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -104,6 +112,9 @@ export default function OnlineExamPage() {
 
   /* ── Fetch exams ───────────────────────────────────────────────────── */
   useEffect(() => {
+    // Wait for auth to complete before fetching exams
+    if (authLoading || !user) return;
+
     const controller = new AbortController();
 
     (async () => {
@@ -154,11 +165,11 @@ export default function OnlineExamPage() {
     })();
 
     return () => controller.abort();
-  }, []);
+  }, [authLoading, user?.id, user?.userType]); // Use specific user properties instead of whole user object
 
   /* ── Jalali parsing helper & memoised exams ────────────────────────── */
   const parseJalaliDate = useCallback(
-    (p?: string) => (p ? dayjs(toEN(p.trim()), { jalali: true }) : null),
+    (p?: string) => (p ? dayjs(toEN(p.trim()), { jalali: true } as any) : null),
     []
   );
 
@@ -186,8 +197,45 @@ export default function OnlineExamPage() {
     return `در حال برگزاری، پایان در ${end.fromNow(true)}`;
   };
 
+  /* ── Helper functions for user role display ──────────────────────── */
+  const userRoleInfo = useMemo(() => {
+    if (!user) return { icon: UserIcon, text: "کاربر", description: "" };
+
+    switch (user.userType) {
+      case "school":
+        return {
+          icon: BuildingOfficeIcon,
+          text: "مدیر مدرسه",
+          description:
+            "شما به عنوان مدیر مدرسه تمام آزمون‌های مدرسه را مشاهده می‌کنید",
+        };
+      case "teacher":
+        return {
+          icon: AcademicCapIcon,
+          text: "معلم",
+          description:
+            "فقط آزمون‌هایی که برای شما تعریف شده‌اند، نمایش داده می‌شوند",
+        };
+      case "student":
+        return {
+          icon: UserIcon,
+          text: "دانش‌آموز",
+          description:
+            "فقط آزمون‌هایی که در کلاس، گروه یا مستقیماً برای شما تعریف شده‌اند، نمایش داده می‌شوند",
+        };
+      default:
+        return {
+          icon: UserIcon,
+          text: "کاربر",
+          description: "",
+        };
+    }
+  }, [user?.userType]);
+
+  const UserRoleIcon = userRoleInfo.icon;
+
   /* ── UI states ─────────────────────────────────────────────────────── */
-  if (loading)
+  if (authLoading || loading)
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -210,16 +258,51 @@ export default function OnlineExamPage() {
   /* ── Render table ──────────────────────────────────────────────────── */
   return (
     <div className="container mx-auto max-w-7xl p-4" dir="rtl">
+      {/* User Role Info Card */}
+      {user && (
+        <Card className="mb-6 shadow-sm border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <UserRoleIcon className="h-6 w-6 text-blue-600" />
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {user.name} - {userRoleInfo.text}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {userRoleInfo.description}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  تعداد آزمون‌های قابل دسترس: {parsedExams.length} آزمون
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-lg">
         <CardHeader className="bg-blue-50">
-          <CardTitle className="text-xl text-blue-800">
+          <CardTitle className="text-xl text-blue-800 flex items-center">
+            <InformationCircleIcon className="h-6 w-6 ml-2" />
             آزمون‌های آنلاین
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           {parsedExams.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
-              هیچ آزمونی یافت نشد.
+              <div className="flex flex-col items-center">
+                <DocumentTextIcon className="h-16 w-16 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  هیچ آزمونی یافت نشد
+                </h3>
+                <p className="text-sm text-gray-500 max-w-md">
+                  {user?.userType === "student"
+                    ? "هنوز آزمونی برای شما تعریف نشده است. با معلم یا مدیر مدرسه تماس بگیرید."
+                    : user?.userType === "teacher"
+                    ? "هنوز آزمونی برای شما تعریف نشده است. آزمون‌ها باید شامل شما به عنوان معلم باشند."
+                    : "هنوز آزمونی در مدرسه تعریف نشده است."}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -242,6 +325,7 @@ export default function OnlineExamPage() {
                     const canShowResults =
                       userFinished &&
                       data.settings?.showScoreAfterExam === true;
+
                     const canShowAnswersheet =
                       userFinished &&
                       data.settings?.showanswersafterexam === true;
