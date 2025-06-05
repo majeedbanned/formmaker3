@@ -1,10 +1,9 @@
 "use client";
 import { useAuth } from "@/hooks/useAuth";
-import { SurveyWidget } from "../components/widgets";
+import { SurveyWidget, BirthdateWidget } from "../components/widgets";
 
 export default function Dashboard() {
-  const { user, isLoading, error, logout, isAuthenticated, hasPermission } =
-    useAuth();
+  const { user, isLoading, error, logout, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return (
@@ -38,17 +37,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  // Check permissions based on system name
-  const canViewSchools = hasPermission("attendance", "view");
-  const canEditSchools = hasPermission("attendance", "edit");
-  const canDeleteSchools = hasPermission("attendance", "delete");
-  const canCreateSchools = hasPermission("attendance", "list");
-
-  // Check permissions for other systems based on user type
-  const canManageTeachers = hasPermission("attendance", "groupDelete");
-  const canManageStudents = hasPermission("attendance", "show");
-  const canManageClasses = hasPermission("attendance", "search");
 
   console.log(user);
 
@@ -105,6 +93,11 @@ export default function Dashboard() {
           {/* Survey Widget - Takes up 2 columns on large screens */}
           <div className="lg:col-span-2">
             <SurveyWidget />
+          </div>
+
+          {/* Birthdate Widget - Takes up 1 column on large screens */}
+          <div className="lg:col-span-1">
+            <BirthdateWidget user={user} />
           </div>
         </div>
 
