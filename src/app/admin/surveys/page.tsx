@@ -28,6 +28,7 @@ import { useSurveys } from "./hooks/useSurveys";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Survey } from "./types/survey";
 
 export default function SurveysPage() {
   const router = useRouter();
@@ -97,6 +98,25 @@ export default function SurveysPage() {
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("fa-IR");
+  };
+
+  const getParticipateButtonText = (survey: Survey) => {
+    if (survey.hasParticipated) {
+      return "شرکت کرده‌اید";
+    }
+    if (!survey.isWithinDateRange) {
+      return "خارج از زمان";
+    }
+    return user?.userType === "student" ? "پاسخ دادن" : "شرکت در نظرسنجی";
+  };
+
+  const getParticipateButtonVariant = (survey: Survey) => {
+    if (!survey.canParticipate) {
+      return "secondary" as const;
+    }
+    return user?.userType === "student"
+      ? ("default" as const)
+      : ("default" as const);
   };
 
   if (loading) {
@@ -197,9 +217,22 @@ export default function SurveysPage() {
                           </CardTitle>
                           <div className="flex items-center space-x-2 space-x-reverse mt-2">
                             {getStatusBadge(survey.status)}
-                            <span className="text-xs text-gray-500">
-                              {formatDate(survey.createdAt)}
-                            </span>
+                            {survey.hasParticipated && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-50 text-green-700 border-green-200"
+                              >
+                                شرکت کرده‌اید
+                              </Badge>
+                            )}
+                            {!survey.isWithinDateRange && (
+                              <Badge
+                                variant="outline"
+                                className="bg-orange-50 text-orange-700 border-orange-200"
+                              >
+                                خارج از زمان
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <DropdownMenu>
@@ -317,12 +350,22 @@ export default function SurveysPage() {
                           </CardTitle>
                           <div className="flex items-center space-x-2 space-x-reverse mt-2">
                             {getStatusBadge(survey.status)}
-                            <Badge
-                              variant="outline"
-                              className="bg-green-50 text-green-700"
-                            >
-                              قابل شرکت
-                            </Badge>
+                            {survey.hasParticipated && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-50 text-green-700 border-green-200"
+                              >
+                                شرکت کرده‌اید
+                              </Badge>
+                            )}
+                            {!survey.isWithinDateRange && (
+                              <Badge
+                                variant="outline"
+                                className="bg-orange-50 text-orange-700 border-orange-200"
+                              >
+                                خارج از زمان
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -359,11 +402,17 @@ export default function SurveysPage() {
                           onClick={() =>
                             router.push(`/admin/surveys/answer/${survey._id}`)
                           }
-                          className="w-full bg-green-600 hover:bg-green-700"
+                          disabled={!survey.canParticipate}
+                          variant={getParticipateButtonVariant(survey)}
+                          className={
+                            survey.canParticipate
+                              ? "w-full bg-blue-600 hover:bg-blue-700"
+                              : "w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+                          }
                           size="sm"
                         >
                           <User className="h-4 w-4 ml-1" />
-                          شرکت در نظرسنجی
+                          {getParticipateButtonText(survey)}
                         </Button>
                       </div>
                     </CardContent>
@@ -400,9 +449,22 @@ export default function SurveysPage() {
                       </CardTitle>
                       <div className="flex items-center space-x-2 space-x-reverse mt-2">
                         {getStatusBadge(survey.status)}
-                        <span className="text-xs text-gray-500">
-                          {formatDate(survey.createdAt)}
-                        </span>
+                        {survey.hasParticipated && (
+                          <Badge
+                            variant="outline"
+                            className="bg-green-50 text-green-700 border-green-200"
+                          >
+                            شرکت کرده‌اید
+                          </Badge>
+                        )}
+                        {!survey.isWithinDateRange && (
+                          <Badge
+                            variant="outline"
+                            className="bg-orange-50 text-orange-700 border-orange-200"
+                          >
+                            خارج از زمان
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -439,11 +501,17 @@ export default function SurveysPage() {
                       onClick={() =>
                         router.push(`/admin/surveys/answer/${survey._id}`)
                       }
-                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      disabled={!survey.canParticipate}
+                      variant={getParticipateButtonVariant(survey)}
+                      className={
+                        survey.canParticipate
+                          ? "w-full bg-blue-600 hover:bg-blue-700"
+                          : "w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+                      }
                       size="sm"
                     >
                       <User className="h-4 w-4 ml-1" />
-                      پاسخ دادن
+                      {getParticipateButtonText(survey)}
                     </Button>
                   </div>
                 </CardContent>
@@ -487,9 +555,22 @@ export default function SurveysPage() {
                     </CardTitle>
                     <div className="flex items-center space-x-2 space-x-reverse mt-2">
                       {getStatusBadge(survey.status)}
-                      <span className="text-xs text-gray-500">
-                        {formatDate(survey.createdAt)}
-                      </span>
+                      {survey.hasParticipated && (
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
+                          شرکت کرده‌اید
+                        </Badge>
+                      )}
+                      {!survey.isWithinDateRange && (
+                        <Badge
+                          variant="outline"
+                          className="bg-orange-50 text-orange-700 border-orange-200"
+                        >
+                          خارج از زمان
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <DropdownMenu>

@@ -15,17 +15,21 @@ export interface Survey {
   classTargets: string[]; // array of class codes
   teacherTargets: string[]; // array of teacher codes
   status: "draft" | "active" | "closed";
-  startDate?: Date | string;
-  endDate?: Date | string;
+  startDate?: Date | null;
+  endDate?: Date | null;
   allowAnonymous: boolean;
   showResults: boolean;
   schoolCode: string;
   creatorId: string;
   creatorType: string;
   creatorName: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: Date;
+  updatedAt: Date;
   responseCount: number;
+  // Participation status fields (only for students/teachers)
+  hasParticipated?: boolean;
+  isWithinDateRange?: boolean;
+  canParticipate?: boolean;
 }
 
 export interface SurveyResponse {

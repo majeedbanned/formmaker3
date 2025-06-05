@@ -78,6 +78,50 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
+    // For students and teachers, check participation status and date validity
+    if (user.userType === "student" || user.userType === "teacher") {
+      const currentDate = new Date();
+      const surveyIds = surveys.map(s => s._id);
+      
+      // Get all responses from this user for these surveys in one query
+      const userResponses = await connection
+        .collection("survey_responses")
+        .find({
+          surveyId: { $in: surveyIds },
+          responderId: user.id
+        })
+        .project({ surveyId: 1 })
+        .toArray();
+      
+      const respondedSurveyIds = new Set(
+        userResponses.map(r => r.surveyId.toString())
+      );
+
+      // Add participation and date validation info to each survey
+      const surveysWithStatus = surveys.map(survey => {
+        const hasParticipated = respondedSurveyIds.has(survey._id.toString());
+        
+        // Check if survey is within date range
+        const startDate = survey.startDate ? new Date(survey.startDate) : null;
+        const endDate = survey.endDate ? new Date(survey.endDate) : null;
+        
+        const isWithinDateRange = 
+          (!startDate || currentDate >= startDate) && 
+          (!endDate || currentDate <= endDate);
+        
+        const canParticipate = !hasParticipated && isWithinDateRange && survey.status === "active";
+
+        return {
+          ...survey,
+          hasParticipated,
+          isWithinDateRange,
+          canParticipate
+        };
+      });
+
+      return NextResponse.json({ surveys: surveysWithStatus });
+    }
+
     return NextResponse.json({ surveys });
   } catch (error) {
     console.error("Error fetching surveys:", error);
@@ -143,30 +187,30 @@ export async function POST(request: NextRequest) {
     }
 
     // For teachers, validate they can only target their own classes
-    if (user.userType === "teacher") {
-      const teacherClasses = user.classCode?.map((c: { value: string }) => c.value) || [];
+    // if (user.userType === "teacher") {
+    //   const teacherClasses = user.classCode?.map((c: { value: string }) => c.value) || [];
       
-      // Check if teacher is trying to target classes they don't teach
-      if (classTargets && classTargets.length > 0) {
-        const invalidClasses = classTargets.filter((classCode: string) => 
-          !teacherClasses.includes(classCode)
-        );
-        if (invalidClasses.length > 0) {
-          return NextResponse.json(
-            { error: "Teachers can only create surveys for their own classes" },
-            { status: 403 }
-          );
-        }
-      }
+    //   // Check if teacher is trying to target classes they don't teach
+    //   if (classTargets && classTargets.length > 0) {
+    //     const invalidClasses = classTargets.filter((classCode: string) => 
+    //       !teacherClasses.includes(classCode)
+    //     );
+    //     if (invalidClasses.length > 0) {
+    //       return NextResponse.json(
+    //         { error: "Teachers can only create surveys for their own classes" },
+    //         { status: 403 }
+    //       );
+    //     }
+    //   }
 
-      // Teachers cannot target other teachers
-      if (teacherTargets && teacherTargets.length > 0) {
-        return NextResponse.json(
-          { error: "Teachers cannot target other teachers" },
-          { status: 403 }
-        );
-      }
-    }
+    //   // Teachers cannot target other teachers
+    //   if (teacherTargets && teacherTargets.length > 0) {
+    //     return NextResponse.json(
+    //       { error: "Teachers cannot target other teachers" },
+    //       { status: 403 }
+    //     );
+    //   }
+    // }
 
     const domain = request.headers.get('x-domain') || 'localhost:3000';
     const connection = await connectToDatabase(domain);
