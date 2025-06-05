@@ -239,6 +239,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "+بارگذاری تاریخ تولد دانش آموزان",
+          url: "/admin/bulkbirthdate",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: "+گزارش نمرات ماهانه",
