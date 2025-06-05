@@ -11,16 +11,12 @@ import {
   BarChart3,
   FileText,
   Users,
-  Calendar,
   Download,
   TrendingUp,
   Target,
   Clock,
-  MessageSquare,
-  Star,
   PieChart,
   Activity,
-  Eye,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
@@ -683,7 +679,7 @@ export default function SurveyResponsesPage() {
                                     <div className="text-2xl mb-2">
                                       {Array.from(
                                         { length: rating },
-                                        (_, i) => "⭐"
+                                        () => "⭐"
                                       ).join("")}
                                     </div>
                                     <div className="text-xl font-bold text-gray-800 mb-1">
