@@ -103,6 +103,31 @@ export const useSurveys = () => {
     setSurveys(prev => prev.filter(survey => survey._id !== surveyId));
   };
 
+  const duplicateSurvey = async (surveyId: string) => {
+    if (!user?.schoolCode) throw new Error("User not authenticated");
+
+    const response = await fetch("/api/surveys", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-domain": window.location.host,
+      },
+      body: JSON.stringify({
+        duplicateFromId: surveyId,
+        schoolCode: user.schoolCode,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to duplicate survey");
+    }
+
+    const data = await response.json();
+    setSurveys(prev => [data.survey, ...prev]);
+    return data.survey;
+  };
+
   useEffect(() => {
     fetchSurveys();
   }, [user?.schoolCode]);
@@ -115,6 +140,7 @@ export const useSurveys = () => {
     createSurvey,
     updateSurvey,
     deleteSurvey,
+    duplicateSurvey,
   };
 };
 

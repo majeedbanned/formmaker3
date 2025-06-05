@@ -132,7 +132,74 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST endpoint to create a new survey
+// Helper function to duplicate a survey
+async function duplicateSurvey(
+  originalSurveyId: string, 
+  user: {
+    id: string;
+    userType: string;
+    schoolCode: string;
+    name: string;
+  }, 
+  request: NextRequest
+) {
+  const domain = request.headers.get('x-domain') || 'localhost:3000';
+  const connection = await connectToDatabase(domain);
+
+  // Get the original survey
+  const originalSurvey = await connection.collection("surveys").findOne({
+    _id: new ObjectId(originalSurveyId),
+    schoolCode: user.schoolCode
+  });
+
+  if (!originalSurvey) {
+    return NextResponse.json(
+      { error: "Original survey not found" },
+      { status: 404 }
+    );
+  }
+
+  // Check if user has permission to duplicate this survey
+  // Teachers can only duplicate their own surveys, school admins can duplicate any survey
+  if (user.userType === "teacher" && originalSurvey.creatorId !== user.id) {
+    return NextResponse.json(
+      { error: "Teachers can only duplicate surveys they created" },
+      { status: 403 }
+    );
+  }
+
+  // Create the duplicated survey
+  const duplicatedSurvey = {
+    title: `کپی از ${originalSurvey.title}`,
+    description: originalSurvey.description || "",
+    questions: originalSurvey.questions,
+    classTargets: originalSurvey.classTargets || [],
+    teacherTargets: originalSurvey.teacherTargets || [],
+    status: "draft", // Always start as draft
+    startDate: null, // Reset dates
+    endDate: null,
+    allowAnonymous: originalSurvey.allowAnonymous || false,
+    showResults: originalSurvey.showResults || false,
+    schoolCode: user.schoolCode,
+    creatorId: user.id,
+    creatorType: user.userType,
+    creatorName: user.name,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    responseCount: 0
+  };
+
+  const result = await connection.collection("surveys").insertOne(duplicatedSurvey);
+
+  return NextResponse.json({
+    success: true,
+    surveyId: result.insertedId,
+    survey: { ...duplicatedSurvey, _id: result.insertedId },
+    message: "Survey duplicated successfully"
+  });
+}
+
+// POST endpoint to create a new survey or duplicate existing one
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -150,6 +217,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Check if this is a duplication request
+    if (body.duplicateFromId) {
+      return await duplicateSurvey(body.duplicateFromId, user, request);
+    }
+
     const { 
       title, 
       description, 

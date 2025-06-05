@@ -17,6 +17,7 @@ import {
   Users,
   FileText,
   User,
+  Copy,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,7 +34,8 @@ import { Survey } from "./types/survey";
 export default function SurveysPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { surveys, loading, error, deleteSurvey } = useSurveys();
+  const { surveys, loading, error, deleteSurvey, duplicateSurvey } =
+    useSurveys();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredSurveys = surveys.filter(
@@ -80,6 +82,18 @@ export default function SurveysPage() {
         console.error("Delete survey error:", error);
         toast.error("خطا در حذف نظرسنجی");
       }
+    }
+  };
+
+  const handleDuplicateSurvey = async (surveyId: string, title: string) => {
+    try {
+      const duplicatedSurvey = await duplicateSurvey(surveyId);
+      toast.success(`نظرسنجی "${title}" با موفقیت کپی شد`);
+      // Optionally redirect to edit the duplicated survey
+      router.push(`/admin/surveys/edit/${duplicatedSurvey._id}`);
+    } catch (error) {
+      console.error("Duplicate survey error:", error);
+      toast.error("خطا در کپی کردن نظرسنجی");
     }
   };
 
@@ -256,6 +270,14 @@ export default function SurveysPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() =>
+                                handleDuplicateSurvey(survey._id!, survey.title)
+                              }
+                            >
+                              <Copy className="h-4 w-4 ml-2" />
+                              کپی کردن
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
                                 handleDeleteSurvey(survey._id!, survey.title)
                               }
                               className="text-red-600"
@@ -320,6 +342,17 @@ export default function SurveysPage() {
                         >
                           <Edit className="h-4 w-4 ml-1" />
                           ویرایش
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDuplicateSurvey(survey._id!, survey.title)
+                          }
+                          className="flex-1"
+                        >
+                          <Copy className="h-4 w-4 ml-1" />
+                          کپی
                         </Button>
                       </div>
                     </CardContent>
@@ -594,6 +627,14 @@ export default function SurveysPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() =>
+                          handleDuplicateSurvey(survey._id!, survey.title)
+                        }
+                      >
+                        <Copy className="h-4 w-4 ml-2" />
+                        کپی کردن
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
                           handleDeleteSurvey(survey._id!, survey.title)
                         }
                         className="text-red-600"
@@ -658,6 +699,17 @@ export default function SurveysPage() {
                   >
                     <Edit className="h-4 w-4 ml-1" />
                     ویرایش
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleDuplicateSurvey(survey._id!, survey.title)
+                    }
+                    className="flex-1"
+                  >
+                    <Copy className="h-4 w-4 ml-1" />
+                    کپی
                   </Button>
                 </div>
               </CardContent>

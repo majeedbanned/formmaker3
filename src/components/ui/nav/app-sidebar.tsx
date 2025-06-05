@@ -220,6 +220,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "+ نظرسنجی ها",
+          url: "/admin/surveys",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: "+گزارش نمرات ماهانه",
