@@ -233,6 +233,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "+بارگذاری شماره های دانش آموزان",
+          url: "/admin/bulkphone",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
 
         {
           title: "+گزارش نمرات ماهانه",
