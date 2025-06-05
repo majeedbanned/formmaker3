@@ -228,6 +228,13 @@ const data = {
         },
 
         {
+          title: "+بارگذاری عکس های دانش آموزان",
+          url: "/admin/bulkavatar",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
+
+        {
           title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
           system: "importstudents",
