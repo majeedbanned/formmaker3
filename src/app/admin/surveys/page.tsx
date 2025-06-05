@@ -136,10 +136,6 @@ export default function SurveysPage() {
     }
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("fa-IR");
-  };
-
   const getParticipateButtonText = (survey: Survey) => {
     if (survey.hasParticipated) {
       return "شرکت کرده‌اید";
@@ -148,13 +144,6 @@ export default function SurveysPage() {
       return "خارج از زمان";
     }
     return user?.userType === "student" ? "پاسخ دادن" : "شرکت در نظرسنجی";
-  };
-
-  const getParticipateButtonVariant = (survey: Survey) => {
-    if (!survey.canParticipate) {
-      return "secondary" as const;
-    }
-    return "default" as const;
   };
 
   if (loading) {
