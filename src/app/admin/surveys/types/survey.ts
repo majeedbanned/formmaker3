@@ -12,8 +12,8 @@ export interface Survey {
   title: string;
   description?: string;
   questions: SurveyQuestion[];
-  targetType: "classes" | "teachers";
-  targetIds: string[]; // class codes or teacher codes
+  classTargets: string[]; // array of class codes
+  teacherTargets: string[]; // array of teacher codes
   status: "draft" | "active" | "closed";
   startDate?: Date | string;
   endDate?: Date | string;

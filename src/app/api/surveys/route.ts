@@ -65,12 +65,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    
     const { 
       title, 
       description, 
       questions, 
-      targetType, // "classes" or "teachers"
-      targetIds, // array of class codes or teacher codes
+      classTargets, // array of class codes
+      teacherTargets, // array of teacher codes
       status, // "draft", "active", "closed"
       startDate,
       endDate,
@@ -108,8 +109,8 @@ export async function POST(request: NextRequest) {
       title,
       description: description || "",
       questions,
-      targetType: targetType || "classes",
-      targetIds: targetIds || [],
+      classTargets: classTargets || [],
+      teacherTargets: teacherTargets || [],
       status: status || "draft",
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
@@ -149,6 +150,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    
     const { surveyId, ...updateData } = body;
 
     if (!surveyId) {
@@ -181,11 +183,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Remove _id field from updateData to prevent MongoDB error
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, ...cleanUpdateData } = updateData;
+
     const result = await connection.collection("surveys").updateOne(
       { _id: new ObjectId(surveyId) },
       { 
         $set: { 
-          ...updateData, 
+          ...cleanUpdateData, 
           updatedAt: new Date() 
         } 
       }

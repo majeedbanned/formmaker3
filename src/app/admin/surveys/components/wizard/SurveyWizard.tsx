@@ -15,6 +15,7 @@ import ReviewStep from "./ReviewStep";
 import { useSurveys } from "../../hooks/useSurveys";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SurveyWizardProps {
   initialSurvey?: Partial<Survey>;
@@ -67,6 +68,7 @@ export default function SurveyWizard({
 }: SurveyWizardProps) {
   const router = useRouter();
   const { createSurvey, updateSurvey } = useSurveys();
+  const { user } = useAuth();
 
   const [steps, setSteps] = useState<WizardStep[]>(WIZARD_STEPS);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -76,8 +78,8 @@ export default function SurveyWizard({
     title: "",
     description: "",
     questions: [],
-    targetType: "classes",
-    targetIds: [],
+    classTargets: [],
+    teacherTargets: [],
     status: "draft",
     allowAnonymous: false,
     showResults: false,
@@ -91,8 +93,8 @@ export default function SurveyWizard({
         title: "",
         description: "",
         questions: [],
-        targetType: "classes",
-        targetIds: [],
+        classTargets: [],
+        teacherTargets: [],
         status: "draft",
         allowAnonymous: false,
         showResults: false,
@@ -100,6 +102,16 @@ export default function SurveyWizard({
       });
     }
   }, [initialSurvey, mode]);
+
+  // Ensure teacher users always target classes
+  useEffect(() => {
+    if (
+      user?.userType === "teacher" &&
+      (surveyData.teacherTargets?.length || 0) > 0
+    ) {
+      setSurveyData((prev) => ({ ...prev, teacherTargets: [] }));
+    }
+  }, [user?.userType, surveyData.teacherTargets]);
 
   const currentStep = steps[currentStepIndex];
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
@@ -118,7 +130,10 @@ export default function SurveyWizard({
         );
       case "targeting":
         return !!(
-          surveyData.targetIds?.length && surveyData.targetIds.length > 0
+          (surveyData.classTargets?.length &&
+            surveyData.classTargets.length > 0) ||
+          (surveyData.teacherTargets?.length &&
+            surveyData.teacherTargets.length > 0)
         );
       case "settings":
         return true; // Settings are optional
@@ -235,12 +250,11 @@ export default function SurveyWizard({
       case "targeting":
         return (
           <TargetingStep
-            targetType={surveyData.targetType || "classes"}
-            targetIds={surveyData.targetIds || []}
-            onUpdate={(
-              targetType: "classes" | "teachers",
-              targetIds: string[]
-            ) => updateSurveyData({ targetType, targetIds })}
+            classTargets={surveyData.classTargets || []}
+            teacherTargets={surveyData.teacherTargets || []}
+            onUpdate={(classTargets: string[], teacherTargets: string[]) =>
+              updateSurveyData({ classTargets, teacherTargets })
+            }
           />
         );
       case "settings":

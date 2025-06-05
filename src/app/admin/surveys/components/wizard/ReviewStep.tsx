@@ -165,14 +165,26 @@ export default function ReviewStep({ data, onEdit }: ReviewStepProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <div className="text-sm font-medium text-gray-500">نوع مخاطب</div>
-            <div>{data.targetType === "classes" ? "کلاس‌ها" : "معلمان"}</div>
+            <div className="text-sm font-medium text-gray-500">
+              کلاس‌های انتخاب شده
+            </div>
+            <div>{data.classTargets?.length || 0} کلاس</div>
           </div>
           <div>
             <div className="text-sm font-medium text-gray-500">
-              تعداد انتخاب شده
+              معلمان انتخاب شده
             </div>
-            <div>{data.targetIds?.length || 0} مورد</div>
+            <div>{data.teacherTargets?.length || 0} معلم</div>
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-500">
+              مجموع مخاطبان
+            </div>
+            <div>
+              {(data.classTargets?.length || 0) +
+                (data.teacherTargets?.length || 0)}{" "}
+              مورد
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -256,11 +268,10 @@ export default function ReviewStep({ data, onEdit }: ReviewStepProps) {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-700">
-              {data.targetIds?.length || 0}
+              {(data.classTargets?.length || 0) +
+                (data.teacherTargets?.length || 0)}
             </div>
-            <div className="text-green-600">
-              {data.targetType === "classes" ? "کلاس" : "معلم"}
-            </div>
+            <div className="text-green-600">مخاطب</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-700">

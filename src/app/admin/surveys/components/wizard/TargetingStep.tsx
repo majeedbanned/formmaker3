@@ -2,18 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Users, GraduationCap, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 
 interface TargetingStepProps {
-  targetType: "classes" | "teachers";
-  targetIds: string[];
-  onUpdate: (targetType: "classes" | "teachers", targetIds: string[]) => void;
+  classTargets: string[];
+  teacherTargets: string[];
+  onUpdate: (classTargets: string[], teacherTargets: string[]) => void;
 }
 
 interface ClassData {
@@ -35,8 +33,8 @@ interface TeacherData {
 }
 
 export default function TargetingStep({
-  targetType,
-  targetIds,
+  classTargets,
+  teacherTargets,
   onUpdate,
 }: TargetingStepProps) {
   const { user } = useAuth();
@@ -45,28 +43,52 @@ export default function TargetingStep({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Use the passed props directly as state
+  const [classSelections, setClassSelections] =
+    useState<string[]>(classTargets);
+  const [teacherSelections, setTeacherSelections] =
+    useState<string[]>(teacherTargets);
+
+  // Update local state when props change
+  useEffect(() => {
+    setClassSelections(classTargets);
+    setTeacherSelections(teacherTargets);
+  }, [classTargets, teacherTargets]);
+
   useEffect(() => {
     fetchData();
-  }, [targetType, user?.schoolCode]);
+  }, [user?.schoolCode]);
 
   const fetchData = async () => {
     if (!user?.schoolCode) return;
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/surveys/targets?schoolCode=${user.schoolCode}&type=${targetType}`,
+      // Fetch classes first
+      const classesResponse = await fetch(
+        `/api/surveys/targets?schoolCode=${user.schoolCode}&type=classes`,
         {
           headers: { "x-domain": window.location.host },
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (targetType === "classes") {
-          setClasses(data.classes || []);
-        } else {
-          setTeachers(data.teachers || []);
+      if (classesResponse.ok) {
+        const classesData = await classesResponse.json();
+        setClasses(classesData.classes || []);
+      }
+
+      // Only fetch teachers if user is school admin
+      if (user.userType === "school") {
+        const teachersResponse = await fetch(
+          `/api/surveys/targets?schoolCode=${user.schoolCode}&type=teachers`,
+          {
+            headers: { "x-domain": window.location.host },
+          }
+        );
+
+        if (teachersResponse.ok) {
+          const teachersData = await teachersResponse.json();
+          setTeachers(teachersData.teachers || []);
         }
       }
     } catch (error) {
@@ -76,33 +98,44 @@ export default function TargetingStep({
     }
   };
 
-  const handleTargetTypeChange = (newType: "classes" | "teachers") => {
-    onUpdate(newType, []);
+  const handleClassToggle = (classCode: string, checked: boolean) => {
+    const newSelections = checked
+      ? [...classSelections, classCode]
+      : classSelections.filter((id) => id !== classCode);
+
+    setClassSelections(newSelections);
+    onUpdate(newSelections, teacherSelections);
   };
 
-  const handleTargetToggle = (id: string, checked: boolean) => {
-    if (checked) {
-      onUpdate(targetType, [...targetIds, id]);
-    } else {
-      onUpdate(
-        targetType,
-        targetIds.filter((targetId) => targetId !== id)
-      );
-    }
+  const handleTeacherToggle = (teacherCode: string, checked: boolean) => {
+    const newSelections = checked
+      ? [...teacherSelections, teacherCode]
+      : teacherSelections.filter((id) => id !== teacherCode);
+
+    setTeacherSelections(newSelections);
+    onUpdate(classSelections, newSelections);
   };
 
-  const handleSelectAll = () => {
-    if (targetType === "classes") {
-      const allClassCodes = filteredClasses.map((c) => c.data.classCode);
-      onUpdate(targetType, allClassCodes);
-    } else {
-      const allTeacherCodes = filteredTeachers.map((t) => t.data.teacherCode);
-      onUpdate(targetType, allTeacherCodes);
-    }
+  const handleSelectAllClasses = () => {
+    const allClassCodes = filteredClasses.map((c) => c.data.classCode);
+    setClassSelections(allClassCodes);
+    onUpdate(allClassCodes, teacherSelections);
   };
 
-  const handleDeselectAll = () => {
-    onUpdate(targetType, []);
+  const handleDeselectAllClasses = () => {
+    setClassSelections([]);
+    onUpdate([], teacherSelections);
+  };
+
+  const handleSelectAllTeachers = () => {
+    const allTeacherCodes = filteredTeachers.map((t) => t.data.teacherCode);
+    setTeacherSelections(allTeacherCodes);
+    onUpdate(classSelections, allTeacherCodes);
+  };
+
+  const handleDeselectAllTeachers = () => {
+    setTeacherSelections([]);
+    onUpdate(classSelections, []);
   };
 
   const filteredClasses = classes.filter(
@@ -118,136 +151,127 @@ export default function TargetingStep({
   );
 
   const isTeacherUser = user?.userType === "teacher";
+  const totalSelected = classSelections.length + teacherSelections.length;
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium mb-2">انتخاب مخاطبان نظرسنجی</h3>
         <p className="text-sm text-gray-500">
-          {isTeacherUser
-            ? "به عنوان معلم، می‌توانید نظرسنجی را برای کلاس‌های خود ارسال کنید"
-            : "نظرسنجی را برای کدام گروه ارسال می‌کنید؟"}
+          می‌توانید نظرسنجی را برای کلاس‌ها، معلمان یا هر دو ارسال کنید
         </p>
       </div>
 
-      {!isTeacherUser && (
-        <Card>
-          <CardHeader>
-            <CardTitle>نوع مخاطب</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup
-              value={targetType}
-              onValueChange={handleTargetTypeChange}
-              className="space-y-4"
-            >
-              <div className="flex items-center space-x-3 space-x-reverse p-4 border rounded-lg">
-                <RadioGroupItem value="classes" id="classes" />
-                <Label
-                  htmlFor="classes"
-                  className="flex items-center space-x-2 space-x-reverse cursor-pointer"
-                >
-                  <GraduationCap className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <div className="font-medium">کلاس‌ها</div>
-                    <div className="text-sm text-gray-500">
-                      ارسال به دانش‌آموزان کلاس‌های انتخابی
-                    </div>
-                  </div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 space-x-reverse p-4 border rounded-lg">
-                <RadioGroupItem value="teachers" id="teachers" />
-                <Label
-                  htmlFor="teachers"
-                  className="flex items-center space-x-2 space-x-reverse cursor-pointer"
-                >
-                  <Users className="h-5 w-5 text-green-600" />
-                  <div>
-                    <div className="font-medium">معلمان</div>
-                    <div className="text-sm text-gray-500">
-                      ارسال به معلمان انتخابی
-                    </div>
-                  </div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
+      {/* Search Box */}
+      <div className="relative">
+        <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="جستجو در کلاس‌ها و معلمان..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pr-10"
+          dir="rtl"
+        />
+      </div>
+
+      {loading && (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-2 text-sm text-gray-500">در حال بارگذاری...</p>
+        </div>
       )}
 
+      {/* Classes Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>
-              {targetType === "classes" ? "انتخاب کلاس‌ها" : "انتخاب معلمان"}
+            <CardTitle className="flex items-center space-x-2 space-x-reverse">
+              <GraduationCap className="h-5 w-5 text-blue-600" />
+              <span>کلاس‌ها ({classSelections.length} انتخاب شده)</span>
             </CardTitle>
             <div className="flex space-x-2 space-x-reverse">
-              <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                انتخاب همه
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAllClasses}
+              >
+                انتخاب همه کلاس‌ها
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDeselectAll}>
-                حذف انتخاب
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeselectAllClasses}
+              >
+                حذف انتخاب کلاس‌ها
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative">
-            <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder={
-                targetType === "classes"
-                  ? "جستجو در کلاس‌ها..."
-                  : "جستجو در معلمان..."
-              }
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pr-10"
-              dir="rtl"
-            />
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-              <p className="mt-2 text-sm text-gray-500">در حال بارگذاری...</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {targetType === "classes" ? (
-                filteredClasses.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">
-                    کلاسی یافت نشد
-                  </p>
-                ) : (
-                  filteredClasses.map((classItem) => (
-                    <div
-                      key={classItem.data.classCode}
-                      className="flex items-center space-x-3 space-x-reverse p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <Checkbox
-                        checked={targetIds.includes(classItem.data.classCode)}
-                        onCheckedChange={(checked) =>
-                          handleTargetToggle(
-                            classItem.data.classCode,
-                            checked as boolean
-                          )
-                        }
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {classItem.data.className}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          کد: {classItem.data.classCode} • پایه:{" "}
-                          {classItem.data.Grade}
-                        </div>
-                      </div>
+        <CardContent>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {filteredClasses.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">کلاسی یافت نشد</p>
+            ) : (
+              filteredClasses.map((classItem) => (
+                <div
+                  key={classItem.data.classCode}
+                  className="flex items-center space-x-3 space-x-reverse p-3 border rounded-lg hover:bg-gray-50"
+                >
+                  <Checkbox
+                    checked={classSelections.includes(classItem.data.classCode)}
+                    onCheckedChange={(checked) =>
+                      handleClassToggle(
+                        classItem.data.classCode,
+                        checked as boolean
+                      )
+                    }
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {classItem.data.className}
                     </div>
-                  ))
-                )
-              ) : filteredTeachers.length === 0 ? (
+                    <div className="text-sm text-gray-500">
+                      کد: {classItem.data.classCode} • پایه:{" "}
+                      {classItem.data.Grade}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Teachers Section - Only for school admins */}
+      {!isTeacherUser && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                <Users className="h-5 w-5 text-green-600" />
+                <span>معلمان ({teacherSelections.length} انتخاب شده)</span>
+              </CardTitle>
+              <div className="flex space-x-2 space-x-reverse">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllTeachers}
+                >
+                  انتخاب همه معلمان
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeselectAllTeachers}
+                >
+                  حذف انتخاب معلمان
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {filteredTeachers.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">معلمی یافت نشد</p>
               ) : (
                 filteredTeachers.map((teacher) => (
@@ -256,9 +280,11 @@ export default function TargetingStep({
                     className="flex items-center space-x-3 space-x-reverse p-3 border rounded-lg hover:bg-gray-50"
                   >
                     <Checkbox
-                      checked={targetIds.includes(teacher.data.teacherCode)}
+                      checked={teacherSelections.includes(
+                        teacher.data.teacherCode
+                      )}
                       onCheckedChange={(checked) =>
-                        handleTargetToggle(
+                        handleTeacherToggle(
                           teacher.data.teacherCode,
                           checked as boolean
                         )
@@ -276,17 +302,25 @@ export default function TargetingStep({
                 ))
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {targetIds.length > 0 && (
+      {/* Summary */}
+      {totalSelected > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <h4 className="font-medium text-green-900 mb-2">✅ انتخاب شده</h4>
-          <p className="text-sm text-green-700">
-            {targetIds.length} {targetType === "classes" ? "کلاس" : "معلم"}{" "}
-            انتخاب شده است.
-          </p>
+          <div className="text-sm text-green-700 space-y-1">
+            {classSelections.length > 0 && (
+              <div>{classSelections.length} کلاس انتخاب شده</div>
+            )}
+            {teacherSelections.length > 0 && (
+              <div>{teacherSelections.length} معلم انتخاب شده</div>
+            )}
+            <div className="font-medium">
+              مجموع: {totalSelected} مخاطب انتخاب شده
+            </div>
+          </div>
         </div>
       )}
     </div>
