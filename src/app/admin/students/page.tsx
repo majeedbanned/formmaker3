@@ -261,6 +261,43 @@ function StudentsPageContent() {
         // dependsOn: ["Grade", "major"],
       },
     },
+
+    {
+      name: "birthDate",
+      title: "تاریخ تولد",
+      type: "datepicker",
+      isShowInList: true,
+      isSearchable: true,
+      required: true,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      displayFormat: (value: string | number | Date) => {
+        if (!value) return "";
+        const date = new Date(value);
+        const formatter = new Intl.DateTimeFormat("fa-IR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+        return formatter.format(date);
+      },
+      datepickerStyle: {
+        format: "YYYY/MM/DD",
+        className: "custom-datepicker",
+        calendar: "persian",
+        locale: "fa",
+        calendarPosition: "bottom",
+        weekStartDayIndex: 6,
+        timePicker: false, // Enable time picker plugin
+        hideWeekDays: false,
+        hideMonth: false,
+        hideYear: false,
+      },
+      validation: {
+        requiredMessage: "لطفا تاریخ تولد را وارد کنید",
+      },
+    },
     {
       name: "schoolCode",
       title: "کد مدرسه",
