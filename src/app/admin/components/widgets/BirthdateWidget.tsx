@@ -100,6 +100,123 @@ const BIRTHDAY_MESSAGES = [
   },
 ];
 
+// Birthday Animation Component
+function BirthdayAnimation() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+      {/* Falling Flowers/Petals */}
+      {[...Array(30)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute text-3xl animate-bounce"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${-30 + Math.random() * 30}%`,
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${1.5 + Math.random() * 2.5}s`,
+            animationIterationCount: "infinite",
+            transform: `rotate(${Math.random() * 360}deg) scale(${
+              0.8 + Math.random() * 0.4
+            })`,
+            filter: "drop-shadow(0 0 8px rgba(255, 192, 203, 0.6))",
+          }}
+        >
+          {
+            [
+              "🌸",
+              "🌺",
+              "🌷",
+              "🌹",
+              "💐",
+              "🎊",
+              "🎉",
+              "✨",
+              "💫",
+              "🌟",
+              "🎈",
+              "🧁",
+              "🍰",
+              "🎂",
+            ][Math.floor(Math.random() * 14)]
+          }
+        </div>
+      ))}
+
+      {/* Confetti */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={`confetti-${i}`}
+          className="absolute animate-spin text-2xl"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 4}s`,
+            animationDuration: `${2 + Math.random() * 3}s`,
+            animationIterationCount: "infinite",
+            transform: `scale(${0.6 + Math.random() * 0.6})`,
+            filter: "drop-shadow(0 0 6px rgba(236, 72, 153, 0.5))",
+          }}
+        >
+          {
+            ["🎈", "🎁", "🧁", "🍰", "🎂", "🎪", "🎭", "🎨", "🎯"][
+              Math.floor(Math.random() * 9)
+            ]
+          }
+        </div>
+      ))}
+
+      {/* Sparkles */}
+      {[...Array(35)].map((_, i) => (
+        <div
+          key={`sparkle-${i}`}
+          className="absolute animate-ping text-lg"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 5}s`,
+            animationDuration: `${1 + Math.random() * 2}s`,
+            animationIterationCount: "infinite",
+            transform: `scale(${0.5 + Math.random() * 0.8})`,
+            filter: "drop-shadow(0 0 4px rgba(255, 215, 0, 0.8))",
+          }}
+        >
+          {
+            ["✨", "⭐", "💫", "🌟", "💖", "💝", "🎊", "🎉"][
+              Math.floor(Math.random() * 8)
+            ]
+          }
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Birthday Message Component
+function BirthdayMessage() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-400/30 to-purple-400/30 backdrop-blur-sm rounded-lg">
+      <div className="text-center p-6 bg-gradient-to-br from-white/95 to-pink-50/95 rounded-xl shadow-2xl border-2 border-pink-400 max-w-xs transform animate-pulse">
+        <div className="text-5xl mb-3 animate-bounce">🎉</div>
+        <h3 className="text-xl font-bold text-pink-800 mb-2 animate-pulse">
+          تولدت مبارک! 🎂
+        </h3>
+        <p className="text-sm text-gray-700 mb-3 font-medium">
+          امروز روز ویژه و جادویی توست! ✨
+        </p>
+        <div className="flex items-center justify-center space-x-2 space-x-reverse text-sm text-blue-700 bg-blue-50 rounded-lg p-2 mb-3">
+          <EnvelopeIcon className="h-4 w-4 animate-bounce" />
+          <span className="font-medium">پیام‌های تولدت را اینجا ببین</span>
+        </div>
+        <div className="flex justify-center space-x-2 space-x-reverse text-3xl">
+          <span className="animate-pulse">💝</span>
+          <span className="animate-bounce">🎈</span>
+          <span className="animate-ping">🌟</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Message Popup Component
 function MessagePopup({
   isOpen,
@@ -215,6 +332,7 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
   const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUserBirthday, setIsUserBirthday] = useState(false);
   const { unreadCount } = useBirthdayMessages();
   const [messagePopup, setMessagePopup] = useState<{
     isOpen: boolean;
@@ -363,9 +481,24 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
     }
   }, [user, calculateAge, daysUntilNextBirthday]);
 
+  // Check if today is user's birthday based on the fetched birthday list
+  const checkUserBirthday = useCallback(() => {
+    const todaysBirthdays = birthdays.filter(
+      (person) => person.daysUntilBirthday === 0
+    );
+    const userHasBirthday = todaysBirthdays.some(
+      (person) => person.code === user.username
+    );
+    setIsUserBirthday(userHasBirthday);
+  }, [birthdays, user.username]);
+
   useEffect(() => {
     fetchBirthdays();
   }, [fetchBirthdays]);
+
+  useEffect(() => {
+    checkUserBirthday();
+  }, [checkUserBirthday]);
 
   // Memoized birthday groups
   const birthdayGroups = useMemo(() => {
@@ -582,13 +715,29 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-h-96 overflow-y-auto">
+    <div className="relative bg-white rounded-lg shadow-md p-6 max-h-96 overflow-y-auto">
+      {/* Birthday Animation Overlay */}
+      {isUserBirthday && (
+        <>
+          <BirthdayAnimation />
+          <BirthdayMessage />
+        </>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3 space-x-reverse">
-          <CakeIcon className="h-6 w-6 text-pink-600" />
+          <CakeIcon
+            className={`h-6 w-6 ${
+              isUserBirthday ? "text-pink-600 animate-pulse" : "text-pink-600"
+            }`}
+          />
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              تولدهای پیش رو
+            <h3
+              className={`text-lg font-semibold ${
+                isUserBirthday ? "text-pink-700 animate-pulse" : "text-gray-900"
+              }`}
+            >
+              {isUserBirthday ? "🎉 تولدهای پیش رو 🎂" : "تولدهای پیش رو"}
             </h3>
             <p className="text-xs text-gray-500">{getCurrentPersianDate()}</p>
           </div>
