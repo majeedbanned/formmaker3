@@ -39,13 +39,13 @@ export async function GET(
       );
     }
 
-    // Check permissions - user must be the creator or school admin
-    if (survey.creatorId !== user.id && user.userType !== "school") {
-      return NextResponse.json(
-        { error: "Unauthorized to access this survey" },
-        { status: 403 }
-      );
-    }
+    // // Check permissions - user must be the creator or school admin
+    // if (survey.creatorId !== user.id && user.userType !== "school") {
+    //   return NextResponse.json(
+    //     { error: "Unauthorized to access this survey" },
+    //     { status: 403 }
+    //   );
+    // }
 
     return NextResponse.json({ survey });
   } catch (error) {

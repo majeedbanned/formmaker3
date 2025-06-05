@@ -64,17 +64,46 @@ export default function TargetingStep({
 
     setLoading(true);
     try {
-      // Fetch classes first
-      const classesResponse = await fetch(
-        `/api/surveys/targets?schoolCode=${user.schoolCode}&type=classes`,
-        {
-          headers: { "x-domain": window.location.host },
-        }
-      );
+      // For teachers, only fetch their own classes
+      let classesResponse;
+      if (user.userType === "teacher") {
+        // Filter to only teacher's own classes
+        const teacherClasses =
+          (user as any)?.classCode?.map((c: { value: string }) => c.value) ||
+          [];
+        classesResponse = await fetch(
+          `/api/surveys/targets?schoolCode=${
+            user.schoolCode
+          }&type=classes&teacherClasses=${teacherClasses.join(",")}`,
+          {
+            headers: { "x-domain": window.location.host },
+          }
+        );
+      } else {
+        // School admins can see all classes
+        classesResponse = await fetch(
+          `/api/surveys/targets?schoolCode=${user.schoolCode}&type=classes`,
+          {
+            headers: { "x-domain": window.location.host },
+          }
+        );
+      }
 
-      if (classesResponse.ok) {
+      if (classesResponse && classesResponse.ok) {
         const classesData = await classesResponse.json();
-        setClasses(classesData.classes || []);
+        let allClasses = classesData.classes || [];
+
+        // Additional client-side filtering for teachers
+        if (user.userType === "teacher") {
+          const teacherClasses =
+            (user as any)?.classCode?.map((c: { value: string }) => c.value) ||
+            [];
+          allClasses = allClasses.filter((classItem: ClassData) =>
+            teacherClasses.includes(classItem.data.classCode)
+          );
+        }
+
+        setClasses(allClasses);
       }
 
       // Only fetch teachers if user is school admin

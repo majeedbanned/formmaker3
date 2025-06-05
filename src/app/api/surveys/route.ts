@@ -33,12 +33,44 @@ export async function GET(request: NextRequest) {
     const connection = await connectToDatabase(domain);
 
     // Build query based on user type
-    const query: Record<string, unknown> = { schoolCode };
+    let query: Record<string, unknown> = { schoolCode };
     
     if (user.userType === "teacher") {
-      // Teachers can only see their own surveys
-      query.creatorId = user.id;
+      // Teachers can see:
+      // 1. Their own surveys
+      // 2. Surveys targeted to their classes
+      const teacherClasses = user.classCode?.map((c: { value: string }) => c.value) || [];
+      
+      query = {
+        $and: [
+          { schoolCode },
+          {
+            $or: [
+              { creatorId: user.id }, // Their own surveys
+              { classTargets: { $in: teacherClasses } }, // Surveys for their classes
+              { teacherTargets: { $in: [user.username] } } // Surveys directly targeted to them
+            ]
+          }
+        ]
+      };
+    } else if (user.userType === "student") {
+      // Students can see surveys targeted to their classes or directly to them
+      const studentClasses = user.classCode?.map((c: { value: string }) => c.value) || [];
+      
+      query = {
+        $and: [
+          { schoolCode },
+          { status: "active" }, // Only active surveys
+          {
+            $or: [
+              { classTargets: { $in: studentClasses } }, // Surveys for their classes
+              { teacherTargets: { $in: [user.username] } } // Surveys directly targeted to them (though rare)
+            ]
+          }
+        ]
+      };
     }
+    // School admins (user.userType === "school") see all surveys (no additional filtering)
 
     const surveys = await connection
       .collection("surveys")
@@ -62,6 +94,14 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Students cannot create surveys
+    if (user.userType === "student") {
+      return NextResponse.json(
+        { error: "Students are not allowed to create surveys" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -98,6 +138,32 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: "Invalid question type" },
           { status: 400 }
+        );
+      }
+    }
+
+    // For teachers, validate they can only target their own classes
+    if (user.userType === "teacher") {
+      const teacherClasses = user.classCode?.map((c: { value: string }) => c.value) || [];
+      
+      // Check if teacher is trying to target classes they don't teach
+      if (classTargets && classTargets.length > 0) {
+        const invalidClasses = classTargets.filter((classCode: string) => 
+          !teacherClasses.includes(classCode)
+        );
+        if (invalidClasses.length > 0) {
+          return NextResponse.json(
+            { error: "Teachers can only create surveys for their own classes" },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Teachers cannot target other teachers
+      if (teacherTargets && teacherTargets.length > 0) {
+        return NextResponse.json(
+          { error: "Teachers cannot target other teachers" },
+          { status: 403 }
         );
       }
     }
@@ -176,7 +242,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (survey.creatorId !== user.id && user.userType !== "school") {
+    // Teachers can only edit surveys they created, school admins can edit any survey
+    if (user.userType === "teacher" && survey.creatorId !== user.id) {
+      return NextResponse.json(
+        { error: "Teachers can only edit surveys they created" },
+        { status: 403 }
+      );
+    } else if (user.userType !== "school" && survey.creatorId !== user.id) {
       return NextResponse.json(
         { error: "Unauthorized to update this survey" },
         { status: 403 }
