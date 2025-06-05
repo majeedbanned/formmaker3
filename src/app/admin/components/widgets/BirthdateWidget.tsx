@@ -5,8 +5,12 @@ import {
   CakeIcon,
   UserGroupIcon,
   AcademicCapIcon,
+  PaperAirplaneIcon,
+  XMarkIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import moment from "moment-jalaali";
+import { useBirthdayMessages } from "@/hooks/useBirthdayMessages";
 
 interface User {
   id: string;
@@ -33,11 +37,192 @@ interface BirthdayPerson {
   className?: string;
 }
 
+interface MessagePopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  person: BirthdayPerson;
+  onSendMessage: (message: string) => void;
+}
+
+// Predefined birthday messages
+const BIRTHDAY_MESSAGES = [
+  {
+    id: 1,
+    message: "🎉 تولدت مبارک! روز پر از شادی و خوشحالی برات آرزو می‌کنم 🎂",
+    type: "informal",
+  },
+  {
+    id: 2,
+    message:
+      "🌟 سال نو زندگیت مبارک! امیدوارم سالی پر از موفقیت و سلامتی داشته باشی 🎈",
+    type: "formal",
+  },
+  {
+    id: 3,
+    message: "🎊 امروز روز ویژه تو هست! تولدت مبارک عزیز 💝",
+    type: "informal",
+  },
+  {
+    id: 4,
+    message: "🎁 در سالگرد تولدتان، سلامتی و شادکامی برایتان آرزومندم",
+    type: "formal",
+  },
+  {
+    id: 5,
+    message: "🌈 یک سال دیگه بزرگ‌تر شدی! امیدوارم آرزوهات محقق بشه 🎯",
+    type: "informal",
+  },
+  {
+    id: 6,
+    message: "🕊️ تولد مبارک! خداوند سالی بهتر از پارسال نصیبتان کند 🌺",
+    type: "formal",
+  },
+  {
+    id: 7,
+    message: "🎪 پارتی تایم! تولدت مبارک باشه و کیک رو جا نذار 🍰",
+    type: "informal",
+  },
+  {
+    id: 8,
+    message: "🌙 در این روز مبارک، سال آینده‌تان سرشار از برکت و خیر باشد 🌸",
+    type: "formal",
+  },
+  {
+    id: 9,
+    message: "🚀 سالی جدید، ماجراجویی‌های جدید! تولدت مبارک قهرمان 🏆",
+    type: "informal",
+  },
+  {
+    id: 10,
+    message:
+      "💫 با آرزوی سالی مملو از شادی، سلامتی و موفقیت. تولدتان مبارک باد 🎖️",
+    type: "formal",
+  },
+];
+
+// Message Popup Component
+function MessagePopup({
+  isOpen,
+  onClose,
+  person,
+  onSendMessage,
+}: MessagePopupProps) {
+  const [selectedMessage, setSelectedMessage] = useState<string>("");
+
+  if (!isOpen) return null;
+
+  const handleSend = () => {
+    if (selectedMessage) {
+      onSendMessage(selectedMessage);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+              <PaperAirplaneIcon className="h-5 w-5 text-pink-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                ارسال پیام تولد
+              </h3>
+              <p className="text-sm text-gray-600">برای {person.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Messages List */}
+        <div className="p-4">
+          <p className="text-sm text-gray-600 mb-4">
+            یکی از پیام‌های زیر را انتخاب کنید:
+          </p>
+          <div className="space-y-3">
+            {BIRTHDAY_MESSAGES.map((msg) => (
+              <label key={msg.id} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="birthday-message"
+                  value={msg.message}
+                  checked={selectedMessage === msg.message}
+                  onChange={(e) => setSelectedMessage(e.target.value)}
+                  className="sr-only"
+                />
+                <div
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    selectedMessage === msg.message
+                      ? "border-pink-500 bg-pink-50"
+                      : "border-gray-200 hover:border-pink-300 hover:bg-pink-25"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        msg.type === "formal"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {msg.type === "formal" ? "رسمی" : "دوستانه"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {msg.message}
+                  </p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end space-x-3 space-x-reverse p-4 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={!selectedMessage}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              selectedMessage
+                ? "bg-pink-600 text-white hover:bg-pink-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            ارسال پیام
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
   const todayStart = useMemo(() => moment().startOf("day"), []);
   const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { unreadCount } = useBirthdayMessages();
+  const [messagePopup, setMessagePopup] = useState<{
+    isOpen: boolean;
+    person: BirthdayPerson | null;
+  }>({
+    isOpen: false,
+    person: null,
+  });
 
   // Convert Persian digits to English
   const persianToEnglish = useCallback((str: string): string => {
@@ -223,6 +408,57 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
     return avatar.startsWith("/") ? avatar : `/${avatar}`;
   }, []);
 
+  // Handle opening message popup
+  const handleSendMessage = useCallback((person: BirthdayPerson) => {
+    setMessagePopup({
+      isOpen: true,
+      person: person,
+    });
+  }, []);
+
+  // Handle closing message popup
+  const handleCloseMessagePopup = useCallback(() => {
+    setMessagePopup({
+      isOpen: false,
+      person: null,
+    });
+  }, []);
+
+  // Handle sending message
+  const handleMessageSend = useCallback(
+    async (message: string) => {
+      try {
+        if (!messagePopup.person) return;
+
+        const response = await fetch("/api/birthday-messages/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-domain": window.location.host,
+          },
+          body: JSON.stringify({
+            recipientCode: messagePopup.person.code,
+            recipientType: messagePopup.person.type,
+            message: message,
+            messageType: "birthday",
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          alert(`پیام تولد با موفقیت ارسال شد!`);
+        } else {
+          throw new Error(data.error || "خطا در ارسال پیام");
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        alert(error instanceof Error ? error.message : "خطا در ارسال پیام");
+      }
+    },
+    [messagePopup.person]
+  );
+
   // Render birthday person
   const renderBirthdayPerson = useCallback(
     (person: BirthdayPerson) => (
@@ -265,8 +501,8 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
           </div>
         </div>
 
-        {/* Days until birthday */}
-        <div className="text-left">
+        {/* Actions */}
+        <div className="text-left space-y-2">
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${
               person.daysUntilBirthday === 0
@@ -278,10 +514,20 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
           >
             {getDayLabel(person.daysUntilBirthday)}
           </span>
+
+          {/* Send Message Button */}
+          <button
+            onClick={() => handleSendMessage(person)}
+            className="flex items-center space-x-1 space-x-reverse px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full hover:bg-pink-200 transition-colors"
+            title="ارسال پیام تولد"
+          >
+            <PaperAirplaneIcon className="h-3 w-3" />
+            <span>پیام</span>
+          </button>
         </div>
       </div>
     ),
-    [getAvatarUrl, getUserTypeIcon, getDayLabel]
+    [getAvatarUrl, getUserTypeIcon, getDayLabel, handleSendMessage]
   );
 
   if (loading) {
@@ -348,11 +594,28 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
           </div>
         </div>
 
-        {birthdays.length > 0 && (
-          <span className="bg-pink-100 text-pink-800 text-xs font-medium px-2 py-1 rounded-full">
-            {birthdays.length} تولد
-          </span>
-        )}
+        <div className="flex items-center space-x-2 space-x-reverse">
+          {birthdays.length > 0 && (
+            <span className="bg-pink-100 text-pink-800 text-xs font-medium px-2 py-1 rounded-full">
+              {birthdays.length} تولد
+            </span>
+          )}
+
+          {/* View Messages Link */}
+          <a
+            href="/admin/birthday-messages"
+            className="relative flex items-center space-x-1 space-x-reverse px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors text-xs font-medium"
+            title="مشاهده پیام‌های تولد"
+          >
+            <EnvelopeIcon className="h-3 w-3" />
+            <span>پیام‌ها</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </a>
+        </div>
       </div>
 
       {birthdays.length === 0 ? (
@@ -401,6 +664,16 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Message Popup */}
+      {messagePopup.isOpen && messagePopup.person && (
+        <MessagePopup
+          isOpen={messagePopup.isOpen}
+          person={messagePopup.person}
+          onClose={handleCloseMessagePopup}
+          onSendMessage={handleMessageSend}
+        />
       )}
     </div>
   );
