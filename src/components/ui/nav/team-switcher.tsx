@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ChevronsUpDown, Plus } from "lucide-react";
+import {
+  ChevronsUpDown,
+  Plus,
+  School,
+  UserRound,
+  BookOpenCheck,
+  X,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -18,76 +25,165 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useMultiAuth } from "@/hooks/useMultiAuth";
+import { LoginDialog } from "@/components/ui/login-dialog";
 
-export function TeamSwitcher({
-  teams,
-}: {
-  teams: {
-    name: string;
-    logo: React.ElementType;
-    plan: string;
-  }[];
-}) {
+// Map user types to icons
+const getUserIcon = (userType: string) => {
+  switch (userType) {
+    case "school":
+      return School;
+    case "teacher":
+      return UserRound;
+    case "student":
+      return BookOpenCheck;
+    default:
+      return UserRound;
+  }
+};
+
+// Map user types to Persian labels
+const getUserTypeLabel = (userType: string) => {
+  switch (userType) {
+    case "school":
+      return "مدرسه";
+    case "teacher":
+      return "معلم";
+    case "student":
+      return "دانش آموز";
+    default:
+      return "کاربر";
+  }
+};
+
+export function TeamSwitcher() {
   const { isMobile } = useSidebar();
-  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
+  const { users, activeUser, addUser, switchUser, removeUser } = useMultiAuth();
+  const [showLoginDialog, setShowLoginDialog] = React.useState(false);
+  const [switchingUserId, setSwitchingUserId] = React.useState<string | null>(
+    null
+  );
 
-  if (!activeTeam) {
+  if (!activeUser) {
     return null;
   }
 
+  const UserIcon = getUserIcon(activeUser.userType);
+
+  const handleLogin = async (credentials: {
+    userType: "school" | "teacher" | "student";
+    schoolCode: string;
+    username: string;
+    password: string;
+  }) => {
+    await addUser(credentials);
+  };
+
+  const handleRemoveUser = async (userId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await removeUser(userId);
+  };
+
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <activeTeam.logo className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {activeTeam.name}
-                </span>
-                <span className="truncate text-xs">{activeTeam.plan}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            align="start"
-            side={isMobile ? "bottom" : "right"}
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
-              Teams
-            </DropdownMenuLabel>
-            {teams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.name}
-                onClick={() => setActiveTeam(team)}
-                className="gap-2 p-2"
+    <>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="flex size-6 items-center justify-center rounded-sm border">
-                  <team.logo className="size-4 shrink-0" />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <UserIcon className="size-4" />
                 </div>
-                {team.name}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">
+                    {activeUser.name}
+                  </span>
+                  <span className="truncate text-xs">
+                    {getUserTypeLabel(activeUser.userType)}
+                  </span>
+                </div>
+                <ChevronsUpDown className="ml-auto" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              align="start"
+              side={isMobile ? "bottom" : "right"}
+              sideOffset={4}
+            >
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Users Lists
+              </DropdownMenuLabel>
+              {users.map((user) => {
+                const UserItemIcon = getUserIcon(user.userType);
+                const isActive = user.id === activeUser.id;
+                return (
+                  <DropdownMenuItem
+                    key={user.id}
+                    onClick={() => {
+                      if (!isActive) {
+                        setSwitchingUserId(user.id);
+                        switchUser(user.id).catch(() =>
+                          setSwitchingUserId(null)
+                        );
+                      }
+                    }}
+                    className={`gap-2 p-2 ${
+                      isActive ? "bg-accent" : ""
+                    } relative group ${
+                      switchingUserId === user.id ? "opacity-50" : ""
+                    }`}
+                    disabled={switchingUserId === user.id}
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-sm border">
+                      <UserItemIcon className="size-4 shrink-0" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {getUserTypeLabel(user.userType)}
+                      </div>
+                    </div>
+                    {users.length > 1 && (
+                      <button
+                        onClick={(e) => handleRemoveUser(user.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive hover:text-destructive-foreground rounded transition-all"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
+                    {isActive && (
+                      <DropdownMenuShortcut>فعال</DropdownMenuShortcut>
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 p-2"
+                onClick={() => setShowLoginDialog(true)}
+              >
+                <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                  <Plus className="size-4" />
+                </div>
+                <div className="font-medium text-muted-foreground">
+                  Add user
+                </div>
               </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
-              <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                <Plus className="size-4" />
-              </div>
-              <div className="font-medium text-muted-foreground">Add team</div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
+      <LoginDialog
+        open={showLoginDialog}
+        onOpenChange={setShowLoginDialog}
+        onLogin={handleLogin}
+      />
+    </>
   );
 }

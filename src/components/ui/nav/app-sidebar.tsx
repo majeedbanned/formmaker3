@@ -22,7 +22,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
+import { useMultiAuth } from "@/hooks/useMultiAuth";
 
 // This is sample data.
 const data = {
@@ -396,7 +396,7 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, hasPermission } = useAuth();
+  const { activeUser: user, hasPermission } = useMultiAuth();
 
   // Filter navigation items based on permissions
   const filteredNavMain = React.useMemo(() => {
@@ -432,7 +432,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredNavMain} />
