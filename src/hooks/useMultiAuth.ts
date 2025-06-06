@@ -212,44 +212,45 @@ export function useMultiAuth() {
   // Remove a user from the list
   const removeUser = useCallback(async (userId: string) => {
     try {
-      // For now, we'll handle this client-side by removing from localStorage
-      // In a production app, you might want a server endpoint to revoke specific tokens
-      setState(prev => {
-        const newUsers = prev.users.filter(u => u.id !== userId);
-        let newActiveUser = prev.activeUser;
-        
-        // If the removed user was active, switch to another user
-        if (prev.activeUser?.id === userId) {
-          newActiveUser = newUsers.length > 0 ? newUsers[0] : null;
-        }
-
-        const newState = {
-          users: newUsers,
-          activeUser: newActiveUser,
-          isLoading: false,
-          error: null,
-        };
-
-        // Update localStorage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newUsers));
-        if (newActiveUser) {
-          localStorage.setItem(ACTIVE_USER_KEY, newActiveUser.id);
-          // Switch to the new active user if needed (this will redirect to dashboard)
-          if (prev.activeUser?.id === userId && newActiveUser) {
-            switchUser(newActiveUser.id).catch(console.error);
-          }
-        } else {
-          localStorage.removeItem(ACTIVE_USER_KEY);
-          // If no users left, redirect to login page
-          window.location.href = '/login';
-        }
-
-        return newState;
+      const response = await fetch('/api/auth/remove-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
       });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to remove user');
+      }
+
+      const data = await response.json();
+
+      // If no users are left, redirect to login
+      if (!data.hasRemainingUsers) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(ACTIVE_USER_KEY);
+        window.location.href = '/login';
+        return;
+      }
+
+      // If the removed user was active and there's a new active user, redirect to dashboard
+      if (data.newActiveUser) {
+        window.location.href = '/admin/dashboard';
+        return;
+      }
+
+      // Otherwise, just refresh the users list
+      await refreshUsers();
     } catch (error) {
       console.error('Error removing user:', error);
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to remove user'
+      }));
     }
-  }, [switchUser]);
+  }, [refreshUsers]);
 
   // Permission check methods
   const hasPermission = useCallback((system: string, action: string): boolean => {

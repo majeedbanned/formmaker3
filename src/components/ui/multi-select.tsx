@@ -69,8 +69,6 @@ export function MultiSelect({
   };
 
   const handleSelect = (value: unknown) => {
-    console.log("Selection triggered");
-
     if (selected.includes(value)) {
       onChange(selected.filter((item) => item !== value));
     } else {
@@ -102,7 +100,7 @@ export function MultiSelect({
           onClick={() => setOpen(!open)}
           disabled={disabled}
         >
-          <div className="flex flex-wrap gap-1 p-1">
+          <div className="flex flex-wrap gap-1 min-h-6">
             {selected.length > 0 ? (
               selected.map((value) => (
                 <Badge
@@ -113,7 +111,7 @@ export function MultiSelect({
                   {getLabel(value)}
                   <button
                     type="button"
-                    className="rounded-full outline-none"
+                    className="rounded-full outline-none ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleUnselect(value);
@@ -124,7 +122,9 @@ export function MultiSelect({
                 </Badge>
               ))
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground text-sm self-center">
+                {placeholder}
+              </span>
             )}
           </div>
         </Button>
@@ -132,10 +132,10 @@ export function MultiSelect({
         {open && (
           <div
             ref={dropdownRef}
-            className="absolute top-full w-full z-50 bg-popover rounded-md border shadow-md"
+            className="absolute top-full w-full z-50 bg-popover rounded-md border shadow-md mt-1"
           >
             <Command className="w-full">
-              <CommandInput placeholder={searchPlaceholder} autoFocus />
+              <CommandInput placeholder={searchPlaceholder} />
               <CommandEmpty>
                 {loading ? loadingMessage : emptyMessage}
               </CommandEmpty>
@@ -148,7 +148,7 @@ export function MultiSelect({
                   options.map((option) => (
                     <CommandItem
                       key={String(option.value)}
-                      value={String(option.value)}
+                      value={option.label}
                       onSelect={() => handleSelect(option.value)}
                       className="flex items-center gap-2 cursor-pointer"
                     >

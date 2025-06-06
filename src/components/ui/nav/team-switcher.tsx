@@ -63,6 +63,9 @@ export function TeamSwitcher() {
   const [switchingUserId, setSwitchingUserId] = React.useState<string | null>(
     null
   );
+  const [deletingUserId, setDeletingUserId] = React.useState<string | null>(
+    null
+  );
 
   if (!activeUser) {
     return null;
@@ -82,7 +85,15 @@ export function TeamSwitcher() {
   const handleRemoveUser = async (userId: string, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    await removeUser(userId);
+
+    if (deletingUserId === userId) return; // Prevent multiple clicks
+
+    setDeletingUserId(userId);
+    try {
+      await removeUser(userId);
+    } finally {
+      setDeletingUserId(null);
+    }
   };
 
   return (
@@ -125,7 +136,7 @@ export function TeamSwitcher() {
                   <DropdownMenuItem
                     key={user.id}
                     onClick={() => {
-                      if (!isActive) {
+                      if (!isActive && switchingUserId !== user.id) {
                         setSwitchingUserId(user.id);
                         switchUser(user.id).catch(() =>
                           setSwitchingUserId(null)
@@ -135,9 +146,10 @@ export function TeamSwitcher() {
                     className={`gap-2 p-2 ${
                       isActive ? "bg-accent" : ""
                     } relative group ${
-                      switchingUserId === user.id ? "opacity-50" : ""
+                      switchingUserId === user.id || deletingUserId === user.id
+                        ? "opacity-50 pointer-events-none"
+                        : ""
                     }`}
-                    disabled={switchingUserId === user.id}
                   >
                     <div className="flex size-6 items-center justify-center rounded-sm border">
                       <UserItemIcon className="size-4 shrink-0" />
@@ -151,7 +163,13 @@ export function TeamSwitcher() {
                     {users.length > 1 && (
                       <button
                         onClick={(e) => handleRemoveUser(user.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive hover:text-destructive-foreground rounded transition-all"
+                        className={`opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive hover:text-destructive-foreground rounded transition-all z-10 ${
+                          deletingUserId === user.id
+                            ? "opacity-50 pointer-events-none"
+                            : ""
+                        }`}
+                        type="button"
+                        disabled={deletingUserId === user.id}
                       >
                         <X className="size-3" />
                       </button>
