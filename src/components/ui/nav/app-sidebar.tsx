@@ -98,6 +98,21 @@ const data = {
     },
 
     {
+      title: "مدیریت وب سایت",
+      url: "#",
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: "تعریف نوبار",
+          url: "/admin/wlandingnavbar",
+          system: "courses",
+          requiredPermission: "show",
+        },
+      ],
+    },
+
+    {
       title: "مدیریت مالی",
       url: "#",
       icon: SquareTerminal,
