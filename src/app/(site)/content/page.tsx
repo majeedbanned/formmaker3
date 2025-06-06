@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 
 interface PageContent {
@@ -15,7 +16,7 @@ interface PageContent {
   updatedAt: string;
 }
 
-export default function ContentPage() {
+function ContentPageInner() {
   const searchParams = useSearchParams();
   const [page, setPage] = useState<PageContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,12 +80,12 @@ export default function ContentPage() {
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">خطا</h1>
             <p className="text-lg text-gray-600 mb-8">{error}</p>
-            <a
+            <Link
               href="/"
               className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               بازگشت به صفحه اصلی
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -103,12 +104,12 @@ export default function ContentPage() {
             <p className="text-lg text-gray-600 mb-8">
               صفحه مورد نظر شما وجود ندارد
             </p>
-            <a
+            <Link
               href="/"
               className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               بازگشت به صفحه اصلی
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -170,5 +171,27 @@ export default function ContentPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function ContentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50">
+          <LandingNavbar />
+          <div className="pt-20 flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+              <p className="mt-4 text-lg font-medium text-gray-700">
+                در حال بارگذاری...
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ContentPageInner />
+    </Suspense>
   );
 }
