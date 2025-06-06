@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { usePublicAuth } from "@/hooks/usePublicAuth";
 import {
   CogIcon,
   ChevronLeftIcon,
@@ -28,7 +28,7 @@ interface HeroData {
 }
 
 export default function HeroSection() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = usePublicAuth();
   const [heroData, setHeroData] = useState<HeroData | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
