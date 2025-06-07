@@ -1,94 +1,256 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { AcademicCapIcon } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
+import { AcademicCapIcon, CogIcon } from "@heroicons/react/24/outline";
+import { usePublicAuth } from "@/hooks/usePublicAuth";
+import TeachersEditModal from "@/components/modals/TeachersEditModal";
 
-const teachers = [
-  {
-    id: 1,
-    name: "دکتر علی محمدی",
-    role: "مدیر آموزشی",
-    bio: "دارای دکترای مدیریت آموزشی از دانشگاه تهران با بیش از ۱۵ سال سابقه مدیریت در مدارس و موسسات آموزشی.",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    subjects: ["مدیریت آموزشی", "برنامه‌ریزی درسی"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "a.mohammadi@parsamooz.ir",
+interface Teacher {
+  id: number;
+  name: string;
+  role: string;
+  bio: string;
+  avatar: string;
+  subjects: string[];
+  social: {
+    linkedin: string;
+    twitter: string;
+    email: string;
+  };
+}
+
+interface TeachersContent {
+  title: string;
+  subtitle: string;
+  description: string;
+  teachers: Teacher[];
+  linkText: string;
+  linkUrl: string;
+  isVisible: boolean;
+  backgroundColor: string;
+  titleColor: string;
+  subtitleColor: string;
+  descriptionColor: string;
+  cardBackgroundColor: string;
+  nameColor: string;
+  roleColor: string;
+  bioColor: string;
+  subjectsBackgroundColor: string;
+  subjectsTextColor: string;
+  socialIconColor: string;
+  socialIconHoverColor: string;
+  linkColor: string;
+}
+
+const defaultTeachersContent: TeachersContent = {
+  title: "تیم آموزشی",
+  subtitle: "با متخصصان ما آشنا شوید",
+  description:
+    "تیمی از بهترین متخصصان آموزشی و مشاوران تحصیلی در پارسا موز به ارائه خدمات می‌پردازند.",
+  teachers: [
+    {
+      id: 1,
+      name: "دکتر علی محمدی",
+      role: "مدیر آموزشی",
+      bio: "دارای دکترای مدیریت آموزشی از دانشگاه تهران با بیش از ۱۵ سال سابقه مدیریت در مدارس و موسسات آموزشی.",
+      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+      subjects: ["مدیریت آموزشی", "برنامه‌ریزی درسی"],
+      social: {
+        linkedin: "#",
+        twitter: "#",
+        email: "a.mohammadi@parsamooz.ir",
+      },
     },
-  },
-  {
-    id: 2,
-    name: "دکتر سارا کریمی",
-    role: "متخصص برنامه‌ریزی درسی",
-    bio: "فارغ‌التحصیل دانشگاه شهید بهشتی در رشته برنامه‌ریزی آموزشی، با تجربه طراحی برنامه‌های درسی نوآورانه برای مدارس پیشرو.",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    subjects: ["طراحی برنامه درسی", "ارزشیابی آموزشی"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "s.karimi@parsamooz.ir",
+    {
+      id: 2,
+      name: "دکتر سارا کریمی",
+      role: "متخصص برنامه‌ریزی درسی",
+      bio: "فارغ‌التحصیل دانشگاه شهید بهشتی در رشته برنامه‌ریزی آموزشی، با تجربه طراحی برنامه‌های درسی نوآورانه برای مدارس پیشرو.",
+      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      subjects: ["طراحی برنامه درسی", "ارزشیابی آموزشی"],
+      social: {
+        linkedin: "#",
+        twitter: "#",
+        email: "s.karimi@parsamooz.ir",
+      },
     },
-  },
-  {
-    id: 3,
-    name: "مهندس امیر حسینی",
-    role: "مشاور فناوری آموزشی",
-    bio: "کارشناس ارشد فناوری اطلاعات با تخصص در کاربرد فناوری در آموزش و پیاده‌سازی سیستم‌های مدیریت یادگیری.",
-    avatar: "https://randomuser.me/api/portraits/men/46.jpg",
-    subjects: ["فناوری آموزشی", "یادگیری الکترونیک"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "a.hosseini@parsamooz.ir",
-    },
-  },
-  {
-    id: 4,
-    name: "دکتر زهرا احمدی",
-    role: "متخصص روانشناسی تربیتی",
-    bio: "دکترای روانشناسی تربیتی با تمرکز بر روش‌های نوین آموزش و یادگیری مبتنی بر رویکردهای شناختی.",
-    avatar: "https://randomuser.me/api/portraits/women/65.jpg",
-    subjects: ["روانشناسی تربیتی", "مشاوره تحصیلی"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "z.ahmadi@parsamooz.ir",
-    },
-  },
-  {
-    id: 5,
-    name: "دکتر محمد رضایی",
-    role: "متخصص ارزیابی آموزشی",
-    bio: "متخصص در طراحی و اجرای سیستم‌های ارزیابی عملکرد تحصیلی و توسعه ابزارهای سنجش پیشرفت دانش‌آموزان.",
-    avatar: "https://randomuser.me/api/portraits/men/75.jpg",
-    subjects: ["سنجش و ارزیابی", "آمار آموزشی"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "m.rezaei@parsamooz.ir",
-    },
-  },
-  {
-    id: 6,
-    name: "مهندس نرگس کاظمی",
-    role: "طراح تجربه کاربری آموزشی",
-    bio: "متخصص در طراحی تجربه کاربری برای سیستم‌های آموزشی با تمرکز بر افزایش تعامل و بهبود یادگیری از طریق رابط کاربری.",
-    avatar: "https://randomuser.me/api/portraits/women/79.jpg",
-    subjects: ["طراحی تجربه کاربری", "آموزش تعاملی"],
-    social: {
-      linkedin: "#",
-      twitter: "#",
-      email: "n.kazemi@parsamooz.ir",
-    },
-  },
-];
+  ],
+  linkText: "مشاهده همه اساتید و متخصصین",
+  linkUrl: "/team",
+  isVisible: true,
+  backgroundColor: "#F9FAFB",
+  titleColor: "#4F46E5",
+  subtitleColor: "#111827",
+  descriptionColor: "#6B7280",
+  cardBackgroundColor: "#FFFFFF",
+  nameColor: "#111827",
+  roleColor: "#4F46E5",
+  bioColor: "#6B7280",
+  subjectsBackgroundColor: "#EEF2FF",
+  subjectsTextColor: "#4F46E5",
+  socialIconColor: "#9CA3AF",
+  socialIconHoverColor: "#4F46E5",
+  linkColor: "#4F46E5",
+};
 
 export default function TeachersSection() {
+  const { isAuthenticated, user } = usePublicAuth();
+  const [content, setContent] = useState<TeachersContent>(
+    defaultTeachersContent
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const isSchoolAdmin = isAuthenticated && user?.userType === "school";
+
+  useEffect(() => {
+    fetchTeachersContent();
+  }, []);
+
+  const fetchTeachersContent = async () => {
+    try {
+      const response = await fetch("/api/admin/teachers");
+      const data = await response.json();
+
+      if (data.success) {
+        setContent(data.teachers);
+      } else {
+        setContent(defaultTeachersContent);
+      }
+    } catch (error) {
+      console.error("Error fetching teachers content:", error);
+      setContent(defaultTeachersContent);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (updatedContent: TeachersContent) => {
+    try {
+      const response = await fetch("/api/admin/teachers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedContent),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setContent(updatedContent);
+        toast.success("تغییرات با موفقیت ذخیره شد");
+      } else {
+        toast.error("خطا در ذخیره تغییرات");
+      }
+    } catch (error) {
+      console.error("Error saving teachers content:", error);
+      toast.error("خطا در ذخیره تغییرات");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <section id="teachers" className="py-24 bg-gray-50" dir="rtl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-32 mx-auto mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded w-80 mx-auto mb-4"></div>
+            <div className="h-6 bg-gray-200 rounded w-96 mx-auto"></div>
+          </div>
+          <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-lg shadow-md p-6 animate-pulse"
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-32 h-32 bg-gray-200 rounded-full mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-24 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-32 mb-4"></div>
+                </div>
+                <div className="h-16 bg-gray-200 rounded mb-4"></div>
+                <div className="flex justify-center gap-2 mb-4">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="h-6 bg-gray-200 rounded w-20"></div>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <div className="w-5 h-5 bg-gray-200 rounded"></div>
+                  <div className="w-5 h-5 bg-gray-200 rounded"></div>
+                  <div className="w-5 h-5 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // If not visible and not admin, return null
+  if (!content.isVisible && !isSchoolAdmin) {
+    return null;
+  }
+
+  // Admin placeholder when content is hidden
+  if (!content.isVisible && isSchoolAdmin) {
+    return (
+      <section
+        id="teachers"
+        className="py-24 relative"
+        style={{ backgroundColor: content.backgroundColor }}
+        dir="rtl"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="border-2 border-dashed border-yellow-400 bg-yellow-50/50 rounded-lg p-12 text-center">
+            <CogIcon className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">
+              بخش تیم آموزشی (مخفی)
+            </h3>
+            <p className="text-yellow-700 mb-4">
+              این بخش در حالت مخفی قرار دارد و برای بازدیدکنندگان نمایش داده
+              نمی‌شود.
+            </p>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
+            >
+              تنظیمات بخش
+            </button>
+          </div>
+        </div>
+        <TeachersEditModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSave}
+          currentContent={content}
+        />
+      </section>
+    );
+  }
+
   return (
-    <section id="teachers" className="py-24 bg-gray-50">
+    <section
+      id="teachers"
+      className="py-24 relative"
+      style={{ backgroundColor: content.backgroundColor }}
+      dir="rtl"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Admin Settings Button */}
+        {isSchoolAdmin && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="absolute top-4 left-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md transition-all z-10"
+            title="تنظیمات بخش تیم آموزشی"
+          >
+            <CogIcon className="w-5 h-5" />
+          </button>
+        )}
+
         <motion.div
           className="text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -96,23 +258,32 @@ export default function TeachersSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-base font-semibold text-indigo-600 tracking-wide uppercase">
-            تیم آموزشی
+          <h2
+            className="text-base font-semibold tracking-wide uppercase"
+            style={{ color: content.titleColor }}
+          >
+            {content.title}
           </h2>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            با متخصصان ما آشنا شوید
+          <p
+            className="mt-2 text-3xl font-extrabold sm:text-4xl"
+            style={{ color: content.subtitleColor }}
+          >
+            {content.subtitle}
           </p>
-          <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-            تیمی از بهترین متخصصان آموزشی و مشاوران تحصیلی در پارسا موز به ارائه
-            خدمات می‌پردازند.
+          <p
+            className="mt-4 max-w-2xl text-xl mx-auto"
+            style={{ color: content.descriptionColor }}
+          >
+            {content.description}
           </p>
         </motion.div>
 
         <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {teachers.map((teacher, index) => (
+          {content.teachers.map((teacher, index) => (
             <motion.div
               key={teacher.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              className="rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              style={{ backgroundColor: content.cardBackgroundColor }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -128,23 +299,43 @@ export default function TeachersSection() {
                       className="object-cover"
                     />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <h3
+                    className="text-xl font-bold"
+                    style={{ color: content.nameColor }}
+                  >
                     {teacher.name}
                   </h3>
-                  <p className="text-indigo-600 font-medium">{teacher.role}</p>
+                  <p
+                    className="font-medium"
+                    style={{ color: content.roleColor }}
+                  >
+                    {teacher.role}
+                  </p>
                 </div>
 
-                <p className="mt-4 text-gray-600 text-center">{teacher.bio}</p>
+                <p
+                  className="mt-4 text-center"
+                  style={{ color: content.bioColor }}
+                >
+                  {teacher.bio}
+                </p>
 
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center justify-center">
-                    <AcademicCapIcon className="w-4 h-4 ml-1" /> تخصص‌ها
+                  <h4
+                    className="text-sm font-semibold mb-2 flex items-center justify-center"
+                    style={{ color: content.nameColor }}
+                  >
+                    <AcademicCapIcon className="w-4 h-4 mr-1" /> تخصص‌ها
                   </h4>
                   <div className="flex flex-wrap justify-center gap-2">
                     {teacher.subjects.map((subject) => (
                       <span
                         key={subject}
-                        className="inline-block bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                        className="inline-block text-xs font-medium px-2.5 py-0.5 rounded"
+                        style={{
+                          backgroundColor: content.subjectsBackgroundColor,
+                          color: content.subjectsTextColor,
+                        }}
                       >
                         {subject}
                       </span>
@@ -155,7 +346,20 @@ export default function TeachersSection() {
                 <div className="mt-6 flex justify-center space-x-3 rtl:space-x-reverse">
                   <a
                     href={teacher.social.linkedin}
-                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    className="transition-colors"
+                    style={
+                      {
+                        color: content.socialIconColor,
+                        "--hover-color": content.socialIconHoverColor,
+                      } as React.CSSProperties
+                    }
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color =
+                        content.socialIconHoverColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = content.socialIconColor;
+                    }}
                   >
                     <svg
                       className="h-5 w-5"
@@ -167,7 +371,15 @@ export default function TeachersSection() {
                   </a>
                   <a
                     href={teacher.social.twitter}
-                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    className="transition-colors"
+                    style={{ color: content.socialIconColor }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color =
+                        content.socialIconHoverColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = content.socialIconColor;
+                    }}
                   >
                     <svg
                       className="h-5 w-5"
@@ -179,7 +391,15 @@ export default function TeachersSection() {
                   </a>
                   <a
                     href={`mailto:${teacher.social.email}`}
-                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    className="transition-colors"
+                    style={{ color: content.socialIconColor }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color =
+                        content.socialIconHoverColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = content.socialIconColor;
+                    }}
                   >
                     <svg
                       className="h-5 w-5"
@@ -203,12 +423,13 @@ export default function TeachersSection() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <a
-            href="/team"
-            className="inline-flex items-center text-indigo-600 hover:text-indigo-500 font-medium"
+            href={content.linkUrl}
+            className="inline-flex items-center font-medium"
+            style={{ color: content.linkColor }}
           >
-            مشاهده همه اساتید و متخصصین
+            {content.linkText}
             <svg
-              className="ml-2 h-5 w-5"
+              className="mr-2 h-5 w-5"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -221,6 +442,13 @@ export default function TeachersSection() {
           </a>
         </motion.div>
       </div>
+
+      <TeachersEditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+        currentContent={content}
+      />
     </section>
   );
 }
