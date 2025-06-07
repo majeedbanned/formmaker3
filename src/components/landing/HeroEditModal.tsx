@@ -146,22 +146,39 @@ export default function HeroEditModal({
     formDataToSend.append("file", file);
 
     try {
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/api/upload/hero-images", {
         method: "POST",
         body: formDataToSend,
       });
 
-      if (!response.ok) {
-        throw new Error("Upload failed");
+      const data = await response.json();
+      console.log("Upload response:", data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Upload failed");
       }
 
-      const data = await response.json();
-      console.log("Upload successful:", data);
+      // Update both URL and alt text in a single state update to avoid timing issues
+      const currentImage = formData.images[index];
+      const newImageData = {
+        url: data.url,
+        alt: currentImage?.alt || file.name.split(".")[0], // Use existing alt or filename
+        title: currentImage?.title || "", // Keep existing title
+      };
 
-      updateImage(index, "url", data.url);
+      // Update the image with all the data at once
+      const newImages = [...formData.images];
+      newImages[index] = { ...currentImage, ...newImageData };
+      setFormData({ ...formData, images: newImages });
+
+      console.log("Upload successful, URL:", data.url);
     } catch (error) {
       console.error("Upload error:", error);
-      alert("خطا در آپلود تصویر. لطفاً دوباره تلاش کنید.");
+      alert(
+        `خطا در آپلود تصویر: ${
+          error instanceof Error ? error.message : "خطای ناشناخته"
+        }`
+      );
     } finally {
       setUploadingImages((prev) => prev.filter((i) => i !== index));
     }
@@ -949,16 +966,23 @@ export default function HeroEditModal({
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    handleImageUpload(index, file);
+                                    handleImageUpload(index, file).then(() => {
+                                      // Clear the file input after upload
+                                      if (e.target) {
+                                        e.target.value = "";
+                                      }
+                                    });
                                   }
                                 }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
                               {uploadingImages.includes(index) && (
-                                <p className="text-sm text-indigo-600 mt-1 flex items-center gap-2">
-                                  <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-r-transparent rounded-full animate-spin"></span>
-                                  در حال آپلود...
-                                </p>
+                                <div className="mt-2 p-2 bg-indigo-50 rounded-md">
+                                  <p className="text-sm text-indigo-600 flex items-center gap-2">
+                                    <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-r-transparent rounded-full animate-spin"></span>
+                                    در حال آپلود تصویر...
+                                  </p>
+                                </div>
                               )}
                             </div>
 
