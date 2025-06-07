@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         secondaryButtonColor: "#FFFFFF",
         secondaryButtonTextColor: "#4F46E5",
         secondaryButtonBorderColor: "#4F46E5",
+        isVisible: true,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
       secondaryButtonColor: heroContent.secondaryButtonColor || "#FFFFFF",
       secondaryButtonTextColor: heroContent.secondaryButtonTextColor || "#4F46E5",
       secondaryButtonBorderColor: heroContent.secondaryButtonBorderColor || "#4F46E5",
+      isVisible: heroContent.isVisible !== undefined ? heroContent.isVisible : true,
     };
 
     return NextResponse.json({ success: true, hero: heroWithDefaults });
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
       secondaryButtonText, 
       secondaryButtonLink, 
       images,
+      isVisible,
       titleColor,
       subtitleColor,
       descriptionColor,
@@ -126,6 +129,7 @@ export async function POST(request: NextRequest) {
       secondaryButtonColor: secondaryButtonColor || "#FFFFFF",
       secondaryButtonTextColor: secondaryButtonTextColor || "#4F46E5",
       secondaryButtonBorderColor: secondaryButtonBorderColor || "#4F46E5",
+      isVisible: isVisible !== undefined ? isVisible : true,
       isActive: true,
       updatedAt: new Date(),
     };

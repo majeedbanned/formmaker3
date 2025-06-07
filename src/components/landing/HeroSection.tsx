@@ -26,6 +26,8 @@ interface HeroData {
   secondaryButtonText: string;
   secondaryButtonLink: string;
   images: HeroImage[];
+  // Visibility setting
+  isVisible: boolean;
   // Style settings
   titleColor: string;
   subtitleColor: string;
@@ -103,6 +105,7 @@ export default function HeroSection() {
         secondaryButtonColor: "#FFFFFF",
         secondaryButtonTextColor: "#4F46E5",
         secondaryButtonBorderColor: "#4F46E5",
+        isVisible: true,
       });
     } finally {
       setLoading(false);
@@ -165,6 +168,54 @@ export default function HeroSection() {
             در حال بارگذاری...
           </p>
         </div>
+      </section>
+    );
+  }
+
+  // Show admin placeholder if hero section is invisible
+  if (!heroData.isVisible) {
+    // Show nothing for regular users
+    if (!isSchoolAdmin) {
+      return null;
+    }
+
+    // Show admin placeholder with settings access
+    return (
+      <section
+        className="relative bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-dashed border-yellow-300"
+        dir="rtl"
+      >
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex justify-center items-center mb-4">
+              <span className="text-4xl">👁️‍🗨️</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              بخش هیرو غیرفعال است
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              این بخش برای بازدیدکنندگان نمایش داده نمی‌شود. برای فعال کردن آن
+              روی دکمه تنظیمات کلیک کنید.
+            </p>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              <CogIcon className="h-5 w-5" />
+              تنظیمات بخش هیرو
+            </button>
+          </div>
+        </div>
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <HeroEditModal
+            isOpen={showEditModal}
+            onClose={() => setShowEditModal(false)}
+            onSave={handleSaveHero}
+            initialData={heroData}
+          />
+        )}
       </section>
     );
   }

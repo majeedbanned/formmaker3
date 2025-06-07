@@ -26,6 +26,8 @@ interface HeroData {
   secondaryButtonText: string;
   secondaryButtonLink: string;
   images: HeroImage[];
+  // Visibility setting
+  isVisible: boolean;
   // Style settings
   titleColor: string;
   subtitleColor: string;
@@ -276,6 +278,47 @@ export default function HeroEditModal({
               {/* Content Tab */}
               {activeTab === "content" && (
                 <div className="space-y-6">
+                  {/* Visibility Section */}
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
+                          <span className="text-2xl">👁️</span>
+                          نمایش بخش هیرو
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          تعیین کنید که بخش هیرو در صفحه اصلی نمایش داده شود یا
+                          خیر
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`text-sm font-medium ${
+                            formData.isVisible
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {formData.isVisible ? "فعال" : "غیرفعال"}
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.isVisible}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                isVisible: e.target.checked,
+                              })
+                            }
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Text Content Section */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
