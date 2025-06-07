@@ -19,6 +19,17 @@ interface HeroData {
   secondaryButtonText: string;
   secondaryButtonLink: string;
   images: HeroImage[];
+  // Style settings
+  titleColor: string;
+  subtitleColor: string;
+  descriptionColor: string;
+  backgroundGradientFrom: string;
+  backgroundGradientTo: string;
+  primaryButtonColor: string;
+  primaryButtonTextColor: string;
+  secondaryButtonColor: string;
+  secondaryButtonTextColor: string;
+  secondaryButtonBorderColor: string;
 }
 
 interface HeroEditModalProps {
@@ -333,6 +344,406 @@ export default function HeroEditModal({
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Style Settings */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    تنظیمات ظاهری
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          titleColor: "#4F46E5",
+                          subtitleColor: "#374151",
+                          descriptionColor: "#6B7280",
+                          backgroundGradientFrom: "#EEF2FF",
+                          backgroundGradientTo: "#FFFFFF",
+                          primaryButtonColor: "#4F46E5",
+                          primaryButtonTextColor: "#FFFFFF",
+                          secondaryButtonColor: "#FFFFFF",
+                          secondaryButtonTextColor: "#4F46E5",
+                          secondaryButtonBorderColor: "#4F46E5",
+                        });
+                      }}
+                      className="px-3 py-1 text-xs font-medium text-indigo-600 bg-indigo-100 rounded-md hover:bg-indigo-200"
+                    >
+                      پیش‌فرض آبی
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          titleColor: "#059669",
+                          subtitleColor: "#374151",
+                          descriptionColor: "#6B7280",
+                          backgroundGradientFrom: "#ECFDF5",
+                          backgroundGradientTo: "#FFFFFF",
+                          primaryButtonColor: "#059669",
+                          primaryButtonTextColor: "#FFFFFF",
+                          secondaryButtonColor: "#FFFFFF",
+                          secondaryButtonTextColor: "#059669",
+                          secondaryButtonBorderColor: "#059669",
+                        });
+                      }}
+                      className="px-3 py-1 text-xs font-medium text-green-600 bg-green-100 rounded-md hover:bg-green-200"
+                    >
+                      پیش‌فرض سبز
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          titleColor: "#DC2626",
+                          subtitleColor: "#374151",
+                          descriptionColor: "#6B7280",
+                          backgroundGradientFrom: "#FEF2F2",
+                          backgroundGradientTo: "#FFFFFF",
+                          primaryButtonColor: "#DC2626",
+                          primaryButtonTextColor: "#FFFFFF",
+                          secondaryButtonColor: "#FFFFFF",
+                          secondaryButtonTextColor: "#DC2626",
+                          secondaryButtonBorderColor: "#DC2626",
+                        });
+                      }}
+                      className="px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded-md hover:bg-red-200"
+                    >
+                      پیش‌فرض قرمز
+                    </button>
+                  </div>
+                </div>
+
+                {/* Text Colors */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      رنگ عنوان اصلی
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={formData.titleColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            titleColor: e.target.value,
+                          })
+                        }
+                        className="w-12 h-10 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="text"
+                        value={formData.titleColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            titleColor: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="#4F46E5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      رنگ زیرعنوان
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={formData.subtitleColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            subtitleColor: e.target.value,
+                          })
+                        }
+                        className="w-12 h-10 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="text"
+                        value={formData.subtitleColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            subtitleColor: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="#374151"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      رنگ توضیحات
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={formData.descriptionColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            descriptionColor: e.target.value,
+                          })
+                        }
+                        className="w-12 h-10 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="text"
+                        value={formData.descriptionColor}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            descriptionColor: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="#6B7280"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background Colors */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      رنگ شروع پس‌زمینه (گرادیان)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={formData.backgroundGradientFrom}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            backgroundGradientFrom: e.target.value,
+                          })
+                        }
+                        className="w-12 h-10 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="text"
+                        value={formData.backgroundGradientFrom}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            backgroundGradientFrom: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="#EEF2FF"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      رنگ پایان پس‌زمینه (گرادیان)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={formData.backgroundGradientTo}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            backgroundGradientTo: e.target.value,
+                          })
+                        }
+                        className="w-12 h-10 border border-gray-300 rounded-md"
+                      />
+                      <input
+                        type="text"
+                        value={formData.backgroundGradientTo}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            backgroundGradientTo: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="#FFFFFF"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Button Colors */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="text-md font-medium text-gray-700">
+                      رنگ‌های دکمه اصلی
+                    </h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رنگ پس‌زمینه دکمه
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.primaryButtonColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              primaryButtonColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-10 border border-gray-300 rounded-md"
+                        />
+                        <input
+                          type="text"
+                          value={formData.primaryButtonColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              primaryButtonColor: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="#4F46E5"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رنگ متن دکمه
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.primaryButtonTextColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              primaryButtonTextColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-10 border border-gray-300 rounded-md"
+                        />
+                        <input
+                          type="text"
+                          value={formData.primaryButtonTextColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              primaryButtonTextColor: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="#FFFFFF"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-md font-medium text-gray-700">
+                      رنگ‌های دکمه فرعی
+                    </h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رنگ پس‌زمینه دکمه
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.secondaryButtonColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-10 border border-gray-300 rounded-md"
+                        />
+                        <input
+                          type="text"
+                          value={formData.secondaryButtonColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonColor: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="#FFFFFF"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رنگ متن دکمه
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.secondaryButtonTextColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonTextColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-10 border border-gray-300 rounded-md"
+                        />
+                        <input
+                          type="text"
+                          value={formData.secondaryButtonTextColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonTextColor: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="#4F46E5"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رنگ حاشیه دکمه
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.secondaryButtonBorderColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonBorderColor: e.target.value,
+                            })
+                          }
+                          className="w-12 h-10 border border-gray-300 rounded-md"
+                        />
+                        <input
+                          type="text"
+                          value={formData.secondaryButtonBorderColor}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              secondaryButtonBorderColor: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="#4F46E5"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

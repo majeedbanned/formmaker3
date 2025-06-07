@@ -26,6 +26,17 @@ interface HeroData {
   secondaryButtonText: string;
   secondaryButtonLink: string;
   images: HeroImage[];
+  // Style settings
+  titleColor: string;
+  subtitleColor: string;
+  descriptionColor: string;
+  backgroundGradientFrom: string;
+  backgroundGradientTo: string;
+  primaryButtonColor: string;
+  primaryButtonTextColor: string;
+  secondaryButtonColor: string;
+  secondaryButtonTextColor: string;
+  secondaryButtonBorderColor: string;
 }
 
 export default function HeroSection() {
@@ -81,6 +92,17 @@ export default function HeroSection() {
             title: "پیشخوان مدیریت",
           },
         ],
+        // Default style settings
+        titleColor: "#4F46E5",
+        subtitleColor: "#374151",
+        descriptionColor: "#6B7280",
+        backgroundGradientFrom: "#EEF2FF",
+        backgroundGradientTo: "#FFFFFF",
+        primaryButtonColor: "#4F46E5",
+        primaryButtonTextColor: "#FFFFFF",
+        secondaryButtonColor: "#FFFFFF",
+        secondaryButtonTextColor: "#4F46E5",
+        secondaryButtonBorderColor: "#4F46E5",
       });
     } finally {
       setLoading(false);
@@ -149,8 +171,11 @@ export default function HeroSection() {
 
   return (
     <section
-      className="relative bg-gradient-to-b from-indigo-50 to-white overflow-hidden"
+      className="relative overflow-hidden"
       dir="rtl"
+      style={{
+        background: `linear-gradient(to bottom, ${heroData.backgroundGradientFrom}, ${heroData.backgroundGradientTo})`,
+      }}
     >
       {/* Settings Icon for School Admins */}
       {isSchoolAdmin && (
@@ -179,18 +204,24 @@ export default function HeroSection() {
             transition={{ duration: 0.5 }}
           >
             <motion.h1
-              className="text-3xl md:text-3xl text-right  lg:text-4xl font-bold tracking-tight text-gray-900"
+              className="text-3xl md:text-3xl text-right lg:text-4xl font-bold tracking-tight"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <span className="block text-indigo-600">{heroData.title}</span>
-              <span className="block text-2xl md:text-2xl text-right  lg:text-3xl mt-4">
+              <span className="block" style={{ color: heroData.titleColor }}>
+                {heroData.title}
+              </span>
+              <span
+                className="block text-2xl md:text-2xl text-right lg:text-3xl mt-4"
+                style={{ color: heroData.subtitleColor }}
+              >
                 {heroData.subtitle}
               </span>
             </motion.h1>
             <motion.p
-              className="mt-6 text-lg md:text-xl text-right text-gray-600 max-w-3xl"
+              className="mt-6 text-lg md:text-xl text-right max-w-3xl"
+              style={{ color: heroData.descriptionColor }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
@@ -208,7 +239,19 @@ export default function HeroSection() {
                   href={heroData.primaryButtonLink}
                   className="w-full sm:w-auto"
                 >
-                  <button className="w-full px-8 py-3 text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:-translate-y-1">
+                  <button
+                    className="w-full px-8 py-3 text-base font-medium rounded-md shadow-sm transition duration-300 ease-in-out transform hover:-translate-y-1"
+                    style={{
+                      backgroundColor: heroData.primaryButtonColor,
+                      color: heroData.primaryButtonTextColor,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
                     {heroData.primaryButtonText}
                   </button>
                 </Link>
@@ -218,7 +261,20 @@ export default function HeroSection() {
                   href={heroData.secondaryButtonLink}
                   className="w-full sm:w-auto"
                 >
-                  <button className="w-full px-8 py-3 text-base font-medium text-indigo-700 bg-white border border-indigo-600 rounded-md shadow-sm hover:bg-indigo-50 transition duration-300 ease-in-out transform hover:-translate-y-1">
+                  <button
+                    className="w-full px-8 py-3 text-base font-medium rounded-md shadow-sm border transition duration-300 ease-in-out transform hover:-translate-y-1"
+                    style={{
+                      backgroundColor: heroData.secondaryButtonColor,
+                      color: heroData.secondaryButtonTextColor,
+                      borderColor: heroData.secondaryButtonBorderColor,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                    }}
+                  >
                     {heroData.secondaryButtonText}
                   </button>
                 </Link>
