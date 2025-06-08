@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -39,6 +40,7 @@ export function GradeListsView({
   schoolCode,
   onEditGradeList,
 }: GradeListsViewProps) {
+  const router = useRouter();
   const [gradeLists, setGradeLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -294,6 +296,21 @@ export function GradeListsView({
                       >
                         <Edit className="h-4 w-4" />
                         ویرایش
+                      </Button>
+                    )}
+                    {(userType === "teacher" || userType === "school") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() =>
+                          router.push(
+                            `/admin/gradingsystem/report/${gradeList._id}?schoolCode=${schoolCode}`
+                          )
+                        }
+                      >
+                        <FileText className="h-4 w-4" />
+                        گزارش
                       </Button>
                     )}
                   </div>
