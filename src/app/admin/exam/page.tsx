@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagePermission } from "@/hooks/usePagePermission";
 import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
 import ScanAnswerSheetModal from "@/components/ScanAnswerSheetModal";
 import { toast } from "sonner";
@@ -49,6 +50,11 @@ const layout: LayoutSettings = {
 
 function StudentsPageContent() {
   const { user, isLoading } = useAuth();
+  const {
+    isLoading: permissionLoading,
+    hasAccess,
+    error: permissionError,
+  } = usePagePermission("show");
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
@@ -149,12 +155,39 @@ function StudentsPageContent() {
   }, [user, isLoading]);
 
   console.log("user", user);
-  if (isLoading) {
+
+  // Show loading while auth or permission is being checked
+  if (isLoading || permissionLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if permission check failed
+  if (permissionError) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
+          <p className="text-gray-600">{permissionError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If permission check completed but user doesn't have access,
+  // the hook will redirect to /noaccess, but we can show a message while redirecting
+  if (!hasAccess) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
+          <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
         </div>
       </div>
     );
