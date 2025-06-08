@@ -284,11 +284,14 @@ export default function Home({
           name: "systems",
           title: "سیستم",
           type: "dropdown",
-          options: [
-            { label: "اطلاعات دانش آموزان", value: "student" },
-            { label: "اطلاعات استادان", value: "teacher" },
-            { label: "اطلاعات مدرسه", value: "school" },
-          ],
+          dataSource: {
+            collectionName: "adminsystems",
+            labelField: "systemName",
+            valueField: "systemID",
+            sortField: "systemName",
+            sortOrder: "asc",
+            filterQuery: { teacher: true },
+          },
         },
         {
           name: "access",

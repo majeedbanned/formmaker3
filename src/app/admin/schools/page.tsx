@@ -173,15 +173,34 @@ const sampleFormStructure: FormField[] = [
         name: "systems",
         title: "سیستم",
         type: "dropdown",
-        options: [
-          { label: "اطلاعات دانش آموزان", value: "student" },
-          { label: "اطلاعات استادان", value: "teacher" },
-          { label: "اطلاعات مدرسه", value: "school" },
-          { label: "تعریف کلاس ها", value: "classes" },
-          { label: "تعریف دروس", value: "courses" },
-          { label: "ثبت دانش آموزان", value: "importstudents" },
-          { label: "برنامه هفتگی", value: "weeklyschedule" },
-        ],
+
+        dataSource: {
+          collectionName: "adminsystems",
+          labelField: "systemName",
+          valueField: "systemID",
+          sortField: "systemName",
+          sortOrder: "asc",
+          filterQuery: { school: true },
+        },
+
+        // dataSource: {
+        //   collectionName: "adminsystems",
+        //   labelField: "data.systemName",
+        //   valueField: "data.systemID",
+        //   // filter: {
+        //   //   school: true,
+        //   // },
+        // },
+        // options: [
+        //   { label: "اطلاعات مدرسه", value: "schools" },
+        //   { label: "اطلاعات دانش آموزان", value: "students" },
+        //   { label: "اطلاعات استادان", value: "teachers" },
+        //   { label: "تعریف کلاس ها", value: "classes" },
+        //   { label: "تعریف دروس", value: "courses" },
+        //   { label: "سیستم نمره گذاری", value: "gradingsystem" },
+        //   { label: "ثبت دانش آموزان", value: "importstudents" },
+        //   { label: "برنامه هفتگی", value: "weeklyschedule" },
+        // ],
       },
       {
         name: "access",
