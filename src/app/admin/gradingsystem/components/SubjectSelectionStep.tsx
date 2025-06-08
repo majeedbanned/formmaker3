@@ -18,6 +18,7 @@ interface SubjectSelectionStepProps {
   selectedSubject: any | null;
   onSubjectSelect: (subjectData: any) => void;
   userCode: string;
+  userType: "teacher" | "school";
   schoolCode: string;
 }
 
@@ -26,6 +27,7 @@ export function SubjectSelectionStep({
   selectedSubject,
   onSubjectSelect,
   userCode,
+  userType,
   schoolCode,
 }: SubjectSelectionStepProps) {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -37,14 +39,19 @@ export function SubjectSelectionStep({
     if (selectedClass) {
       fetchClassSubjects();
     }
-  }, [selectedClass, userCode, schoolCode]);
+  }, [selectedClass, userCode, userType, schoolCode]);
 
   const fetchClassSubjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/gradingsystem/class-subjects?classCode=${selectedClass.data.classCode}&teacherCode=${userCode}&schoolCode=${schoolCode}`
-      );
+
+      // Different API endpoints based on user type
+      const apiUrl =
+        userType === "school"
+          ? `/api/gradingsystem/class-all-subjects?classCode=${selectedClass.data.classCode}&schoolCode=${schoolCode}`
+          : `/api/gradingsystem/class-subjects?classCode=${selectedClass.data.classCode}&teacherCode=${userCode}&schoolCode=${schoolCode}`;
+
+      const response = await fetch(apiUrl);
 
       if (!response.ok) {
         throw new Error("Failed to fetch subjects");
@@ -63,7 +70,9 @@ export function SubjectSelectionStep({
   const filteredSubjects = subjects.filter(
     (subject) =>
       subject.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.courseCode.includes(searchTerm)
+      subject.courseCode.includes(searchTerm) ||
+      (subject.teacherName &&
+        subject.teacherName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (!selectedClass) {
@@ -111,7 +120,9 @@ export function SubjectSelectionStep({
       <div>
         <h3 className="text-lg font-semibold mb-2">انتخاب درس</h3>
         <p className="text-muted-foreground">
-          درسی که می‌خواهید برای آن نمره ثبت کنید را انتخاب کنید
+          {userType === "school"
+            ? "درسی که می‌خواهید برای آن نمره ثبت کنید را انتخاب کنید"
+            : "درسی که می‌خواهید برای آن نمره ثبت کنید را انتخاب کنید"}
         </p>
         <div className="mt-2">
           <Badge variant="outline">کلاس: {selectedClass.data.className}</Badge>
@@ -121,7 +132,11 @@ export function SubjectSelectionStep({
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="جستجو در دروس..."
+          placeholder={
+            userType === "school"
+              ? "جستجو در دروس، کد درس یا نام معلم..."
+              : "جستجو در دروس..."
+          }
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 text-right"
@@ -142,14 +157,16 @@ export function SubjectSelectionStep({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredSubjects.map((subject) => {
             const isSelected =
               selectedSubject?.courseCode === subject.courseCode;
 
             return (
               <Card
-                key={subject.courseCode}
+                key={`${subject.courseCode}-${
+                  subject.teacherCode || "no-teacher"
+                }`}
                 className={`cursor-pointer transition-all hover:shadow-md ${
                   isSelected ? "border-primary bg-primary/5" : ""
                 }`}
@@ -162,22 +179,39 @@ export function SubjectSelectionStep({
                     </CardTitle>
                     <Badge variant="outline">کد: {subject.courseCode}</Badge>
                   </div>
-                  <CardDescription>{subject.vahed} واحد درسی</CardDescription>
+                  <CardDescription>
+                    {subject.vahed} واحد درسی
+                    {userType === "school" && subject.teacherName && (
+                      <span className="block mt-1 text-xs">
+                        معلم: {subject.teacherName}
+                      </span>
+                    )}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        پایه {subject.Grade}
-                      </span>
-                    </div>
-                    {subject.weeklySchedule && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <BookOpen className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          {subject.weeklySchedule.length} جلسه
+                          پایه {subject.Grade}
                         </span>
+                      </div>
+                      {subject.weeklySchedule && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            {subject.weeklySchedule.length} جلسه
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {userType === "school" && subject.teacherName && (
+                      <div className="pt-2 border-t">
+                        <Badge variant="secondary" className="text-xs">
+                          {subject.teacherName}
+                        </Badge>
                       </div>
                     )}
                   </div>
@@ -203,6 +237,11 @@ export function SubjectSelectionStep({
             <CardDescription>
               برای کلاس {selectedClass.data.className} - {selectedSubject.vahed}{" "}
               واحد
+              {userType === "school" && selectedSubject.teacherName && (
+                <span className="block mt-1">
+                  معلم: {selectedSubject.teacherName}
+                </span>
+              )}
             </CardDescription>
           </CardHeader>
         </Card>

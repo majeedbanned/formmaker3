@@ -182,7 +182,7 @@ export default function GradingSystemPage() {
               مدیریت و ثبت نمرات دانش‌آموزان
             </p>
           </div>
-          {user.userType === "teacher" && (
+          {(user.userType === "teacher" || user.userType === "school") && (
             <Button onClick={startNewGrading} size="lg" className="gap-2">
               <FileText className="h-5 w-5" />
               ثبت نمره جدید
@@ -261,6 +261,7 @@ export default function GradingSystemPage() {
                 setGradingData({ ...gradingData, selectedClass: classData })
               }
               userCode={user.username}
+              userType={user.userType}
               schoolCode={user.schoolCode}
             />
           )}
@@ -273,6 +274,7 @@ export default function GradingSystemPage() {
                 setGradingData({ ...gradingData, selectedSubject: subjectData })
               }
               userCode={user.username}
+              userType={user.userType}
               schoolCode={user.schoolCode}
             />
           )}

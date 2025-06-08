@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const teacherCode = searchParams.get("teacherCode");
+   // const teacherCode = searchParams.get("teacherCode");
     const schoolCode = searchParams.get("schoolCode");
 
-    if (!teacherCode || !schoolCode) {
+    if ( !schoolCode) {
       return NextResponse.json(
         { error: "Teacher code and school code are required" },
         { status: 400 }
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify school code matches current user's school code
-    if (schoolCode !== currentUser.schoolCode && currentUser.userType !== "admin") {
+    if (schoolCode !== currentUser.schoolCode && currentUser.userType !== "school") {
       return NextResponse.json(
         { error: "Unauthorized access to school data" },
         { status: 403 }
@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
     }
 
     // For teachers, verify they are only accessing their own classes
-    if (currentUser.userType === "teacher" && currentUser.username !== teacherCode) {
-      return NextResponse.json(
-        { error: "Teachers can only view their own classes" },
-        { status: 403 }
-      );
-    }
+    // if (currentUser.userType === "teacher" && currentUser.username !== teacherCode) {
+    //   return NextResponse.json(
+    //     { error: "Teachers can only view their own classes" },
+    //     { status: 403 }
+    //   );
+    // }
 
     const domain = request.headers.get("x-domain") || "localhost:3000";
     const connection = await connectToDatabase(domain);
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .collection("classes")
       .find({ 
         "data.schoolCode": schoolCode,
-        "data.teachers.teacherCode": teacherCode
+       
       })
       .project({
         "_id": 1,

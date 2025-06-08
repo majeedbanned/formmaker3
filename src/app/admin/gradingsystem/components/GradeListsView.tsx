@@ -12,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   FileText,
@@ -25,6 +32,8 @@ import {
   TrendingUp,
   Loader2,
   CreditCard,
+  Filter,
+  X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -45,11 +54,38 @@ export function GradeListsView({
   const [gradeLists, setGradeLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState("");
   const [error, setError] = useState("");
+
+  // Filter options
+  const [teachers, setTeachers] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [courses, setCourses] = useState<string[]>([]);
 
   useEffect(() => {
     fetchGradeLists();
   }, [userType, userCode, schoolCode]);
+
+  useEffect(() => {
+    // Extract unique filter options from grade lists
+    if (gradeLists.length > 0) {
+      const uniqueTeachers = [
+        ...new Set(gradeLists.map((gl) => gl.teacherName).filter(Boolean)),
+      ];
+      const uniqueClasses = [
+        ...new Set(gradeLists.map((gl) => gl.className).filter(Boolean)),
+      ];
+      const uniqueCourses = [
+        ...new Set(gradeLists.map((gl) => gl.courseName).filter(Boolean)),
+      ];
+
+      setTeachers(uniqueTeachers);
+      setClasses(uniqueClasses);
+      setCourses(uniqueCourses);
+    }
+  }, [gradeLists]);
 
   const fetchGradeLists = async () => {
     try {
@@ -94,14 +130,32 @@ export function GradeListsView({
     }
   };
 
-  const filteredGradeLists = gradeLists.filter(
-    (gradeList) =>
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSelectedTeacher("");
+    setSelectedClass("");
+    setSelectedCourse("");
+  };
+
+  const filteredGradeLists = gradeLists.filter((gradeList) => {
+    const matchesSearch =
       gradeList.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       gradeList.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
       gradeList.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (gradeList.teacherName &&
-        gradeList.teacherName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+        gradeList.teacherName.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesTeacher =
+      !selectedTeacher || gradeList.teacherName === selectedTeacher;
+    const matchesClass =
+      !selectedClass || gradeList.className === selectedClass;
+    const matchesCourse =
+      !selectedCourse || gradeList.courseName === selectedCourse;
+
+    return matchesSearch && matchesTeacher && matchesClass && matchesCourse;
+  });
+
+  const hasActiveFilters = selectedTeacher || selectedClass || selectedCourse;
 
   if (loading) {
     return (
@@ -133,19 +187,165 @@ export function GradeListsView({
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="جستجو در عنوان، کلاس، درس یا استاد..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 text-right"
-          />
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="جستجو در عنوان، کلاس، درس یا استاد..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 text-right"
+            />
+          </div>
+          <Button onClick={fetchGradeLists} variant="outline">
+            بروزرسانی
+          </Button>
         </div>
-        <Button onClick={fetchGradeLists} variant="outline">
-          بروزرسانی
-        </Button>
+
+        {/* Advanced Filters */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="h-4 w-4" />
+            <span className="font-medium">فیلترهای پیشرفته</span>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+                پاک کردن همه
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Teacher Filter - Only show for school users */}
+            {userType === "school" && teachers.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">معلم</label>
+                <Select
+                  value={selectedTeacher}
+                  onValueChange={setSelectedTeacher}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب معلم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value=" ">همه معلمان</SelectItem>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher} value={teacher}>
+                        {teacher}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Class Filter */}
+            {classes.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">کلاس</label>
+                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کلاس" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value=" ">همه کلاس‌ها</SelectItem>
+                    {classes.map((className) => (
+                      <SelectItem key={className} value={className}>
+                        {className}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Course Filter */}
+            {courses.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">درس</label>
+                <Select
+                  value={selectedCourse}
+                  onValueChange={setSelectedCourse}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب درس" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value=" ">همه دروس</SelectItem>
+                    {courses.map((courseName) => (
+                      <SelectItem key={courseName} value={courseName}>
+                        {courseName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* Active Filters Display */}
+          {hasActiveFilters && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">
+                  فیلترهای فعال:
+                </span>
+                {selectedTeacher && (
+                  <Badge variant="secondary" className="gap-1">
+                    معلم: {selectedTeacher}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => setSelectedTeacher("")}
+                    />
+                  </Badge>
+                )}
+                {selectedClass && (
+                  <Badge variant="secondary" className="gap-1">
+                    کلاس: {selectedClass}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => setSelectedClass("")}
+                    />
+                  </Badge>
+                )}
+                {selectedCourse && (
+                  <Badge variant="secondary" className="gap-1">
+                    درس: {selectedCourse}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => setSelectedCourse("")}
+                    />
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Results Summary */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {filteredGradeLists.length} نتیجه از {gradeLists.length} نمره
+            {hasActiveFilters && " (فیلتر شده)"}
+          </span>
+          {filteredGradeLists.length !== gradeLists.length && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="text-xs"
+            >
+              نمایش همه نمرات
+            </Button>
+          )}
+        </div>
       </div>
 
       {filteredGradeLists.length === 0 ? (
@@ -154,12 +354,21 @@ export function GradeListsView({
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm
+                {searchTerm || hasActiveFilters
                   ? "هیچ نمره‌ای با این مشخصات یافت نشد"
                   : userType === "teacher"
                   ? "هنوز هیچ نمره‌ای ثبت نکرده‌اید"
                   : "هیچ نمره‌ای در سیستم یافت نشد"}
               </p>
+              {(searchTerm || hasActiveFilters) && (
+                <Button
+                  onClick={clearAllFilters}
+                  variant="outline"
+                  className="mt-3"
+                >
+                  پاک کردن فیلترها
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
