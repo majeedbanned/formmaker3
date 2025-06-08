@@ -260,7 +260,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
-
+        {
+          title: "+سیستم نمره گذاری",
+          url: "/admin/gradingsystem",
+          system: "importstudents",
+          requiredPermission: "show",
+        },
         {
           title: "+گزارش نمرات ماهانه",
           url: "/admin/monthlygrade",
