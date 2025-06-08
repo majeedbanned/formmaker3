@@ -22,7 +22,8 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useMultiAuth } from "@/hooks/useMultiAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { useDynamicMenu } from "@/hooks/useDynamicMenu";
 
 // This is sample data.
 const data = {
@@ -416,38 +417,82 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { activeUser: user, hasPermission } = useMultiAuth();
+  const { user } = useAuth();
+  const {
+    menus: dynamicMenus,
+    isLoading: menusLoading,
+    error: menuError,
+  } = useDynamicMenu();
 
-  // Filter navigation items based on permissions
+  // Convert dynamic menus to NavMain format with stable reference
   const filteredNavMain = React.useMemo(() => {
     if (!user) return [];
-    // console.log("uu", user);
-    return data.navMain
-      .map((section) => ({
-        ...section,
-        items: section.items
-          .filter(
-            (item) =>
-              item && hasPermission(item.system, item.requiredPermission)
-          )
-          .map((item) => ({
-            title: item.title,
-            url: item.url,
-          })),
-      }))
-      .filter((section) => section.items.length > 0);
-  }, [user, hasPermission]);
 
-  // Convert auth user to NavUser format
+    // Return empty array while loading, but don't recreate if we have cached data
+    if (menusLoading && dynamicMenus.length === 0) return [];
+
+    return dynamicMenus.map((section) => ({
+      title: section.title,
+      url: section.url,
+      icon: SquareTerminal, // Default icon, can be customized based on section.icon if available
+      isActive: true,
+      items: section.items.map((item) => ({
+        title: item.title,
+        url: item.url,
+      })),
+    }));
+  }, [user?.userType, user?.username, dynamicMenus]); // Only depend on stable user properties
+
+  // Convert auth user to NavUser format with stable reference
   const navUser = React.useMemo(() => {
     if (!user) return data.defaultUser;
 
     return {
-      name: user.name,
+      name: user.name || user.username,
       email: user.username + "@school.com", // Using username as email since we don't have email
       avatar: "/avatars/default.jpg", // Using default avatar since we don't have avatars
     };
-  }, [user]);
+  }, [user?.name, user?.username]); // Only depend on specific user properties
+
+  // Only show loading state if we're loading and have no cached data
+  if (menusLoading && dynamicMenus.length === 0 && !menuError) {
+    return (
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader>
+          <TeamSwitcher />
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={navUser} />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    );
+  }
+
+  // Show error state if menu loading failed
+  if (menuError) {
+    return (
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader>
+          <TeamSwitcher />
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="flex items-center justify-center p-4 text-red-500">
+            <p>خطا در بارگذاری منو: {menuError}</p>
+          </div>
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={navUser} />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    );
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
