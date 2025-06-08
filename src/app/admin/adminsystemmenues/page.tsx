@@ -52,14 +52,14 @@ function StudentsPageContent() {
   };
   const sampleFormStructure: FormField[] = [
     {
-      name: "systemID",
-      title: "کد مدیریتی",
+      name: "menuID",
+      title: "کد منو",
       type: "text",
       isShowInList: true,
       isSearchable: true,
       populateID: {
-        collection: "adminsystems",
-        field: "data.systemID",
+        collection: "adminsystemmenues",
+        field: "data.menuID",
       },
       enabled: false,
       groupUniqueness: true,
@@ -67,12 +67,12 @@ function StudentsPageContent() {
       readonly: true,
       visible: true,
       validation: {
-        requiredMessage: "کد مدیریتی الزامی است",
+        requiredMessage: "کد منو الزامی است",
       },
     },
     {
-      name: "systemName",
-      title: "نام مدیریتی",
+      name: "menuName",
+      title: "نام منو",
       type: "text",
       isShowInList: true,
       isSearchable: true,
@@ -88,23 +88,7 @@ function StudentsPageContent() {
     },
 
     {
-      name: "menuID",
-      title: "کد منو",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      listLabelColor: "#2563eb",
-      defaultValue: "",
-      validation: {
-        requiredMessage: "کد منو الزامی است",
-      },
-    },
-    {
-      name: "menuIDOrder",
+      name: "order",
       title: "ترتیب منو",
       type: "text",
       isShowInList: true,
@@ -120,22 +104,6 @@ function StudentsPageContent() {
       },
     },
 
-    {
-      name: "mainUrl",
-      title: "آدرس اصلی",
-      type: "text",
-      isShowInList: true,
-      isSearchable: true,
-      required: true,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      listLabelColor: "#2563eb",
-      defaultValue: "",
-      validation: {
-        requiredMessage: "ترتیب منو الزامی است",
-      },
-    },
     // {
     //   name: "mainUrl",
     //   title: "آدرس اصلی",
@@ -152,125 +120,6 @@ function StudentsPageContent() {
     //     requiredMessage: "آدرس اصلی الزامی است",
     //   },
     // },
-
-    {
-      enabled: true,
-      visible: true,
-      isShowInList: true,
-      isSearchable: true,
-      name: "urls",
-      title: "آدرس ها",
-      type: "text",
-      required: false,
-      nestedType: "array",
-      fields: [
-        {
-          name: "url",
-          title: "آدرس",
-          type: "text",
-          enabled: true,
-          visible: true,
-          isSearchable: true,
-          isShowInList: true,
-          required: false,
-        },
-      ],
-      orientation: "horizontal",
-      isOpen: true,
-    },
-    {
-      name: "school",
-      title: "مدرسه",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-
-    {
-      name: "teacher",
-      title: "معلمان",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-    {
-      name: "student",
-      title: "دانش آموزان",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-
-    {
-      name: "schoolCode",
-      title: "کد مدرسه",
-      type: "text",
-      isShowInList: false,
-      isSearchable: true,
-      defaultValue: user?.schoolCode,
-      readonly: true,
-      required: true,
-      groupUniqueness: true,
-      enabled: true,
-      visible: true,
-
-      validation: {
-        requiredMessage: "کد مدرسه الزامی است",
-      },
-    },
-
-    {
-      name: "defaultAccessSchool",
-      title: "دسترسی مدرسه",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-
-    {
-      name: "defaultAccessTeacher",
-      title: "دسترسی معلمان",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
-    {
-      name: "defaultAccessStudent",
-      title: "دسترسی دانش آموزان",
-      type: "checkbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-      readonly: false,
-      defaultValue: true,
-    },
   ] as const;
   return (
     <main className="min-h-screen bg-gray-50 py-8">
@@ -281,7 +130,7 @@ function StudentsPageContent() {
 
         <CRUDComponent
           formStructure={sampleFormStructure}
-          collectionName="adminsystems"
+          collectionName="adminsystemmenues"
           initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           importFunction={{
