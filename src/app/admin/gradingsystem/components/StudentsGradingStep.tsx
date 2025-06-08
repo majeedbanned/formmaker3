@@ -162,7 +162,7 @@ export function StudentsGradingStep({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div>
         <h3 className="text-lg font-semibold mb-2">ثبت نمرات دانش‌آموزان</h3>
         <p className="text-muted-foreground">

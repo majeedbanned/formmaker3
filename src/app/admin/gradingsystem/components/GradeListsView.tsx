@@ -129,15 +129,15 @@ export function GradeListsView({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="جستجو در عنوان، کلاس، درس یا استاد..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10"
+            className="pl-10 text-right"
           />
         </div>
         <Button onClick={fetchGradeLists} variant="outline">

@@ -22,6 +22,7 @@ import {
   FileText,
   TrendingUp,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +31,7 @@ interface ReviewSaveStepProps {
     selectedClass: any | null;
     selectedSubject: any | null;
     gradeTitle: string;
+    gradeDate: string;
     studentGrades: {
       [studentCode: string]: { score: number; studentName: string };
     };
@@ -69,6 +71,7 @@ export function ReviewSaveStep({
 
       const saveData = {
         title: gradingData.gradeTitle,
+        gradeDate: gradingData.gradeDate,
         classCode: gradingData.selectedClass.data.classCode,
         className: gradingData.selectedClass.data.className,
         courseCode: gradingData.selectedSubject.courseCode,
@@ -115,7 +118,7 @@ export function ReviewSaveStep({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div>
         <h3 className="text-lg font-semibold mb-2">بررسی و ذخیره نمرات</h3>
         <p className="text-muted-foreground">
@@ -218,6 +221,18 @@ export function ReviewSaveStep({
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">عنوان:</span>
                 <Badge variant="outline">{gradingData.gradeTitle}</Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">تاریخ:</span>
+                <Badge variant="outline">
+                  {gradingData.gradeDate
+                    ? new Date(gradingData.gradeDate).toLocaleDateString(
+                        "fa-IR"
+                      )
+                    : "-"}
+                </Badge>
               </div>
 
               <div className="flex items-center gap-2">

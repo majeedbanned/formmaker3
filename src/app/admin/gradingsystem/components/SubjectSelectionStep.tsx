@@ -107,7 +107,7 @@ export function SubjectSelectionStep({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div>
         <h3 className="text-lg font-semibold mb-2">انتخاب درس</h3>
         <p className="text-muted-foreground">
@@ -119,12 +119,12 @@ export function SubjectSelectionStep({
       </div>
 
       <div className="relative">
-        <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="جستجو در دروس..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pr-10"
+          className="pl-10 text-right"
         />
       </div>
 

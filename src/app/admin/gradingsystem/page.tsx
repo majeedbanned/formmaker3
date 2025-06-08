@@ -30,6 +30,7 @@ interface GradingData {
   selectedClass: any | null;
   selectedSubject: any | null;
   gradeTitle: string;
+  gradeDate: string;
   studentGrades: {
     [studentCode: string]: { score: number; studentName: string };
   };
@@ -77,6 +78,7 @@ export default function GradingSystemPage() {
     selectedClass: null,
     selectedSubject: null,
     gradeTitle: "",
+    gradeDate: "",
     studentGrades: {},
     isEditing: false,
   });
@@ -100,6 +102,7 @@ export default function GradingSystemPage() {
       selectedClass: null,
       selectedSubject: null,
       gradeTitle: "",
+      gradeDate: "",
       studentGrades: {},
       isEditing: false,
     });
@@ -116,6 +119,7 @@ export default function GradingSystemPage() {
       selectedClass: gradeListData.classData,
       selectedSubject: gradeListData.subjectData,
       gradeTitle: gradeListData.title,
+      gradeDate: gradeListData.date || "",
       studentGrades: gradeListData.grades,
       isEditing: true,
       editingGradeListId: gradeListData._id,
@@ -131,7 +135,9 @@ export default function GradingSystemPage() {
       case 2:
         return gradingData.selectedSubject !== null;
       case 3:
-        return gradingData.gradeTitle.trim() !== "";
+        return (
+          gradingData.gradeTitle.trim() !== "" && gradingData.gradeDate !== ""
+        );
       case 4:
         return Object.keys(gradingData.studentGrades).length > 0;
       default:
@@ -168,7 +174,7 @@ export default function GradingSystemPage() {
 
   if (!showWizard) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6" dir="rtl">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">سیستم نمره‌دهی</h1>
@@ -195,7 +201,7 @@ export default function GradingSystemPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6" dir="rtl">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -251,7 +257,7 @@ export default function GradingSystemPage() {
           {currentStep === 1 && !gradingData.isEditing && (
             <ClassSelectionStep
               selectedClass={gradingData.selectedClass}
-              onClassSelect={(classData) =>
+              onClassSelect={(classData: any) =>
                 setGradingData({ ...gradingData, selectedClass: classData })
               }
               userCode={user.username}
@@ -263,7 +269,7 @@ export default function GradingSystemPage() {
             <SubjectSelectionStep
               selectedClass={gradingData.selectedClass}
               selectedSubject={gradingData.selectedSubject}
-              onSubjectSelect={(subjectData) =>
+              onSubjectSelect={(subjectData: any) =>
                 setGradingData({ ...gradingData, selectedSubject: subjectData })
               }
               userCode={user.username}
@@ -274,8 +280,12 @@ export default function GradingSystemPage() {
           {currentStep === 3 && !gradingData.isEditing && (
             <GradeTitleStep
               gradeTitle={gradingData.gradeTitle}
-              onTitleChange={(title) =>
+              gradeDate={gradingData.gradeDate}
+              onTitleChange={(title: string) =>
                 setGradingData({ ...gradingData, gradeTitle: title })
+              }
+              onDateChange={(date: string) =>
+                setGradingData({ ...gradingData, gradeDate: date })
               }
             />
           )}
@@ -284,7 +294,7 @@ export default function GradingSystemPage() {
             <StudentsGradingStep
               selectedClass={gradingData.selectedClass}
               studentGrades={gradingData.studentGrades}
-              onGradesChange={(grades) =>
+              onGradesChange={(grades: any) =>
                 setGradingData({ ...gradingData, studentGrades: grades })
               }
             />

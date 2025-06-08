@@ -104,6 +104,7 @@ export async function GET(
     const gradeListData = {
       _id: gradeList._id,
       title: gradeList.title,
+      date: gradeList.gradeDate,
       classData: classData,
       subjectData: courseData ? {
         courseCode: courseData.data.courseCode,

@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title,
+      gradeDate,
       classCode,
       className,
       courseCode,
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!title || !classCode || !courseCode || !teacherCode || !schoolCode || !grades) {
+    if (!title || !gradeDate || !classCode || !courseCode || !teacherCode || !schoolCode || !grades) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
         {
           $set: {
             title,
+            gradeDate,
             statistics,
             updatedAt: now
           }
@@ -130,6 +132,7 @@ export async function POST(request: NextRequest) {
       // Create new grade list
       const gradeListResult = await connection.collection("grade_lists").insertOne({
         title,
+        gradeDate,
         classCode,
         className,
         courseCode,
