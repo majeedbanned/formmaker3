@@ -87,6 +87,23 @@ function StudentsPageContent() {
       },
     },
 
+    // {
+    //   name: "mainUrl",
+    //   title: "آدرس اصلی",
+    //   type: "text",
+    //   isShowInList: true,
+    //   isSearchable: true,
+    //   required: true,
+    //   enabled: true,
+    //   visible: true,
+    //   readonly: false,
+    //   listLabelColor: "#2563eb",
+    //   defaultValue: "",
+    //   validation: {
+    //     requiredMessage: "آدرس اصلی الزامی است",
+    //   },
+    // },
+
     {
       enabled: true,
       visible: true,
