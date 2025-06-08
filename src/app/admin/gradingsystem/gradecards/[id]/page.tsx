@@ -10,6 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Printer,
   Download,
@@ -19,7 +21,29 @@ import {
   TrendingDown,
   Activity,
   BarChart3,
+  Star,
+  Target,
+  Award,
+  BookOpen,
+  Users,
+  Calendar,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart,
+} from "recharts";
 
 interface StudentGrade {
   studentCode: string;
@@ -48,6 +72,8 @@ interface GradeCardsData {
       highest: number;
       lowest: number;
       total: number;
+      standardDeviation?: number;
+      median?: number;
     };
   };
   students: StudentGrade[];
@@ -78,21 +104,39 @@ function getStatusInfo(status: string): {
   label: string;
   color: string;
   bgColor: string;
+  textColor: string;
 } {
   const statusMap = {
     excellent: {
       label: "عالی",
       color: "text-green-800",
       bgColor: "bg-green-100",
+      textColor: "text-green-600",
     },
-    good: { label: "خوب", color: "text-blue-800", bgColor: "bg-blue-100" },
+    good: {
+      label: "خوب",
+      color: "text-blue-800",
+      bgColor: "bg-blue-100",
+      textColor: "text-blue-600",
+    },
     average: {
       label: "متوسط",
       color: "text-yellow-800",
       bgColor: "bg-yellow-100",
+      textColor: "text-yellow-600",
     },
-    poor: { label: "ضعیف", color: "text-orange-800", bgColor: "bg-orange-100" },
-    failing: { label: "مردود", color: "text-red-800", bgColor: "bg-red-100" },
+    poor: {
+      label: "ضعیف",
+      color: "text-orange-800",
+      bgColor: "bg-orange-100",
+      textColor: "text-orange-600",
+    },
+    failing: {
+      label: "مردود",
+      color: "text-red-800",
+      bgColor: "bg-red-100",
+      textColor: "text-red-600",
+    },
   };
   return statusMap[status as keyof typeof statusMap] || statusMap.average;
 }
@@ -105,6 +149,7 @@ function getPerformanceLevel(
   icon: React.ReactNode;
   text: string;
   color: string;
+  level: number;
 } {
   const diff = score - average;
   if (diff > 3)
@@ -112,23 +157,75 @@ function getPerformanceLevel(
       icon: <TrendingUp className="h-4 w-4" />,
       text: "عملکرد فوق‌العاده",
       color: "text-green-600",
+      level: 5,
     };
-  if (diff > 0)
+  if (diff > 1)
     return {
       icon: <Activity className="h-4 w-4" />,
       text: "عملکرد مطلوب",
       color: "text-blue-600",
+      level: 4,
     };
-  if (diff > -3)
+  if (diff > -1)
     return {
       icon: <BarChart3 className="h-4 w-4" />,
       text: "عملکرد معمولی",
       color: "text-yellow-600",
+      level: 3,
+    };
+  if (diff > -3)
+    return {
+      icon: <TrendingDown className="h-4 w-4" />,
+      text: "نیاز به تحریک",
+      color: "text-orange-600",
+      level: 2,
     };
   return {
     icon: <TrendingDown className="h-4 w-4" />,
     text: "نیاز به تلاش بیشتر",
     color: "text-red-600",
+    level: 1,
+  };
+}
+
+// Calculate additional statistics
+function calculateAdvancedStats(
+  students: StudentGrade[],
+  gradeList: GradeCardsData["gradeList"]
+) {
+  const scores = students.map((s) => s.score);
+  const sortedScores = [...scores].sort((a, b) => a - b);
+
+  const median =
+    sortedScores.length % 2 === 0
+      ? (sortedScores[sortedScores.length / 2 - 1] +
+          sortedScores[sortedScores.length / 2]) /
+        2
+      : sortedScores[Math.floor(sortedScores.length / 2)];
+
+  const mean = gradeList.statistics.average;
+  const variance =
+    scores.reduce((acc, score) => acc + Math.pow(score - mean, 2), 0) /
+    scores.length;
+  const standardDeviation = Math.sqrt(variance);
+
+  const gradeDistribution = {
+    "18-20": scores.filter((s) => s >= 18).length,
+    "15-17": scores.filter((s) => s >= 15 && s < 18).length,
+    "12-14": scores.filter((s) => s >= 12 && s < 15).length,
+    "10-11": scores.filter((s) => s >= 10 && s < 12).length,
+    "0-9": scores.filter((s) => s < 10).length,
+  };
+
+  return {
+    median,
+    standardDeviation,
+    gradeDistribution,
+    quartiles: {
+      q1: sortedScores[Math.floor(sortedScores.length * 0.25)],
+      q2: median,
+      q3: sortedScores[Math.floor(sortedScores.length * 0.75)],
+    },
   };
 }
 
@@ -143,6 +240,8 @@ export default function GradeCardsPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showCharts, setShowCharts] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
   useEffect(() => {
     if (gradeListId && schoolCode) {
@@ -172,11 +271,15 @@ export default function GradeCardsPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    setShowCharts(false);
+    setTimeout(() => {
+      window.print();
+      setShowCharts(true);
+    }, 500);
   };
 
   const handleDownload = () => {
-    window.print();
+    handlePrint();
   };
 
   if (loading) {
@@ -207,16 +310,37 @@ export default function GradeCardsPage() {
   }
 
   const { gradeList, students, teacherName, schoolName } = gradeCardsData;
+  const advancedStats = calculateAdvancedStats(students, gradeList);
+
+  // Prepare chart data
+  const distributionData = Object.entries(advancedStats.gradeDistribution).map(
+    ([range, count]) => ({
+      range,
+      count,
+      percentage: ((count / students.length) * 100).toFixed(1),
+    })
+  );
+
+  const performanceData = students
+    .map((student) => ({
+      name: student.studentName.split(" ")[0], // First name only for chart
+      score: student.score,
+      rank: student.rank,
+      percentile: student.percentile,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10); // Top 10 for visibility
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <style jsx global>{`
         @media print {
           * {
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-
           body {
             font-family: "Tahoma", Arial, sans-serif;
             font-size: 9px !important;
@@ -226,134 +350,39 @@ export default function GradeCardsPage() {
             padding: 0 !important;
             line-height: 1.2 !important;
           }
-
           .no-print {
             display: none !important;
           }
-
           .container {
             max-width: none !important;
             padding: 6px !important;
             margin: 0 !important;
           }
-
           .grade-cards-grid {
             display: grid !important;
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 6px !important;
-            margin: 0 !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
           }
-
           .grade-card {
             border: 2px solid #333 !important;
-            padding: 6px !important;
-            margin: 0 !important;
+            padding: 8px !important;
             page-break-inside: avoid !important;
-            break-inside: avoid !important;
             background: white !important;
             font-size: 8px !important;
           }
-
-          .grade-card-header {
-            text-align: center;
-            margin-bottom: 4px !important;
-            padding-bottom: 3px !important;
-            border-bottom: 1px solid #ddd !important;
-          }
-
           .student-name {
-            font-size: 11px !important;
+            font-size: 12px !important;
             font-weight: bold;
-            margin: 0 0 2px 0 !important;
+            margin: 0 0 3px 0 !important;
           }
-
-          .student-code {
-            font-size: 8px !important;
-            margin: 0 !important;
-            color: #666 !important;
-          }
-
           .main-score {
-            font-size: 18px !important;
+            font-size: 20px !important;
             font-weight: bold;
             text-align: center;
-            margin: 3px 0 !important;
-            padding: 4px !important;
+            margin: 5px 0 !important;
+            padding: 8px !important;
             border: 2px solid #333 !important;
             background: #f8f9fa !important;
-          }
-
-          .score-subtitle {
-            font-size: 7px !important;
-            color: #666 !important;
-          }
-
-          .stats-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 2px !important;
-            margin: 4px 0 !important;
-          }
-
-          .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 2px !important;
-            border: 1px solid #eee !important;
-            font-size: 7px !important;
-          }
-
-          .stat-label {
-            font-weight: bold;
-          }
-
-          .stat-value {
-            font-weight: bold;
-            color: #333 !important;
-          }
-
-          .grade-badges {
-            display: flex;
-            justify-content: space-between;
-            margin: 3px 0 !important;
-          }
-
-          .grade-badge {
-            font-size: 7px !important;
-            padding: 1px 4px !important;
-            border: 1px solid #333 !important;
-            text-align: center;
-            font-weight: bold;
-            border-radius: 0 !important;
-          }
-
-          .performance-section {
-            text-align: center;
-            padding-top: 3px !important;
-            border-top: 1px solid #ddd !important;
-            font-size: 7px !important;
-          }
-
-          .performance-text {
-            font-weight: bold;
-            margin: 2px 0 !important;
-          }
-
-          .rank-badge {
-            font-size: 7px !important;
-            padding: 1px 3px !important;
-            background: #ffd700 !important;
-            border: 1px solid #333 !important;
-            margin: 2px 0 !important;
-            display: inline-block;
-          }
-
-          .card-footer {
-            font-size: 6px !important;
-            color: #666 !important;
-            text-align: center;
-            margin-top: 2px !important;
           }
         }
       `}</style>
@@ -364,15 +393,34 @@ export default function GradeCardsPage() {
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
-              onClick={() => window.close()}
+              onClick={() => window.history.back()}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
               بازگشت
             </Button>
-            <h1 className="text-2xl font-bold">کارنامه‌های کلاس</h1>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                کارنامه‌های دانش‌آموزان
+              </h1>
+              <p className="text-muted-foreground">
+                {gradeList.className} - {gradeList.courseName}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCharts(!showCharts)}
+              className="gap-2"
+            >
+              {showCharts ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              {showCharts ? "مخفی کردن نمودارها" : "نمایش نمودارها"}
+            </Button>
             <Button
               variant="outline"
               onClick={handleDownload}
@@ -388,44 +436,237 @@ export default function GradeCardsPage() {
           </div>
         </div>
 
-        {/* Page Header */}
-        <Card className="mb-6 no-print">
+        {/* Statistics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm">میانگین کلاس</p>
+                  <p className="text-2xl font-bold">
+                    {toPersianDigits(gradeList.statistics.average.toFixed(1))}
+                  </p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm">قبولی</p>
+                  <p className="text-2xl font-bold">
+                    {toPersianDigits(gradeList.statistics.passing)}
+                  </p>
+                  <p className="text-green-200 text-xs">
+                    {toPersianDigits(
+                      (
+                        (gradeList.statistics.passing /
+                          gradeList.statistics.total) *
+                        100
+                      ).toFixed(0)
+                    )}
+                    %
+                  </p>
+                </div>
+                <Award className="h-8 w-8 text-green-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm">میانه نمرات</p>
+                  <p className="text-2xl font-bold">
+                    {toPersianDigits(advancedStats.median.toFixed(1))}
+                  </p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm">انحراف استاندارد</p>
+                  <p className="text-2xl font-bold">
+                    {toPersianDigits(
+                      advancedStats.standardDeviation.toFixed(1)
+                    )}
+                  </p>
+                </div>
+                <Activity className="h-8 w-8 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        {showCharts && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 no-print">
+            {/* Grade Distribution Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  توزیع نمرات
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={distributionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="range" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        toPersianDigits(value as number),
+                        name === "count" ? "تعداد" : "درصد",
+                      ]}
+                    />
+                    <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Performance Pie Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  وضعیت عملکرد
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={distributionData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ range, percentage }) =>
+                        `${range}: ${toPersianDigits(percentage)}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {distributionData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => toPersianDigits(value as number)}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Top Students Performance */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  عملکرد برترین دانش‌آموزان
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        toPersianDigits(value as number),
+                        name === "score"
+                          ? "نمره"
+                          : name === "rank"
+                          ? "رتبه"
+                          : "درصدک",
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="score"
+                      stackId="1"
+                      stroke="#3B82F6"
+                      fill="#3B82F6"
+                      fillOpacity={0.6}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="percentile"
+                      stackId="2"
+                      stroke="#10B981"
+                      fill="#10B981"
+                      fillOpacity={0.6}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* School Header Info */}
+        <Card className="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">{schoolName}</CardTitle>
-            <CardDescription className="text-lg">
+            <CardTitle className="text-3xl mb-2">{schoolName}</CardTitle>
+            <CardDescription className="text-indigo-100 text-lg">
               کارنامه‌های {gradeList.title} - کلاس {gradeList.className}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">درس</p>
-                <p className="font-bold">{gradeList.courseName}</p>
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <BookOpen className="h-6 w-6 mx-auto mb-2 text-indigo-200" />
+                <p className="text-indigo-100 text-sm">درس</p>
+                <p className="font-bold text-lg">{gradeList.courseName}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">معلم</p>
-                <p className="font-bold">{teacherName}</p>
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <Users className="h-6 w-6 mx-auto mb-2 text-indigo-200" />
+                <p className="text-indigo-100 text-sm">معلم</p>
+                <p className="font-bold text-lg">{teacherName}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  تعداد دانش‌آموزان
-                </p>
-                <p className="font-bold">
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <Users className="h-6 w-6 mx-auto mb-2 text-indigo-200" />
+                <p className="text-indigo-100 text-sm">تعداد دانش‌آموزان</p>
+                <p className="font-bold text-lg">
                   {toPersianDigits(gradeList.statistics.total)}
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">میانگین کلاس</p>
-                <p className="font-bold">
-                  {toPersianDigits(gradeList.statistics.average.toFixed(1))}
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <Calendar className="h-6 w-6 mx-auto mb-2 text-indigo-200" />
+                <p className="text-indigo-100 text-sm">تاریخ آزمون</p>
+                <p className="font-bold text-lg">
+                  {gradeList.gradeDate
+                    ? toPersianDigits(
+                        new Date(gradeList.gradeDate).toLocaleDateString(
+                          "fa-IR"
+                        )
+                      )
+                    : toPersianDigits(new Date().toLocaleDateString("fa-IR"))}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Grade Cards Grid */}
-        <div className="grade-cards-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Individual Grade Cards */}
+        <div className="grade-cards-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {students.map((student) => {
             const statusInfo = getStatusInfo(student.status);
             const performance = getPerformanceLevel(
@@ -434,54 +675,101 @@ export default function GradeCardsPage() {
             );
 
             return (
-              <Card key={student.studentCode} className="grade-card border-2">
-                <CardContent className="p-4">
+              <Card
+                key={student.studentCode}
+                className={`grade-card border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer ${
+                  selectedStudent === student.studentCode
+                    ? "ring-4 ring-blue-500 border-blue-500"
+                    : "hover:border-blue-300"
+                }`}
+                onClick={() =>
+                  setSelectedStudent(
+                    selectedStudent === student.studentCode
+                      ? null
+                      : student.studentCode
+                  )
+                }
+              >
+                <CardContent className="p-6">
                   {/* Header */}
-                  <div className="grade-card-header">
-                    <h3 className="student-name">{student.studentName}</h3>
-                    <p className="student-code">
-                      کد: {toPersianDigits(student.studentCode)}
+                  <div className="text-center mb-4 pb-4 border-b-2 border-gray-100">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      {student.rank <= 3 && (
+                        <Award
+                          className={`h-5 w-5 ${
+                            student.rank === 1
+                              ? "text-yellow-500"
+                              : student.rank === 2
+                              ? "text-gray-400"
+                              : "text-orange-500"
+                          }`}
+                        />
+                      )}
+                      <h3 className="student-name text-xl font-bold text-gray-800">
+                        {student.studentName}
+                      </h3>
+                    </div>
+                    <p className="student-code text-sm text-gray-500">
+                      کد دانش‌آموزی: {toPersianDigits(student.studentCode)}
                     </p>
                   </div>
 
-                  {/* Main Score */}
-                  <div className="main-score">
-                    <div>{toPersianDigits(student.score)}</div>
-                    <div className="score-subtitle">از ۲۰</div>
+                  {/* Main Score with Visual Enhancement */}
+                  <div className="main-score relative mb-6">
+                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border-2 border-blue-200">
+                      <div className="text-4xl font-bold text-blue-800 mb-2">
+                        {toPersianDigits(student.score)}
+                      </div>
+                      <div className="text-sm text-blue-600 mb-3">از ۲۰</div>
+                      <Progress
+                        value={(student.score / 20) * 100}
+                        className="h-3 mb-2"
+                      />
+                      <div className="text-xs text-gray-600">
+                        {toPersianDigits(
+                          ((student.score / 20) * 100).toFixed(0)
+                        )}
+                        % از حداکثر نمره
+                      </div>
+                    </div>
+
+                    {/* Floating rank badge */}
+                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold shadow-lg">
+                      {toPersianDigits(student.rank)}
+                    </div>
                   </div>
 
-                  {/* Grade Letter and Status */}
-                  <div className="grade-badges">
-                    <div className="grade-badge">
-                      حرفی: {getGradeLetter(student.score)}
-                    </div>
-                    <div
-                      className={`grade-badge ${statusInfo.bgColor} ${statusInfo.color}`}
+                  {/* Status and Grade Letter */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Badge
+                      className={`${statusInfo.bgColor} ${statusInfo.color} px-3 py-1 text-sm font-medium`}
                     >
                       {statusInfo.label}
+                    </Badge>
+                    <div className="bg-gray-100 px-3 py-1 rounded-lg">
+                      <span className="text-sm font-bold">
+                        نمره حرفی: {getGradeLetter(student.score)}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Statistics */}
-                  <div className="stats-grid">
-                    <div className="stat-item">
-                      <span className="stat-label">رتبه:</span>
-                      <span className="stat-value">
-                        {toPersianDigits(student.rank)}
-                      </span>
-                    </div>
-
-                    <div className="stat-item">
-                      <span className="stat-label">درصد:</span>
-                      <span className="stat-value">
+                  {/* Enhanced Statistics Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg text-center">
+                      <p className="text-xs text-green-700 font-medium">
+                        درصدک
+                      </p>
+                      <p className="text-lg font-bold text-green-800">
                         {toPersianDigits(student.percentile.toFixed(0))}%
-                      </span>
+                      </p>
                     </div>
 
-                    <div className="stat-item">
-                      <span className="stat-label">از میانگین:</span>
-                      <span
-                        className={`stat-value ${
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg text-center">
+                      <p className="text-xs text-purple-700 font-medium">
+                        اختلاف از میانگین
+                      </p>
+                      <p
+                        className={`text-lg font-bold ${
                           student.differenceFromAverage > 0
                             ? "text-green-600"
                             : student.differenceFromAverage < 0
@@ -493,61 +781,137 @@ export default function GradeCardsPage() {
                         {toPersianDigits(
                           student.differenceFromAverage.toFixed(1)
                         )}
-                      </span>
+                      </p>
                     </div>
 
-                    <div className="stat-item">
-                      <span className="stat-label">میانگین:</span>
-                      <span className="stat-value">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg text-center">
+                      <p className="text-xs text-blue-700 font-medium">
+                        میانگین کلاس
+                      </p>
+                      <p className="text-lg font-bold text-blue-800">
                         {toPersianDigits(
                           gradeList.statistics.average.toFixed(1)
                         )}
-                      </span>
+                      </p>
                     </div>
 
-                    <div className="stat-item">
-                      <span className="stat-label">بالاترین:</span>
-                      <span className="stat-value">
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 rounded-lg text-center">
+                      <p className="text-xs text-orange-700 font-medium">
+                        بالاترین نمره
+                      </p>
+                      <p className="text-lg font-bold text-orange-800">
                         {toPersianDigits(gradeList.statistics.highest)}
-                      </span>
-                    </div>
-
-                    <div className="stat-item">
-                      <span className="stat-label">پایین‌ترین:</span>
-                      <span className="stat-value">
-                        {toPersianDigits(gradeList.statistics.lowest)}
-                      </span>
+                      </p>
                     </div>
                   </div>
 
-                  {/* Performance */}
-                  <div className="performance-section">
-                    <div className={`performance-text ${performance.color}`}>
-                      {performance.text}
+                  {/* Performance Analysis */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg text-center mb-4">
+                    <div
+                      className={`flex items-center justify-center gap-2 mb-2 ${performance.color}`}
+                    >
+                      {performance.icon}
+                      <span className="font-bold">{performance.text}</span>
                     </div>
 
-                    {student.rank <= 3 && (
-                      <div className="rank-badge">
-                        {student.rank === 1
-                          ? "رتبه اول"
-                          : student.rank === 2
-                          ? "رتبه دوم"
-                          : "رتبه سوم"}{" "}
-                        کلاس
+                    {/* Performance Level Visualization */}
+                    <div className="flex justify-center gap-1 mb-2">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <div
+                          key={i}
+                          className={`w-3 h-3 rounded-full ${
+                            i < performance.level
+                              ? "bg-blue-500"
+                              : "bg-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-gray-600">
+                      سطح عملکرد: {toPersianDigits(performance.level)} از ۵
+                    </p>
+                  </div>
+
+                  {/* Rank Achievement */}
+                  {student.rank <= 3 && (
+                    <div className="bg-gradient-to-r from-yellow-100 to-orange-100 p-3 rounded-lg text-center border-2 border-yellow-300">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <Award className="h-5 w-5 text-yellow-600" />
+                        <span className="font-bold text-yellow-800">
+                          {student.rank === 1
+                            ? "🥇 رتبه اول"
+                            : student.rank === 2
+                            ? "🥈 رتبه دوم"
+                            : "🥉 رتبه سوم"}{" "}
+                          کلاس
+                        </span>
                       </div>
-                    )}
-
-                    <div className="card-footer">
-                      {gradeList.gradeDate
-                        ? toPersianDigits(
-                            new Date(gradeList.gradeDate).toLocaleDateString(
-                              "fa-IR"
-                            )
-                          )
-                        : toPersianDigits(
-                            new Date().toLocaleDateString("fa-IR")
-                          )}
+                      <p className="text-xs text-yellow-700">
+                        تبریک! عملکرد بسیار عالی
+                      </p>
                     </div>
+                  )}
+
+                  {/* Expandable Details */}
+                  {selectedStudent === student.studentCode && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200 no-print">
+                      <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        تحلیل تفصیلی
+                      </h4>
+
+                      {/* Individual Performance Chart */}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">موقعیت در کلاس:</p>
+                          <p className="font-bold">
+                            {toPersianDigits(student.rank)} از{" "}
+                            {toPersianDigits(gradeList.statistics.total)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">وضعیت نسبت به میانه:</p>
+                          <p
+                            className={`font-bold ${
+                              student.score > advancedStats.median
+                                ? "text-green-600"
+                                : "text-orange-600"
+                            }`}
+                          >
+                            {student.score > advancedStats.median
+                              ? "بالاتر از میانه"
+                              : "پایین‌تر از میانه"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">فاصله از Q1:</p>
+                          <p className="font-bold">
+                            {toPersianDigits(
+                              (
+                                student.score - advancedStats.quartiles.q1
+                              ).toFixed(1)
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">فاصله از Q3:</p>
+                          <p className="font-bold">
+                            {toPersianDigits(
+                              (
+                                student.score - advancedStats.quartiles.q3
+                              ).toFixed(1)
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="text-center text-xs text-gray-500 mt-4 pt-3 border-t border-gray-200">
+                    صادر شده در تاریخ:{" "}
+                    {toPersianDigits(new Date().toLocaleDateString("fa-IR"))}
                   </div>
                 </CardContent>
               </Card>
@@ -555,14 +919,49 @@ export default function GradeCardsPage() {
           })}
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground no-print">
-          <p>
-            کارنامه‌ها در تاریخ{" "}
-            {toPersianDigits(new Date().toLocaleDateString("fa-IR"))} تولید
-            شده‌اند
-          </p>
-        </div>
+        {/* Summary Footer */}
+        <Card className="mt-8 bg-gradient-to-r from-gray-50 to-gray-100">
+          <CardContent className="p-6 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-gray-600">تعداد کل</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {toPersianDigits(gradeList.statistics.total)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-green-600">قبول شدگان</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {toPersianDigits(gradeList.statistics.passing)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-red-600">مردودین</p>
+                <p className="text-2xl font-bold text-red-700">
+                  {toPersianDigits(gradeList.statistics.failing)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-blue-600">نرخ موفقیت</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {toPersianDigits(
+                    (
+                      (gradeList.statistics.passing /
+                        gradeList.statistics.total) *
+                      100
+                    ).toFixed(0)
+                  )}
+                  %
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">
+              کارنامه‌ها در تاریخ{" "}
+              {toPersianDigits(new Date().toLocaleDateString("fa-IR"))} تولید
+              شده‌اند
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

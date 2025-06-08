@@ -24,6 +24,7 @@ import {
   BookOpen,
   TrendingUp,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -311,6 +312,22 @@ export function GradeListsView({
                       >
                         <FileText className="h-4 w-4" />
                         گزارش
+                      </Button>
+                    )}
+
+                    {(userType === "teacher" || userType === "school") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() =>
+                          router.push(
+                            `/admin/gradingsystem/gradecards/${gradeList._id}?schoolCode=${schoolCode}`
+                          )
+                        }
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        کارنامه دانش‌آموزان
                       </Button>
                     )}
                   </div>
