@@ -73,7 +73,7 @@ interface DynamicMenuState {
 
 // Cache for menu data to avoid repeated database calls
 const menuCache = new Map<string, { menus: MenuSection[]; timestamp: number }>();
-const MENU_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours (menu data rarely changes)
+const MENU_CACHE_DURATION =  1000; // 5 minutes - fresh data every 5 minutes 5 * 60 *
 
 // Persistent cache using localStorage
 const STORAGE_KEY = 'dynamic_menu_cache';
@@ -88,13 +88,29 @@ function loadCacheFromStorage(): void {
     if (stored) {
       const data = JSON.parse(stored);
       if (data.version === STORAGE_VERSION) {
+        let loadedCount = 0;
+        let expiredCount = 0;
+        
         Object.entries(data.cache).forEach(([key, value]) => {
           // Only restore if not expired
           const cacheData = value as { menus: MenuSection[]; timestamp: number };
-          if (Date.now() - cacheData.timestamp < MENU_CACHE_DURATION) {
+          const age = Date.now() - cacheData.timestamp;
+          
+          if (age < MENU_CACHE_DURATION) {
             menuCache.set(key, cacheData);
+            loadedCount++;
+            console.log(`📱 Loaded cached menu for ${key} from localStorage (${Math.round(age / 1000)}s old)`);
+          } else {
+            expiredCount++;
           }
         });
+        
+        if (loadedCount > 0) {
+          console.log(`✅ Loaded ${loadedCount} valid menu caches from localStorage`);
+        }
+        if (expiredCount > 0) {
+          console.log(`🗑️ Skipped ${expiredCount} expired menu caches`);
+        }
       }
     }
   } catch (error) {
@@ -410,22 +426,28 @@ export function useDynamicMenu(): DynamicMenuState {
       try {
         // Check cache first (in case it was updated since state initialization)
         const cached = menuCache.get(userKey);
+        const now = Date.now();
+        const isCacheValid = cached && (now - cached.timestamp < MENU_CACHE_DURATION);
         
-        if (cached && Date.now() - cached.timestamp < MENU_CACHE_DURATION) {
+        if (isCacheValid) {
+          console.log(`📦 Using cached menu data for ${userKey} (cached ${Math.round((now - cached!.timestamp) / 1000)}s ago)`);
           setState(prev => {
             // Only update if menus are different to prevent unnecessary re-render
-            if (JSON.stringify(prev.menus) !== JSON.stringify(cached.menus)) {
-              return { menus: cached.menus, isLoading: false, error: null };
+            if (JSON.stringify(prev.menus) !== JSON.stringify(cached!.menus)) {
+              return { menus: cached!.menus, isLoading: false, error: null };
             }
             return { ...prev, isLoading: false, error: null };
           });
           return;
         }
 
+        // Cache expired or doesn't exist - need to fetch from database
+        console.log(`🔄 Cache expired or missing for ${userKey}, fetching from database...`);
+        
         // Set loading only if we don't have any cached data
         setState(prev => ({ 
           ...prev, 
-          isLoading: prev.menus.length === 0, // Don't show loading if we have cached data
+          isLoading: prev.menus.length === 0, // Don't show loading if we have expired cached data
           error: null 
         }));
 
@@ -474,14 +496,18 @@ export function useDynamicMenu(): DynamicMenuState {
         // Step 4: Build menu structure
         const menus = buildMenuStructure(adminSystems, menuItems, menuGroups, userPermissions, user);
 
-        // Cache the result
+        // Cache the result with current timestamp
+        const cacheTimestamp = Date.now();
         menuCache.set(userKey, {
           menus,
-          timestamp: Date.now()
+          timestamp: cacheTimestamp
         });
 
         // Save to persistent storage
         saveCacheToStorage();
+
+        console.log(`💾 Menu data cached for ${userKey} - valid for next ${MENU_CACHE_DURATION / 1000}s`);
+        console.log(`📊 Generated ${menus.length} menu sections with ${menus.reduce((acc, section) => acc + section.items.length, 0)} total items`);
 
         setState({
           menus,
@@ -526,6 +552,28 @@ export function clearMenuCache(userType?: string, username?: string): void {
 }
 
 /**
+ * Get cache status for debugging
+ */
+export function getCacheStatus(userType?: string, username?: string): { cached: boolean; age?: number; expires?: number } {
+  if (!userType || !username) return { cached: false };
+  
+  const cacheKey = `${userType}-${username}`;
+  const cached = menuCache.get(cacheKey);
+  
+  if (!cached) return { cached: false };
+  
+  const now = Date.now();
+  const age = now - cached.timestamp;
+  const expires = MENU_CACHE_DURATION - age;
+  
+  return {
+    cached: true,
+    age: Math.round(age / 1000), // seconds
+    expires: Math.round(expires / 1000) // seconds until expiry
+  };
+}
+
+/**
  * Hook to refresh menu cache when needed (e.g., after permission changes)
  */
 export function useRefreshMenu() {
@@ -533,9 +581,43 @@ export function useRefreshMenu() {
   
   return useCallback(() => {
     if (user) {
+      console.log(`🔄 Manually refreshing menu cache for ${user.userType}-${user.username}`);
       clearMenuCache(user.userType, user.username);
       // Force a page refresh to reload menus with new permissions
       window.location.reload();
     }
   }, [user?.userType, user?.username]);
+}
+
+/**
+ * Development helper - expose cache utilities to window for debugging
+ * Only in development mode
+ */
+interface CacheDebugEntry {
+  menuCount: number;
+  totalItems: number;
+  cachedAt: string;
+  expiresIn: number;
+}
+
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as typeof window & { menuCacheDebug: object }).menuCacheDebug = {
+    getStatus: getCacheStatus,
+    clearCache: clearMenuCache,
+    viewCache: () => {
+      const cacheEntries: Record<string, CacheDebugEntry> = {};
+      menuCache.forEach((value, key) => {
+        cacheEntries[key] = {
+          menuCount: value.menus.length,
+          totalItems: value.menus.reduce((acc, section) => acc + section.items.length, 0),
+          cachedAt: new Date(value.timestamp).toLocaleString(),
+          expiresIn: Math.round((MENU_CACHE_DURATION - (Date.now() - value.timestamp)) / 1000)
+        };
+      });
+      console.table(cacheEntries);
+      return cacheEntries;
+    }
+  };
+  
+  console.log('🔧 Menu cache debug utilities available at window.menuCacheDebug');
 } 
