@@ -49,7 +49,7 @@ export function useBirthdayMessages() {
     fetchUnreadCount();
     
     // Poll for new messages every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
+    const interval = setInterval(fetchUnreadCount, 30000000);
     
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
