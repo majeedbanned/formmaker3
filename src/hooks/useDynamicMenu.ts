@@ -73,7 +73,7 @@ interface DynamicMenuState {
 
 // Cache for menu data to avoid repeated database calls
 const menuCache = new Map<string, { menus: MenuSection[]; timestamp: number }>();
-const MENU_CACHE_DURATION =  1000; // 5 minutes - fresh data every 5 minutes 5 * 60 *
+const MENU_CACHE_DURATION =5 * 60 *  1000; // 5 minutes - fresh data every 5 minutes 5 * 60 *
 
 // Persistent cache using localStorage
 const STORAGE_KEY = 'dynamic_menu_cache';
