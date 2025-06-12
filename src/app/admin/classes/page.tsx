@@ -12,6 +12,8 @@ import ImportStudentsModal from "./ImportStudentsModal";
 import HelpPanel from "@/components/ui/HelpPanel";
 import { classesHelpSections } from "./ClassesHelpContent";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
+import { BookOpenIcon } from "lucide-react";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -544,20 +546,23 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-right text-gray-900">
-            تعریف کلاس ها
-          </h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHelpPanelOpen(true)}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-          >
-            <QuestionMarkCircleIcon className="w-4 h-4" />
-            راهنما
-          </Button>
-        </div>
+        {/* <div className="flex justify-between items-center mb-6"> */}
+        <PageHeader
+          title="تعریف کلاس ها"
+          subtitle="مدیریت اطلاعات کلاس ها"
+          icon={<BookOpenIcon className="w-6 h-6" />}
+          gradient={true}
+        />
+        {/* </div> */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setHelpPanelOpen(true)}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+        >
+          <QuestionMarkCircleIcon className="w-4 h-4" />
+          راهنما
+        </Button>
 
         <CRUDComponent
           formStructure={sampleFormStructure}
