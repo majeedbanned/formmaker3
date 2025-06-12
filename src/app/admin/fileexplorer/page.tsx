@@ -21,6 +21,10 @@ import {
   UserGroupIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+  TableCellsIcon,
+  ViewColumnsIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -105,6 +109,14 @@ interface CurrentUser {
   groups?: Array<{ label?: string; value: string }>;
   [key: string]: unknown;
 }
+
+// Add view mode type
+type ViewMode =
+  | "large-icons"
+  | "medium-icons"
+  | "small-icons"
+  | "list"
+  | "details";
 
 // Create modal component
 function CreateFolderModal({
@@ -1271,6 +1283,8 @@ export default function FileExplorerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>("large-icons");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   // Load items from current path
   const fetchItems = async () => {
@@ -1633,29 +1647,136 @@ export default function FileExplorerPage() {
   };
 
   // Helper to get file icon based on extension
-  const getFileIcon = (extension: string | undefined) => {
+  const getFileIcon = (
+    extension: string | undefined,
+    size: "small" | "medium" | "large" = "small"
+  ) => {
+    const iconClass =
+      size === "large"
+        ? "h-16 w-16"
+        : size === "medium"
+        ? "h-12 w-12"
+        : "h-6 w-6";
+
     // Different icons based on file type
     switch (extension?.toLowerCase()) {
       case "pdf":
-        return <DocumentIcon className="h-6 w-6 text-red-500" />;
+        return <DocumentIcon className={`${iconClass} text-red-500`} />;
       case "doc":
       case "docx":
-        return <DocumentIcon className="h-6 w-6 text-blue-600" />;
+        return <DocumentIcon className={`${iconClass} text-blue-600`} />;
       case "xls":
       case "xlsx":
-        return <DocumentIcon className="h-6 w-6 text-green-600" />;
+        return <DocumentIcon className={`${iconClass} text-green-600`} />;
       case "ppt":
       case "pptx":
-        return <DocumentIcon className="h-6 w-6 text-orange-500" />;
+        return <DocumentIcon className={`${iconClass} text-orange-500`} />;
       case "jpg":
       case "jpeg":
       case "png":
       case "gif":
-        return <DocumentIcon className="h-6 w-6 text-purple-500" />;
+        return <DocumentIcon className={`${iconClass} text-purple-500`} />;
       default:
-        return <DocumentIcon className="h-6 w-6 text-blue-500" />;
+        return <DocumentIcon className={`${iconClass} text-blue-500`} />;
     }
   };
+
+  const getFolderIcon = (
+    size: "small" | "medium" | "large" = "small",
+    hasPassword: boolean = false
+  ) => {
+    const iconClass =
+      size === "large"
+        ? "h-16 w-16"
+        : size === "medium"
+        ? "h-12 w-12"
+        : "h-6 w-6";
+    const iconElement = (
+      <FolderIcon className={`${iconClass} text-yellow-500`} />
+    );
+
+    if (hasPassword && size === "large") {
+      return (
+        <div className="relative">
+          {iconElement}
+          <LockClosedIcon className="absolute -bottom-1 -right-1 h-6 w-6 text-gray-600 bg-white rounded-full p-1" />
+        </div>
+      );
+    }
+
+    return iconElement;
+  };
+
+  const handleItemClick = (item: ExplorerItem, event: React.MouseEvent) => {
+    if (event.ctrlKey || event.metaKey) {
+      // Multi-select with Ctrl/Cmd
+      setSelectedItems((prev) =>
+        prev.includes(item._id)
+          ? prev.filter((id) => id !== item._id)
+          : [...prev, item._id]
+      );
+    } else {
+      // Single select
+      setSelectedItems([item._id]);
+    }
+  };
+
+  const handleItemDoubleClick = (item: ExplorerItem) => {
+    if (item.type === "folder") {
+      navigateToFolder(item as FolderItem);
+    } else {
+      downloadFile(item as FileItem);
+    }
+  };
+
+  const renderViewModeSelector = () => (
+    <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+      <button
+        onClick={() => setViewMode("large-icons")}
+        className={`p-2 rounded-md transition-colors ${
+          viewMode === "large-icons"
+            ? "bg-blue-100 text-blue-600"
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+        }`}
+        title="آیکون‌های بزرگ"
+      >
+        <Squares2X2Icon className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => setViewMode("medium-icons")}
+        className={`p-2 rounded-md transition-colors ${
+          viewMode === "medium-icons"
+            ? "bg-blue-100 text-blue-600"
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+        }`}
+        title="آیکون‌های متوسط"
+      >
+        <ViewColumnsIcon className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => setViewMode("list")}
+        className={`p-2 rounded-md transition-colors ${
+          viewMode === "list"
+            ? "bg-blue-100 text-blue-600"
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+        }`}
+        title="لیست"
+      >
+        <ListBulletIcon className="h-5 w-5" />
+      </button>
+      <button
+        onClick={() => setViewMode("details")}
+        className={`p-2 rounded-md transition-colors ${
+          viewMode === "details"
+            ? "bg-blue-100 text-blue-600"
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+        }`}
+        title="جزئیات"
+      >
+        <TableCellsIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
 
   if (authLoading || !user) {
     return (
@@ -1749,7 +1870,7 @@ export default function FileExplorerPage() {
         </div>
 
         {/* Actions bar */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Only show create folder and upload buttons for teachers and school users */}
           {user &&
             (user.userType === "teacher" || user.userType === "school") && (
@@ -1792,7 +1913,12 @@ export default function FileExplorerPage() {
               بازگشت
             </button>
           )}
-          <div className="ml-auto flex items-center">
+
+          {/* View mode selector */}
+          <div className="mr-auto">{renderViewModeSelector()}</div>
+
+          {/* File info */}
+          <div className="flex items-center">
             <span className="text-sm text-gray-500">مجموع:</span>
             <span className="mr-1 text-sm font-medium text-blue-600">
               {formatFileSize(totalSize)}
@@ -1866,7 +1992,7 @@ export default function FileExplorerPage() {
               </>
             )}
           </div>
-        ) : (
+        ) : viewMode === "details" ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -2075,6 +2201,264 @@ export default function FileExplorerPage() {
                   ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div className="p-6">
+            {/* Windows-style grid layout */}
+            <div
+              className={`grid gap-4 ${
+                viewMode === "large-icons"
+                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
+                  : viewMode === "medium-icons"
+                  ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+                  : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16"
+              }`}
+            >
+              {/* Folders first */}
+              {items
+                .filter((item) => item.type === "folder")
+                .map((folder) => (
+                  <div
+                    key={folder._id}
+                    className={`group relative cursor-pointer transition-all duration-200 hover:scale-105 ${
+                      selectedItems.includes(folder._id)
+                        ? "bg-blue-100 ring-2 ring-blue-500"
+                        : "hover:bg-gray-50"
+                    } rounded-lg p-3 flex flex-col items-center text-center ${
+                      viewMode === "large-icons"
+                        ? "min-h-[120px]"
+                        : viewMode === "medium-icons"
+                        ? "min-h-[100px]"
+                        : "min-h-[80px]"
+                    }`}
+                    onClick={(e) => handleItemClick(folder, e)}
+                    onDoubleClick={() => handleItemDoubleClick(folder)}
+                    title={folder.name}
+                  >
+                    {/* Folder Icon */}
+                    <div className="mb-2 relative">
+                      {getFolderIcon(
+                        viewMode === "large-icons"
+                          ? "large"
+                          : viewMode === "medium-icons"
+                          ? "medium"
+                          : "small",
+                        !!(folder as FolderItem).password
+                      )}
+                    </div>
+
+                    {/* Folder Name */}
+                    <div
+                      className={`${
+                        viewMode === "large-icons"
+                          ? "text-sm"
+                          : viewMode === "medium-icons"
+                          ? "text-xs"
+                          : "text-xs"
+                      } font-medium text-gray-900 break-words w-full`}
+                    >
+                      {folder.name.length >
+                      (viewMode === "large-icons" ? 15 : 12)
+                        ? `${folder.name.substring(
+                            0,
+                            viewMode === "large-icons" ? 15 : 12
+                          )}...`
+                        : folder.name}
+                    </div>
+
+                    {/* Creator info - only for large icons */}
+                    {viewMode === "large-icons" && (
+                      <div className="text-xs text-gray-500 mt-1 truncate w-full">
+                        <CreatorDisplay
+                          creatorInfo={folder.creatorInfo}
+                          currentUsername={user?.username}
+                        />
+                      </div>
+                    )}
+
+                    {/* Context menu button */}
+                    <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1">
+                        {/* Permission button */}
+                        {(user?.userType === "school" ||
+                          (user?.userType === "teacher" &&
+                            canModifyItem(folder))) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showPermissions(folder);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="مدیریت دسترسی"
+                          >
+                            <UserGroupIcon className="h-4 w-4 text-purple-600" />
+                          </button>
+                        )}
+
+                        {/* Rename button */}
+                        {canModifyItem(folder) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showRename(folder);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="تغییر نام"
+                          >
+                            <PencilIcon className="h-4 w-4 text-blue-600" />
+                          </button>
+                        )}
+
+                        {/* Delete button */}
+                        {canModifyItem(folder) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDelete(folder);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="حذف"
+                          >
+                            <TrashIcon className="h-4 w-4 text-red-600" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Then files */}
+              {items
+                .filter((item) => item.type === "file")
+                .map((file) => (
+                  <div
+                    key={file._id}
+                    className={`group relative cursor-pointer transition-all duration-200 hover:scale-105 ${
+                      selectedItems.includes(file._id)
+                        ? "bg-blue-100 ring-2 ring-blue-500"
+                        : "hover:bg-gray-50"
+                    } rounded-lg p-3 flex flex-col items-center text-center ${
+                      viewMode === "large-icons"
+                        ? "min-h-[120px]"
+                        : viewMode === "medium-icons"
+                        ? "min-h-[100px]"
+                        : "min-h-[80px]"
+                    }`}
+                    onClick={(e) => handleItemClick(file, e)}
+                    onDoubleClick={() => handleItemDoubleClick(file)}
+                    title={file.name}
+                  >
+                    {/* File Icon */}
+                    <div className="mb-2">
+                      {getFileIcon(
+                        getFileExtension((file as FileItem).name),
+                        viewMode === "large-icons"
+                          ? "large"
+                          : viewMode === "medium-icons"
+                          ? "medium"
+                          : "small"
+                      )}
+                    </div>
+
+                    {/* File Name */}
+                    <div
+                      className={`${
+                        viewMode === "large-icons"
+                          ? "text-sm"
+                          : viewMode === "medium-icons"
+                          ? "text-xs"
+                          : "text-xs"
+                      } font-medium text-gray-900 break-words w-full`}
+                    >
+                      {file.name.length > (viewMode === "large-icons" ? 15 : 12)
+                        ? `${file.name.substring(
+                            0,
+                            viewMode === "large-icons" ? 15 : 12
+                          )}...`
+                        : file.name}
+                    </div>
+
+                    {/* File size - only for large icons */}
+                    {viewMode === "large-icons" && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {formatFileSize((file as FileItem).size)}
+                      </div>
+                    )}
+
+                    {/* Creator info - only for large icons */}
+                    {viewMode === "large-icons" && (
+                      <div className="text-xs text-gray-500 mt-1 truncate w-full">
+                        <CreatorDisplay
+                          creatorInfo={file.creatorInfo}
+                          currentUsername={user?.username}
+                        />
+                      </div>
+                    )}
+
+                    {/* Context menu button */}
+                    <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1">
+                        {/* Permission button */}
+                        {(user?.userType === "school" ||
+                          (user?.userType === "teacher" &&
+                            canModifyItem(file))) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showPermissions(file);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="مدیریت دسترسی"
+                          >
+                            <UserGroupIcon className="h-4 w-4 text-purple-600" />
+                          </button>
+                        )}
+
+                        {/* Download button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadFile(file as FileItem);
+                          }}
+                          className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                          title="دانلود"
+                        >
+                          <FolderArrowDownIcon className="h-4 w-4 text-blue-600" />
+                        </button>
+
+                        {/* Share button */}
+                        {canModifyItem(file) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItem(file);
+                              setShowShareModal(true);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="اشتراک‌گذاری"
+                          >
+                            <ShareIcon className="h-4 w-4 text-green-600" />
+                          </button>
+                        )}
+
+                        {/* Delete button */}
+                        {canModifyItem(file) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDelete(file);
+                            }}
+                            className="p-1 bg-white rounded shadow-md hover:bg-gray-50"
+                            title="حذف"
+                          >
+                            <TrashIcon className="h-4 w-4 text-red-600" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
       </div>
