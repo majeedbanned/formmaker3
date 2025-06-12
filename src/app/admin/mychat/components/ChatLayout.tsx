@@ -289,12 +289,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)] overflow-hidden"
+      className="grid grid-cols-1 lg:grid-cols-4 gap-1 h-full overflow-hidden"
       dir="rtl"
     >
       {/* Chatroom list (right column) */}
       <div className="lg:col-span-1 h-full overflow-hidden">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
+        <div className="bg-white shadow-sm border-r border-gray-200 h-full">
           <ChatroomList
             chatrooms={chatrooms}
             selectedChatroomId={selectedChatroomId}
@@ -307,7 +307,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
 
       {/* Chat window (left column) */}
       <div className="lg:col-span-3 h-full overflow-hidden">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
+        <div className="bg-white h-full">
           <ChatWindow
             user={user}
             selectedChatroom={selectedChatroom}

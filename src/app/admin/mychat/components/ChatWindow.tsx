@@ -649,11 +649,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       `}</style>
 
       {/* Chat header */}
-      <div className="p-6 border-b border-gray-100 bg-gradient-to-l from-blue-50 to-white flex-shrink-0">
-        <div className="flex items-center space-x-reverse space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+      <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center space-x-reverse space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md flex items-center justify-center">
             <svg
-              className="w-6 h-6 text-white"
+              className="w-5 h-5 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -667,10 +667,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className="text-base font-bold text-gray-800">
               {selectedChatroom.data.chatroomName}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500">
               کد گفتگو: {selectedChatroom.data.chatroomCode}
             </p>
           </div>
@@ -680,7 +680,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Messages area - improved to ensure it takes remaining height */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white min-h-0"
+        className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white min-h-0"
         dir="rtl"
       >
         {isLoading ? (
@@ -1014,7 +1014,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       )}
 
       {/* Message input */}
-      <div className="border-t border-gray-100 p-6 bg-white flex-shrink-0">
+      <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
         <form onSubmit={handleSendMessage} className="flex flex-col">
           <div className="flex relative rounded-lg border border-gray-200 overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
             <button
@@ -1101,7 +1101,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           {showEmojiPicker && (
             <div
               ref={emojiPickerRef}
-              className="absolute bottom-20 right-6 z-10 shadow-xl rounded-xl border border-gray-200 bg-white overflow-hidden"
+              className="absolute bottom-16 right-4 z-10 shadow-xl rounded-xl border border-gray-200 bg-white overflow-hidden"
               style={{ direction: "ltr" }}
             >
               <div className="absolute bottom-[-8px] right-[20px] w-4 h-4 bg-white border-r border-b border-gray-200 transform rotate-45"></div>
@@ -1109,8 +1109,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 onEmojiClick={handleEmojiClick}
                 searchDisabled
                 skinTonesDisabled
-                width={320}
-                height={380}
+                width={300}
+                height={360}
                 lazyLoadEmojis
               />
             </div>

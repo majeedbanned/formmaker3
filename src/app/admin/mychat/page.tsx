@@ -34,17 +34,17 @@ function ChatContent() {
 
   return (
     <main
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50"
+      className="h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden"
       dir="rtl"
     >
-      <div className="max-w-7xl mx-auto p-4">
-        {/* Header */}
-        <div className="mb-6">
+      <div className="h-full flex flex-col">
+        {/* Compact Header */}
+        <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-reverse space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-white"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -58,18 +58,18 @@ function ChatContent() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-lg font-bold text-gray-900">
                   سامانه گفتگو
                 </h1>
-                <p className="text-sm text-gray-600">خوش آمدید، {user?.name}</p>
+                <p className="text-xs text-gray-600">خوش آمدید، {user?.name}</p>
               </div>
             </div>
             <div className="flex items-center space-x-reverse space-x-2">
-              <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+              <div className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                 آنلاین
               </div>
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-600">
+              <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
+                <span className="text-xs font-medium text-gray-600">
                   {user?.name?.charAt(0)}
                 </span>
               </div>
@@ -77,8 +77,10 @@ function ChatContent() {
           </div>
         </div>
 
-        {/* Chat Layout */}
-        <ChatLayout user={user} />
+        {/* Chat Layout - Full remaining height */}
+        <div className="flex-1 min-h-0">
+          <ChatLayout user={user} />
+        </div>
       </div>
     </main>
   );

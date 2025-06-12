@@ -34,11 +34,11 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100 bg-gradient-to-l from-blue-50 to-white flex-shrink-0">
-        <div className="flex items-center space-x-reverse space-x-3 mb-4">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+      <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center space-x-reverse space-x-2 mb-3">
+          <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md flex items-center justify-center">
             <svg
-              className="w-5 h-5 text-white"
+              className="w-4 h-4 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -51,7 +51,7 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
               />
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-gray-800">اتاق‌های گفتگو</h2>
+          <h2 className="text-base font-bold text-gray-800">اتاق‌های گفتگو</h2>
         </div>
 
         {/* Search Input */}
@@ -61,13 +61,13 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="جستجوی اتاق گفتگو..."
-            className="w-full p-3 pr-4 pl-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right bg-white shadow-sm transition-all duration-200"
+            className="w-full p-2 pr-3 pl-10 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right bg-white text-sm transition-all duration-200"
             dir="rtl"
           />
-          <div className="absolute left-3 top-3.5 text-gray-400">
+          <div className="absolute left-2.5 top-2.5 text-gray-400">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
