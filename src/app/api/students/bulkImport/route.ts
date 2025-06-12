@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { logger } from '@/lib/logger';
-import { ObjectId } from 'mongodb';
 
 // Set runtime to nodejs
 export const runtime = 'nodejs';
@@ -11,6 +10,7 @@ interface StudentImport {
   studentName: string;
   studentFamily: string;
   phone: string;
+  schoolCode: string;
 }
 
 interface ProcessedStudent {
@@ -19,12 +19,14 @@ interface ProcessedStudent {
   studentName: string;
   studentlname: string;
   phone: string;
+  schoolCode: string;
 }
 
 interface BulkImportRequest {
   students: StudentImport[];
   classCode: string;
   className: string;
+  schoolCode: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
     
-    const { students, classCode, className } = await request.json() as BulkImportRequest;
+    const { students, classCode, className, schoolCode } = await request.json() as BulkImportRequest;
     
     if (!students || !Array.isArray(students) || students.length === 0) {
       return NextResponse.json(
@@ -41,9 +43,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!classCode || !className) {
+    if (!classCode || !className || !schoolCode) {
       return NextResponse.json(
-        { error: 'Missing required parameters (classCode, className)' },
+        { error: 'Missing required parameters (classCode, className, schoolCode)' },
         { status: 400 }
       );
     }
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest) {
                 "data.studentName": student.studentName,
                 "data.studentFamily": student.studentFamily,
                 "data.phone": student.phone,
+                "data.schoolCode": student.schoolCode,
                 // Ensure classCode is set directly rather than using $push
                 "data.classCode": [...(existingStudent.data.classCode || []), classCodeEntry]
               }
@@ -122,7 +125,8 @@ export async function POST(request: NextRequest) {
             studentCode: student.studentCode,
             studentName: student.studentName,
             studentlname: student.studentFamily,
-            phone: student.phone
+            phone: student.phone,
+            schoolCode: student.schoolCode
           });
         } else {
           // Student doesn't exist - create a new record
@@ -132,6 +136,7 @@ export async function POST(request: NextRequest) {
               studentName: student.studentName,
               studentFamily: student.studentFamily,
               phone: student.phone,
+              schoolCode: student.schoolCode,
               classCode: [classCodeEntry],
               // Add default values for required fields
               password: student.studentCode, // Default password same as student code
@@ -153,7 +158,8 @@ export async function POST(request: NextRequest) {
             studentCode: student.studentCode,
             studentName: student.studentName,
             studentlname: student.studentFamily,
-            phone: student.phone
+            phone: student.phone,
+            schoolCode: student.schoolCode
           });
         }
       })

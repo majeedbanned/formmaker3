@@ -1,14 +1,8 @@
 "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import {
-  DocumentIcon,
-  ShareIcon,
-  UserPlusIcon,
-} from "@heroicons/react/24/outline";
+import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
-import { encryptFilter } from "@/utils/encryption";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import ImportStudentsModal from "./ImportStudentsModal";
@@ -47,7 +41,6 @@ const layout: LayoutSettings = {
 };
 
 export default function Home() {
-  const router = useRouter();
   const { isLoading, user } = useAuth();
   const hardcodedFilter = user?.schoolCode
     ? { schoolCode: user.schoolCode }
@@ -57,25 +50,6 @@ export default function Home() {
     code: string;
     name: string;
   } | null>(null);
-
-  // Function to update URL with encrypted filter
-  const updateFilterInURL = (filter: Record<string, unknown>) => {
-    const encryptedFilter = encryptFilter(filter);
-    const newURL = new URL(window.location.href);
-    newURL.searchParams.set("filter", encryptedFilter);
-    router.push(newURL.toString());
-  };
-
-  // Function to share with filters
-  const shareWithFilters = (rowId: string) => {
-    // Create a filter combining hardcoded filters with the specific row
-    const combinedFilter = {
-      ...hardcodedFilter,
-      _id: rowId,
-    };
-    updateFilterInURL(combinedFilter);
-    //  console.log("Share clicked for row:", rowId);
-  };
 
   // Function to handle importing students from Excel
   const handleImportStudents = (
@@ -686,6 +660,7 @@ export default function Home() {
             onImport={processImportedStudents}
             classCode={selectedClass.code}
             className={selectedClass.name}
+            schoolCode={user?.schoolCode || ""}
           />
         )}
       </div>

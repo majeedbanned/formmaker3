@@ -21,12 +21,14 @@ interface ImportStudentsModalProps {
       studentName: string;
       studentFamily: string;
       phone: string;
+      schoolCode: string;
     }>
   ) => Promise<void>;
   containerClassName?: string;
   placeholder?: string;
   classCode: string;
   className: string;
+  schoolCode: string;
 }
 
 export default function ImportStudentsModal({
@@ -36,6 +38,7 @@ export default function ImportStudentsModal({
   placeholder = "اطلاعات دانش آموزان را از اکسل کپی و اینجا پیست کنید...",
   classCode,
   className: classNameValue,
+  schoolCode,
 }: ImportStudentsModalProps) {
   const [importText, setImportText] = useState("");
   const [sidaText, setSidaText] = useState("");
@@ -62,6 +65,7 @@ export default function ImportStudentsModal({
             studentName: standardMatch[2],
             studentFamily: standardMatch[3],
             phone: "",
+            schoolCode,
           });
           continue;
         }
@@ -100,6 +104,7 @@ export default function ImportStudentsModal({
               studentName: firstName,
               studentFamily: lastName,
               phone: "",
+              schoolCode,
             });
           }
         }
@@ -144,6 +149,7 @@ export default function ImportStudentsModal({
                   studentName: name,
                   studentFamily: family,
                   phone: "",
+                  schoolCode,
                 });
               }
             }
@@ -158,6 +164,7 @@ export default function ImportStudentsModal({
               studentName: complexMatch[2],
               studentFamily: complexMatch[3],
               phone: "",
+              schoolCode,
             });
           }
         }
@@ -197,6 +204,7 @@ export default function ImportStudentsModal({
           studentName: parts[1]?.trim() || "",
           studentFamily: parts[2]?.trim() || "",
           phone: parts[3]?.trim() || "",
+          schoolCode,
         };
       });
 
@@ -300,13 +308,13 @@ export default function ImportStudentsModal({
 
           <TabsContent value="excel">
             <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">
+              <p className="text-sm text-right text-gray-500 mb-2">
                 اطلاعات دانش آموزان را از اکسل کپی کرده و در کادر زیر پیست کنید.
                 هر سطر باید شامل: کد دانش آموز، نام، نام خانوادگی و شماره موبایل
                 باشد.
               </p>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-3 text-xs text-yellow-800">
+              <div className="bg-yellow-50 text-right border border-yellow-200 rounded p-2 mb-3 text-xs text-yellow-800">
                 <strong>توجه: </strong> با وارد کردن دانش آموزان جدید، تمام دانش
                 آموزان قبلی که به این کلاس اختصاص داده شده بودند حذف خواهند شد و
                 این کلاس فقط شامل دانش آموزان جدید خواهد بود.
@@ -339,13 +347,13 @@ export default function ImportStudentsModal({
 
           <TabsContent value="sida">
             <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">
+              <p className="text-sm text-right text-gray-500 mb-2">
                 متن خروجی سیستم سیدا را در کادر زیر کپی و پیست کنید. سیستم به
                 صورت خودکار کد دانش آموزی، نام و نام خانوادگی دانش آموزان را
                 استخراج می‌کند.
               </p>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-3 text-xs text-yellow-800">
+              <div className="bg-yellow-50 text-right border border-yellow-200 rounded p-2 mb-3 text-xs text-yellow-800">
                 <strong>توجه: </strong> با وارد کردن دانش آموزان جدید، تمام دانش
                 آموزان قبلی که به این کلاس اختصاص داده شده بودند حذف خواهند شد و
                 این کلاس فقط شامل دانش آموزان جدید خواهد بود.
@@ -353,12 +361,12 @@ export default function ImportStudentsModal({
 
               <div className="bg-gray-100 p-2 rounded mb-3 text-xs">
                 <div className="font-bold mb-1">نمونه فرمت سیدا:</div>
-                <div className="text-xs whitespace-pre-line">
+                <div className="text-xs text-right whitespace-pre-line">
                   تخصیص دانش آموز نام کلاس هفتم 1 select ردیف کد دانش آموزی نام
                   نام خانوادگی پایه 1 2421441714 پرهام اسماعيلي هفتم 2
                   2421420016 محمدطاها اكبرپور هفتم
                 </div>
-                <div className="mt-2 font-bold text-xs text-indigo-600">
+                <div className="mt-2 text-right font-bold text-xs text-indigo-600">
                   سیستم به‌طور خودکار کد دانش‌آموزی، نام و نام خانوادگی را از
                   متن استخراج می‌کند.
                 </div>
