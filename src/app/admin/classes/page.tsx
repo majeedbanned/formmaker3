@@ -1,11 +1,17 @@
 "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import { UserPlusIcon } from "@heroicons/react/24/outline";
+import {
+  UserPlusIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImportStudentsModal from "./ImportStudentsModal";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { classesHelpSections } from "./ClassesHelpContent";
+import { Button } from "@/components/ui/button";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -50,6 +56,20 @@ export default function Home() {
     code: string;
     name: string;
   } | null>(null);
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+
+  // Keyboard shortcut for help panel (F1)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setHelpPanelOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Function to handle importing students from Excel
   const handleImportStudents = (
@@ -524,9 +544,20 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-right text-gray-900 mb-2">
-          تعریف کلاس ها
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-right text-gray-900">
+            تعریف کلاس ها
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpPanelOpen(true)}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+          >
+            <QuestionMarkCircleIcon className="w-4 h-4" />
+            راهنما
+          </Button>
+        </div>
 
         <CRUDComponent
           formStructure={sampleFormStructure}
@@ -663,6 +694,28 @@ export default function Home() {
             schoolCode={user?.schoolCode || ""}
           />
         )}
+
+        {/* Help Panel */}
+        <HelpPanel
+          isOpen={helpPanelOpen}
+          onClose={() => setHelpPanelOpen(false)}
+          title="راهنمای مدیریت کلاس‌ها"
+          sections={classesHelpSections}
+        />
+
+        {/* Floating Help Button */}
+        <div className="fixed bottom-6 left-6 z-30">
+          <Button
+            onClick={() => setHelpPanelOpen(true)}
+            className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
+            size="sm"
+          >
+            <QuestionMarkCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
+          </Button>
+          <div className="absolute -top-12 -right-2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+            راهنمای استفاده
+          </div>
+        </div>
       </div>
     </main>
   );
