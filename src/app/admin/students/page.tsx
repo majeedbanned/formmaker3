@@ -2,12 +2,17 @@
 
 import { Suspense } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import {
+  AcademicCapIcon,
+  DocumentIcon,
+  ShareIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 // import useInitialFilter from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
 import { useAuth } from "@/hooks/useAuth";
 import Image from "next/image";
+import PageHeader from "@/components/PageHeader";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -465,9 +470,15 @@ function StudentsPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        {/* <h1 className="text-3xl font-bold text-gray-900 mb-8">
           مدیریت دانش آموزان
-        </h1>
+        </h1> */}
+        <PageHeader
+          title="تعریف دانش آموزان مدرسه"
+          subtitle="مدیریت اطلاعات دانش آموزان مدرسه"
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
 
         <CRUDComponent
           formStructure={sampleFormStructure}

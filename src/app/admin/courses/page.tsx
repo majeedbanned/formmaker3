@@ -1,13 +1,18 @@
 "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
-import { DocumentIcon, ShareIcon } from "@heroicons/react/24/outline";
+import {
+  AcademicCapIcon,
+  DocumentIcon,
+  ShareIcon,
+} from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { encryptFilter } from "@/utils/encryption";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { addPredefinedCoursesAction } from "@/app/actions/courses";
 import { useEffect } from "react";
+import PageHeader from "@/components/PageHeader";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -247,8 +252,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">تعریف دروس</h1>
-
+        {/* <h1 className="text-3xl font-bold text-gray-900 mb-8">تعریف دروس</h1> */}
+        <PageHeader
+          title="تعریف دروس مدرسه"
+          subtitle="مدیریت اطلاعات دروس مدرسه"
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
         {/* Filter Examples Section */}
         {/* <div className="mb-8 p-4 bg-white rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Filter Examples</h2>
