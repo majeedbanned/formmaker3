@@ -18,7 +18,7 @@ const layout: LayoutSettings = {
   width: "100%",
 
   texts: {
-    addButton: "افزودن",
+    addButton: " افزودن کلاس",
     editButton: "ویرایش",
     deleteButton: "حذف",
     cancelButton: "انصراف",
@@ -103,6 +103,7 @@ export default function Home() {
       studentName: string;
       studentFamily: string;
       phone: string;
+      schoolCode: string;
     }>
   ) => {
     if (!selectedClass) {
@@ -121,6 +122,7 @@ export default function Home() {
           students: students,
           classCode: selectedClass.code,
           className: selectedClass.name,
+          schoolCode: user?.schoolCode,
         }),
       });
 
@@ -548,7 +550,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">تعریف دروس</h1>
+        <h1 className="text-2xl font-bold text-right text-gray-900 mb-2">
+          تعریف کلاس ها
+        </h1>
 
         <CRUDComponent
           formStructure={sampleFormStructure}
@@ -576,7 +580,7 @@ export default function Home() {
             //   icon: ShareIcon,
             // },
             {
-              label: "Import Students",
+              label: " ثبت گروهی دانش آموزان",
               action: handleImportStudents,
               icon: UserPlusIcon,
             },

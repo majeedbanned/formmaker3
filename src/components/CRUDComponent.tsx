@@ -275,7 +275,7 @@ export default function CRUDComponent({
 
   return (
     <div
-      className={`mx-auto p-6 ${layout.direction === "rtl" ? "rtl" : "ltr"}`}
+      className={`mx-auto p-0 ${layout.direction === "rtl" ? "rtl" : "ltr"}`}
       style={{ maxWidth: layout.width }}
       dir={layout.direction}
     >

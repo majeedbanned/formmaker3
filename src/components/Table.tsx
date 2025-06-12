@@ -841,7 +841,7 @@ export default function Table({
               <div
                 className={`flex gap-2 ${
                   layout.direction === "rtl"
-                    ? "justify-start flex-row-reverse"
+                    ? "justify-end flex-row-reverse"
                     : "justify-end"
                 }`}
               >
