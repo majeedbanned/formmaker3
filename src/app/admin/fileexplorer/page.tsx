@@ -2471,7 +2471,7 @@ export default function FileExplorerPage() {
         currentPath={currentPath}
       />
 
-      {/* Delete confirmation modal */}
+      {/* Delete  confirmation modal */}
       <DeleteConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
