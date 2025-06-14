@@ -31,8 +31,13 @@ interface GradingData {
   selectedSubject: any | null;
   gradeTitle: string;
   gradeDate: string;
+  gradingType: "numerical" | "descriptive";
   studentGrades: {
-    [studentCode: string]: { score: number; studentName: string };
+    [studentCode: string]: {
+      score?: number;
+      descriptiveText?: string;
+      studentName: string;
+    };
   };
   isEditing: boolean;
   editingGradeListId?: string;
@@ -79,6 +84,7 @@ export default function GradingSystemPage() {
     selectedSubject: null,
     gradeTitle: "",
     gradeDate: "",
+    gradingType: "numerical",
     studentGrades: {},
     isEditing: false,
   });
@@ -103,6 +109,7 @@ export default function GradingSystemPage() {
       selectedSubject: null,
       gradeTitle: "",
       gradeDate: "",
+      gradingType: "numerical",
       studentGrades: {},
       isEditing: false,
     });
@@ -120,6 +127,7 @@ export default function GradingSystemPage() {
       selectedSubject: gradeListData.subjectData,
       gradeTitle: gradeListData.title,
       gradeDate: gradeListData.date || "",
+      gradingType: gradeListData.gradingType || "numerical",
       studentGrades: gradeListData.grades,
       isEditing: true,
       editingGradeListId: gradeListData._id,
@@ -139,7 +147,15 @@ export default function GradingSystemPage() {
           gradingData.gradeTitle.trim() !== "" && gradingData.gradeDate !== ""
         );
       case 4:
-        return Object.keys(gradingData.studentGrades).length > 0;
+        const grades = Object.values(gradingData.studentGrades);
+        if (gradingData.gradingType === "numerical") {
+          return grades.some((grade) => grade.score !== undefined);
+        } else {
+          return grades.some(
+            (grade) =>
+              grade.descriptiveText && grade.descriptiveText.trim() !== ""
+          );
+        }
       default:
         return true;
     }
@@ -283,11 +299,15 @@ export default function GradingSystemPage() {
             <GradeTitleStep
               gradeTitle={gradingData.gradeTitle}
               gradeDate={gradingData.gradeDate}
+              gradingType={gradingData.gradingType}
               onTitleChange={(title: string) =>
                 setGradingData({ ...gradingData, gradeTitle: title })
               }
               onDateChange={(date: string) =>
                 setGradingData({ ...gradingData, gradeDate: date })
+              }
+              onGradingTypeChange={(type: "numerical" | "descriptive") =>
+                setGradingData({ ...gradingData, gradingType: type })
               }
             />
           )}
@@ -295,6 +315,7 @@ export default function GradingSystemPage() {
           {currentStep === 4 && (
             <StudentsGradingStep
               selectedClass={gradingData.selectedClass}
+              gradingType={gradingData.gradingType}
               studentGrades={gradingData.studentGrades}
               onGradesChange={(grades: any) =>
                 setGradingData({ ...gradingData, studentGrades: grades })

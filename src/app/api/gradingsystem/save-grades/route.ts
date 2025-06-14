@@ -3,6 +3,12 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getCurrentUser } from "../../chatbot7/config/route";
 import { ObjectId } from "mongodb";
 
+interface GradeData {
+  score?: number;
+  descriptiveText?: string;
+  studentName: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -22,6 +28,7 @@ export async function POST(request: NextRequest) {
     const {
       title,
       gradeDate,
+      gradingType = "numerical", // Default to numerical for backward compatibility
       classCode,
       className,
       courseCode,
@@ -64,23 +71,35 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Calculate statistics
-    const gradeValues = Object.values(grades) as { score: number; studentName: string }[];
-    const scores = gradeValues.map(g => g.score);
-    const average = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
-    const passing = scores.filter(score => score >= 10).length;
-    const failing = scores.filter(score => score < 10).length;
-    const highest = scores.length > 0 ? Math.max(...scores) : 0;
-    const lowest = scores.length > 0 ? Math.min(...scores) : 0;
+    // Calculate statistics based on grading type
+    const gradeValues = Object.values(grades) as GradeData[];
+    let statistics;
 
-    const statistics = {
-      average,
-      passing,
-      failing,
-      highest,
-      lowest,
-      total: scores.length
-    };
+    if (gradingType === "numerical") {
+      const numericalGrades = gradeValues.filter(g => g.score !== undefined);
+      const scores = numericalGrades.map(g => g.score!);
+      const average = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+      const passing = scores.filter(score => score >= 10).length;
+      const failing = scores.filter(score => score < 10).length;
+      const highest = scores.length > 0 ? Math.max(...scores) : 0;
+      const lowest = scores.length > 0 ? Math.min(...scores) : 0;
+
+      statistics = {
+        average,
+        passing,
+        failing,
+        highest,
+        lowest,
+        total: scores.length
+      };
+    } else {
+      // For descriptive grades, we only track total count
+      const descriptiveGrades = gradeValues.filter(g => g.descriptiveText && g.descriptiveText.trim() !== "");
+      statistics = {
+        total: descriptiveGrades.length,
+        type: "descriptive"
+      };
+    }
 
     if (isEditing && gradeListId) {
       // Update existing grade list
@@ -93,6 +112,7 @@ export async function POST(request: NextRequest) {
           $set: {
             title,
             gradeDate,
+            gradingType,
             statistics,
             updatedAt: now
           }
@@ -105,18 +125,33 @@ export async function POST(request: NextRequest) {
       });
 
       // Insert new individual grades
-      const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => ({
-        gradeListId: gradeListId,
-        studentCode,
-        studentName: gradeData.studentName,
-        score: gradeData.score,
-        classCode,
-        courseCode,
-        teacherCode,
-        schoolCode,
-        createdAt: now,
-        updatedAt: now
-      }));
+      const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => {
+        const typedGradeData = gradeData as GradeData;
+        const baseDoc = {
+          gradeListId: gradeListId,
+          studentCode,
+          studentName: typedGradeData.studentName,
+          gradingType,
+          classCode,
+          courseCode,
+          teacherCode,
+          schoolCode,
+          createdAt: now,
+          updatedAt: now
+        };
+
+        if (gradingType === "numerical") {
+          return {
+            ...baseDoc,
+            score: typedGradeData.score
+          };
+        } else {
+          return {
+            ...baseDoc,
+            descriptiveText: typedGradeData.descriptiveText
+          };
+        }
+      });
 
       if (gradeDocuments.length > 0) {
         await connection.collection("grades").insertMany(gradeDocuments);
@@ -124,7 +159,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Grades updated successfully",
+        message: gradingType === "descriptive" ? "Evaluations updated successfully" : "Grades updated successfully",
         gradeListId: gradeListId
       });
 
@@ -133,6 +168,7 @@ export async function POST(request: NextRequest) {
       const gradeListResult = await connection.collection("grade_lists").insertOne({
         title,
         gradeDate,
+        gradingType,
         classCode,
         className,
         courseCode,
@@ -148,18 +184,33 @@ export async function POST(request: NextRequest) {
       const gradeListId = gradeListResult.insertedId.toString();
 
       // Insert individual grades
-      const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => ({
-        gradeListId: gradeListId,
-        studentCode,
-        studentName: gradeData.studentName,
-        score: gradeData.score,
-        classCode,
-        courseCode,
-        teacherCode,
-        schoolCode,
-        createdAt: now,
-        updatedAt: now
-      }));
+      const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => {
+        const typedGradeData = gradeData as GradeData;
+        const baseDoc = {
+          gradeListId: gradeListId,
+          studentCode,
+          studentName: typedGradeData.studentName,
+          gradingType,
+          classCode,
+          courseCode,
+          teacherCode,
+          schoolCode,
+          createdAt: now,
+          updatedAt: now
+        };
+
+        if (gradingType === "numerical") {
+          return {
+            ...baseDoc,
+            score: typedGradeData.score
+          };
+        } else {
+          return {
+            ...baseDoc,
+            descriptiveText: typedGradeData.descriptiveText
+          };
+        }
+      });
 
       if (gradeDocuments.length > 0) {
         await connection.collection("grades").insertMany(gradeDocuments);
@@ -167,7 +218,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Grades saved successfully",
+        message: gradingType === "descriptive" ? "Evaluations saved successfully" : "Grades saved successfully",
         gradeListId: gradeListId
       });
     }

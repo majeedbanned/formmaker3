@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 
 import {
   Save,
@@ -23,6 +24,8 @@ import {
   TrendingUp,
   Loader2,
   Calendar,
+  Hash,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,8 +35,13 @@ interface ReviewSaveStepProps {
     selectedSubject: any | null;
     gradeTitle: string;
     gradeDate: string;
+    gradingType: "numerical" | "descriptive";
     studentGrades: {
-      [studentCode: string]: { score: number; studentName: string };
+      [studentCode: string]: {
+        score?: number;
+        descriptiveText?: string;
+        studentName: string;
+      };
     };
     isEditing: boolean;
     editingGradeListId?: string;
@@ -56,14 +64,21 @@ export function ReviewSaveStep({
   const studentsWithGrades = grades.length;
   const totalStudents = gradingData.selectedClass?.data?.students?.length || 0;
 
+  // Calculate statistics for numerical grades only
+  const numericalGrades = grades.filter((grade) => grade.score !== undefined);
   const averageScore =
-    grades.length > 0
-      ? grades.reduce((sum, grade) => sum + grade.score, 0) / grades.length
+    numericalGrades.length > 0
+      ? numericalGrades.reduce((sum, grade) => sum + (grade.score || 0), 0) /
+        numericalGrades.length
       : 0;
 
-  const highScores = grades.filter((g) => g.score >= 17).length;
-  const passingScores = grades.filter((g) => g.score >= 10).length;
-  const failingScores = grades.filter((g) => g.score < 10).length;
+  const highScores = numericalGrades.filter((g) => (g.score || 0) >= 17).length;
+  const passingScores = numericalGrades.filter(
+    (g) => (g.score || 0) >= 10
+  ).length;
+  const failingScores = numericalGrades.filter(
+    (g) => (g.score || 0) < 10
+  ).length;
 
   const handleSave = async () => {
     try {
@@ -72,6 +87,7 @@ export function ReviewSaveStep({
       const saveData = {
         title: gradingData.gradeTitle,
         gradeDate: gradingData.gradeDate,
+        gradingType: gradingData.gradingType,
         classCode: gradingData.selectedClass.data.classCode,
         className: gradingData.selectedClass.data.className,
         courseCode: gradingData.selectedSubject.courseCode,
@@ -98,10 +114,18 @@ export function ReviewSaveStep({
       await response.json();
 
       toast({
-        title: gradingData.isEditing ? "نمرات ویرایش شد" : "نمرات ذخیره شد",
+        title: gradingData.isEditing
+          ? gradingData.gradingType === "descriptive"
+            ? "ارزیابی‌ها ویرایش شد"
+            : "نمرات ویرایش شد"
+          : gradingData.gradingType === "descriptive"
+          ? "ارزیابی‌ها ذخیره شد"
+          : "نمرات ذخیره شد",
         description: gradingData.isEditing
           ? "تغییرات با موفقیت اعمال شد"
-          : `${studentsWithGrades} نمره با موفقیت ذخیره شد`,
+          : `${studentsWithGrades} ${
+              gradingData.gradingType === "descriptive" ? "ارزیابی" : "نمره"
+            } با موفقیت ذخیره شد`,
       });
 
       onSaveSuccess();
@@ -109,7 +133,9 @@ export function ReviewSaveStep({
       console.error("Error saving grades:", error);
       toast({
         title: "خطا در ذخیره",
-        description: "مشکلی در ذخیره نمرات رخ داد. لطفاً مجدد تلاش کنید.",
+        description: `مشکلی در ذخیره ${
+          gradingData.gradingType === "descriptive" ? "ارزیابی‌ها" : "نمرات"
+        } رخ داد. لطفاً مجدد تلاش کنید.`,
         variant: "destructive",
       });
     } finally {
@@ -120,21 +146,41 @@ export function ReviewSaveStep({
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <h3 className="text-lg font-semibold mb-2">بررسی و ذخیره نمرات</h3>
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          {gradingData.gradingType === "numerical" ? (
+            <Hash className="h-5 w-5" />
+          ) : (
+            <MessageSquare className="h-5 w-5" />
+          )}
+          {gradingData.gradingType === "descriptive"
+            ? "بررسی و ذخیره ارزیابی‌های توصیفی"
+            : "بررسی و ذخیره نمرات"}
+        </h3>
         <p className="text-muted-foreground">
-          لطفاً اطلاعات وارد شده را بررسی کنید و در صورت صحت، نمرات را ذخیره
-          کنید
+          لطفاً اطلاعات وارد شده را بررسی کنید و در صورت صحت،{" "}
+          {gradingData.gradingType === "descriptive" ? "ارزیابی‌ها" : "نمرات"}{" "}
+          را ذخیره کنید
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`grid gap-4 ${
+          gradingData.gradingType === "numerical"
+            ? "md:grid-cols-2 lg:grid-cols-4"
+            : "md:grid-cols-2"
+        }`}
+      >
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-sm font-medium">تعداد نمرات</p>
+                <p className="text-sm font-medium">
+                  {gradingData.gradingType === "descriptive"
+                    ? "تعداد ارزیابی‌ها"
+                    : "تعداد نمرات"}
+                </p>
                 <p className="text-2xl font-bold">{studentsWithGrades}</p>
                 <p className="text-xs text-muted-foreground">
                   از {totalStudents} دانش‌آموز
@@ -147,46 +193,96 @@ export function ReviewSaveStep({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-500" />
+              {gradingData.gradingType === "numerical" ? (
+                <Hash className="h-5 w-5 text-purple-500" />
+              ) : (
+                <MessageSquare className="h-5 w-5 text-purple-500" />
+              )}
               <div>
-                <p className="text-sm font-medium">میانگین کلاس</p>
-                <p className="text-2xl font-bold">{averageScore.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground">از ۲۰</p>
+                <p className="text-sm font-medium">نوع ارزیابی</p>
+                <p className="text-lg font-bold">
+                  {gradingData.gradingType === "descriptive"
+                    ? "توصیفی"
+                    : "عددی"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {gradingData.gradingType === "descriptive"
+                    ? "متن توضیحی"
+                    : "نمره ۰-۲۰"}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">قبول</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {passingScores}
-                </p>
-                <p className="text-xs text-muted-foreground">نمره ≥ ۱۰</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {gradingData.gradingType === "numerical" && (
+          <>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium">میانگین کلاس</p>
+                    <p className="text-2xl font-bold">
+                      {averageScore.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">از ۲۰</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <div>
-                <p className="text-sm font-medium">مردود</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {failingScores}
-                </p>
-                <p className="text-xs text-muted-foreground">نمره &lt; ۱۰</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium">قبول</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {passingScores}
+                    </p>
+                    <p className="text-xs text-muted-foreground">نمره ≥ ۱۰</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
+
+      {gradingData.gradingType === "numerical" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-500" />
+                <div>
+                  <p className="text-sm font-medium">نمرات بالا</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {highScores}
+                  </p>
+                  <p className="text-xs text-muted-foreground">نمره ≥ ۱۷</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <div>
+                  <p className="text-sm font-medium">مردود</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {failingScores}
+                  </p>
+                  <p className="text-xs text-muted-foreground">نمره &lt; ۱۰</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Review Information */}
       <Card>
@@ -198,49 +294,60 @@ export function ReviewSaveStep({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">کلاس:</span>
-                <Badge variant="outline">
-                  {gradingData.selectedClass?.data.className}
-                </Badge>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                کلاس
+              </Label>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">
+                  {gradingData.selectedClass?.data?.className}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  کد: {gradingData.selectedClass?.data?.classCode}
+                </p>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">درس:</span>
-                <Badge variant="outline">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                درس
+              </Label>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">
                   {gradingData.selectedSubject?.courseName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  کد: {gradingData.selectedSubject?.courseCode}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                عنوان
+              </Label>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{gradingData.gradeTitle}</p>
+                <Badge variant="outline" className="mt-1">
+                  {gradingData.gradingType === "descriptive"
+                    ? "توصیفی"
+                    : "عددی"}
                 </Badge>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">عنوان:</span>
-                <Badge variant="outline">{gradingData.gradeTitle}</Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">تاریخ:</span>
-                <Badge variant="outline">
-                  {gradingData.gradeDate
-                    ? new Date(gradingData.gradeDate).toLocaleDateString(
-                        "fa-IR"
-                      )
-                    : "-"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">نمرات بالا (≥۱۷):</span>
-                <Badge variant="outline" className="bg-green-50 text-green-700">
-                  {highScores} نفر
-                </Badge>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                تاریخ
+              </Label>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">
+                  {new Date(gradingData.gradeDate).toLocaleDateString("fa-IR")}
+                </p>
               </div>
             </div>
           </div>
@@ -250,89 +357,98 @@ export function ReviewSaveStep({
       {/* Grades Preview */}
       <Card>
         <CardHeader>
-          <CardTitle>پیش‌نمایش نمرات</CardTitle>
-          <CardDescription>فهرست کامل نمرات ثبت شده</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            {gradingData.gradingType === "descriptive"
+              ? "پیش‌نمایش ارزیابی‌ها"
+              : "پیش‌نمایش نمرات"}
+          </CardTitle>
+          <CardDescription>
+            {studentsWithGrades}{" "}
+            {gradingData.gradingType === "descriptive" ? "ارزیابی" : "نمره"}{" "}
+            وارد شده
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="h-[300px] pr-4">
             <div className="space-y-2">
-              {Object.entries(gradingData.studentGrades)
-                .sort(([, a], [, b]) => b.score - a.score) // Sort by score descending
-                .map(([studentCode, gradeData], index) => (
+              {Object.entries(gradingData.studentGrades).map(
+                ([studentCode, gradeData]) => (
                   <div
                     key={studentCode}
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-muted-foreground w-8">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium">{gradeData.studentName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          کد: {studentCode}
-                        </p>
-                      </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{gradeData.studentName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        کد: {studentCode}
+                      </p>
                     </div>
-
-                    <Badge
-                      variant={
-                        gradeData.score >= 10 ? "default" : "destructive"
-                      }
-                      className="text-lg px-3 py-1"
-                    >
-                      {gradeData.score}/20
-                    </Badge>
+                    <div className="text-left">
+                      {gradingData.gradingType === "numerical" ? (
+                        <Badge
+                          variant={
+                            (gradeData.score || 0) >= 10
+                              ? "default"
+                              : "destructive"
+                          }
+                          className="text-base px-3 py-1"
+                        >
+                          {gradeData.score}/20
+                        </Badge>
+                      ) : (
+                        <div className="max-w-xs text-right">
+                          <p className="text-sm bg-blue-50 p-2 rounded text-blue-900">
+                            {gradeData.descriptiveText}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ))}
+                )
+              )}
             </div>
           </ScrollArea>
         </CardContent>
       </Card>
 
-      {/* Save Actions */}
-      <Card className="border-primary bg-primary/5">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold text-primary">
-                آماده {gradingData.isEditing ? "ویرایش" : "ذخیره"}؟
-              </h4>
-              <p className="text-sm text-muted-foreground mt-1">
-                {gradingData.isEditing
-                  ? "تغییرات شما اعمال و ذخیره خواهد شد"
-                  : `${studentsWithGrades} نمره ذخیره خواهد شد`}
-              </p>
-            </div>
-
-            <Button
-              onClick={handleSave}
-              disabled={saving || studentsWithGrades === 0}
-              size="lg"
-              className="gap-2"
-            >
-              {saving ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-              {saving
-                ? "در حال ذخیره..."
-                : gradingData.isEditing
-                ? "ویرایش نمرات"
+      {/* Save Button */}
+      <div className="flex justify-center pt-6">
+        <Button
+          onClick={handleSave}
+          disabled={saving || studentsWithGrades === 0}
+          size="lg"
+          className="min-w-48 gap-2"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              در حال ذخیره...
+            </>
+          ) : (
+            <>
+              <Save className="h-5 w-5" />
+              {gradingData.isEditing
+                ? gradingData.gradingType === "descriptive"
+                  ? "ویرایش ارزیابی‌ها"
+                  : "ویرایش نمرات"
+                : gradingData.gradingType === "descriptive"
+                ? "ذخیره ارزیابی‌ها"
                 : "ذخیره نمرات"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            </>
+          )}
+        </Button>
+      </div>
 
       {studentsWithGrades === 0 && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
+            <div className="flex items-center gap-3 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              <p className="font-medium">
-                هیچ نمره‌ای وارد نشده است. لطفاً حداقل یک نمره وارد کنید.
+              <p>
+                {gradingData.gradingType === "descriptive"
+                  ? "هیچ ارزیابی توصیفی وارد نشده است"
+                  : "هیچ نمره‌ای وارد نشده است"}
               </p>
             </div>
           </CardContent>

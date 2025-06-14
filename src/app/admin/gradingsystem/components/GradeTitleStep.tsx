@@ -9,8 +9,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { FileText, Lightbulb, Calendar } from "lucide-react";
+import {
+  FileText,
+  Lightbulb,
+  Calendar,
+  Hash,
+  MessageSquare,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -20,8 +27,10 @@ import type { Value } from "react-multi-date-picker";
 interface GradeTitleStepProps {
   gradeTitle: string;
   gradeDate: string;
+  gradingType: "numerical" | "descriptive";
   onTitleChange: (title: string) => void;
   onDateChange: (date: string) => void;
+  onGradingTypeChange: (type: "numerical" | "descriptive") => void;
 }
 
 const SAMPLE_TITLES = [
@@ -35,11 +44,22 @@ const SAMPLE_TITLES = [
   "کار عملی آزمایشگاه",
 ];
 
+const DESCRIPTIVE_SAMPLE_TITLES = [
+  "ارزیابی توصیفی عملکرد",
+  "بررسی مهارت‌های نرم",
+  "ارزیابی مشارکت کلاسی",
+  "بررسی روند پیشرفت",
+  "ارزیابی کار گروهی",
+  "نظر کلی معلم",
+];
+
 export function GradeTitleStep({
   gradeTitle,
   gradeDate,
+  gradingType,
   onTitleChange,
   onDateChange,
+  onGradingTypeChange,
 }: GradeTitleStepProps) {
   // Handle date change from Persian calendar
   const handleDateChange = (date: Value) => {
@@ -59,14 +79,70 @@ export function GradeTitleStep({
   // Convert gradeDate back to Date object for the Persian calendar
   const persianDateValue = gradeDate ? new Date(gradeDate) : null;
 
+  const currentSampleTitles =
+    gradingType === "descriptive" ? DESCRIPTIVE_SAMPLE_TITLES : SAMPLE_TITLES;
+
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <h3 className="text-lg font-semibold mb-2">عنوان و تاریخ ثبت نمره</h3>
+        <h3 className="text-lg font-semibold mb-2">عنوان و نوع نمره‌دهی</h3>
         <p className="text-muted-foreground">
-          عنوان و تاریخ مناسب برای این مجموعه نمرات وارد کنید
+          نوع نمره‌دهی، عنوان و تاریخ مناسب برای این مجموعه نمرات وارد کنید
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            نوع نمره‌دهی
+          </CardTitle>
+          <CardDescription>
+            نوع نمره‌دهی مورد نظر خود را انتخاب کنید
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup
+            value={gradingType}
+            onValueChange={(value: "numerical" | "descriptive") =>
+              onGradingTypeChange(value)
+            }
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <RadioGroupItem value="numerical" id="numerical" />
+              <Label
+                htmlFor="numerical"
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Hash className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">نمره‌دهی عددی</div>
+                  <div className="text-sm text-muted-foreground">
+                    نمرات از ۰ تا ۲۰
+                  </div>
+                </div>
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <RadioGroupItem value="descriptive" id="descriptive" />
+              <Label
+                htmlFor="descriptive"
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">نمره‌دهی توصیفی</div>
+                  <div className="text-sm text-muted-foreground">
+                    متن توضیحی برای هر دانش‌آموز
+                  </div>
+                </div>
+              </Label>
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -84,7 +160,11 @@ export function GradeTitleStep({
               <Label htmlFor="gradeTitle">عنوان *</Label>
               <Input
                 id="gradeTitle"
-                placeholder="مثال: آزمون میان‌ترم"
+                placeholder={
+                  gradingType === "descriptive"
+                    ? "مثال: ارزیابی توصیفی عملکرد"
+                    : "مثال: آزمون میان‌ترم"
+                }
                 value={gradeTitle}
                 onChange={(e) => onTitleChange(e.target.value)}
                 className="text-right"
@@ -97,7 +177,8 @@ export function GradeTitleStep({
             <div className="space-y-2">
               <Label htmlFor="gradeDate" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                تاریخ آزمون/ارزیابی *
+                تاریخ{" "}
+                {gradingType === "descriptive" ? "ارزیابی" : "آزمون/ارزیابی"} *
               </Label>
               <div className="relative">
                 <DatePicker
@@ -115,7 +196,8 @@ export function GradeTitleStep({
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                تاریخ برگزاری آزمون یا ارزیابی
+                تاریخ برگزاری{" "}
+                {gradingType === "descriptive" ? "ارزیابی" : "آزمون یا ارزیابی"}
               </p>
             </div>
           </div>
@@ -131,6 +213,9 @@ export function GradeTitleStep({
                     {new Date(gradeDate).toLocaleDateString("fa-IR")}
                   </span>
                 )}
+                <Badge variant="outline" className="mr-2">
+                  {gradingType === "descriptive" ? "توصیفی" : "عددی"}
+                </Badge>
               </p>
             </div>
           )}
@@ -149,7 +234,7 @@ export function GradeTitleStep({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {SAMPLE_TITLES.map((title) => (
+            {currentSampleTitles.map((title) => (
               <Badge
                 key={title}
                 variant="outline"
