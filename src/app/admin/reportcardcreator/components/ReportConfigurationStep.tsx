@@ -30,7 +30,7 @@ interface ReportData {
   includeClassRanking: boolean;
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
-  reportFormat: "detailed" | "summary" | "minimal";
+  reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
   customFooter: string;
@@ -97,6 +97,9 @@ export function ReportConfigurationStep({
                 </SelectItem>
                 <SelectItem value="summary">خلاصه - اطلاعات کلیدی</SelectItem>
                 <SelectItem value="minimal">مینیمال - فقط نمرات</SelectItem>
+                <SelectItem value="statistical">
+                  جدول آماری - تحلیل کامل عملکرد (فقط نمرات عددی)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -258,7 +261,9 @@ export function ReportConfigurationStep({
                 ? "تفصیلی"
                 : reportData.reportFormat === "summary"
                 ? "خلاصه"
-                : "مینیمال"}
+                : reportData.reportFormat === "minimal"
+                ? "مینیمال"
+                : "جدول آماری"}
             </p>
             <div className="flex flex-wrap gap-1 mt-2">
               {reportData.includeStatistics && (

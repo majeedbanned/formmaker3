@@ -78,20 +78,20 @@ export async function POST(request: NextRequest) {
     if (gradingType === "numerical") {
       const numericalGrades = gradeValues.filter(g => g.score !== undefined);
       const scores = numericalGrades.map(g => g.score!);
-      const average = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
-      const passing = scores.filter(score => score >= 10).length;
-      const failing = scores.filter(score => score < 10).length;
-      const highest = scores.length > 0 ? Math.max(...scores) : 0;
-      const lowest = scores.length > 0 ? Math.min(...scores) : 0;
+    const average = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+    const passing = scores.filter(score => score >= 10).length;
+    const failing = scores.filter(score => score < 10).length;
+    const highest = scores.length > 0 ? Math.max(...scores) : 0;
+    const lowest = scores.length > 0 ? Math.min(...scores) : 0;
 
       statistics = {
-        average,
-        passing,
-        failing,
-        highest,
-        lowest,
-        total: scores.length
-      };
+      average,
+      passing,
+      failing,
+      highest,
+      lowest,
+      total: scores.length
+    };
     } else {
       // For descriptive grades, we only track total count
       const descriptiveGrades = gradeValues.filter(g => g.descriptiveText && g.descriptiveText.trim() !== "");
@@ -128,16 +128,16 @@ export async function POST(request: NextRequest) {
       const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => {
         const typedGradeData = gradeData as GradeData;
         const baseDoc = {
-          gradeListId: gradeListId,
-          studentCode,
+        gradeListId: gradeListId,
+        studentCode,
           studentName: typedGradeData.studentName,
           gradingType,
-          classCode,
-          courseCode,
-          teacherCode,
-          schoolCode,
-          createdAt: now,
-          updatedAt: now
+        classCode,
+        courseCode,
+        teacherCode,
+        schoolCode,
+        createdAt: now,
+        updatedAt: now
         };
 
         if (gradingType === "numerical") {
@@ -187,16 +187,16 @@ export async function POST(request: NextRequest) {
       const gradeDocuments = Object.entries(grades).map(([studentCode, gradeData]) => {
         const typedGradeData = gradeData as GradeData;
         const baseDoc = {
-          gradeListId: gradeListId,
-          studentCode,
+        gradeListId: gradeListId,
+        studentCode,
           studentName: typedGradeData.studentName,
           gradingType,
-          classCode,
-          courseCode,
-          teacherCode,
-          schoolCode,
-          createdAt: now,
-          updatedAt: now
+        classCode,
+        courseCode,
+        teacherCode,
+        schoolCode,
+        createdAt: now,
+        updatedAt: now
         };
 
         if (gradingType === "numerical") {

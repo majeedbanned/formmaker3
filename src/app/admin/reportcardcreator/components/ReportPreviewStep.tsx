@@ -11,9 +11,65 @@ import {
   FileText,
   BookOpen,
   Trophy,
+  Table,
+  TrendingUp,
+  Target,
+  BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { faIR } from "date-fns/locale";
+
+// Persian date utility function - converts Gregorian to Persian (Shamsi) calendar
+const formatPersianDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+
+    // Persian month names
+    const persianMonths = [
+      "فروردین",
+      "اردیبهشت",
+      "خرداد",
+      "تیر",
+      "مرداد",
+      "شهریور",
+      "مهر",
+      "آبان",
+      "آذر",
+      "دی",
+      "بهمن",
+      "اسفند",
+    ];
+
+    // Get Gregorian date components
+    const gregorianYear = date.getFullYear();
+    const gregorianMonth = date.getMonth() + 1;
+    const gregorianDay = date.getDate();
+
+    // Simple Gregorian to Persian conversion algorithm
+    let persianYear = gregorianYear - 621;
+    let persianMonth = gregorianMonth;
+    const persianDay = gregorianDay;
+
+    // Adjust for Persian calendar start (simplified approximation)
+    if (gregorianMonth <= 3) {
+      // January to March maps to Dey to Esfand of previous Persian year
+      persianMonth = gregorianMonth + 9;
+      persianYear--;
+    } else {
+      // April to December maps to Farvardin to Azar
+      persianMonth = gregorianMonth - 3;
+    }
+
+    // Ensure month is within valid range
+    if (persianMonth < 1) persianMonth = 1;
+    if (persianMonth > 12) persianMonth = 12;
+
+    return `${persianDay} ${persianMonths[persianMonth - 1]} ${persianYear}`;
+  } catch {
+    // Fallback to Gregorian format if conversion fails
+    return format(new Date(dateString), "yyyy/MM/dd", { locale: faIR });
+  }
+};
 
 interface GradeData {
   score?: number;
@@ -39,7 +95,11 @@ interface SelectedGrading {
     };
   };
   subjectData?: {
+    courseCode?: string;
     courseName?: string;
+    Grade?: string;
+    vahed?: number;
+    major?: string;
   };
 }
 
@@ -55,7 +115,7 @@ interface ReportData {
   includeClassRanking: boolean;
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
-  reportFormat: "detailed" | "summary" | "minimal";
+  reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
   customFooter: string;
@@ -79,8 +139,24 @@ interface StudentReport {
     descriptiveText?: string;
     rank?: number;
     totalStudents?: number;
+    progressInfo?: {
+      scoreDiff: number;
+      rankDiff: number;
+      hasProgress: boolean;
+      previousScore: number;
+      previousRank: number;
+    };
   }[];
   overallAverage?: number;
+  overallProgress?: {
+    totalScoreChange: number;
+    totalRankChange: number;
+    progressCount: number;
+    declineCount: number;
+    noChangeCount: number;
+    overallTrend: "improvement" | "decline" | "stable";
+    progressPercentage: number;
+  };
 }
 
 export function ReportPreviewStep({
@@ -88,7 +164,13 @@ export function ReportPreviewStep({
   userInfo,
 }: ReportPreviewStepProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const { selectedGradings } = reportData;
+
+  // Sort selected gradings by date to ensure chronological processing
+  const selectedGradings = [...reportData.selectedGradings].sort((a, b) => {
+    const dateA = new Date(a.date || "1900-01-01").getTime();
+    const dateB = new Date(b.date || "1900-01-01").getTime();
+    return dateA - dateB;
+  });
 
   if (!selectedGradings || selectedGradings.length === 0) {
     return (
@@ -128,8 +210,8 @@ export function ReportPreviewStep({
       let rankedStudents: [string, GradeData][] = [];
       if (grading.gradingType === "numerical") {
         rankedStudents = gradingStudents
-          .filter(([_, gradeData]) => gradeData.score !== undefined)
-          .sort(([_, a], [__, b]) => (b.score || 0) - (a.score || 0));
+          .filter(([, gradeData]) => gradeData.score !== undefined)
+          .sort(([, a], [, b]) => (b.score || 0) - (a.score || 0));
       }
 
       gradingStudents.forEach(([studentCode, gradeData]) => {
@@ -157,6 +239,7 @@ export function ReportPreviewStep({
           descriptiveText: gradeData.descriptiveText,
           rank: rank || undefined,
           totalStudents: rankedStudents.length || undefined,
+          progressInfo: undefined,
         });
       });
     });
@@ -182,7 +265,1101 @@ export function ReportPreviewStep({
 
   const studentReports = getStudentReports();
 
-  const renderStudentCard = (student: StudentReport, index: number) => (
+  // Statistical table rendering for numerical grades only
+  const renderStatisticalTable = () => {
+    const numericalGradings = selectedGradings.filter(
+      (g) => g.gradingType === "numerical"
+    );
+
+    if (numericalGradings.length === 0) {
+      return (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Table className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-medium mb-2">قالب آماری قابل استفاده نیست</h3>
+              <p className="text-sm text-muted-foreground">
+                این قالب فقط برای نمره‌دهی‌های عددی قابل استفاده است.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Calculate overall statistics
+    const allStudentData = new Map<
+      string,
+      {
+        studentName: string;
+        className?: string;
+        subjects: {
+          subjectName: string;
+          gradingTitle: string;
+          gradingDate: string;
+          score: number;
+          classAverage: number;
+          rank: number;
+          totalStudents: number;
+          percentile: number;
+          diffFromAvg: number;
+          performance: string;
+          courseCode: string;
+          courseGrade: string;
+          courseVahed: number;
+          progressInfo?: {
+            scoreDiff: number;
+            rankDiff: number;
+            hasProgress: boolean;
+            previousScore: number;
+            previousRank: number;
+          };
+        }[];
+        overallAverage: number;
+        overallRank: number;
+        overallDiffFromAvg: number;
+        overallProgress?: {
+          totalScoreChange: number;
+          totalRankChange: number;
+          progressCount: number;
+          declineCount: number;
+          noChangeCount: number;
+          overallTrend: "improvement" | "decline" | "stable";
+          progressPercentage: number;
+        };
+      }
+    >();
+
+    numericalGradings.forEach((grading) => {
+      const gradingStudents = Object.entries(grading.grades || {}).filter(
+        ([, gradeData]) => gradeData.score !== undefined
+      );
+
+      const rankedStudents = gradingStudents.sort(
+        ([, a], [, b]) => (b.score || 0) - (a.score || 0)
+      );
+
+      const classAverage = grading.statistics?.average || 0;
+
+      gradingStudents.forEach(([studentCode, gradeData]) => {
+        if (!allStudentData.has(studentCode)) {
+          allStudentData.set(studentCode, {
+            studentName: gradeData.studentName,
+            className: grading.classData?.data?.className,
+            subjects: [],
+            overallAverage: 0,
+            overallRank: 0,
+            overallDiffFromAvg: 0,
+          });
+        }
+
+        const student = allStudentData.get(studentCode)!;
+        const rank =
+          rankedStudents.findIndex(([code]) => code === studentCode) + 1;
+        const percentile =
+          ((rankedStudents.length - rank + 1) / rankedStudents.length) * 100;
+        const diffFromAvg = (gradeData.score || 0) - classAverage;
+
+        let performance = "متوسط";
+        if (percentile >= 90) performance = "عالی";
+        else if (percentile >= 75) performance = "خوب";
+        else if (percentile >= 50) performance = "متوسط";
+        else if (percentile >= 25) performance = "ضعیف";
+        else performance = "نیازمند تقویت";
+
+        student.subjects.push({
+          subjectName: grading.subjectData?.courseName || "نامشخص",
+          gradingTitle: grading.title,
+          gradingDate: grading.date || new Date().toISOString(),
+          score: gradeData.score || 0,
+          classAverage,
+          rank,
+          totalStudents: rankedStudents.length,
+          percentile: Math.round(percentile),
+          diffFromAvg: Math.round(diffFromAvg * 10) / 10,
+          performance,
+          courseCode: grading.subjectData?.courseCode || "",
+          courseGrade: grading.subjectData?.Grade || "",
+          courseVahed: grading.subjectData?.vahed || 1,
+        });
+      });
+    });
+
+    // Calculate overall statistics for each student
+    allStudentData.forEach((student) => {
+      student.overallAverage =
+        student.subjects.reduce((sum, subject) => sum + subject.score, 0) /
+        student.subjects.length;
+    });
+
+    const studentsArray = Array.from(allStudentData.entries()).map(
+      ([code, data]) => ({
+        studentCode: code,
+        ...data,
+      })
+    );
+
+    // Calculate overall ranks
+    studentsArray.sort((a, b) => b.overallAverage - a.overallAverage);
+    studentsArray.forEach((student, index) => {
+      student.overallRank = index + 1;
+      const overallClassAverage =
+        studentsArray.reduce((sum, s) => sum + s.overallAverage, 0) /
+        studentsArray.length;
+      student.overallDiffFromAvg =
+        Math.round((student.overallAverage - overallClassAverage) * 10) / 10;
+    });
+
+    studentsArray.sort((a, b) =>
+      a.studentName.localeCompare(b.studentName, "fa")
+    );
+
+    // Ensure all grades are sorted by date before processing
+    studentsArray.forEach((student) => {
+      // Sort all subjects by date first
+      student.subjects.sort(
+        (a, b) =>
+          new Date(a.gradingDate).getTime() - new Date(b.gradingDate).getTime()
+      );
+    });
+
+    // Calculate progress for each student's subjects
+    studentsArray.forEach((student) => {
+      // Group subjects by course code and subject name for more accurate tracking
+      const subjectGroups = student.subjects.reduce((groups, subject) => {
+        // Create a unique key using course code and subject name for better accuracy
+        const key = subject.courseCode
+          ? `${subject.courseCode}-${subject.subjectName}`
+          : subject.subjectName;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(subject);
+        return groups;
+      }, {} as Record<string, typeof student.subjects>);
+
+      // Sort each group by date chronologically and calculate progress
+      Object.values(subjectGroups).forEach((subjects) => {
+        subjects.sort(
+          (a, b) =>
+            new Date(a.gradingDate).getTime() -
+            new Date(b.gradingDate).getTime()
+        );
+
+        subjects.forEach((subject, index) => {
+          if (index > 0) {
+            const previousSubject = subjects[index - 1];
+            const scoreDiff = subject.score - previousSubject.score;
+            const rankDiff = previousSubject.rank - subject.rank; // Lower rank number is better
+
+            subject.progressInfo = {
+              scoreDiff: Math.round(scoreDiff * 10) / 10,
+              rankDiff,
+              hasProgress: scoreDiff > 0 || rankDiff > 0,
+              previousScore: previousSubject.score,
+              previousRank: previousSubject.rank,
+            };
+          }
+        });
+      });
+    });
+
+    // Calculate overall progress for each student
+    studentsArray.forEach((student) => {
+      const subjectsWithProgress = student.subjects.filter(
+        (s) => s.progressInfo
+      );
+
+      if (subjectsWithProgress.length > 0) {
+        const totalScoreChange = subjectsWithProgress.reduce(
+          (sum, s) => sum + (s.progressInfo?.scoreDiff || 0),
+          0
+        );
+        const totalRankChange = subjectsWithProgress.reduce(
+          (sum, s) => sum + (s.progressInfo?.rankDiff || 0),
+          0
+        );
+        const progressCount = subjectsWithProgress.filter(
+          (s) => s.progressInfo?.hasProgress
+        ).length;
+        const declineCount = subjectsWithProgress.filter(
+          (s) => !s.progressInfo?.hasProgress
+        ).length;
+        const noChangeCount = subjectsWithProgress.filter(
+          (s) =>
+            s.progressInfo?.scoreDiff === 0 && s.progressInfo?.rankDiff === 0
+        ).length;
+
+        const progressPercentage = Math.round(
+          (progressCount / subjectsWithProgress.length) * 100
+        );
+
+        let overallTrend: "improvement" | "decline" | "stable" = "stable";
+        if (progressCount > declineCount) {
+          overallTrend = "improvement";
+        } else if (declineCount > progressCount) {
+          overallTrend = "decline";
+        }
+
+        student.overallProgress = {
+          totalScoreChange: Math.round(totalScoreChange * 10) / 10,
+          totalRankChange,
+          progressCount,
+          declineCount,
+          noChangeCount,
+          overallTrend,
+          progressPercentage,
+        };
+      }
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Teacher Statistics Overview */}
+        <Card className="border-blue-200 bg-blue-50 print:hidden">
+          <CardHeader>
+            <CardTitle className="text-lg text-blue-800 flex items-center">
+              <BarChart3 className="h-5 w-5 ml-2" />
+              آمار کلی برای معلم - خلاصه پیشرفت دانش‌آموزان
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Most Improved Students */}
+              <div>
+                <h4 className="font-semibold text-green-700 mb-3 flex items-center">
+                  <TrendingUp className="h-4 w-4 ml-1" />
+                  دانش‌آموزان با بیشترین پیشرفت
+                </h4>
+                <div className="space-y-2">
+                  {studentsArray
+                    .filter(
+                      (s) =>
+                        s.overallProgress &&
+                        s.overallProgress.overallTrend === "improvement"
+                    )
+                    .sort(
+                      (a, b) =>
+                        (b.overallProgress?.totalScoreChange || 0) -
+                        (a.overallProgress?.totalScoreChange || 0)
+                    )
+                    .slice(0, 5)
+                    .map((student, index) => (
+                      <div
+                        key={student.studentCode}
+                        className="flex items-center justify-between p-2 bg-green-100 rounded"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-sm font-bold text-green-700 ml-2">
+                            #{index + 1}
+                          </span>
+                          <span className="font-medium">
+                            {student.studentName}
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-600">
+                          +{student.overallProgress?.totalScoreChange} نمره (
+                          {student.overallProgress?.progressPercentage}% بهبود)
+                        </div>
+                      </div>
+                    ))}
+                  {studentsArray.filter(
+                    (s) => s.overallProgress?.overallTrend === "improvement"
+                  ).length === 0 && (
+                    <p className="text-sm text-gray-500 italic">
+                      هیچ دانش‌آموزی پیشرفت قابل توجه نداشته است
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Most Declined Students */}
+              <div>
+                <h4 className="font-semibold text-red-700 mb-3 flex items-center">
+                  <TrendingUp className="h-4 w-4 ml-1 transform rotate-180" />
+                  دانش‌آموزان نیازمند توجه بیشتر
+                </h4>
+                <div className="space-y-2">
+                  {studentsArray
+                    .filter(
+                      (s) =>
+                        s.overallProgress &&
+                        s.overallProgress.overallTrend === "decline"
+                    )
+                    .sort(
+                      (a, b) =>
+                        (a.overallProgress?.totalScoreChange || 0) -
+                        (b.overallProgress?.totalScoreChange || 0)
+                    )
+                    .slice(0, 5)
+                    .map((student, index) => (
+                      <div
+                        key={student.studentCode}
+                        className="flex items-center justify-between p-2 bg-red-100 rounded"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-sm font-bold text-red-700 ml-2">
+                            #{index + 1}
+                          </span>
+                          <span className="font-medium">
+                            {student.studentName}
+                          </span>
+                        </div>
+                        <div className="text-sm text-red-600">
+                          {student.overallProgress?.totalScoreChange} نمره (
+                          {100 -
+                            (student.overallProgress?.progressPercentage || 0)}
+                          % کاهش)
+                        </div>
+                      </div>
+                    ))}
+                  {studentsArray.filter(
+                    (s) => s.overallProgress?.overallTrend === "decline"
+                  ).length === 0 && (
+                    <p className="text-sm text-gray-500 italic">
+                      هیچ دانش‌آموزی کاهش عملکرد نداشته است
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Overall Class Statistics */}
+            <div className="mt-6 pt-4 border-t border-blue-200">
+              <h4 className="font-semibold text-blue-700 mb-3">
+                آمار کلی کلاس
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-green-100 rounded">
+                  <div className="text-lg font-bold text-green-700">
+                    {
+                      studentsArray.filter(
+                        (s) => s.overallProgress?.overallTrend === "improvement"
+                      ).length
+                    }
+                  </div>
+                  <div className="text-xs text-green-600">
+                    دانش‌آموز با پیشرفت
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-red-100 rounded">
+                  <div className="text-lg font-bold text-red-700">
+                    {
+                      studentsArray.filter(
+                        (s) => s.overallProgress?.overallTrend === "decline"
+                      ).length
+                    }
+                  </div>
+                  <div className="text-xs text-red-600">
+                    دانش‌آموز با کاهش عملکرد
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-yellow-100 rounded">
+                  <div className="text-lg font-bold text-yellow-700">
+                    {
+                      studentsArray.filter(
+                        (s) => s.overallProgress?.overallTrend === "stable"
+                      ).length
+                    }
+                  </div>
+                  <div className="text-xs text-yellow-600">
+                    دانش‌آموز با عملکرد ثابت
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-blue-100 rounded">
+                  <div className="text-lg font-bold text-blue-700">
+                    {Math.round(
+                      studentsArray.reduce(
+                        (sum, s) =>
+                          sum + (s.overallProgress?.progressPercentage || 0),
+                        0
+                      ) / studentsArray.filter((s) => s.overallProgress).length
+                    ) || 0}
+                    %
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    میانگین پیشرفت کلاس
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {studentsArray.map((student) => (
+          <Card
+            key={student.studentCode}
+            className="print:shadow-none print:border"
+          >
+            <CardContent className="p-6">
+              {/* Header */}
+              {reportData.headerLogo && (
+                <div className="text-center mb-6 print:mb-4">
+                  <div className="h-16 w-16 bg-muted rounded-full mx-auto mb-2 flex items-center justify-center">
+                    <BookOpen className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center mb-6">
+                <h1 className="text-2xl font-bold mb-2">
+                  {reportData.reportTitle}
+                </h1>
+                {reportData.schoolInfo && (
+                  <div className="text-sm text-muted-foreground">
+                    <p>مدرسه: {userInfo.schoolName || "نام مدرسه"}</p>
+                    <p>کد مدرسه: {userInfo.schoolCode}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Student Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="font-semibold mb-3 text-lg">
+                    اطلاعات دانش‌آموز
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <span className="font-medium">نام:</span>{" "}
+                      {student.studentName}
+                    </p>
+                    <p>
+                      <span className="font-medium">کد دانش‌آموزی:</span>{" "}
+                      {student.studentCode}
+                    </p>
+                    <p>
+                      <span className="font-medium">کلاس:</span>{" "}
+                      {student.className}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-3 text-lg">عملکرد کلی</h3>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <span className="font-medium">میانگین کلی:</span>{" "}
+                      {student.overallAverage.toFixed(1)}
+                    </p>
+                    <p>
+                      <span className="font-medium">رتبه کلی:</span>{" "}
+                      {student.overallRank} از {studentsArray.length}
+                    </p>
+                    <p>
+                      <span className="font-medium">
+                        اختلاف از میانگین کلی:
+                      </span>
+                      <span
+                        className={
+                          student.overallDiffFromAvg >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }
+                      >
+                        {student.overallDiffFromAvg >= 0 ? "+" : ""}
+                        {student.overallDiffFromAvg}
+                      </span>
+                    </p>
+                    {student.overallProgress && (
+                      <div className="mt-3 p-3 rounded-lg border bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-semibold text-gray-800">
+                            روند کلی عملکرد:
+                          </span>
+                          <div
+                            className={`flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                              student.overallProgress.overallTrend ===
+                              "improvement"
+                                ? "bg-green-100 text-green-700"
+                                : student.overallProgress.overallTrend ===
+                                  "decline"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {student.overallProgress.overallTrend ===
+                            "improvement" ? (
+                              <TrendingUp className="h-3 w-3 ml-1" />
+                            ) : student.overallProgress.overallTrend ===
+                              "decline" ? (
+                              <TrendingUp className="h-3 w-3 ml-1 transform rotate-180" />
+                            ) : (
+                              <Target className="h-3 w-3 ml-1" />
+                            )}
+                            {student.overallProgress.overallTrend ===
+                            "improvement"
+                              ? "در حال پیشرفت"
+                              : student.overallProgress.overallTrend ===
+                                "decline"
+                              ? "نیاز به توجه"
+                              : "عملکرد ثابت"}
+                          </div>
+                        </div>
+
+                        {/* Progress Summary */}
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="text-center p-2 bg-white rounded border">
+                            <div className="text-lg font-bold text-green-600">
+                              {student.overallProgress.progressCount}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              درس بهبود یافته
+                            </div>
+                          </div>
+                          <div className="text-center p-2 bg-white rounded border">
+                            <div className="text-lg font-bold text-red-600">
+                              {student.overallProgress.declineCount}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              درس کاهش یافته
+                            </div>
+                          </div>
+                          <div className="text-center p-2 bg-white rounded border">
+                            <div className="text-lg font-bold text-yellow-600">
+                              {student.overallProgress.noChangeCount}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              درس بدون تغییر
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detailed Course Progress */}
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            تحلیل پیشرفت بر اساس کد درس:
+                          </div>
+                          {(() => {
+                            // Group subjects by course code for better analysis
+                            const courseGroups = student.subjects.reduce(
+                              (groups, subject) => {
+                                // Extract course code from subject name or use a default grouping
+                                const courseKey = `${subject.courseCode}-${subject.subjectName}`;
+                                if (!groups[courseKey]) {
+                                  groups[courseKey] = [];
+                                }
+                                groups[courseKey].push(subject);
+                                return groups;
+                              },
+                              {} as Record<string, typeof student.subjects>
+                            );
+
+                            return Object.entries(courseGroups)
+                              .map(([courseKey, subjects]) => {
+                                // Sort subjects by date to show progression
+                                const sortedSubjects = subjects.sort(
+                                  (a, b) =>
+                                    new Date(a.gradingDate).getTime() -
+                                    new Date(b.gradingDate).getTime()
+                                );
+
+                                const hasProgress = sortedSubjects.some(
+                                  (s) => s.progressInfo
+                                );
+                                if (!hasProgress) return null;
+
+                                const latestSubject =
+                                  sortedSubjects[sortedSubjects.length - 1];
+                                const progressInfo = latestSubject.progressInfo;
+
+                                return (
+                                  <div
+                                    key={courseKey}
+                                    className="flex items-center justify-between p-2 bg-white rounded border text-xs"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-800">
+                                        {latestSubject.courseCode && (
+                                          <span className="text-blue-600 font-mono ml-1">
+                                            [{latestSubject.courseCode}]
+                                          </span>
+                                        )}
+                                        {latestSubject.subjectName}
+                                      </div>
+                                      <div className="text-gray-500">
+                                        {sortedSubjects.length} ارزیابی • آخرین:{" "}
+                                        {formatPersianDate(
+                                          latestSubject.gradingDate
+                                        )}
+                                        {latestSubject.courseVahed && (
+                                          <span className="mr-2">
+                                            • {latestSubject.courseVahed} واحد
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {progressInfo && (
+                                      <div
+                                        className={`flex items-center ${
+                                          progressInfo.hasProgress
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }`}
+                                      >
+                                        {progressInfo.hasProgress ? (
+                                          <TrendingUp className="h-3 w-3 ml-1" />
+                                        ) : (
+                                          <TrendingUp className="h-3 w-3 ml-1 transform rotate-180" />
+                                        )}
+                                        <span className="font-bold">
+                                          {progressInfo.scoreDiff >= 0
+                                            ? "+"
+                                            : ""}
+                                          {progressInfo.scoreDiff}
+                                        </span>
+                                        <span className="text-gray-400 mr-1">
+                                          ({progressInfo.previousScore} →{" "}
+                                          {latestSubject.score})
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                              .filter(Boolean);
+                          })()}
+                        </div>
+
+                        {/* Overall Statistics */}
+                        <div className="mt-3 pt-2 border-t border-gray-200">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">
+                                مجموع تغییر نمرات:
+                              </span>
+                              <span
+                                className={`font-bold ${
+                                  student.overallProgress.totalScoreChange >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {student.overallProgress.totalScoreChange >= 0
+                                  ? "+"
+                                  : ""}
+                                {student.overallProgress.totalScoreChange}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">
+                                درصد موفقیت:
+                              </span>
+                              <span className="font-bold text-blue-600">
+                                {student.overallProgress.progressPercentage}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistical Table */}
+              <div className="mb-6">
+                <h3 className="font-semibold mb-3 text-lg flex items-center">
+                  <BarChart3 className="h-5 w-5 ml-2" />
+                  جدول تحلیلی عملکرد
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300 text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          درس
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          نمره
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          میانگین کلاس
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          اختلاف از میانگین
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          رتبه
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          درصد رتبه
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          عملکرد
+                        </th>
+                        <th className="border border-gray-300 p-2 text-center font-medium">
+                          پیشرفت
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {student.subjects.map((subject, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 p-2 font-medium">
+                            <div>
+                              <div className="font-medium">
+                                {subject.subjectName}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {subject.gradingTitle}
+                                {subject.gradingDate && (
+                                  <span className="block text-gray-400 mt-1">
+                                    {formatPersianDate(subject.gradingDate)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <span
+                              className={`font-bold ${
+                                subject.score >= 17
+                                  ? "text-green-600"
+                                  : subject.score >= 14
+                                  ? "text-blue-600"
+                                  : subject.score >= 10
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {subject.score.toFixed(1)}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center text-gray-600">
+                            {subject.classAverage.toFixed(1)}
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <span
+                              className={
+                                subject.diffFromAvg >= 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }
+                            >
+                              {subject.diffFromAvg >= 0 ? "+" : ""}
+                              {subject.diffFromAvg}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <div className="flex items-center justify-center">
+                              {subject.rank <= 3 && (
+                                <Trophy className="h-4 w-4 text-yellow-500 ml-1" />
+                              )}
+                              {subject.rank}/{subject.totalStudents}
+                            </div>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <div className="flex items-center justify-center">
+                              <div className="w-12 bg-gray-200 rounded-full h-2 ml-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    subject.percentile >= 90
+                                      ? "bg-green-500"
+                                      : subject.percentile >= 75
+                                      ? "bg-blue-500"
+                                      : subject.percentile >= 50
+                                      ? "bg-yellow-500"
+                                      : subject.percentile >= 25
+                                      ? "bg-orange-500"
+                                      : "bg-red-500"
+                                  }`}
+                                  style={{ width: `${subject.percentile}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs">
+                                {subject.percentile}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                subject.performance === "عالی"
+                                  ? "bg-green-100 text-green-800"
+                                  : subject.performance === "خوب"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : subject.performance === "متوسط"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : subject.performance === "ضعیف"
+                                  ? "bg-orange-100 text-orange-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {subject.performance}
+                            </span>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-center">
+                            <div className="flex items-center justify-center">
+                              {subject.progressInfo ? (
+                                <div className="text-center">
+                                  <div
+                                    className={`flex items-center justify-center ${
+                                      subject.progressInfo.hasProgress
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {subject.progressInfo.hasProgress ? (
+                                      <TrendingUp className="h-4 w-4" />
+                                    ) : (
+                                      <TrendingUp className="h-4 w-4 transform rotate-180" />
+                                    )}
+                                    <span className="text-xs font-bold ml-1">
+                                      {subject.progressInfo.scoreDiff >= 0
+                                        ? "+"
+                                        : ""}
+                                      {subject.progressInfo.scoreDiff}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {subject.progressInfo.previousScore} →{" "}
+                                    {subject.score}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center">
+                                  <div className="text-gray-400">
+                                    <Target className="h-4 w-4 mx-auto" />
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    اولین نمره
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100 font-medium">
+                        <td className="border border-gray-300 p-2 font-bold text-center">
+                          خلاصه کلی
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <span className="font-bold text-blue-600">
+                            {student.overallAverage.toFixed(1)}
+                          </span>
+                          <div className="text-xs text-gray-500">میانگین</div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center text-gray-600">
+                          {(
+                            studentsArray.reduce(
+                              (sum, s) => sum + s.overallAverage,
+                              0
+                            ) / studentsArray.length
+                          ).toFixed(1)}
+                          <div className="text-xs text-gray-500">
+                            میانگین کلی
+                          </div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <span
+                            className={
+                              student.overallDiffFromAvg >= 0
+                                ? "text-green-600 font-bold"
+                                : "text-red-600 font-bold"
+                            }
+                          >
+                            {student.overallDiffFromAvg >= 0 ? "+" : ""}
+                            {student.overallDiffFromAvg}
+                          </span>
+                          <div className="text-xs text-gray-500">کل اختلاف</div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <div className="flex items-center justify-center">
+                            {student.overallRank <= 3 && (
+                              <Trophy className="h-4 w-4 text-yellow-500 ml-1" />
+                            )}
+                            <span className="font-bold">
+                              {student.overallRank}/{studentsArray.length}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">رتبه کلی</div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <div className="flex items-center justify-center">
+                            <div className="w-12 bg-gray-200 rounded-full h-2 ml-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  ((studentsArray.length -
+                                    student.overallRank +
+                                    1) /
+                                    studentsArray.length) *
+                                    100 >=
+                                  90
+                                    ? "bg-green-500"
+                                    : ((studentsArray.length -
+                                        student.overallRank +
+                                        1) /
+                                        studentsArray.length) *
+                                        100 >=
+                                      75
+                                    ? "bg-blue-500"
+                                    : ((studentsArray.length -
+                                        student.overallRank +
+                                        1) /
+                                        studentsArray.length) *
+                                        100 >=
+                                      50
+                                    ? "bg-yellow-500"
+                                    : ((studentsArray.length -
+                                        student.overallRank +
+                                        1) /
+                                        studentsArray.length) *
+                                        100 >=
+                                      25
+                                    ? "bg-orange-500"
+                                    : "bg-red-500"
+                                }`}
+                                style={{
+                                  width: `${
+                                    ((studentsArray.length -
+                                      student.overallRank +
+                                      1) /
+                                      studentsArray.length) *
+                                    100
+                                  }%`,
+                                }}
+                              ></div>
+                            </div>
+                            <span className="text-xs font-bold">
+                              {Math.round(
+                                ((studentsArray.length -
+                                  student.overallRank +
+                                  1) /
+                                  studentsArray.length) *
+                                  100
+                              )}
+                              %
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">درصد کلی</div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              student.overallAverage >= 17
+                                ? "bg-green-100 text-green-800"
+                                : student.overallAverage >= 14
+                                ? "bg-blue-100 text-blue-800"
+                                : student.overallAverage >= 10
+                                ? "bg-yellow-100 text-yellow-800"
+                                : student.overallAverage >= 7
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {student.overallAverage >= 17
+                              ? "عالی"
+                              : student.overallAverage >= 14
+                              ? "خوب"
+                              : student.overallAverage >= 10
+                              ? "متوسط"
+                              : student.overallAverage >= 7
+                              ? "ضعیف"
+                              : "نیازمند تقویت"}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            عملکرد کلی
+                          </div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-center">
+                          <div className="flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-600">
+                                {student.subjects.length}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                تعداد دروس
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Performance Summary */}
+              <div className="mb-6">
+                <h3 className="font-semibold mb-3 text-lg">خلاصه عملکرد</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-green-50 rounded">
+                    <div className="text-lg font-semibold text-green-600">
+                      {
+                        student.subjects.filter((s) => s.performance === "عالی")
+                          .length
+                      }
+                    </div>
+                    <div className="text-xs text-green-600">درس عالی</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-50 rounded">
+                    <div className="text-lg font-semibold text-blue-600">
+                      {
+                        student.subjects.filter((s) => s.performance === "خوب")
+                          .length
+                      }
+                    </div>
+                    <div className="text-xs text-blue-600">درس خوب</div>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded">
+                    <div className="text-lg font-semibold text-yellow-600">
+                      {
+                        student.subjects.filter(
+                          (s) => s.performance === "متوسط"
+                        ).length
+                      }
+                    </div>
+                    <div className="text-xs text-yellow-600">درس متوسط</div>
+                  </div>
+                  <div className="text-center p-3 bg-red-50 rounded">
+                    <div className="text-lg font-semibold text-red-600">
+                      {
+                        student.subjects.filter(
+                          (s) =>
+                            s.performance === "ضعیف" ||
+                            s.performance === "نیازمند تقویت"
+                        ).length
+                      }
+                    </div>
+                    <div className="text-xs text-red-600">نیاز به تقویت</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Teacher Comments */}
+              {reportData.includeTeacherComments && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3 text-lg">
+                    نظرات و توصیه‌های اساتید
+                  </h3>
+                  <div className="p-4 border-2 border-dashed border-muted rounded-lg min-h-24">
+                    <p className="text-sm text-muted-foreground text-center">
+                      فضای مخصوص نظرات اساتید
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer */}
+              {reportData.customFooter && (
+                <div className="text-center text-sm text-muted-foreground border-t pt-4">
+                  {reportData.customFooter}
+                </div>
+              )}
+
+              <div className="text-center text-xs text-muted-foreground mt-6">
+                تاریخ تولید کارنامه:{" "}
+                {format(new Date(), "yyyy/MM/dd - HH:mm", { locale: faIR })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  const renderStudentCard = (student: StudentReport) => (
     <Card
       key={student.studentCode}
       className="mb-4 print:shadow-none print:border"
@@ -464,7 +1641,11 @@ export function ReportPreviewStep({
       </Card>
 
       {/* Report Cards Preview */}
-      <div className="space-y-8">{studentReports.map(renderStudentCard)}</div>
+      <div className="space-y-8">
+        {reportData.reportFormat === "statistical"
+          ? renderStatisticalTable()
+          : studentReports.map(renderStudentCard)}
+      </div>
 
       {studentReports.length === 0 && (
         <Card>

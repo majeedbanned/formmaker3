@@ -51,7 +51,7 @@ interface ReportCardData {
   includeClassRanking: boolean;
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
-  reportFormat: "detailed" | "summary" | "minimal";
+  reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
   customFooter: string;
@@ -249,7 +249,7 @@ export default function ReportCardCreatorPage() {
             {currentStep === 2 && (
               <ReportConfigurationStep
                 reportData={reportData}
-                onConfigChange={(config) =>
+                onConfigChange={(config: any) =>
                   setReportData({ ...reportData, ...config })
                 }
               />
