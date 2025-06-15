@@ -92,10 +92,11 @@ export async function GET(
       });
 
     // Transform grades into the format expected by the frontend
-    const gradesMap: { [studentCode: string]: { score: number; studentName: string } } = {};
+    const gradesMap: { [studentCode: string]: { score?: number; descriptiveText?: string; studentName: string } } = {};
     grades.forEach(grade => {
       gradesMap[grade.studentCode] = {
         score: grade.score,
+        descriptiveText: grade.descriptiveText,
         studentName: grade.studentName
       };
     });
@@ -105,6 +106,7 @@ export async function GET(
       _id: gradeList._id,
       title: gradeList.title,
       date: gradeList.gradeDate,
+      gradingType: gradeList.gradingType || "numerical",
       classData: classData,
       subjectData: courseData ? {
         courseCode: courseData.data.courseCode,

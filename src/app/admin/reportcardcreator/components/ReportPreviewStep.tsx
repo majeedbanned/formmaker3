@@ -13,6 +13,7 @@ import {
   Trophy,
   Table,
   TrendingUp,
+  TrendingDown,
   Target,
   BarChart3,
 } from "lucide-react";
@@ -157,6 +158,15 @@ interface StudentReport {
     overallTrend: "improvement" | "decline" | "stable";
     progressPercentage: number;
   };
+  descriptiveGrades?: {
+    subjectName: string;
+    gradingTitle: string;
+    gradingDate: string;
+    descriptiveText: string;
+    courseCode: string;
+    courseGrade: string;
+    courseVahed: number;
+  }[];
 }
 
 export function ReportPreviewStep({
@@ -265,21 +275,25 @@ export function ReportPreviewStep({
 
   const studentReports = getStudentReports();
 
-  // Statistical table rendering for numerical grades only
+  // Statistical table rendering for numerical grades with descriptive grades section
   const renderStatisticalTable = () => {
     const numericalGradings = selectedGradings.filter(
       (g) => g.gradingType === "numerical"
     );
 
-    if (numericalGradings.length === 0) {
+    const descriptiveGradings = selectedGradings.filter(
+      (g) => g.gradingType === "descriptive"
+    );
+
+    if (numericalGradings.length === 0 && descriptiveGradings.length === 0) {
       return (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
               <Table className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-medium mb-2">قالب آماری قابل استفاده نیست</h3>
+              <h3 className="font-medium mb-2">هیچ نمره‌دهی انتخاب نشده است</h3>
               <p className="text-sm text-muted-foreground">
-                این قالب فقط برای نمره‌دهی‌های عددی قابل استفاده است.
+                لطفاً نمره‌دهی‌های مورد نظر را انتخاب کنید.
               </p>
             </div>
           </CardContent>
@@ -287,7 +301,230 @@ export function ReportPreviewStep({
       );
     }
 
-    // Calculate overall statistics
+    // Show message if only descriptive grades are available
+    if (numericalGradings.length === 0 && descriptiveGradings.length > 0) {
+      // Process only descriptive grades
+      const allStudentData = new Map<
+        string,
+        {
+          studentName: string;
+          className?: string;
+          descriptiveGrades: {
+            subjectName: string;
+            gradingTitle: string;
+            gradingDate: string;
+            descriptiveText: string;
+            courseCode: string;
+            courseGrade: string;
+            courseVahed: number;
+          }[];
+        }
+      >();
+
+      descriptiveGradings.forEach((grading) => {
+        const gradingStudents = Object.entries(grading.grades || {}).filter(
+          ([, gradeData]) => {
+            // More robust check for descriptive text
+            return (
+              gradeData &&
+              typeof gradeData === "object" &&
+              "descriptiveText" in gradeData &&
+              gradeData.descriptiveText &&
+              gradeData.descriptiveText.toString().trim() !== ""
+            );
+          }
+        );
+
+        gradingStudents.forEach(([studentCode, gradeData]) => {
+          if (!allStudentData.has(studentCode)) {
+            allStudentData.set(studentCode, {
+              studentName: gradeData.studentName,
+              className: grading.classData?.data?.className,
+              descriptiveGrades: [],
+            });
+          }
+
+          const student = allStudentData.get(studentCode)!;
+          student.descriptiveGrades.push({
+            subjectName: grading.subjectData?.courseName || "نامشخص",
+            gradingTitle: grading.title,
+            gradingDate: grading.date || new Date().toISOString(),
+            descriptiveText: gradeData.descriptiveText?.toString() || "",
+            courseCode: grading.subjectData?.courseCode || "",
+            courseGrade: grading.subjectData?.Grade || "",
+            courseVahed: grading.subjectData?.vahed || 1,
+          });
+        });
+      });
+
+      const studentsArray = Array.from(allStudentData.entries()).map(
+        ([code, data]) => ({
+          studentCode: code,
+          ...data,
+        })
+      );
+
+      studentsArray.sort((a, b) =>
+        a.studentName.localeCompare(b.studentName, "fa")
+      );
+
+      return (
+        <div className="space-y-6">
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="text-center py-4">
+                <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="font-medium mb-2 text-blue-800">
+                  ارزیابی‌های توصیفی
+                </h3>
+                <p className="text-sm text-blue-600">
+                  فقط ارزیابی‌های توصیفی انتخاب شده است. جدول آماری برای نمرات
+                  عددی قابل نمایش است.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {studentsArray.map((student) => (
+            <Card
+              key={student.studentCode}
+              className="print:shadow-none print:border"
+            >
+              <CardContent className="p-6">
+                {/* Header */}
+                {reportData.headerLogo && (
+                  <div className="text-center mb-6 print:mb-4">
+                    <div className="h-16 w-16 bg-muted rounded-full mx-auto mb-2 flex items-center justify-center">
+                      <BookOpen className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl font-bold mb-2">
+                    {reportData.reportTitle}
+                  </h1>
+                  {reportData.schoolInfo && (
+                    <div className="text-sm text-muted-foreground">
+                      <p>مدرسه: {userInfo.schoolName || "نام مدرسه"}</p>
+                      <p>کد مدرسه: {userInfo.schoolCode}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Student Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="font-semibold mb-3 text-lg">
+                      اطلاعات دانش‌آموز
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <span className="font-medium">نام:</span>{" "}
+                        {student.studentName}
+                      </p>
+                      <p>
+                        <span className="font-medium">کد دانش‌آموزی:</span>{" "}
+                        {student.studentCode}
+                      </p>
+                      <p>
+                        <span className="font-medium">کلاس:</span>{" "}
+                        {student.className}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-3 text-lg">
+                      خلاصه ارزیابی
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <span className="font-medium">تعداد ارزیابی‌ها:</span>{" "}
+                        {student.descriptiveGrades.length}
+                      </p>
+                      <p>
+                        <span className="font-medium">تاریخ تولید:</span>{" "}
+                        {format(new Date(), "yyyy/MM/dd", { locale: faIR })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Descriptive Grades */}
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-3 text-lg flex items-center">
+                    <FileText className="h-5 w-5 ml-2" />
+                    ارزیابی‌های توصیفی
+                  </h3>
+                  <div className="grid gap-3">
+                    {student.descriptiveGrades
+                      .sort(
+                        (a, b) =>
+                          new Date(a.gradingDate).getTime() -
+                          new Date(b.gradingDate).getTime()
+                      )
+                      .map((grade, index) => (
+                        <div
+                          key={index}
+                          className="p-4 border rounded-lg bg-blue-50"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-800">
+                                {grade.courseCode && (
+                                  <span className="text-blue-600 font-mono ml-1">
+                                    [{grade.courseCode}]
+                                  </span>
+                                )}
+                                {grade.subjectName}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {grade.gradingTitle}
+                              </div>
+                            </div>
+                            <div className="text-left">
+                              <div className="text-sm text-gray-500">
+                                {formatPersianDate(grade.gradingDate)}
+                              </div>
+                              {grade.courseVahed && (
+                                <div className="text-xs text-gray-400">
+                                  {grade.courseVahed} واحد
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 p-3 bg-white rounded border-l-4 border-blue-400">
+                            <div className="text-sm font-medium text-gray-700 mb-1">
+                              ارزیابی:
+                            </div>
+                            <div className="text-gray-800">
+                              {grade.descriptiveText}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                {reportData.customFooter && (
+                  <div className="text-center text-sm text-muted-foreground border-t pt-4">
+                    {reportData.customFooter}
+                  </div>
+                )}
+
+                <div className="text-center text-xs text-muted-foreground mt-6">
+                  تاریخ تولید کارنامه:{" "}
+                  {format(new Date(), "yyyy/MM/dd - HH:mm", { locale: faIR })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    // Calculate overall statistics for numerical grades
     const allStudentData = new Map<
       string,
       {
@@ -314,6 +551,15 @@ export function ReportPreviewStep({
             previousScore: number;
             previousRank: number;
           };
+        }[];
+        descriptiveGrades: {
+          subjectName: string;
+          gradingTitle: string;
+          gradingDate: string;
+          descriptiveText: string;
+          courseCode: string;
+          courseGrade: string;
+          courseVahed: number;
         }[];
         overallAverage: number;
         overallRank: number;
@@ -347,6 +593,7 @@ export function ReportPreviewStep({
             studentName: gradeData.studentName,
             className: grading.classData?.data?.className,
             subjects: [],
+            descriptiveGrades: [],
             overallAverage: 0,
             overallRank: 0,
             overallDiffFromAvg: 0,
@@ -385,11 +632,56 @@ export function ReportPreviewStep({
       });
     });
 
+    // Process descriptive grades
+    descriptiveGradings.forEach((grading) => {
+      const gradingStudents = Object.entries(grading.grades || {}).filter(
+        ([, gradeData]) => {
+          // More robust check for descriptive text
+          return (
+            gradeData &&
+            typeof gradeData === "object" &&
+            "descriptiveText" in gradeData &&
+            gradeData.descriptiveText &&
+            gradeData.descriptiveText.toString().trim() !== ""
+          );
+        }
+      );
+
+      gradingStudents.forEach(([studentCode, gradeData]) => {
+        if (!allStudentData.has(studentCode)) {
+          allStudentData.set(studentCode, {
+            studentName: gradeData.studentName,
+            className: grading.classData?.data?.className,
+            subjects: [],
+            descriptiveGrades: [],
+            overallAverage: 0,
+            overallRank: 0,
+            overallDiffFromAvg: 0,
+          });
+        }
+
+        const student = allStudentData.get(studentCode)!;
+        student.descriptiveGrades.push({
+          subjectName: grading.subjectData?.courseName || "نامشخص",
+          gradingTitle: grading.title,
+          gradingDate: grading.date || new Date().toISOString(),
+          descriptiveText: gradeData.descriptiveText?.toString() || "",
+          courseCode: grading.subjectData?.courseCode || "",
+          courseGrade: grading.subjectData?.Grade || "",
+          courseVahed: grading.subjectData?.vahed || 1,
+        });
+      });
+    });
+
     // Calculate overall statistics for each student
     allStudentData.forEach((student) => {
-      student.overallAverage =
-        student.subjects.reduce((sum, subject) => sum + subject.score, 0) /
-        student.subjects.length;
+      if (student.subjects.length > 0) {
+        student.overallAverage =
+          student.subjects.reduce((sum, subject) => sum + subject.score, 0) /
+          student.subjects.length;
+      } else {
+        student.overallAverage = 0;
+      }
     });
 
     const studentsArray = Array.from(allStudentData.entries()).map(
@@ -412,6 +704,16 @@ export function ReportPreviewStep({
 
     studentsArray.sort((a, b) =>
       a.studentName.localeCompare(b.studentName, "fa")
+    );
+
+    // Debug: Log final student data
+    console.log(
+      "Final students array:",
+      studentsArray.map((s) => ({
+        name: s.studentName,
+        descriptiveGradesCount: s.descriptiveGrades?.length || 0,
+        descriptiveGrades: s.descriptiveGrades,
+      }))
     );
 
     // Ensure all grades are sorted by date before processing
@@ -574,7 +876,7 @@ export function ReportPreviewStep({
               {/* Most Declined Students */}
               <div>
                 <h4 className="font-semibold text-red-700 mb-3 flex items-center">
-                  <TrendingUp className="h-4 w-4 ml-1 transform rotate-180" />
+                  <TrendingDown className="h-4 w-4 ml-1 transform rotate-180" />
                   دانش‌آموزان نیازمند توجه بیشتر
                 </h4>
                 <div className="space-y-2">
@@ -780,7 +1082,7 @@ export function ReportPreviewStep({
                               <TrendingUp className="h-3 w-3 ml-1" />
                             ) : student.overallProgress.overallTrend ===
                               "decline" ? (
-                              <TrendingUp className="h-3 w-3 ml-1 transform rotate-180" />
+                              <TrendingDown className="h-3 w-3 ml-1 transform rotate-180" />
                             ) : (
                               <Target className="h-3 w-3 ml-1" />
                             )}
@@ -897,7 +1199,7 @@ export function ReportPreviewStep({
                                         {progressInfo.hasProgress ? (
                                           <TrendingUp className="h-3 w-3 ml-1" />
                                         ) : (
-                                          <TrendingUp className="h-3 w-3 ml-1 transform rotate-180" />
+                                          <TrendingDown className="h-3 w-3 ml-1 transform rotate-180" />
                                         )}
                                         <span className="font-bold">
                                           {progressInfo.scoreDiff >= 0
@@ -1100,7 +1402,7 @@ export function ReportPreviewStep({
                                     {subject.progressInfo.hasProgress ? (
                                       <TrendingUp className="h-4 w-4" />
                                     ) : (
-                                      <TrendingUp className="h-4 w-4 transform rotate-180" />
+                                      <TrendingDown className="h-4 w-4 transform rotate-180" />
                                     )}
                                     <span className="text-xs font-bold ml-1">
                                       {subject.progressInfo.scoreDiff >= 0
@@ -1326,6 +1628,65 @@ export function ReportPreviewStep({
                   </div>
                 </div>
               </div>
+
+              {/* Descriptive Grades Section */}
+              {student.descriptiveGrades &&
+                student.descriptiveGrades.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-3 text-lg flex items-center">
+                      <FileText className="h-5 w-5 ml-2" />
+                      ارزیابی‌های توصیفی
+                    </h3>
+                    <div className="grid gap-3">
+                      {student.descriptiveGrades
+                        .sort(
+                          (a, b) =>
+                            new Date(a.gradingDate).getTime() -
+                            new Date(b.gradingDate).getTime()
+                        )
+                        .map((grade, index) => (
+                          <div
+                            key={index}
+                            className="p-4 border rounded-lg bg-blue-50"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-800">
+                                  {grade.courseCode && (
+                                    <span className="text-blue-600 font-mono ml-1">
+                                      [{grade.courseCode}]
+                                    </span>
+                                  )}
+                                  {grade.subjectName}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  {grade.gradingTitle}
+                                </div>
+                              </div>
+                              <div className="text-left">
+                                <div className="text-sm text-gray-500">
+                                  {formatPersianDate(grade.gradingDate)}
+                                </div>
+                                {grade.courseVahed && (
+                                  <div className="text-xs text-gray-400">
+                                    {grade.courseVahed} واحد
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-3 p-3 bg-white rounded border-l-4 border-blue-400">
+                              <div className="text-sm font-medium text-gray-700 mb-1">
+                                ارزیابی:
+                              </div>
+                              <div className="text-gray-800">
+                                {grade.descriptiveText}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
               {/* Teacher Comments */}
               {reportData.includeTeacherComments && (

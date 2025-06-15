@@ -57,7 +57,13 @@ interface SelectedGrading {
   title: string;
   date?: string;
   gradingType: "numerical" | "descriptive";
-  grades: { [studentCode: string]: any };
+  grades: {
+    [studentCode: string]: {
+      score?: number;
+      descriptiveText?: string;
+      studentName: string;
+    };
+  };
   statistics?: {
     average?: number;
     highest?: number;
@@ -71,6 +77,10 @@ interface SelectedGrading {
   };
   subjectData?: {
     courseName?: string;
+    courseCode?: string;
+    Grade?: string;
+    vahed?: number;
+    major?: string;
   };
 }
 
