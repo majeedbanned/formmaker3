@@ -11,6 +11,15 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+// Persian digit conversion function (performant)
+const toPersianDigits = (input: string | number): string => {
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(input).replace(
+    /[0-9]/g,
+    (digit) => persianDigits[parseInt(digit)]
+  );
+};
+
 // Persian date formatting function
 const formatPersianDate = (dateString: string): string => {
   try {
@@ -37,7 +46,7 @@ const formatPersianDate = (dateString: string): string => {
     // Convert to Persian calendar (simplified)
     const persianMonth = persianMonths[month] || persianMonths[0];
 
-    return `${day} ${persianMonth}`;
+    return `${toPersianDigits(day)} ${persianMonth}`;
   } catch {
     return "تاریخ نامشخص";
   }
@@ -424,15 +433,22 @@ export function TeacherStatistics({
                     >
                       <div className="flex items-center">
                         <span className="text-sm font-bold text-green-700 ml-2">
-                          #{index + 1}
+                          #{toPersianDigits(index + 1)}
                         </span>
                         <span className="font-medium">
                           {student.studentName}
                         </span>
                       </div>
                       <div className="text-sm text-green-600">
-                        +{student.overallProgress?.totalScoreChange} نمره (
-                        {student.overallProgress?.progressPercentage}% بهبود)
+                        +
+                        {toPersianDigits(
+                          student.overallProgress?.totalScoreChange || 0
+                        )}{" "}
+                        نمره (
+                        {toPersianDigits(
+                          student.overallProgress?.progressPercentage || 0
+                        )}
+                        % بهبود)
                       </div>
                     </div>
                   ))}
@@ -472,16 +488,21 @@ export function TeacherStatistics({
                     >
                       <div className="flex items-center">
                         <span className="text-sm font-bold text-red-700 ml-2">
-                          #{index + 1}
+                          #{toPersianDigits(index + 1)}
                         </span>
                         <span className="font-medium">
                           {student.studentName}
                         </span>
                       </div>
                       <div className="text-sm text-red-600">
-                        {student.overallProgress?.totalScoreChange} نمره (
-                        {100 -
-                          (student.overallProgress?.progressPercentage || 0)}
+                        {toPersianDigits(
+                          student.overallProgress?.totalScoreChange || 0
+                        )}{" "}
+                        نمره (
+                        {toPersianDigits(
+                          100 -
+                            (student.overallProgress?.progressPercentage || 0)
+                        )}
                         % کاهش)
                       </div>
                     </div>
@@ -503,11 +524,11 @@ export function TeacherStatistics({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-green-100 rounded">
                 <div className="text-lg font-bold text-green-700">
-                  {
+                  {toPersianDigits(
                     studentsArray.filter(
                       (s) => s.overallProgress?.overallTrend === "improvement"
                     ).length
-                  }
+                  )}
                 </div>
                 <div className="text-xs text-green-600">
                   دانش‌آموز با پیشرفت
@@ -515,11 +536,11 @@ export function TeacherStatistics({
               </div>
               <div className="text-center p-3 bg-red-100 rounded">
                 <div className="text-lg font-bold text-red-700">
-                  {
+                  {toPersianDigits(
                     studentsArray.filter(
                       (s) => s.overallProgress?.overallTrend === "decline"
                     ).length
-                  }
+                  )}
                 </div>
                 <div className="text-xs text-red-600">
                   دانش‌آموز با کاهش عملکرد
@@ -527,11 +548,11 @@ export function TeacherStatistics({
               </div>
               <div className="text-center p-3 bg-yellow-100 rounded">
                 <div className="text-lg font-bold text-yellow-700">
-                  {
+                  {toPersianDigits(
                     studentsArray.filter(
                       (s) => s.overallProgress?.overallTrend === "stable"
                     ).length
-                  }
+                  )}
                 </div>
                 <div className="text-xs text-yellow-600">
                   دانش‌آموز با عملکرد ثابت
@@ -539,13 +560,15 @@ export function TeacherStatistics({
               </div>
               <div className="text-center p-3 bg-blue-100 rounded">
                 <div className="text-lg font-bold text-blue-700">
-                  {Math.round(
-                    studentsArray.reduce(
-                      (sum, s) =>
-                        sum + (s.overallProgress?.progressPercentage || 0),
-                      0
-                    ) / studentsArray.filter((s) => s.overallProgress).length
-                  ) || 0}
+                  {toPersianDigits(
+                    Math.round(
+                      studentsArray.reduce(
+                        (sum, s) =>
+                          sum + (s.overallProgress?.progressPercentage || 0),
+                        0
+                      ) / studentsArray.filter((s) => s.overallProgress).length
+                    ) || 0
+                  )}
                   %
                 </div>
                 <div className="text-xs text-blue-600">میانگین پیشرفت کلاس</div>
@@ -714,12 +737,12 @@ export function TeacherStatistics({
                             : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {row.overallAverage.toFixed(1)}
+                        {toPersianDigits(row.overallAverage.toFixed(1))}
                       </span>
                     </td>
                     <td className="border border-gray-300 p-1 text-center">
                       <span className="font-bold text-purple-700">
-                        {row.overallRank}
+                        {toPersianDigits(row.overallRank)}
                       </span>
                     </td>
                     <td className="border border-gray-300 p-1 text-center">
@@ -740,7 +763,7 @@ export function TeacherStatistics({
                           <span className="w-2 h-2 bg-yellow-500 rounded-full ml-0.5"></span>
                         )}
                         <span className="text-[10px]">
-                          {row.progressPercentage}%
+                          {toPersianDigits(row.progressPercentage)}%
                         </span>
                       </div>
                     </td>
@@ -774,13 +797,18 @@ export function TeacherStatistics({
                                     : "bg-red-100 text-red-800 border border-red-200"
                                 }`}
                               >
-                                {(courseData as CourseData).score.toFixed(1)}
+                                {toPersianDigits(
+                                  (courseData as CourseData).score.toFixed(1)
+                                )}
                               </div>
 
                               {/* Rank and Performance in a Row */}
                               <div className="flex justify-between items-center">
                                 <div className="text-[10px] text-gray-600 bg-white px-1 py-0.5 rounded">
-                                  #{(courseData as CourseData).rank}
+                                  #
+                                  {toPersianDigits(
+                                    (courseData as CourseData).rank
+                                  )}
                                 </div>
                                 <div
                                   className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -835,11 +863,13 @@ export function TeacherStatistics({
                                       <div className="text-center">
                                         <div>
                                           {icon} {sign}
-                                          {scoreDiff.toFixed(1)}
+                                          {toPersianDigits(
+                                            scoreDiff.toFixed(1)
+                                          )}
                                         </div>
                                         <div className="text-[8px] opacity-75">
                                           ({sign}
-                                          {percentageChange}%)
+                                          {toPersianDigits(percentageChange)}%)
                                         </div>
                                       </div>
                                     );
@@ -859,7 +889,9 @@ export function TeacherStatistics({
                                 {(courseData as CourseData).diffFromAvg >= 0
                                   ? "+"
                                   : ""}
-                                {(courseData as CourseData).diffFromAvg}
+                                {toPersianDigits(
+                                  (courseData as CourseData).diffFromAvg
+                                )}
                               </div>
                             </div>
                           ) : !showIndividualGrades && isCourseAvgData ? (
@@ -879,15 +911,19 @@ export function TeacherStatistics({
                                     : "bg-red-100 text-red-800 border border-red-200"
                                 }`}
                               >
-                                {(
-                                  courseData as CourseAverageData
-                                ).averageScore.toFixed(1)}
+                                {toPersianDigits(
+                                  (
+                                    courseData as CourseAverageData
+                                  ).averageScore.toFixed(1)
+                                )}
                               </div>
 
                               {/* Grade Count and Performance */}
                               <div className="flex justify-between items-center">
                                 <div className="text-[10px] text-gray-600 bg-white px-1 py-0.5 rounded">
-                                  {(courseData as CourseAverageData).gradeCount}{" "}
+                                  {toPersianDigits(
+                                    (courseData as CourseAverageData).gradeCount
+                                  )}{" "}
                                   نمره
                                 </div>
                                 <div
@@ -914,13 +950,17 @@ export function TeacherStatistics({
                               {/* Score Range */}
                               <div className="text-[9px] text-gray-600 bg-white px-1.5 py-1 rounded text-center">
                                 محدوده:{" "}
-                                {(
-                                  courseData as CourseAverageData
-                                ).worstScore.toFixed(1)}{" "}
+                                {toPersianDigits(
+                                  (
+                                    courseData as CourseAverageData
+                                  ).worstScore.toFixed(1)
+                                )}{" "}
                                 -{" "}
-                                {(
-                                  courseData as CourseAverageData
-                                ).bestScore.toFixed(1)}
+                                {toPersianDigits(
+                                  (
+                                    courseData as CourseAverageData
+                                  ).bestScore.toFixed(1)
+                                )}
                               </div>
 
                               {/* Difference from class average */}
@@ -937,10 +977,10 @@ export function TeacherStatistics({
                                   .diffFromClassAvg >= 0
                                   ? "+"
                                   : ""}
-                                {
+                                {toPersianDigits(
                                   (courseData as CourseAverageData)
                                     .diffFromClassAvg
-                                }
+                                )}
                               </div>
                             </div>
                           ) : (
@@ -964,19 +1004,25 @@ export function TeacherStatistics({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-green-100 rounded ml-1"></div>
-                <span>عالی (18-20)</span>
+                <span>
+                  عالی ({toPersianDigits("18")}-{toPersianDigits("20")})
+                </span>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-blue-100 rounded ml-1"></div>
-                <span>خوب (15-18)</span>
+                <span>
+                  خوب ({toPersianDigits("15")}-{toPersianDigits("18")})
+                </span>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-yellow-100 rounded ml-1"></div>
-                <span>متوسط (12-15)</span>
+                <span>
+                  متوسط ({toPersianDigits("12")}-{toPersianDigits("15")})
+                </span>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-red-100 rounded ml-1"></div>
-                <span>ضعیف (&lt;12)</span>
+                <span>ضعیف (&lt;{toPersianDigits("12")})</span>
               </div>
               <div className="flex items-center">
                 <TrendingUp className="h-3 w-3 text-green-600 ml-1" />
@@ -1005,8 +1051,10 @@ export function TeacherStatistics({
             {showIndividualGrades && (
               <div className="mt-2 text-xs text-gray-600 border-t pt-2">
                 <strong>نحوه محاسبه درصد:</strong> درصد تغییر بر اساس نمره قبلی
-                محاسبه می‌شود. مثال: ↗ +2.0 (+13%) یعنی 2 نمره افزایش که معادل
-                13% بهبود نسبت به نمره قبلی است.
+                محاسبه می‌شود. مثال: ↗ +{toPersianDigits("2.0")} (+
+                {toPersianDigits("13")}%) یعنی {toPersianDigits("2")} نمره
+                افزایش که معادل
+                {toPersianDigits("13")}% بهبود نسبت به نمره قبلی است.
               </div>
             )}
           </div>

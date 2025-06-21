@@ -21,6 +21,15 @@ import { format } from "date-fns";
 import { faIR } from "date-fns/locale";
 import { TeacherStatistics } from "./TeacherStatistics";
 
+// Persian digit conversion function (performant)
+const toPersianDigits = (input: string | number): string => {
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(input).replace(
+    /[0-9]/g,
+    (digit) => persianDigits[parseInt(digit)]
+  );
+};
+
 // Persian date utility function - converts Gregorian to Persian (Shamsi) calendar
 const formatPersianDate = (dateString: string): string => {
   try {
@@ -442,7 +451,7 @@ export function ReportPreviewStep({
                     <div className="space-y-2 text-sm">
                       <p>
                         <span className="font-medium">تعداد ارزیابی‌ها:</span>{" "}
-                        {student.descriptiveGrades.length}
+                        {toPersianDigits(student.descriptiveGrades.length)}
                       </p>
                       <p>
                         <span className="font-medium">تاریخ تولید:</span>{" "}
@@ -490,7 +499,7 @@ export function ReportPreviewStep({
                               </div>
                               {grade.courseVahed && (
                                 <div className="text-xs text-gray-400">
-                                  {grade.courseVahed} واحد
+                                  {toPersianDigits(grade.courseVahed)} واحد
                                 </div>
                               )}
                             </div>
@@ -533,6 +542,7 @@ export function ReportPreviewStep({
         studentName: string;
         className?: string;
         subjects: {
+          gradingId: string;
           subjectName: string;
           gradingTitle: string;
           gradingDate: string;
@@ -898,11 +908,12 @@ export function ReportPreviewStep({
                   <div className="space-y-2 text-sm">
                     <p>
                       <span className="font-medium">میانگین کلی:</span>{" "}
-                      {student.overallAverage.toFixed(1)}
+                      {toPersianDigits(student.overallAverage.toFixed(1))}
                     </p>
                     <p>
                       <span className="font-medium">رتبه کلی:</span>{" "}
-                      {student.overallRank} از {studentsArray.length}
+                      {toPersianDigits(student.overallRank)} از{" "}
+                      {toPersianDigits(studentsArray.length)}
                     </p>
                     <p>
                       <span className="font-medium">
@@ -916,7 +927,7 @@ export function ReportPreviewStep({
                         }
                       >
                         {student.overallDiffFromAvg >= 0 ? "+" : ""}
-                        {student.overallDiffFromAvg}
+                        {toPersianDigits(student.overallDiffFromAvg)}
                       </span>
                     </p>
                     {student.overallProgress && (
@@ -959,7 +970,9 @@ export function ReportPreviewStep({
                         <div className="grid grid-cols-3 gap-3 mb-3">
                           <div className="text-center p-2 bg-white rounded border">
                             <div className="text-lg font-bold text-green-600">
-                              {student.overallProgress.progressCount}
+                              {toPersianDigits(
+                                student.overallProgress.progressCount
+                              )}
                             </div>
                             <div className="text-xs text-gray-600">
                               درس بهبود یافته
@@ -967,7 +980,9 @@ export function ReportPreviewStep({
                           </div>
                           <div className="text-center p-2 bg-white rounded border">
                             <div className="text-lg font-bold text-red-600">
-                              {student.overallProgress.declineCount}
+                              {toPersianDigits(
+                                student.overallProgress.declineCount
+                              )}
                             </div>
                             <div className="text-xs text-gray-600">
                               درس کاهش یافته
@@ -975,7 +990,9 @@ export function ReportPreviewStep({
                           </div>
                           <div className="text-center p-2 bg-white rounded border">
                             <div className="text-lg font-bold text-yellow-600">
-                              {student.overallProgress.noChangeCount}
+                              {toPersianDigits(
+                                student.overallProgress.noChangeCount
+                              )}
                             </div>
                             <div className="text-xs text-gray-600">
                               درس بدون تغییر
@@ -1036,13 +1053,18 @@ export function ReportPreviewStep({
                                         {latestSubject.subjectName}
                                       </div>
                                       <div className="text-gray-500">
-                                        {sortedSubjects.length} ارزیابی • آخرین:{" "}
+                                        {toPersianDigits(sortedSubjects.length)}{" "}
+                                        ارزیابی • آخرین:{" "}
                                         {formatPersianDate(
                                           latestSubject.gradingDate
                                         )}
                                         {latestSubject.courseVahed && (
                                           <span className="mr-2">
-                                            • {latestSubject.courseVahed} واحد
+                                            •{" "}
+                                            {toPersianDigits(
+                                              latestSubject.courseVahed
+                                            )}{" "}
+                                            واحد
                                           </span>
                                         )}
                                       </div>
@@ -1064,11 +1086,18 @@ export function ReportPreviewStep({
                                           {progressInfo.scoreDiff >= 0
                                             ? "+"
                                             : ""}
-                                          {progressInfo.scoreDiff}
+                                          {toPersianDigits(
+                                            progressInfo.scoreDiff
+                                          )}
                                         </span>
                                         <span className="text-gray-400 mr-1">
-                                          ({progressInfo.previousScore} →{" "}
-                                          {latestSubject.score})
+                                          (
+                                          {toPersianDigits(
+                                            progressInfo.previousScore
+                                          )}{" "}
+                                          →{" "}
+                                          {toPersianDigits(latestSubject.score)}
+                                          )
                                         </span>
                                       </div>
                                     )}
@@ -1096,7 +1125,9 @@ export function ReportPreviewStep({
                                 {student.overallProgress.totalScoreChange >= 0
                                   ? "+"
                                   : ""}
-                                {student.overallProgress.totalScoreChange}
+                                {toPersianDigits(
+                                  student.overallProgress.totalScoreChange
+                                )}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -1104,7 +1135,10 @@ export function ReportPreviewStep({
                                 درصد موفقیت:
                               </span>
                               <span className="font-bold text-blue-600">
-                                {student.overallProgress.progressPercentage}%
+                                {toPersianDigits(
+                                  student.overallProgress.progressPercentage
+                                )}
+                                %
                               </span>
                             </div>
                           </div>
@@ -1181,11 +1215,11 @@ export function ReportPreviewStep({
                                   : "text-red-600"
                               }`}
                             >
-                              {subject.score.toFixed(1)}
+                              {toPersianDigits(subject.score.toFixed(1))}
                             </span>
                           </td>
                           <td className="border border-gray-300 p-2 text-center text-gray-600">
-                            {subject.classAverage.toFixed(1)}
+                            {toPersianDigits(subject.classAverage.toFixed(1))}
                           </td>
                           <td className="border border-gray-300 p-2 text-center">
                             <span
@@ -1196,7 +1230,7 @@ export function ReportPreviewStep({
                               }
                             >
                               {subject.diffFromAvg >= 0 ? "+" : ""}
-                              {subject.diffFromAvg}
+                              {toPersianDigits(subject.diffFromAvg)}
                             </span>
                           </td>
                           <td className="border border-gray-300 p-2 text-center">
@@ -1204,7 +1238,8 @@ export function ReportPreviewStep({
                               {subject.rank <= 3 && (
                                 <Trophy className="h-4 w-4 text-yellow-500 ml-1" />
                               )}
-                              {subject.rank}/{subject.totalStudents}
+                              {toPersianDigits(subject.rank)}/
+                              {toPersianDigits(subject.totalStudents)}
                             </div>
                           </td>
                           <td className="border border-gray-300 p-2 text-center">
@@ -1267,7 +1302,9 @@ export function ReportPreviewStep({
                                       {subject.progressInfo.scoreDiff >= 0
                                         ? "+"
                                         : ""}
-                                      {subject.progressInfo.scoreDiff}
+                                      {toPersianDigits(
+                                        subject.progressInfo.scoreDiff
+                                      )}
                                     </span>
                                   </div>
                                   <div className="text-xs text-gray-500 mt-1">
@@ -1297,17 +1334,19 @@ export function ReportPreviewStep({
                         </td>
                         <td className="border border-gray-300 p-2 text-center">
                           <span className="font-bold text-blue-600">
-                            {student.overallAverage.toFixed(1)}
+                            {toPersianDigits(student.overallAverage.toFixed(1))}
                           </span>
                           <div className="text-xs text-gray-500">میانگین</div>
                         </td>
                         <td className="border border-gray-300 p-2 text-center text-gray-600">
-                          {(
-                            studentsArray.reduce(
-                              (sum, s) => sum + s.overallAverage,
-                              0
-                            ) / studentsArray.length
-                          ).toFixed(1)}
+                          {toPersianDigits(
+                            (
+                              studentsArray.reduce(
+                                (sum, s) => sum + s.overallAverage,
+                                0
+                              ) / studentsArray.length
+                            ).toFixed(1)
+                          )}
                           <div className="text-xs text-gray-500">
                             میانگین کلی
                           </div>
@@ -1321,7 +1360,7 @@ export function ReportPreviewStep({
                             }
                           >
                             {student.overallDiffFromAvg >= 0 ? "+" : ""}
-                            {student.overallDiffFromAvg}
+                            {toPersianDigits(student.overallDiffFromAvg)}
                           </span>
                           <div className="text-xs text-gray-500">کل اختلاف</div>
                         </td>
@@ -1331,7 +1370,8 @@ export function ReportPreviewStep({
                               <Trophy className="h-4 w-4 text-yellow-500 ml-1" />
                             )}
                             <span className="font-bold">
-                              {student.overallRank}/{studentsArray.length}
+                              {toPersianDigits(student.overallRank)}/
+                              {toPersianDigits(studentsArray.length)}
                             </span>
                           </div>
                           <div className="text-xs text-gray-500">رتبه کلی</div>
@@ -1528,7 +1568,7 @@ export function ReportPreviewStep({
                                 </div>
                                 {grade.courseVahed && (
                                   <div className="text-xs text-gray-400">
-                                    {grade.courseVahed} واحد
+                                    {toPersianDigits(grade.courseVahed)} واحد
                                   </div>
                                 )}
                               </div>
@@ -1782,13 +1822,13 @@ export function ReportPreviewStep({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">
-                {studentReports.length}
+                {toPersianDigits(studentReports.length)}
               </div>
               <div className="text-sm text-muted-foreground">تعداد کارنامه</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {selectedGradings.length}
+                {toPersianDigits(selectedGradings.length)}
               </div>
               <div className="text-sm text-muted-foreground">
                 نمره‌دهی انتخاب شده
@@ -1796,13 +1836,13 @@ export function ReportPreviewStep({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {
+                {toPersianDigits(
                   [
                     ...new Set(
                       selectedGradings.map((g) => g.subjectData?.courseName)
                     ),
                   ].length
-                }
+                )}
               </div>
               <div className="text-sm text-muted-foreground">درس</div>
             </div>
