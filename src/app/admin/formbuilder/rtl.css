@@ -46,7 +46,7 @@
 
 /* Add Persian font support */
 @font-face {
-  font-family: 'Vazir';
+  font-family: 'vazirmatn';
   src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
@@ -57,5 +57,5 @@
 [dir="rtl"] input,
 [dir="rtl"] select,
 [dir="rtl"] textarea {
-  font-family: 'Vazir', system-ui, sans-serif;
+  font-family: 'vazirmatn', system-ui, sans-serif;
 } 

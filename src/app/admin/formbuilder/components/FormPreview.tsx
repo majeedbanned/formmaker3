@@ -1575,7 +1575,7 @@ export default function FormPreview({
         <div className="flex justify-between items-center">
           {steps
             .map((step, index) => (
-              <div key={step.id} className="flex items-center">
+              <div key={step.id} className="flex items-center w-full ">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     index === currentStep
@@ -1589,7 +1589,7 @@ export default function FormPreview({
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`h-1 w-12 mx-2 ${
+                    className={`h-1 w-full mx-0 ${
                       index < currentStep ? "bg-primary" : "bg-gray-200"
                     }`}
                   ></div>
@@ -1703,7 +1703,7 @@ export default function FormPreview({
               <div className="flex justify-between">
                 {isMultiStep && currentStep > 0 && (
                   <Button type="button" onClick={handlePrevStep}>
-                    <ChevronLeft className="h-4 w-4 ml-2" />
+                    <ChevronRight className="h-4 w-4 ml-2" />
                     مرحله قبل
                   </Button>
                 )}
@@ -1718,7 +1718,7 @@ export default function FormPreview({
                   {isMultiStep && currentStep < steps.length - 1 ? (
                     <>
                       مرحله بعد
-                      <ChevronRight className="h-4 w-4 mr-2" />
+                      <ChevronLeft className="h-4 w-4 mr-2" />
                     </>
                   ) : isEditMode ? (
                     "به‌روزرسانی پاسخ‌ها"

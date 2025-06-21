@@ -51,7 +51,9 @@ const ChatroomList: React.FC<ChatroomListProps> = ({
               />
             </svg>
           </div>
-          <h2 className="text-base font-bold text-gray-800">اتاق‌های گفتگو</h2>
+          <h2 className="text-base font-bold text-gray-800 pl-2 pr-2">
+            اتاق‌های گفتگو
+          </h2>
         </div>
 
         {/* Search Input */}

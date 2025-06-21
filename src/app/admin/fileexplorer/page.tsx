@@ -25,8 +25,11 @@ import {
   ListBulletIcon,
   TableCellsIcon,
   ViewColumnsIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import PageHeader from "@/components/PageHeader";
+import { ChevronLeftIcon } from "lucide-react";
 
 // Define types for our file explorer
 interface FileItem {
@@ -1810,7 +1813,7 @@ export default function FileExplorerPage() {
           const path = segments.slice(0, i + 1).join("/");
           return (
             <div key={i} className="flex items-center">
-              <ChevronRightIcon className="h-4 w-4 mx-1 text-gray-400" />
+              <ChevronLeftIcon className="h-4 w-4 mx-1 text-gray-400" />
               <button
                 onClick={() => {
                   setPathHistory(
@@ -1838,9 +1841,16 @@ export default function FileExplorerPage() {
   return (
     <div className="container mx-auto p-4" dir="rtl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        {/* <h1 className="text-2xl font-bold text-gray-900 mb-2">
           مدیریت فایل‌ها و پوشه‌ها
-        </h1>
+        </h1> */}
+
+        <PageHeader
+          title="  مدیریت فایل‌ها و پوشه‌ها"
+          subtitle="  مدیریت فایل‌ها و پوشه‌ها"
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
 
         {/* Add user-specific message */}
         {user && user.userType === "student" && (
@@ -1853,7 +1863,7 @@ export default function FileExplorerPage() {
           </div>
         )}
 
-        {user &&
+        {/* {user &&
           (user.userType === "school" || user.userType === "teacher") && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
               <p className="text-sm text-blue-700">
@@ -1862,7 +1872,7 @@ export default function FileExplorerPage() {
                 قابل مشاهده هستند.
               </p>
             </div>
-          )}
+          )} */}
 
         {/* Breadcrumbs */}
         <div className="flex items-center text-sm text-gray-500 mb-4 overflow-x-auto">

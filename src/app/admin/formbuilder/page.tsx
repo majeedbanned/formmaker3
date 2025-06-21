@@ -110,7 +110,7 @@ export default function FormBuilderPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 rtl" dir="rtl">
+    <div className="container mx-auto  py-8 rtl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">فرم ساز</h1>
         <Button onClick={handleCreateForm} className="flex items-center gap-2">
@@ -119,15 +119,19 @@ export default function FormBuilderPage() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="list">فرم‌های من</TabsTrigger>
-          <TabsTrigger value="editor" disabled={!editingForm}>
-            ویرایشگر فرم
-          </TabsTrigger>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full text-right"
+      >
+        <TabsList className="grid w-full grid-cols-3 ">
           <TabsTrigger value="preview" disabled={!editingForm}>
             پیش‌نمایش
           </TabsTrigger>
+          <TabsTrigger value="editor" disabled={!editingForm}>
+            ویرایشگر فرم
+          </TabsTrigger>
+          <TabsTrigger value="list">فرم‌های من</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="mt-6">

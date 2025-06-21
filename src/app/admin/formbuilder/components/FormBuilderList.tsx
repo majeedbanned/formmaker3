@@ -559,13 +559,13 @@ export default function FormBuilderList({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="جستجو در فرم‌ها..."
-              className="w-full p-3 pr-10 border rounded-xl bg-white transition-all duration-200 focus:ring-2 focus:ring-blue-400 focus:border-blue-500 focus:outline-none shadow-sm group-hover:shadow-md"
+              className="w-full text-right rtl p-3 pr-10 border rounded-xl bg-white transition-all duration-200 focus:ring-2 focus:ring-blue-400 focus:border-blue-500 focus:outline-none shadow-sm group-hover:shadow-md"
             />
             <Search className="h-5 w-5 absolute top-1/2 -translate-y-1/2 right-3 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" />
           </div>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-52 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200">
+            <SelectTrigger className="w-full h-12 md:w-52 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200">
               <SelectValue placeholder="وضعیت فرم" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -576,23 +576,27 @@ export default function FormBuilderList({
               <SelectItem value="open">فرم‌های باز</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 bg-gray-50 px-4 py-2 flex flex-row  rounded-full">
+              <p> فرم یافت شد </p>
 
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
-            {filteredForms.length} فرم یافت شد
-          </p>
-          <div className="flex gap-2">
-            <Button variant="ghost" className="text-xs" size="sm">
-              <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
-              مرتب‌سازی
-            </Button>
+              <p className="pl-2"> {filteredForms.length}</p>
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="text-xs" size="sm">
+                <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
+                مرتب‌سازی
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Updated grid with animation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 "
+        style={{ direction: "rtl" }}
+      >
         {filteredForms.map((form, index) => (
           <motion.div
             key={form._id}
@@ -786,14 +790,16 @@ export default function FormBuilderList({
                         <p className="flex items-center gap-1">
                           <CalendarDays className="h-3 w-3 text-blue-500" />
                           <span>از:</span>{" "}
-                          {showFormattedDate(form.formStartEntryDatetime)}
+                          {/* {showFormattedDate(form.formStartEntryDatetime)} */}
+                          {form.formStartEntryDatetime}{" "}
                         </p>
                       )}
                       {form.formEndEntryDateTime && (
                         <p className="flex items-center gap-1">
                           <CalendarOff className="h-3 w-3 text-red-500" />
-                          <span>تا:</span>{" "}
-                          {showFormattedDate(form.formEndEntryDateTime)}
+                          <span>تا:</span>
+                          {/* {showFormattedDate()} */}
+                          {form.formEndEntryDateTime}
                         </p>
                       )}
                     </div>

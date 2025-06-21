@@ -287,7 +287,7 @@ export default function SurveyWizard({
             مرحله {currentStepIndex + 1} از {steps.length}
           </span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2 text-left" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
