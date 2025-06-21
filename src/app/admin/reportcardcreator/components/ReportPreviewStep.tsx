@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import { faIR } from "date-fns/locale";
 import { TeacherStatistics } from "./TeacherStatistics";
+import { StudentProgressChart } from "./StudentProgressChart";
 
 // Persian digit conversion function (performant)
 const toPersianDigits = (input: string | number): string => {
@@ -126,6 +127,7 @@ interface ReportData {
   includeClassRanking: boolean;
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
+  showProgressChart: boolean;
   reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
@@ -321,6 +323,7 @@ export function ReportPreviewStep({
           studentName: string;
           className?: string;
           descriptiveGrades: {
+            gradingId: string;
             subjectName: string;
             gradingTitle: string;
             gradingDate: string;
@@ -357,6 +360,7 @@ export function ReportPreviewStep({
 
           const student = allStudentData.get(studentCode)!;
           student.descriptiveGrades.push({
+            gradingId: grading._id, // Add grading ID for unique identification
             subjectName: grading.subjectData?.courseName || "نامشخص",
             gradingTitle: grading.title,
             gradingDate: grading.date || new Date().toISOString(),
@@ -565,6 +569,7 @@ export function ReportPreviewStep({
           };
         }[];
         descriptiveGrades: {
+          gradingId: string;
           subjectName: string;
           gradingTitle: string;
           gradingDate: string;
@@ -1481,6 +1486,22 @@ export function ReportPreviewStep({
                 </div>
               </div>
 
+              {/* Progress Chart */}
+              {reportData.showProgressChart && student.subjects.length > 0 && (
+                <div className="mb-6">
+                  <StudentProgressChart
+                    studentName={student.studentName}
+                    subjects={student.subjects.map((subject) => ({
+                      subjectName: subject.subjectName,
+                      gradingTitle: subject.gradingTitle,
+                      gradingDate: subject.gradingDate,
+                      score: subject.score,
+                      courseCode: subject.courseCode,
+                    }))}
+                  />
+                </div>
+              )}
+
               {/* Performance Summary */}
               <div className="mb-6">
                 <h3 className="font-semibold mb-3 text-lg">خلاصه عملکرد</h3>
@@ -1727,6 +1748,53 @@ export function ReportPreviewStep({
             ))}
           </div>
         </div>
+
+        {/* Progress Chart for Student Card */}
+        {reportData.showProgressChart &&
+          student.grades.filter((g) => g.gradingType === "numerical").length >
+            0 && (
+            <div className="mb-6">
+              <StudentProgressChart
+                studentName={student.studentName}
+                subjects={student.grades
+                  .filter(
+                    (g) =>
+                      g.gradingType === "numerical" && g.score !== undefined
+                  )
+                  .map((grade) => ({
+                    subjectName: grade.subject,
+                    gradingTitle: grade.title,
+                    gradingDate: new Date().toISOString(), // We don't have date in StudentReport interface
+                    score: grade.score!,
+                    courseCode: "", // We don't have courseCode in StudentReport interface
+                  }))}
+              />
+            </div>
+          )}
+
+        {/* Progress Chart for Student Card */}
+        {reportData.showProgressChart &&
+          student.grades.filter(
+            (g) => g.gradingType === "numerical" && g.score !== undefined
+          ).length > 1 && (
+            <div className="mb-6">
+              <StudentProgressChart
+                studentName={student.studentName}
+                subjects={student.grades
+                  .filter(
+                    (g) =>
+                      g.gradingType === "numerical" && g.score !== undefined
+                  )
+                  .map((grade) => ({
+                    subjectName: grade.subject,
+                    gradingTitle: grade.title,
+                    gradingDate: new Date().toISOString(), // We don't have date in StudentReport interface
+                    score: grade.score!,
+                    courseCode: "", // We don't have courseCode in StudentReport interface
+                  }))}
+              />
+            </div>
+          )}
 
         {/* Overall Statistics */}
         {reportData.includeStatistics &&

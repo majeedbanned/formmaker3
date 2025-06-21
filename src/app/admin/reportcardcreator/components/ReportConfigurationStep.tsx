@@ -22,6 +22,7 @@ import {
   Image,
   Building,
   Type,
+  LineChart,
 } from "lucide-react";
 
 interface ReportData {
@@ -30,6 +31,7 @@ interface ReportData {
   includeClassRanking: boolean;
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
+  showProgressChart: boolean;
   reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
@@ -186,6 +188,24 @@ export function ReportConfigurationStep({
               }
             />
           </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <LineChart className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label>نمودار پیشرفت</Label>
+                <p className="text-sm text-muted-foreground">
+                  نمایش نمودار خطی پیشرفت هر درس در طول زمان (فقط نمرات عددی)
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={reportData.showProgressChart}
+              onCheckedChange={(checked) =>
+                handleChange("showProgressChart", checked)
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -284,6 +304,11 @@ export function ReportConfigurationStep({
               {reportData.showGradeBreakdown && (
                 <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
                   تفکیک نمرات
+                </span>
+              )}
+              {reportData.showProgressChart && (
+                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                  نمودار پیشرفت
                 </span>
               )}
               {reportData.headerLogo && (
