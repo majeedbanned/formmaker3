@@ -11,7 +11,40 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+// Persian date formatting function
+const formatPersianDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const persianMonths = [
+      "فروردین",
+      "اردیبهشت",
+      "خرداد",
+      "تیر",
+      "مرداد",
+      "شهریور",
+      "مهر",
+      "آبان",
+      "آذر",
+      "دی",
+      "بهمن",
+      "اسفند",
+    ];
+
+    // Simple Gregorian to Persian approximation for display
+    const month = date.getMonth();
+    const day = date.getDate();
+
+    // Convert to Persian calendar (simplified)
+    const persianMonth = persianMonths[month] || persianMonths[0];
+
+    return `${day} ${persianMonth}`;
+  } catch {
+    return "تاریخ نامشخص";
+  }
+};
+
 interface StudentSubject {
+  gradingId: string; // Add grading ID to uniquely identify each grade
   subjectName: string;
   gradingTitle: string;
   gradingDate: string;
@@ -40,6 +73,7 @@ interface StudentData {
   className?: string;
   subjects: StudentSubject[];
   descriptiveGrades?: {
+    gradingId: string;
     subjectName: string;
     gradingTitle: string;
     gradingDate: string;
@@ -97,28 +131,116 @@ interface TableRowData {
   [courseKey: string]: string | number | CourseData | CourseAverageData | null;
 }
 
-interface TeacherStatisticsProps {
-  studentsArray: StudentData[];
+interface SelectedGrading {
+  _id: string;
+  title: string;
+  date?: string;
+  gradingType: "numerical" | "descriptive";
+  subjectData?: {
+    courseCode?: string;
+    courseName?: string;
+    Grade?: string;
+    vahed?: number;
+  };
 }
 
-export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
+interface TeacherStatisticsProps {
+  studentsArray: StudentData[];
+  selectedGradings?: SelectedGrading[];
+}
+
+export function TeacherStatistics({
+  studentsArray,
+  selectedGradings = [],
+}: TeacherStatisticsProps) {
   const [showIndividualGrades, setShowIndividualGrades] = useState(true);
 
-  // Get all unique courses/grades based on the toggle
+  // Get all courses/grades based on the toggle
   const allCourses = showIndividualGrades
-    ? Array.from(
-        new Set(
-          studentsArray.flatMap((student) =>
-            student.subjects.map(
-              (subject) =>
-                `${subject.courseCode || "N/A"}-${subject.subjectName}-${
-                  subject.gradingTitle
-                }`
-            )
-          )
-        )
-      ).sort()
-    : Array.from(
+    ? // Show ALL selected gradings as individual columns ordered by actual gradingDate from database
+      (() => {
+        // Create a map of grading info with actual dates from student subjects
+        const gradingDateMap = new Map<string, string>();
+
+        // Extract actual gradingDate from student subjects for each grading
+        selectedGradings
+          .filter((grading) => grading.gradingType === "numerical")
+          .forEach((grading) => {
+            const gradingKey = `${grading._id}-${grading.title}`;
+
+            // Find the actual gradingDate from any student's subject data
+            for (const student of studentsArray) {
+              const subjectData = student.subjects.find(
+                (s) =>
+                  s.gradingTitle === grading.title &&
+                  s.subjectName ===
+                    (grading.subjectData?.courseName || "نامشخص") &&
+                  (s.courseCode || "N/A") ===
+                    (grading.subjectData?.courseCode || "N/A")
+              );
+
+              if (subjectData && subjectData.gradingDate) {
+                gradingDateMap.set(gradingKey, subjectData.gradingDate);
+                break; // Found the date, no need to check other students
+              }
+            }
+
+            // Fallback to grading.date if no gradingDate found in subjects
+            if (!gradingDateMap.has(gradingKey)) {
+              gradingDateMap.set(gradingKey, grading.date || "1900-01-01");
+            }
+          });
+
+        const sortedGradings = selectedGradings
+          .filter((grading) => grading.gradingType === "numerical")
+          .map((grading) => `${grading._id}-${grading.title}`)
+          .sort((a, b) => {
+            // Sort by actual gradingDate from database (same as progress calculation)
+            const dateA = new Date(
+              gradingDateMap.get(a) || "1900-01-01"
+            ).getTime();
+            const dateB = new Date(
+              gradingDateMap.get(b) || "1900-01-01"
+            ).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+
+            // Secondary sort by course code
+            const gradingA = selectedGradings.find(
+              (g) => `${g._id}-${g.title}` === a
+            );
+            const gradingB = selectedGradings.find(
+              (g) => `${g._id}-${g.title}` === b
+            );
+            if (!gradingA || !gradingB) return 0;
+
+            const codeA = gradingA.subjectData?.courseCode || "N/A";
+            const codeB = gradingB.subjectData?.courseCode || "N/A";
+            if (codeA !== codeB) return codeA.localeCompare(codeB);
+
+            // Tertiary sort by title
+            return gradingA.title.localeCompare(gradingB.title, "fa");
+          });
+
+        // Debug: Log the chronological order and grading IDs
+        console.log(
+          "Table columns chronological order:",
+          sortedGradings.map((key) => {
+            const grading = selectedGradings.find(
+              (g) => `${g._id}-${g.title}` === key
+            );
+            return {
+              gradingId: grading?._id,
+              title: grading?.title,
+              courseCode: grading?.subjectData?.courseCode,
+              gradingDate: gradingDateMap.get(key),
+            };
+          })
+        );
+
+        return sortedGradings;
+      })()
+    : // Show unique course combinations for average mode
+      Array.from(
         new Set(
           studentsArray.flatMap((student) =>
             student.subjects.map(
@@ -131,22 +253,79 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
 
   // Create a comprehensive table data structure
   const tableData: TableRowData[] = studentsArray.map((student) => {
+    // Calculate a more precise progress percentage for table display
+    let preciseProgressPercentage = 0;
+    if (student.overallProgress) {
+      const totalSubjects =
+        student.overallProgress.progressCount +
+        student.overallProgress.declineCount +
+        student.overallProgress.noChangeCount;
+
+      if (totalSubjects > 0) {
+        // Calculate improvement score: (improved + 0.5*stable) / total * 100
+        // This gives partial credit to stable subjects
+        const improvementScore =
+          student.overallProgress.progressCount +
+          student.overallProgress.noChangeCount * 0.5;
+        preciseProgressPercentage = Math.round(
+          (improvementScore / totalSubjects) * 100
+        );
+      }
+    }
+
     const studentRow: TableRowData = {
       studentName: student.studentName,
       overallAverage: student.overallAverage,
       overallRank: student.overallRank,
       progressTrend: student.overallProgress?.overallTrend || "stable",
-      progressPercentage: student.overallProgress?.progressPercentage || 0,
+      progressPercentage: preciseProgressPercentage,
     };
 
     if (showIndividualGrades) {
-      // Add each individual grade data
+      // Add each individual grade data (already chronologically ordered)
       allCourses.forEach((courseKey) => {
-        const subjectData = student.subjects.find(
-          (s) =>
-            `${s.courseCode || "N/A"}-${s.subjectName}-${s.gradingTitle}` ===
-            courseKey
+        // Extract grading ID and title from the courseKey
+        const grading = selectedGradings.find(
+          (g) => `${g._id}-${g.title}` === courseKey
         );
+        if (!grading) {
+          studentRow[courseKey] = null;
+          return;
+        }
+
+        // Find the subject data that matches this specific grading using unique grading ID
+        // This ensures that each column shows the correct grade even when titles are the same
+        const subjectData = student.subjects.find(
+          (s) => s.gradingId === grading._id
+        );
+
+        // Debug: Log matching for duplicate titles
+        if (
+          grading.title &&
+          student.subjects.filter((s) => s.gradingTitle === grading.title)
+            .length > 1
+        ) {
+          console.log(
+            `Student ${student.studentName} - Multiple grades with title "${grading.title}":`,
+            {
+              lookingForGradingId: grading._id,
+              foundSubject: subjectData
+                ? {
+                    gradingId: subjectData.gradingId,
+                    score: subjectData.score,
+                    gradingDate: subjectData.gradingDate,
+                  }
+                : "NOT FOUND",
+              allSubjectsWithSameTitle: student.subjects
+                .filter((s) => s.gradingTitle === grading.title)
+                .map((s) => ({
+                  gradingId: s.gradingId,
+                  score: s.score,
+                  gradingDate: s.gradingDate,
+                })),
+            }
+          );
+        }
 
         if (subjectData) {
           studentRow[courseKey] = {
@@ -155,6 +334,7 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
             totalStudents: subjectData.totalStudents,
             performance: subjectData.performance,
             diffFromAvg: subjectData.diffFromAvg,
+            // progressInfo is already calculated based on chronological order in ReportPreviewStep
             progressInfo: subjectData.progressInfo,
           };
         } else {
@@ -441,26 +621,48 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
                   </th>
                   {allCourses.map((courseKey) => {
                     if (showIndividualGrades) {
-                      const [courseCode, subjectName, gradingTitle] =
-                        courseKey.split("-");
+                      // Find the grading info for this courseKey
+                      const grading = selectedGradings.find(
+                        (g) => `${g._id}-${g.title}` === courseKey
+                      );
+                      const courseCode =
+                        grading?.subjectData?.courseCode || "N/A";
+                      const subjectName =
+                        grading?.subjectData?.courseName || "نامشخص";
+                      const gradingTitle = grading?.title || "نامشخص";
+
+                      // Get the actual date from student subjects
+                      const actualDate =
+                        studentsArray.length > 0
+                          ? studentsArray[0].subjects.find(
+                              (s) => s.gradingId === grading?._id
+                            )?.gradingDate || grading?.date
+                          : grading?.date;
+                      const formattedDate = actualDate
+                        ? formatPersianDate(actualDate)
+                        : "تاریخ نامشخص";
+
                       return (
                         <th
                           key={courseKey}
-                          className="border border-gray-300 p-1 text-center font-bold min-w-[80px] max-w-[80px]"
+                          className="border border-gray-300 p-1 text-center font-bold min-w-[90px] max-w-[90px]"
                         >
-                          <div className="transform -rotate-90 whitespace-nowrap text-xs leading-tight py-2">
-                            <div className="font-bold text-purple-700">
+                          <div className="transform -rotate-90 whitespace-nowrap text-xs leading-tight py-3">
+                            <div className="font-bold text-purple-700 mb-1">
                               [{courseCode}]
                             </div>
-                            <div className="text-purple-600 text-[10px] mt-1">
-                              {subjectName.length > 12
-                                ? subjectName.substring(0, 12) + "..."
+                            <div className="text-purple-600 text-[10px] mb-1">
+                              {subjectName.length > 10
+                                ? subjectName.substring(0, 10) + "..."
                                 : subjectName}
                             </div>
-                            <div className="text-purple-500 text-[9px] mt-0.5">
-                              {gradingTitle.length > 10
-                                ? gradingTitle.substring(0, 10) + "..."
+                            <div className="text-purple-500 text-[9px] mb-1">
+                              {gradingTitle.length > 8
+                                ? gradingTitle.substring(0, 8) + "..."
                                 : gradingTitle}
+                            </div>
+                            <div className="text-purple-400 text-[8px] bg-purple-100 px-1 rounded">
+                              {formattedDate}
                             </div>
                           </div>
                         </th>
@@ -556,81 +758,104 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
                       return (
                         <td
                           key={courseKey}
-                          className="border border-gray-300 p-1 text-center"
+                          className="border border-gray-300 p-1.5 text-center min-w-[90px]"
                         >
                           {showIndividualGrades && isCourseData ? (
-                            <div className="space-y-0.5">
-                              {/* Score */}
+                            <div className="bg-gray-50 rounded-lg p-2 space-y-1">
+                              {/* Main Score - Prominent Display */}
                               <div
-                                className={`text-xs font-bold px-1 py-0.5 rounded ${
+                                className={`text-sm font-bold px-2 py-1 rounded-md shadow-sm ${
                                   (courseData as CourseData).score >= 18
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-green-100 text-green-800 border border-green-200"
                                     : (courseData as CourseData).score >= 15
-                                    ? "bg-blue-100 text-blue-800"
+                                    ? "bg-blue-100 text-blue-800 border border-blue-200"
                                     : (courseData as CourseData).score >= 12
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
+                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                    : "bg-red-100 text-red-800 border border-red-200"
                                 }`}
                               >
                                 {(courseData as CourseData).score.toFixed(1)}
                               </div>
 
-                              {/* Rank */}
-                              <div className="text-[10px] text-gray-600">
-                                رتبه: {(courseData as CourseData).rank}/
-                                {(courseData as CourseData).totalStudents}
-                              </div>
-
-                              {/* Performance */}
-                              <div
-                                className={`text-[9px] px-1 rounded ${
-                                  (courseData as CourseData).performance ===
-                                  "عالی"
-                                    ? "bg-green-200 text-green-800"
-                                    : (courseData as CourseData).performance ===
-                                      "خوب"
-                                    ? "bg-blue-200 text-blue-800"
-                                    : (courseData as CourseData).performance ===
-                                      "متوسط"
-                                    ? "bg-yellow-200 text-yellow-800"
-                                    : "bg-red-200 text-red-800"
-                                }`}
-                              >
-                                {(courseData as CourseData).performance}
-                              </div>
-
-                              {/* Progress indicator */}
-                              {(courseData as CourseData).progressInfo && (
+                              {/* Rank and Performance in a Row */}
+                              <div className="flex justify-between items-center">
+                                <div className="text-[10px] text-gray-600 bg-white px-1 py-0.5 rounded">
+                                  #{(courseData as CourseData).rank}
+                                </div>
                                 <div
-                                  className={`text-[9px] px-1 rounded ${
-                                    (courseData as CourseData).progressInfo!
-                                      .hasProgress
-                                      ? "bg-green-200 text-green-700"
-                                      : "bg-red-200 text-red-700"
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                    (courseData as CourseData).performance ===
+                                    "عالی"
+                                      ? "bg-green-200 text-green-800"
+                                      : (courseData as CourseData)
+                                          .performance === "خوب"
+                                      ? "bg-blue-200 text-blue-800"
+                                      : (courseData as CourseData)
+                                          .performance === "متوسط"
+                                      ? "bg-yellow-200 text-yellow-800"
+                                      : "bg-red-200 text-red-800"
                                   }`}
                                 >
-                                  {(courseData as CourseData).progressInfo!
-                                    .hasProgress
-                                    ? "↗"
-                                    : "↘"}
-                                  {(courseData as CourseData).progressInfo!
-                                    .scoreDiff > 0
-                                    ? "+"
-                                    : ""}
-                                  {(
-                                    courseData as CourseData
-                                  ).progressInfo!.scoreDiff.toFixed(1)}
+                                  {(courseData as CourseData).performance}
+                                </div>
+                              </div>
+
+                              {/* Progress indicator with percentage */}
+                              {(courseData as CourseData).progressInfo && (
+                                <div
+                                  className={`text-[9px] px-1.5 py-1 rounded-md font-medium border ${
+                                    (courseData as CourseData).progressInfo!
+                                      .hasProgress
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-red-50 text-red-700 border-red-200"
+                                  }`}
+                                >
+                                  {(() => {
+                                    const progressInfo = (
+                                      courseData as CourseData
+                                    ).progressInfo!;
+                                    const previousScore =
+                                      progressInfo.previousScore;
+                                    const scoreDiff = progressInfo.scoreDiff;
+
+                                    // Calculate percentage change from previous score
+                                    let percentageChange = 0;
+                                    if (previousScore > 0) {
+                                      percentageChange = Math.round(
+                                        (scoreDiff / previousScore) * 100
+                                      );
+                                    }
+
+                                    const isImprovement =
+                                      progressInfo.hasProgress;
+                                    const icon = isImprovement ? "↗" : "↘";
+                                    const sign = scoreDiff > 0 ? "+" : "";
+
+                                    return (
+                                      <div className="text-center">
+                                        <div>
+                                          {icon} {sign}
+                                          {scoreDiff.toFixed(1)}
+                                        </div>
+                                        <div className="text-[8px] opacity-75">
+                                          ({sign}
+                                          {percentageChange}%)
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               )}
 
-                              {/* Difference from average */}
+                              {/* Difference from class average */}
                               <div
-                                className={`text-[9px] ${
+                                className={`text-[9px] px-1 py-0.5 rounded text-center ${
                                   (courseData as CourseData).diffFromAvg >= 0
-                                    ? "text-green-600"
-                                    : "text-red-600"
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-red-600 bg-red-50"
                                 }`}
                               >
+                                از میانگین:{" "}
                                 {(courseData as CourseData).diffFromAvg >= 0
                                   ? "+"
                                   : ""}
@@ -638,20 +863,20 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
                               </div>
                             </div>
                           ) : !showIndividualGrades && isCourseAvgData ? (
-                            <div className="space-y-0.5">
-                              {/* Average Score */}
+                            <div className="bg-gray-50 rounded-lg p-2 space-y-1">
+                              {/* Average Score - Prominent Display */}
                               <div
-                                className={`text-xs font-bold px-1 py-0.5 rounded ${
+                                className={`text-sm font-bold px-2 py-1 rounded-md shadow-sm ${
                                   (courseData as CourseAverageData)
                                     .averageScore >= 18
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-green-100 text-green-800 border border-green-200"
                                     : (courseData as CourseAverageData)
                                         .averageScore >= 15
-                                    ? "bg-blue-100 text-blue-800"
+                                    ? "bg-blue-100 text-blue-800 border border-blue-200"
                                     : (courseData as CourseAverageData)
                                         .averageScore >= 12
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
+                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                    : "bg-red-100 text-red-800 border border-red-200"
                                 }`}
                               >
                                 {(
@@ -659,32 +884,36 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
                                 ).averageScore.toFixed(1)}
                               </div>
 
-                              {/* Grade Count */}
-                              <div className="text-[10px] text-gray-600">
-                                {(courseData as CourseAverageData).gradeCount}{" "}
-                                نمره
+                              {/* Grade Count and Performance */}
+                              <div className="flex justify-between items-center">
+                                <div className="text-[10px] text-gray-600 bg-white px-1 py-0.5 rounded">
+                                  {(courseData as CourseAverageData).gradeCount}{" "}
+                                  نمره
+                                </div>
+                                <div
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                    (courseData as CourseAverageData)
+                                      .performance === "عالی"
+                                      ? "bg-green-200 text-green-800"
+                                      : (courseData as CourseAverageData)
+                                          .performance === "خوب"
+                                      ? "bg-blue-200 text-blue-800"
+                                      : (courseData as CourseAverageData)
+                                          .performance === "متوسط"
+                                      ? "bg-yellow-200 text-yellow-800"
+                                      : "bg-red-200 text-red-800"
+                                  }`}
+                                >
+                                  {
+                                    (courseData as CourseAverageData)
+                                      .performance
+                                  }
+                                </div>
                               </div>
 
-                              {/* Performance */}
-                              <div
-                                className={`text-[9px] px-1 rounded ${
-                                  (courseData as CourseAverageData)
-                                    .performance === "عالی"
-                                    ? "bg-green-200 text-green-800"
-                                    : (courseData as CourseAverageData)
-                                        .performance === "خوب"
-                                    ? "bg-blue-200 text-blue-800"
-                                    : (courseData as CourseAverageData)
-                                        .performance === "متوسط"
-                                    ? "bg-yellow-200 text-yellow-800"
-                                    : "bg-red-200 text-red-800"
-                                }`}
-                              >
-                                {(courseData as CourseAverageData).performance}
-                              </div>
-
-                              {/* Best/Worst Range */}
-                              <div className="text-[9px] text-gray-600">
+                              {/* Score Range */}
+                              <div className="text-[9px] text-gray-600 bg-white px-1.5 py-1 rounded text-center">
+                                محدوده:{" "}
                                 {(
                                   courseData as CourseAverageData
                                 ).worstScore.toFixed(1)}{" "}
@@ -696,13 +925,14 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
 
                               {/* Difference from class average */}
                               <div
-                                className={`text-[9px] ${
+                                className={`text-[9px] px-1 py-0.5 rounded text-center ${
                                   (courseData as CourseAverageData)
                                     .diffFromClassAvg >= 0
-                                    ? "text-green-600"
-                                    : "text-red-600"
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-red-600 bg-red-50"
                                 }`}
                               >
+                                از میانگین کلاس:{" "}
                                 {(courseData as CourseAverageData)
                                   .diffFromClassAvg >= 0
                                   ? "+"
@@ -763,7 +993,7 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
               {showIndividualGrades ? (
                 <div className="flex items-center">
                   <span className="text-gray-600">↗/↘</span>
-                  <span className="ml-1">تغییر نمره</span>
+                  <span className="ml-1">تغییر نمره و درصد</span>
                 </div>
               ) : (
                 <div className="flex items-center">
@@ -772,6 +1002,13 @@ export function TeacherStatistics({ studentsArray }: TeacherStatisticsProps) {
                 </div>
               )}
             </div>
+            {showIndividualGrades && (
+              <div className="mt-2 text-xs text-gray-600 border-t pt-2">
+                <strong>نحوه محاسبه درصد:</strong> درصد تغییر بر اساس نمره قبلی
+                محاسبه می‌شود. مثال: ↗ +2.0 (+13%) یعنی 2 نمره افزایش که معادل
+                13% بهبود نسبت به نمره قبلی است.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -160,6 +160,7 @@ interface StudentReport {
     progressPercentage: number;
   };
   descriptiveGrades?: {
+    gradingId: string;
     subjectName: string;
     gradingTitle: string;
     gradingDate: string;
@@ -616,6 +617,7 @@ export function ReportPreviewStep({
         else performance = "نیازمند تقویت";
 
         student.subjects.push({
+          gradingId: grading._id, // Add grading ID for unique identification
           subjectName: grading.subjectData?.courseName || "نامشخص",
           gradingTitle: grading.title,
           gradingDate: grading.date || new Date().toISOString(),
@@ -663,6 +665,7 @@ export function ReportPreviewStep({
 
         const student = allStudentData.get(studentCode)!;
         student.descriptiveGrades.push({
+          gradingId: grading._id, // Add grading ID for unique identification
           subjectName: grading.subjectData?.courseName || "نامشخص",
           gradingTitle: grading.title,
           gradingDate: grading.date || new Date().toISOString(),
@@ -783,17 +786,37 @@ export function ReportPreviewStep({
         const progressCount = subjectsWithProgress.filter(
           (s) => s.progressInfo?.hasProgress
         ).length;
-        const declineCount = subjectsWithProgress.filter(
-          (s) => !s.progressInfo?.hasProgress
-        ).length;
         const noChangeCount = subjectsWithProgress.filter(
           (s) =>
             s.progressInfo?.scoreDiff === 0 && s.progressInfo?.rankDiff === 0
         ).length;
+        const declineCount = subjectsWithProgress.filter(
+          (s) =>
+            s.progressInfo &&
+            !s.progressInfo.hasProgress &&
+            !(s.progressInfo.scoreDiff === 0 && s.progressInfo.rankDiff === 0)
+        ).length;
 
-        const progressPercentage = Math.round(
-          (progressCount / subjectsWithProgress.length) * 100
-        );
+        // Calculate progress percentage based on the overall trend
+        let progressPercentage = 0;
+        if (subjectsWithProgress.length > 0) {
+          if (progressCount > declineCount) {
+            // Improvement trend: show percentage of improved subjects
+            progressPercentage = Math.round(
+              (progressCount / subjectsWithProgress.length) * 100
+            );
+          } else if (declineCount > progressCount) {
+            // Decline trend: show percentage of declined subjects
+            progressPercentage = Math.round(
+              (declineCount / subjectsWithProgress.length) * 100
+            );
+          } else {
+            // Stable trend: show percentage of stable subjects
+            progressPercentage = Math.round(
+              (noChangeCount / subjectsWithProgress.length) * 100
+            );
+          }
+        }
 
         let overallTrend: "improvement" | "decline" | "stable" = "stable";
         if (progressCount > declineCount) {
@@ -817,7 +840,10 @@ export function ReportPreviewStep({
     return (
       <div className="space-y-6">
         {/* Teacher Statistics Overview */}
-        <TeacherStatistics studentsArray={studentsArray} />
+        <TeacherStatistics
+          studentsArray={studentsArray}
+          selectedGradings={selectedGradings}
+        />
 
         {studentsArray.map((student) => (
           <Card
