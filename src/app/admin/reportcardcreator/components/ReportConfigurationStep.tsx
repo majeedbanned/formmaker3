@@ -23,6 +23,10 @@ import {
   Building,
   Type,
   LineChart,
+  PieChart,
+  BarChart2,
+  Crown,
+  Activity,
 } from "lucide-react";
 
 interface ReportData {
@@ -32,6 +36,10 @@ interface ReportData {
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
   showProgressChart: boolean;
+  showPerformanceDistribution: boolean;
+  showClassComparison: boolean;
+  showRankingAnalysis: boolean;
+  showPerformanceTrends: boolean;
   reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
@@ -206,6 +214,78 @@ export function ReportConfigurationStep({
               }
             />
           </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <PieChart className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label>توزیع عملکرد</Label>
+                <p className="text-sm text-muted-foreground">
+                  نمایش نمودار توزیع عملکرد و بازه نمرات کلاس
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={reportData.showPerformanceDistribution}
+              onCheckedChange={(checked) =>
+                handleChange("showPerformanceDistribution", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <BarChart2 className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label>مقایسه با میانگین</Label>
+                <p className="text-sm text-muted-foreground">
+                  نمایش مقایسه عملکرد دانش‌آموزان با میانگین کلاس
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={reportData.showClassComparison}
+              onCheckedChange={(checked) =>
+                handleChange("showClassComparison", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <Crown className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label>تحلیل رتبه‌بندی</Label>
+                <p className="text-sm text-muted-foreground">
+                  نمایش تحلیل رتبه‌بندی و برترین دانش‌آموزان
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={reportData.showRankingAnalysis}
+              onCheckedChange={(checked) =>
+                handleChange("showRankingAnalysis", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <Activity className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <Label>تحلیل جامع روند</Label>
+                <p className="text-sm text-muted-foreground">
+                  نمایش تحلیل جامع روند عملکرد هر دانش‌آموز با خط زمانی
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={reportData.showPerformanceTrends}
+              onCheckedChange={(checked) =>
+                handleChange("showPerformanceTrends", checked)
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -309,6 +389,26 @@ export function ReportConfigurationStep({
               {reportData.showProgressChart && (
                 <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
                   نمودار پیشرفت
+                </span>
+              )}
+              {reportData.showPerformanceDistribution && (
+                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                  توزیع عملکرد
+                </span>
+              )}
+              {reportData.showClassComparison && (
+                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                  مقایسه میانگین
+                </span>
+              )}
+              {reportData.showRankingAnalysis && (
+                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                  تحلیل رتبه‌بندی
+                </span>
+              )}
+              {reportData.showPerformanceTrends && (
+                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                  تحلیل جامع روند
                 </span>
               )}
               {reportData.headerLogo && (

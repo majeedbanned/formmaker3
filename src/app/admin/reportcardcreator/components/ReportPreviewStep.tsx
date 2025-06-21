@@ -21,6 +21,10 @@ import { format } from "date-fns";
 import { faIR } from "date-fns/locale";
 import { TeacherStatistics } from "./TeacherStatistics";
 import { StudentProgressChart } from "./StudentProgressChart";
+import { PerformanceDistributionChart } from "./PerformanceDistributionChart";
+import { ClassComparisonChart } from "./ClassComparisonChart";
+import { RankingAnalysisChart } from "./RankingAnalysisChart";
+import { PerformanceTrendsChart } from "./PerformanceTrendsChart";
 
 // Persian digit conversion function (performant)
 const toPersianDigits = (input: string | number): string => {
@@ -128,6 +132,10 @@ interface ReportData {
   includeTeacherComments: boolean;
   showGradeBreakdown: boolean;
   showProgressChart: boolean;
+  showPerformanceDistribution: boolean;
+  showClassComparison: boolean;
+  showRankingAnalysis: boolean;
+  showPerformanceTrends: boolean;
   reportFormat: "detailed" | "summary" | "minimal" | "statistical";
   headerLogo: boolean;
   schoolInfo: boolean;
@@ -860,6 +868,45 @@ export function ReportPreviewStep({
           selectedGradings={selectedGradings}
         />
 
+        {/* Additional Charts */}
+        {reportData.showPerformanceDistribution && (
+          <div className="mb-6">
+            <PerformanceDistributionChart
+              students={studentsArray.map((student) => ({
+                studentName: student.studentName,
+                subjects: student.subjects,
+                overallAverage: student.overallAverage,
+              }))}
+            />
+          </div>
+        )}
+
+        {reportData.showClassComparison && (
+          <div className="mb-6">
+            <ClassComparisonChart
+              students={studentsArray.map((student) => ({
+                studentName: student.studentName,
+                subjects: student.subjects,
+                overallAverage: student.overallAverage,
+                overallRank: student.overallRank,
+                overallDiffFromAvg: student.overallDiffFromAvg,
+              }))}
+            />
+          </div>
+        )}
+
+        {reportData.showRankingAnalysis && (
+          <div className="mb-6">
+            <RankingAnalysisChart
+              students={studentsArray.map((student) => ({
+                studentName: student.studentName,
+                subjects: student.subjects,
+                overallRank: student.overallRank,
+              }))}
+            />
+          </div>
+        )}
+
         {studentsArray.map((student) => (
           <Card
             key={student.studentCode}
@@ -1492,11 +1539,13 @@ export function ReportPreviewStep({
                   <StudentProgressChart
                     studentName={student.studentName}
                     subjects={student.subjects.map((subject) => ({
+                      gradingId: subject.gradingId,
                       subjectName: subject.subjectName,
                       gradingTitle: subject.gradingTitle,
                       gradingDate: subject.gradingDate,
                       score: subject.score,
                       courseCode: subject.courseCode,
+                      courseVahed: subject.courseVahed,
                     }))}
                   />
                 </div>
@@ -1762,23 +1811,25 @@ export function ReportPreviewStep({
                       g.gradingType === "numerical" && g.score !== undefined
                   )
                   .map((grade) => ({
+                    gradingId: grade.gradingId,
                     subjectName: grade.subject,
                     gradingTitle: grade.title,
                     gradingDate: new Date().toISOString(), // We don't have date in StudentReport interface
                     score: grade.score!,
                     courseCode: "", // We don't have courseCode in StudentReport interface
+                    courseVahed: 1, // Default value since we don't have this in StudentReport interface
                   }))}
               />
             </div>
           )}
 
-        {/* Progress Chart for Student Card */}
-        {reportData.showProgressChart &&
+        {/* Performance Trends Chart for Student Card */}
+        {reportData.showPerformanceTrends &&
           student.grades.filter(
             (g) => g.gradingType === "numerical" && g.score !== undefined
           ).length > 1 && (
             <div className="mb-6">
-              <StudentProgressChart
+              <PerformanceTrendsChart
                 studentName={student.studentName}
                 subjects={student.grades
                   .filter(
@@ -1786,11 +1837,16 @@ export function ReportPreviewStep({
                       g.gradingType === "numerical" && g.score !== undefined
                   )
                   .map((grade) => ({
+                    gradingId: grade.gradingId,
                     subjectName: grade.subject,
                     gradingTitle: grade.title,
-                    gradingDate: new Date().toISOString(), // We don't have date in StudentReport interface
+                    gradingDate: new Date().toISOString(),
                     score: grade.score!,
-                    courseCode: "", // We don't have courseCode in StudentReport interface
+                    classAverage: 15, // Default class average since we don't have this data
+                    rank: grade.rank || 1,
+                    totalStudents: grade.totalStudents || 30,
+                    diffFromAvg: (grade.score || 0) - 15,
+                    progressInfo: grade.progressInfo,
                   }))}
               />
             </div>
