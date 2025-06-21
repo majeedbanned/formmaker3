@@ -46,12 +46,12 @@ const AVAILABLE_WIDGETS: AvailableWidget[] = [
     available: true,
   },
   {
-    type: "StudentsWidget",
-    name: "دانش‌آموزان",
-    description: "اطلاعات و آمار دانش‌آموزان",
+    type: "StudentsSearchWidget",
+    name: "جستجوی دانش‌آموزان",
+    description: "جستجو و مشاهده دانش‌آموزان",
     icon: Users,
     color: "bg-green-500",
-    available: false,
+    available: true,
   },
   {
     type: "AnalyticsWidget",

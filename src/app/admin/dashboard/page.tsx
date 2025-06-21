@@ -1,7 +1,11 @@
 "use client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
-import { SurveyWidget, BirthdateWidget } from "../components/widgets";
+import {
+  SurveyWidget,
+  BirthdateWidget,
+  StudentsSearchWidget,
+} from "../components/widgets";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
 import { useState } from "react";
@@ -34,6 +38,7 @@ import {
 const WIDGET_COMPONENTS = {
   SurveyWidget: SurveyWidget,
   BirthdateWidget: BirthdateWidget,
+  StudentsSearchWidget: StudentsSearchWidget,
 };
 
 export default function Dashboard() {
@@ -95,6 +100,7 @@ export default function Dashboard() {
 
   // Render widget by type
   function renderWidget(widgetType: string, userProp: any) {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     const WidgetComponent =
       WIDGET_COMPONENTS[widgetType as keyof typeof WIDGET_COMPONENTS];
 
