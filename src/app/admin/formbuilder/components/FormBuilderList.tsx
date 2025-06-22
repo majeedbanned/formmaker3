@@ -824,7 +824,10 @@ export default function FormBuilderList({
                                     <span>مشاهده مستقل فرم</span>
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer hover:bg-gray-50">
+                                <DropdownMenuItem
+                                  className="cursor-pointer hover:bg-gray-50"
+                                  onSelect={(e) => e.preventDefault()}
+                                >
                                   <FormSubmissionViewer
                                     formId={form._id!}
                                     formTitle={form.title}
