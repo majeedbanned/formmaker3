@@ -6,11 +6,22 @@ import { useRouter } from "next/navigation";
 import FormPreview from "../components/FormPreview";
 import { FormSchema } from "../components/FormBuilderList";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import "./rtl.css";
+
+// Define the proper type for form entry
+interface FormEntry {
+  _id: string;
+  formId: string;
+  formTitle: string;
+  answers: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  submittedBy: string;
+}
 
 // Create a wrapper component that uses searchParams
 function FormViewWrapper() {
@@ -21,8 +32,12 @@ function FormViewWrapper() {
   const [form, setForm] = useState<FormSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [existingEntry, setExistingEntry] = useState<any>(null);
+  const [existingEntry, setExistingEntry] = useState<FormEntry | undefined>(
+    undefined
+  );
   const [loadingEntry, setLoadingEntry] = useState(false);
+  const [userAlreadySubmitted, setUserAlreadySubmitted] = useState(false);
+  const [checkingSubmission, setCheckingSubmission] = useState(false);
 
   useEffect(() => {
     console.log("Form ID from URL:", formId);
@@ -98,6 +113,11 @@ function FormViewWrapper() {
         if (data.isEditable) {
           fetchExistingEntry(data._id);
         }
+
+        // If form has oneTimeFillOnly enabled, check if user has already submitted
+        if (data.oneTimeFillOnly) {
+          checkUserSubmission(data._id);
+        }
       } catch (err) {
         // Handle AbortController timeout
         const error = err as Error;
@@ -156,6 +176,41 @@ function FormViewWrapper() {
     }
   };
 
+  // Function to check if user has already submitted this form
+  const checkUserSubmission = async (formId: string) => {
+    try {
+      setCheckingSubmission(true);
+
+      const response = await fetch(
+        `/api/formbuilder/submissions?formId=${formId}&limit=1`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to check user submission");
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data && data.submissions && data.submissions.length > 0) {
+        console.log("User has already submitted this form");
+        setUserAlreadySubmitted(true);
+      } else {
+        console.log("User has not submitted this form yet");
+        setUserAlreadySubmitted(false);
+      }
+    } catch (error) {
+      console.error("Error checking user submission:", error);
+    } finally {
+      setCheckingSubmission(false);
+    }
+  };
+
   const handleBack = () => {
     router.push("/admin/formbuilder");
   };
@@ -206,6 +261,44 @@ function FormViewWrapper() {
     );
   }
 
+  // Show message if user has already submitted and form is oneTimeFillOnly
+  if (form.oneTimeFillOnly && userAlreadySubmitted) {
+    return (
+      <div className="container mx-auto py-8 rtl" dir="rtl">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4 ml-2" /> بازگشت به لیست فرم‌ها
+            </Button>
+          </div>
+
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertTitle className="text-orange-800">
+              فرم قبلاً تکمیل شده
+            </AlertTitle>
+            <AlertDescription className="text-orange-700">
+              شما قبلاً این فرم را تکمیل کرده‌اید. این فرم تنها یک بار قابل
+              تکمیل است و امکان تکمیل مجدد آن وجود ندارد.
+            </AlertDescription>
+          </Alert>
+
+          <div className="bg-gray-50 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-medium text-gray-700 mb-2">
+              {form.title}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              این فرم با موفقیت توسط شما ارسال شده است.
+            </p>
+            <div className="flex justify-center">
+              <CheckCircle2 className="h-16 w-16 text-green-500" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 rtl" dir="rtl">
       <FormPreview
@@ -213,7 +306,7 @@ function FormViewWrapper() {
         onBack={handleBack}
         isEditable={form.isEditable}
         existingEntry={existingEntry}
-        loadingEntry={loadingEntry}
+        loadingEntry={loadingEntry || checkingSubmission}
       />
     </div>
   );

@@ -26,6 +26,7 @@ import {
   CalendarOff,
   Clock,
   Info,
+  CheckCircle2,
 } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +109,8 @@ export interface FormSchema {
   assignedClassCodes?: string[];
   assignedTeacherCodes?: string[];
   isEditable?: boolean;
+  oneTimeFillOnly?: boolean;
+  multipleInstances?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -170,6 +173,9 @@ export default function FormBuilderList({
   const [submissionCounts, setSubmissionCounts] = useState<
     Record<string, number>
   >({});
+  const [userSubmissions, setUserSubmissions] = useState<
+    Record<string, boolean>
+  >({});
   const [selectedForm, setSelectedForm] = useState<FormSchema | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -183,6 +189,7 @@ export default function FormBuilderList({
     if (user) {
       fetchForms();
       fetchSubmissionCounts();
+      fetchUserSubmissions();
     }
   }, [user]);
 
@@ -204,6 +211,11 @@ export default function FormBuilderList({
 
       const data = await response.json();
       setForms(data.forms || []);
+
+      // After forms are loaded, check user submissions for students
+      if (user.userType === "student" && data.forms && data.forms.length > 0) {
+        fetchUserSubmissionsForForms(data.forms);
+      }
     } catch (error) {
       console.error("Error fetching forms:", error);
     } finally {
@@ -226,6 +238,60 @@ export default function FormBuilderList({
     } catch (error) {
       console.error("Error fetching submission counts:", error);
     }
+  };
+
+  const fetchUserSubmissionsForForms = async (formsList: FormSchema[]) => {
+    if (!user || user.userType !== "student") return;
+
+    try {
+      // Get all form IDs from provided forms
+      const formIds = formsList
+        .map((form) => form._id)
+        .filter((id) => id) as string[];
+
+      if (formIds.length === 0) return;
+
+      // Check each form for user submissions
+      const submissionPromises = formIds.map(async (formId) => {
+        try {
+          const response = await fetch(
+            `/api/formbuilder/submissions?formId=${formId}&limit=1`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
+          );
+
+          if (!response.ok) return { formId, hasSubmitted: false };
+
+          const data = await response.json();
+          return {
+            formId,
+            hasSubmitted: data.submissions && data.submissions.length > 0,
+          };
+        } catch (error) {
+          console.error(`Error checking submission for form ${formId}:`, error);
+          return { formId, hasSubmitted: false };
+        }
+      });
+
+      const results = await Promise.all(submissionPromises);
+
+      const submissionMap: Record<string, boolean> = {};
+      results.forEach(({ formId, hasSubmitted }) => {
+        submissionMap[formId] = hasSubmitted;
+      });
+
+      setUserSubmissions(submissionMap);
+    } catch (error) {
+      console.error("Error fetching user submissions:", error);
+    }
+  };
+
+  const fetchUserSubmissions = async () => {
+    if (!user || user.userType !== "student") return;
+    fetchUserSubmissionsForForms(forms);
   };
 
   const fetchClassesAndTeachers = async () => {
@@ -290,6 +356,8 @@ export default function FormBuilderList({
       assignedClassCodes: form.assignedClassCodes || [],
       assignedTeacherCodes: form.assignedTeacherCodes || [],
       isEditable: form.isEditable || false,
+      oneTimeFillOnly: form.oneTimeFillOnly || false,
+      multipleInstances: form.multipleInstances || false,
     });
     setSettingsOpen(true);
   };
@@ -371,6 +439,28 @@ export default function FormBuilderList({
     setSelectedForm({
       ...selectedForm,
       isEditable: checked,
+    });
+  };
+
+  const handleOneTimeFillOnlyChange = (checked: boolean) => {
+    if (!selectedForm) return;
+
+    setSelectedForm({
+      ...selectedForm,
+      oneTimeFillOnly: checked,
+      // If oneTimeFillOnly is enabled, disable multipleInstances
+      multipleInstances: checked ? false : selectedForm.multipleInstances,
+    });
+  };
+
+  const handleMultipleInstancesChange = (checked: boolean) => {
+    if (!selectedForm) return;
+
+    setSelectedForm({
+      ...selectedForm,
+      multipleInstances: checked,
+      // If multipleInstances is enabled, disable oneTimeFillOnly
+      oneTimeFillOnly: checked ? false : selectedForm.oneTimeFillOnly,
     });
   };
 
@@ -622,206 +712,271 @@ export default function FormBuilderList({
                 ></div>
 
                 <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-semibold text-lg hover:text-blue-600 transition-colors duration-200">
-                      {form.title}
-                    </h3>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+                  {/* Check if user has already submitted this form and it's oneTimeFillOnly */}
+                  {user?.userType === "student" &&
+                  form.oneTimeFillOnly &&
+                  userSubmissions[form._id!] ? (
+                    // Show "Already Submitted" content
+                    <div className="text-center space-y-4">
+                      <div className="flex justify-center">
+                        <CheckCircle2 className="h-12 w-12 text-green-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-700 mb-2">
+                          {form.title}
+                        </h3>
+                        <p className="text-sm text-orange-600 font-medium mb-2">
+                          فرم قبلاً تکمیل شده
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          شما قبلاً این فرم را تکمیل کرده‌اید. این فرم تنها یک
+                          بار قابل تکمیل است.
+                        </p>
+                      </div>
+
+                      {/* Show some form badges */}
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Badge
+                          variant="outline"
+                          className="bg-orange-50 border-0 text-orange-700 font-normal rounded-lg text-xs"
                         >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-56 rounded-xl shadow-lg border-gray-200"
-                      >
-                        <DropdownMenuLabel className="text-sm">
-                          گزینه‌های فرم
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-
-                        {/* Show only "مشاهده مستقل فرم" for students */}
-                        {user?.userType === "student" ? (
-                          <DropdownMenuItem asChild>
-                            <Link
-                              className="flex items-center cursor-pointer hover:bg-gray-50"
-                              target="_blank"
-                              href={`/admin/formbuilder/view?id=${form._id}`}
+                          <Activity className="h-3 w-3 mr-1" />
+                          یک بار تکمیل
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 border-0 text-green-700 font-normal rounded-lg text-xs"
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          تکمیل شده
+                        </Badge>
+                      </div>
+                    </div>
+                  ) : (
+                    // Show normal form content
+                    <>
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-semibold text-lg hover:text-blue-600 transition-colors duration-200">
+                          {form.title}
+                        </h3>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
                             >
-                              <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
-                              <span>مشاهده مستقل فرم</span>
-                            </Link>
-                          </DropdownMenuItem>
-                        ) : (
-                          // Show all options for teachers and school admins
-                          <>
-                            <DropdownMenuItem
-                              onClick={() => onEdit(form)}
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <Edit className="h-4 w-4 ml-2 text-indigo-500" />
-                              <span>ویرایش فرم</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onPreview(form)}
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <Eye className="h-4 w-4 ml-2 text-blue-500" />
-                              <span>پیش‌نمایش فرم</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleSettingsClick(form)}
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <Settings className="h-4 w-4 ml-2 text-gray-500" />
-                              <span>تنظیمات فرم</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link
-                                className="flex items-center cursor-pointer hover:bg-gray-50"
-                                target="_blank"
-                                href={`/admin/formbuilder/view?id=${form._id}`}
-                              >
-                                <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
-                                <span>مشاهده مستقل فرم</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer hover:bg-gray-50">
-                              <FormSubmissionViewer
-                                formId={form._id!}
-                                formTitle={form.title}
-                                trigger={
-                                  <div className="flex items-center w-full">
-                                    <FileText className="h-4 w-4 ml-2 text-amber-500" />
-                                    <span>مشاهده پاسخ‌ها</span>
-                                  </div>
-                                }
-                              />
-                            </DropdownMenuItem>
-
-                            {/* Add export options */}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-xs text-gray-500">
-                              دریافت پاسخ‌ها
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-56 rounded-xl shadow-lg border-gray-200"
+                          >
+                            <DropdownMenuLabel className="text-sm">
+                              گزینه‌های فرم
                             </DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleExportSubmissions(form._id!, "json")
-                              }
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <FileJson className="h-4 w-4 ml-2 text-violet-500" />
-                              <span>دریافت با فرمت JSON</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleExportSubmissions(form._id!, "csv")
-                              }
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <FileText className="h-4 w-4 ml-2 text-emerald-500" />
-                              <span>دریافت با فرمت CSV</span>
-                            </DropdownMenuItem>
-
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(form._id!)}
-                              className="text-red-600 hover:text-red-700 cursor-pointer hover:bg-red-50"
+
+                            {/* Show only "مشاهده مستقل فرم" for students */}
+                            {user?.userType === "student" ? (
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  className="flex items-center cursor-pointer hover:bg-gray-50"
+                                  target="_blank"
+                                  href={`/admin/formbuilder/view?id=${form._id}`}
+                                >
+                                  <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
+                                  <span>مشاهده مستقل فرم</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            ) : (
+                              // Show all options for teachers and school admins
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => onEdit(form)}
+                                  className="cursor-pointer hover:bg-gray-50"
+                                >
+                                  <Edit className="h-4 w-4 ml-2 text-indigo-500" />
+                                  <span>ویرایش فرم</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => onPreview(form)}
+                                  className="cursor-pointer hover:bg-gray-50"
+                                >
+                                  <Eye className="h-4 w-4 ml-2 text-blue-500" />
+                                  <span>پیش‌نمایش فرم</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSettingsClick(form)}
+                                  className="cursor-pointer hover:bg-gray-50"
+                                >
+                                  <Settings className="h-4 w-4 ml-2 text-gray-500" />
+                                  <span>تنظیمات فرم</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    className="flex items-center cursor-pointer hover:bg-gray-50"
+                                    target="_blank"
+                                    href={`/admin/formbuilder/view?id=${form._id}`}
+                                  >
+                                    <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
+                                    <span>مشاهده مستقل فرم</span>
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer hover:bg-gray-50">
+                                  <FormSubmissionViewer
+                                    formId={form._id!}
+                                    formTitle={form.title}
+                                    trigger={
+                                      <div className="flex items-center w-full">
+                                        <FileText className="h-4 w-4 ml-2 text-amber-500" />
+                                        <span>مشاهده پاسخ‌ها</span>
+                                      </div>
+                                    }
+                                  />
+                                </DropdownMenuItem>
+
+                                {/* Add export options */}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs text-gray-500">
+                                  دریافت پاسخ‌ها
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleExportSubmissions(form._id!, "json")
+                                  }
+                                  className="cursor-pointer hover:bg-gray-50"
+                                >
+                                  <FileJson className="h-4 w-4 ml-2 text-violet-500" />
+                                  <span>دریافت با فرمت JSON</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleExportSubmissions(form._id!, "csv")
+                                  }
+                                  className="cursor-pointer hover:bg-gray-50"
+                                >
+                                  <FileText className="h-4 w-4 ml-2 text-emerald-500" />
+                                  <span>دریافت با فرمت CSV</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(form._id!)}
+                                  className="text-red-600 hover:text-red-700 cursor-pointer hover:bg-red-50"
+                                >
+                                  <Trash className="h-4 w-4 ml-2" />
+                                  <span>حذف فرم</span>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <div className="text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <Badge
+                            variant="outline"
+                            className="bg-gray-50 border-0 text-gray-600 font-normal rounded-lg"
+                          >
+                            <Hash className="h-3 w-3 mr-1" />
+                            {form.fields?.length || 0} فیلد
+                          </Badge>
+
+                          {form.isMultiStep && (
+                            <Badge
+                              variant="outline"
+                              className="bg-purple-50 border-0 text-purple-700 font-normal rounded-lg"
                             >
-                              <Trash className="h-4 w-4 ml-2" />
-                              <span>حذف فرم</span>
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                              <Layers className="h-3 w-3 mr-1" />
+                              چند مرحله‌ای
+                            </Badge>
+                          )}
 
-                  <div className="text-sm text-gray-500">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <Badge
-                        variant="outline"
-                        className="bg-gray-50 border-0 text-gray-600 font-normal rounded-lg"
-                      >
-                        <Hash className="h-3 w-3 mr-1" />
-                        {form.fields?.length || 0} فیلد
-                      </Badge>
+                          {form.isEditable && (
+                            <Badge
+                              variant="outline"
+                              className="bg-indigo-50 border-0 text-indigo-700 font-normal rounded-lg"
+                            >
+                              <Edit2 className="h-3 w-3 mr-1" />
+                              قابل ویرایش
+                            </Badge>
+                          )}
 
-                      {form.isMultiStep && (
-                        <Badge
-                          variant="outline"
-                          className="bg-purple-50 border-0 text-purple-700 font-normal rounded-lg"
-                        >
-                          <Layers className="h-3 w-3 mr-1" />
-                          چند مرحله‌ای
-                        </Badge>
-                      )}
+                          {form.oneTimeFillOnly && (
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-50 border-0 text-orange-700 font-normal rounded-lg"
+                            >
+                              <Activity className="h-3 w-3 mr-1" />
+                              یک بار تکمیل
+                            </Badge>
+                          )}
 
-                      {form.isEditable && (
-                        <Badge
-                          variant="outline"
-                          className="bg-indigo-50 border-0 text-indigo-700 font-normal rounded-lg"
-                        >
-                          <Edit2 className="h-3 w-3 mr-1" />
-                          قابل ویرایش
-                        </Badge>
-                      )}
+                          {form.multipleInstances && (
+                            <Badge
+                              variant="outline"
+                              className="bg-green-50 border-0 text-green-700 font-normal rounded-lg"
+                            >
+                              <Layers className="h-3 w-3 mr-1" />
+                              چند نمونه
+                            </Badge>
+                          )}
 
-                      {/* Show form status */}
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "border-0 font-normal rounded-lg",
-                          getFormStatus(form).color
-                        )}
-                      >
-                        <Activity className="h-3 w-3 mr-1" />
-                        {getFormStatus(form).label}
-                      </Badge>
-                    </div>
+                          {/* Show form status */}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "border-0 font-normal rounded-lg",
+                              getFormStatus(form).color
+                            )}
+                          >
+                            <Activity className="h-3 w-3 mr-1" />
+                            {getFormStatus(form).label}
+                          </Badge>
+                        </div>
 
-                    <div className="mt-3 text-xs space-y-1 bg-gray-50 p-3 rounded-lg">
-                      {form.formStartEntryDatetime && (
-                        <p className="flex items-center gap-1">
-                          <CalendarDays className="h-3 w-3 text-blue-500" />
-                          <span>از:</span>{" "}
-                          {/* {showFormattedDate(form.formStartEntryDatetime)} */}
-                          {form.formStartEntryDatetime}{" "}
-                        </p>
-                      )}
-                      {form.formEndEntryDateTime && (
-                        <p className="flex items-center gap-1">
-                          <CalendarOff className="h-3 w-3 text-red-500" />
-                          <span>تا:</span>
-                          {/* {showFormattedDate()} */}
-                          {form.formEndEntryDateTime}
-                        </p>
-                      )}
-                    </div>
+                        <div className="mt-3 text-xs space-y-1 bg-gray-50 p-3 rounded-lg">
+                          {form.formStartEntryDatetime && (
+                            <p className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3 text-blue-500" />
+                              <span>از:</span>{" "}
+                              {/* {showFormattedDate(form.formStartEntryDatetime)} */}
+                              {form.formStartEntryDatetime}{" "}
+                            </p>
+                          )}
+                          {form.formEndEntryDateTime && (
+                            <p className="flex items-center gap-1">
+                              <CalendarOff className="h-3 w-3 text-red-500" />
+                              <span>تا:</span>
+                              {/* {showFormattedDate()} */}
+                              {form.formEndEntryDateTime}
+                            </p>
+                          )}
+                        </div>
 
-                    <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100">
-                      <p className="text-xs flex items-center text-gray-400">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {new Date(form.updatedAt || "").toLocaleDateString(
-                          "fa-IR"
-                        )}
-                      </p>
-                      {form._id && (
-                        <Badge
-                          variant="outline"
-                          className="bg-blue-50 text-blue-600 border-0 rounded-lg font-normal"
-                        >
-                          <Users className="h-3 w-3 mr-1" />
-                          {submissionCounts[form._id] || 0} پاسخ
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                        <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100">
+                          <p className="text-xs flex items-center text-gray-400">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {new Date(form.updatedAt || "").toLocaleDateString(
+                              "fa-IR"
+                            )}
+                          </p>
+                          {form._id && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-600 border-0 rounded-lg font-normal"
+                            >
+                              <Users className="h-3 w-3 mr-1" />
+                              {submissionCounts[form._id] || 0} پاسخ
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1034,27 +1189,84 @@ export default function FormBuilderList({
                 )}
               </div>
 
-              {/* Form Editable Option */}
-              <div className="bg-blue-50 p-4 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label
-                      htmlFor="form-editable"
-                      className="text-sm font-medium flex items-center"
-                    >
-                      <Edit2 className="h-4 w-4 ml-2 text-blue-500" />
-                      امکان ویرایش فرم
-                    </Label>
-                    <p className="text-xs text-gray-500 mt-1 mr-6">
-                      کاربران می‌توانند پاسخ‌های خود را ویرایش کنند
-                    </p>
+              {/* Form Options Section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl space-y-4">
+                <h4 className="text-sm font-medium text-gray-700 flex items-center mb-3">
+                  <Settings className="h-4 w-4 mr-2 text-indigo-500" />
+                  تنظیمات ورودی فرم
+                </h4>
+
+                {/* Form Editable Option */}
+                <div className="bg-white p-3 rounded-lg border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label
+                        htmlFor="form-editable"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Edit2 className="h-4 w-4 ml-2 text-blue-500" />
+                        امکان ویرایش فرم
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1 mr-6">
+                        کاربران می‌توانند پاسخ‌های خود را ویرایش کنند
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="form-editable"
+                      checked={selectedForm?.isEditable}
+                      onCheckedChange={handleEditableChange}
+                      className="h-5 w-5 data-[state=checked]:bg-blue-500"
+                    />
                   </div>
-                  <Checkbox
-                    id="form-editable"
-                    checked={selectedForm?.isEditable}
-                    onCheckedChange={handleEditableChange}
-                    className="h-5 w-5 data-[state=checked]:bg-blue-500"
-                  />
+                </div>
+
+                {/* One Time Fill Only Option */}
+                <div className="bg-white p-3 rounded-lg border border-orange-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label
+                        htmlFor="one-time-fill"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Activity className="h-4 w-4 ml-2 text-orange-500" />
+                        فقط یک بار قابل تکمیل
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1 mr-6">
+                        هر کاربر فقط یک بار می‌تواند این فرم را تکمیل کند
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="one-time-fill"
+                      checked={selectedForm?.oneTimeFillOnly}
+                      onCheckedChange={handleOneTimeFillOnlyChange}
+                      className="h-5 w-5 data-[state=checked]:bg-orange-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Multiple Instances Option */}
+                <div className="bg-white p-3 rounded-lg border border-green-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label
+                        htmlFor="multiple-instances"
+                        className="text-sm font-medium flex items-center"
+                      >
+                        <Layers className="h-4 w-4 ml-2 text-green-500" />
+                        چندین نمونه قابل تکمیل
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1 mr-6">
+                        کاربران می‌توانند چندین بار این فرم را به عنوان
+                        نمونه‌های جدید تکمیل کنند
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="multiple-instances"
+                      checked={selectedForm?.multipleInstances}
+                      onCheckedChange={handleMultipleInstancesChange}
+                      className="h-5 w-5 data-[state=checked]:bg-green-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1064,7 +1276,7 @@ export default function FormBuilderList({
                   <Info className="h-4 w-4 mr-1" />
                   خلاصه وضعیت
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="flex items-center p-2 bg-white rounded-lg shadow-sm">
                     <CalendarDays className="h-4 w-4 text-blue-500 ml-2" />
                     <div>
@@ -1084,6 +1296,49 @@ export default function FormBuilderList({
                         {showFormattedDate(selectedForm?.formEndEntryDateTime)}
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Form Options Summary */}
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <h5 className="text-xs font-medium text-gray-600 mb-2">
+                    تنظیمات فرم:
+                  </h5>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedForm?.isEditable && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+                      >
+                        <Edit2 className="h-3 w-3 mr-1" />
+                        قابل ویرایش
+                      </Badge>
+                    )}
+                    {selectedForm?.oneTimeFillOnly && (
+                      <Badge
+                        variant="outline"
+                        className="bg-orange-50 text-orange-700 border-orange-200 text-xs"
+                      >
+                        <Activity className="h-3 w-3 mr-1" />
+                        یک بار تکمیل
+                      </Badge>
+                    )}
+                    {selectedForm?.multipleInstances && (
+                      <Badge
+                        variant="outline"
+                        className="bg-green-50 text-green-700 border-green-200 text-xs"
+                      >
+                        <Layers className="h-3 w-3 mr-1" />
+                        چند نمونه
+                      </Badge>
+                    )}
+                    {!selectedForm?.isEditable &&
+                      !selectedForm?.oneTimeFillOnly &&
+                      !selectedForm?.multipleInstances && (
+                        <span className="text-xs text-gray-500">
+                          هیچ تنظیم خاصی فعال نیست
+                        </span>
+                      )}
                   </div>
                 </div>
               </div>
