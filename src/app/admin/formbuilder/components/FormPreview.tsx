@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { FormSchema, FormField as BaseFormField } from "./FormBuilderList";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -295,6 +296,7 @@ export default function FormPreview({
   existingEntry,
   loadingEntry = false,
 }: FormPreviewProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
@@ -650,6 +652,30 @@ export default function FormPreview({
 
         const method = isEditMode && entryId ? "PUT" : "POST";
 
+        // Prepare user information for submission
+        const userInfo = user
+          ? {
+              username: user.username,
+              userType: user.userType,
+              // Extract name and family based on user type
+              userName:
+                user.userType === "student"
+                  ? user.name.split(" ")[0] || user.name // First part of the name
+                  : user.userType === "teacher"
+                  ? user.name
+                  : user.name,
+              userFamily:
+                user.userType === "student"
+                  ? user.name.split(" ").slice(1).join(" ") || "" // Rest of the name
+                  : "", // Teachers and schools don't have separate family names
+            }
+          : {
+              username: "anonymous",
+              userType: "unknown",
+              userName: "",
+              userFamily: "",
+            };
+
         // Submit to API
         const response = await fetch(apiEndpoint, {
           method: method,
@@ -660,6 +686,7 @@ export default function FormPreview({
           body: JSON.stringify({
             formId: form._id,
             answers: completeFormData,
+            userInfo: userInfo,
           }),
         });
 

@@ -52,6 +52,10 @@ interface Submission {
   createdAt: string;
   updatedAt: string;
   submittedBy: string;
+  username?: string;
+  userName?: string;
+  userFamily?: string;
+  userType?: string;
 }
 
 interface PaginationInfo {
@@ -199,7 +203,42 @@ export function FormSubmissionViewer({
           <DialogHeader>
             <DialogTitle>جزئیات پاسخ</DialogTitle>
             <DialogDescription>
-              ارسال شده در {formatDate(viewingSubmission.createdAt)}
+              <div className="space-y-2">
+                <div>
+                  ارسال شده در {formatDate(viewingSubmission.createdAt)}
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span>
+                    کد کاربری:{" "}
+                    <strong>
+                      {viewingSubmission.username ||
+                        viewingSubmission.submittedBy}
+                    </strong>
+                  </span>
+                  {viewingSubmission.userName && (
+                    <span>
+                      نام: <strong>{viewingSubmission.userName}</strong>
+                    </span>
+                  )}
+                  {viewingSubmission.userFamily && (
+                    <span>
+                      نام خانوادگی:{" "}
+                      <strong>{viewingSubmission.userFamily}</strong>
+                    </span>
+                  )}
+                  {viewingSubmission.userType && (
+                    <Badge variant="outline" className="text-xs">
+                      {viewingSubmission.userType === "student"
+                        ? "دانش آموز"
+                        : viewingSubmission.userType === "teacher"
+                        ? "معلم"
+                        : viewingSubmission.userType === "school"
+                        ? "مدرسه"
+                        : viewingSubmission.userType}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </DialogDescription>
           </DialogHeader>
 
@@ -335,7 +374,10 @@ export function FormSubmissionViewer({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
-                  <TableHead>کاربر</TableHead>
+                  <TableHead>کد کاربری</TableHead>
+                  <TableHead>نام</TableHead>
+                  <TableHead>نام خانوادگی</TableHead>
+                  <TableHead>نوع کاربر</TableHead>
                   <TableHead>تاریخ</TableHead>
                   <TableHead className="text-left">عملیات</TableHead>
                 </TableRow>
@@ -352,6 +394,15 @@ export function FormSubmissionViewer({
                         <Skeleton className="h-5 w-24" />
                       </TableCell>
                       <TableCell>
+                        <Skeleton className="h-5 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell>
                         <Skeleton className="h-5 w-32" />
                       </TableCell>
                       <TableCell>
@@ -362,7 +413,7 @@ export function FormSubmissionViewer({
                 ) : submissions.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={7}
                       className="text-center py-6 text-gray-500"
                     >
                       هیچ پاسخی ثبت نشده است
@@ -374,7 +425,26 @@ export function FormSubmissionViewer({
                       <TableCell>
                         {(pagination.page - 1) * pagination.limit + index + 1}
                       </TableCell>
-                      <TableCell>{submission.submittedBy}</TableCell>
+                      <TableCell>
+                        {submission.username || submission.submittedBy}
+                      </TableCell>
+                      <TableCell>{submission.userName || "-"}</TableCell>
+                      <TableCell>{submission.userFamily || "-"}</TableCell>
+                      <TableCell>
+                        {submission.userType ? (
+                          <Badge variant="outline" className="text-xs">
+                            {submission.userType === "student"
+                              ? "دانش آموز"
+                              : submission.userType === "teacher"
+                              ? "معلم"
+                              : submission.userType === "school"
+                              ? "مدرسه"
+                              : submission.userType}
+                          </Badge>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
                       <TableCell>{formatDate(submission.createdAt)}</TableCell>
                       <TableCell>
                         <Button

@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       const worksheet = workbook.addWorksheet(form.title || 'Form Submissions');
       
       // Define headers
-      const headers = ['Row', 'User', 'Submission Date'];
+      const headers = ['Row', 'Username', 'User Name', 'User Family', 'User Type', 'Submission Date'];
       const fieldsMap = new Map<string, string>(); // Map to store field name to column mapping
       
       // Add field headers from the form definition
@@ -87,12 +87,18 @@ export async function GET(request: NextRequest) {
         // Create a new row
         const row = worksheet.addRow([
           index + 1, // Row number
-          submission.submittedBy || 'Anonymous',
+          submission.username || submission.submittedBy || 'Anonymous',
+          submission.userName || '',
+          submission.userFamily || '',
+          submission.userType ? 
+            (submission.userType === 'student' ? 'دانش آموز' : 
+             submission.userType === 'teacher' ? 'معلم' : 
+             submission.userType === 'school' ? 'مدرسه' : submission.userType) : '',
           new Date(submission.createdAt).toLocaleString('fa-IR')
         ]);
         
         // Track current column
-        let columnIndex = 4; // Start after the first 3 fixed columns
+        let columnIndex = 7; // Start after the first 6 fixed columns
         
         // Add field values
         Array.from(fieldsMap.entries()).forEach(([fieldName]) => {

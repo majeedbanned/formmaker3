@@ -124,10 +124,15 @@ export async function POST(request: NextRequest) {
         answers: data.answers,
         createdAt: new Date(),
         updatedAt: new Date(),
-        submittedBy: request.headers.get('x-user') || data.userId || 'anonymous',
+        submittedBy: request.headers.get('x-user') || data.userId || data.userInfo?.username || 'anonymous',
         submissionSource: data.source || 'api',
         userAgent: request.headers.get('user-agent') || '',
-        ipAddress: request.headers.get('x-forwarded-for') || ''
+        ipAddress: request.headers.get('x-forwarded-for') || '',
+        // Add new user fields
+        username: data.userInfo?.username || request.headers.get('x-username') || 'anonymous',
+        userName: data.userInfo?.userName || '',
+        userFamily: data.userInfo?.userFamily || '',
+        userType: data.userInfo?.userType || ''
       };
       
       // Insert the form submission

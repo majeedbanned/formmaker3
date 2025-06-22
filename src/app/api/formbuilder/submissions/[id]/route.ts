@@ -117,15 +117,33 @@ export async function PUT(
         );
       }
       
+      // Prepare update data
+      const updateData: {
+        answers: Record<string, unknown>;
+        updatedAt: Date;
+        username?: string;
+        userName?: string;
+        userFamily?: string;
+        userType?: string;
+        submittedBy?: string;
+      } = {
+        answers: data.answers,
+        updatedAt: new Date()
+      };
+
+      // Add user information if provided
+      if (data.userInfo) {
+        updateData.username = data.userInfo.username;
+        updateData.userName = data.userInfo.userName;
+        updateData.userFamily = data.userInfo.userFamily;
+        updateData.userType = data.userInfo.userType;
+        updateData.submittedBy = data.userInfo.username;
+      }
+
       // Update the form submission
       const result = await formsInputCollection.updateOne(
         { _id: new ObjectId(params.id) },
-        {
-          $set: {
-            answers: data.answers,
-            updatedAt: new Date()
-          }
-        }
+        { $set: updateData }
       );
       
       // Return success response

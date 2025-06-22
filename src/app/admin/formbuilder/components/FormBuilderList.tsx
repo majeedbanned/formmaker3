@@ -578,20 +578,37 @@ export default function FormBuilderList({
           }
         );
 
-        // Create CSV header
+        // Create CSV header with user information
         const keys = Array.from(allKeys);
-        let csv = ["id", "submitted_date", ...keys].join(",") + "\n";
+        let csv =
+          [
+            "id",
+            "submitted_date",
+            "username",
+            "user_name",
+            "user_family",
+            "user_type",
+            ...keys,
+          ].join(",") + "\n";
 
         // Add rows
         data.submissions.forEach(
           (submission: {
             _id: string;
             createdAt: string;
+            username?: string;
+            userName?: string;
+            userFamily?: string;
+            userType?: string;
             answers?: Record<string, unknown>;
           }) => {
             const row = [
               submission._id,
               new Date(submission.createdAt).toLocaleString(),
+              submission.username || "",
+              submission.userName || "",
+              submission.userFamily || "",
+              submission.userType || "",
               ...keys.map((key) => {
                 const value = submission.answers?.[key];
                 // Handle different value types for CSV
