@@ -54,6 +54,14 @@ const AVAILABLE_WIDGETS: AvailableWidget[] = [
     available: true,
   },
   {
+    type: "FormsWidget",
+    name: "فرم‌های من",
+    description: "مشاهده و مدیریت فرم‌ها",
+    icon: FileText,
+    color: "bg-indigo-500",
+    available: true,
+  },
+  {
     type: "AnalyticsWidget",
     name: "آمار و تحلیل",
     description: "نمودارها و گزارش‌های آماری",

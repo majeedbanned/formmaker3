@@ -5,6 +5,7 @@ import {
   SurveyWidget,
   BirthdateWidget,
   StudentsSearchWidget,
+  FormsWidget,
 } from "../components/widgets";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
@@ -39,6 +40,7 @@ const WIDGET_COMPONENTS = {
   SurveyWidget: SurveyWidget,
   BirthdateWidget: BirthdateWidget,
   StudentsSearchWidget: StudentsSearchWidget,
+  FormsWidget: FormsWidget,
 };
 
 export default function Dashboard() {
