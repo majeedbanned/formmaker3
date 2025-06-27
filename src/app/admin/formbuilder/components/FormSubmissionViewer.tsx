@@ -115,7 +115,7 @@ export function FormSubmissionViewer({
       setPagination(data.pagination || pagination);
     } catch (err) {
       console.error("Error fetching submissions:", err);
-      setError(err instanceof Error ? err.message : "خطا در دریافت اطلاعات");
+      setError(err instanceof Error ? err.message : "خطا در دریافت  اطلاعات");
     } finally {
       setLoading(false);
     }
