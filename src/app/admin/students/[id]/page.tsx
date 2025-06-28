@@ -26,6 +26,7 @@ import Link from "next/link";
 import PresenceTab from "./components/PresenceTab";
 import GradesTab from "./components/GradesTab";
 import ReportCardTab from "./components/ReportCardTab";
+import StudentFormsTab from "./components/StudentFormsTab";
 
 interface Student {
   _id: string;
@@ -296,7 +297,7 @@ export default function StudentProfilePage() {
             className="flex items-center space-x-2 space-x-reverse"
           >
             <MessageSquare className="h-4 w-4" />
-            <span>رفتار</span>
+            <span>فرم‌ها</span>
           </TabsTrigger>
           <TabsTrigger
             value="assignments"
@@ -327,20 +328,7 @@ export default function StudentProfilePage() {
         </TabsContent>
 
         <TabsContent value="behavior" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <MessageSquare className="h-5 w-5 ml-2 text-blue-600" />
-                رفتار و انضباط
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">این بخش در حال توسعه است</p>
-              </div>
-            </CardContent>
-          </Card>
+          <StudentFormsTab studentId={studentId} />
         </TabsContent>
 
         <TabsContent value="assignments" className="mt-6">
