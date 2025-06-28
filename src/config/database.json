@@ -15,6 +15,7 @@
   }
   ,
   "files.farsamooz.ir": {
+    "schoolCode":"95012284",
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/files?authSource=admin",
     "description": "files.farsamooz.ir"
   }
