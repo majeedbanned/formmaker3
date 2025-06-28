@@ -11,6 +11,18 @@ interface AssessmentEntry {
   weight?: number;
 }
 
+// Define types for custom assessments
+type CustomAssessment = {
+  _id: string;
+  schoolCode: string;
+  teacherCode?: string;
+  type: 'title' | 'value';
+  value: string;
+  weight?: number;
+  isGlobal: boolean;
+  createdAt: Date;
+};
+
 interface WeightedGradeInfo {
   courseName: string;
   grade: number;
@@ -214,31 +226,49 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Fetch assessment values for each teacher-course pair
-    const courseValues: Record<string, Record<string, number>> = {};
-    for (const tc of teacherCourses) {
-      try {
-        const assessments = await db
-          .collection("assessments")
-          .find({
-            teacherCode: tc.teacherCode,
-            courseCode: tc.courseCode,
-            schoolCode: schoolCode
-          })
-          .toArray();
+    // Fetch custom assessments from assessments collection
+    // Get all teachers who teach this student
+    const allTeacherCodes = [...new Set(teacherCourses.map((tc: { teacherCode: string }) => tc.teacherCode))];
+    
+    const customAssessmentsResults = await db
+      .collection("assessments")
+      .find({
+        schoolCode: schoolCode,
+        $or: [
+          { isGlobal: true },
+          { teacherCode: { $in: allTeacherCodes } }
+        ]
+      })
+      .toArray();
 
-        const customValues: Record<string, number> = {};
-        (assessments as any[]).forEach((assessment: { value?: string; weight?: number }) => {
-          if (assessment.value && assessment.weight !== undefined) {
-            customValues[assessment.value] = assessment.weight;
-          }
-        });
+    // Convert to proper type
+    const customAssessments = customAssessmentsResults.map(doc => ({
+      _id: doc._id.toString(),
+      schoolCode: doc.schoolCode,
+      teacherCode: doc.teacherCode,
+      type: doc.type,
+      value: doc.value,
+      weight: doc.weight,
+      isGlobal: doc.isGlobal,
+      createdAt: doc.createdAt,
+    })) as CustomAssessment[];
 
-        courseValues[tc.courseCode] = customValues;
-      } catch (error) {
-        console.error(`Error fetching assessment values for ${tc.courseCode}:`, error);
-      }
-    }
+    // Create assessment values map that includes custom assessments
+    const assessmentValues: Record<string, Record<string, number>> = {};
+    
+    // Build assessment values for each teacher-course combination
+    teacherCourses.forEach((tc: { teacherCode: string; courseCode: string }) => {
+      const teacherCourseKey = `${tc.teacherCode}_${tc.courseCode}`;
+      assessmentValues[teacherCourseKey] = { ...ASSESSMENT_VALUES_MAP };
+      
+      // Add custom assessments for this teacher
+      customAssessments.forEach(assessment => {
+        if (assessment.type === 'value' && 
+            (assessment.isGlobal || assessment.teacherCode === tc.teacherCode)) {
+          assessmentValues[teacherCourseKey][assessment.value] = assessment.weight || 0;
+        }
+      });
+    });
 
     // Initialize student report card
     const studentReport: StudentReportCard = {
@@ -271,11 +301,12 @@ export async function GET(request: NextRequest) {
         .toArray();
 
       // Filter for the selected school year
-      const filteredCellData = (cellData as any[]).filter((cell: { date?: string }) => {
-        if (!cell.date) return false;
+      const filteredCellData = cellData.filter((cell) => {
+        const cellRecord = cell as { date?: string };
+        if (!cellRecord.date) return false;
 
         try {
-          const cellDate = new Date(cell.date);
+          const cellDate = new Date(cellRecord.date);
           if (isNaN(cellDate.getTime())) return false;
 
           const [cellYear, cellMonth] = gregorian_to_jalali(
@@ -319,16 +350,17 @@ export async function GET(request: NextRequest) {
       }
 
       // Process cells for each month
-      filteredCellData.forEach((cell: { 
-        date?: string; 
-        grades?: { value: number }[]; 
-        assessments?: AssessmentEntry[]; 
-        presenceStatus?: "present" | "absent" | "late" | null;
-      }) => {
-        if (!cell.date) return;
+      filteredCellData.forEach((cell) => {
+        const cellRecord = cell as { 
+          date?: string; 
+          grades?: { value: number }[]; 
+          assessments?: AssessmentEntry[]; 
+          presenceStatus?: "present" | "absent" | "late" | null;
+        };
+        if (!cellRecord.date) return;
 
         try {
-          const cellDate = new Date(cell.date);
+          const cellDate = new Date(cellRecord.date);
           const [, cellMonth] = gregorian_to_jalali(
             cellDate.getFullYear(),
             cellDate.getMonth() + 1,
@@ -338,10 +370,10 @@ export async function GET(request: NextRequest) {
           const monthKey = cellMonth.toString();
 
           // Process grades
-          if (cell.grades && cell.grades.length > 0) {
+          if (cellRecord.grades && cellRecord.grades.length > 0) {
             const gradeAverage =
-              cell.grades.reduce((sum: number, grade: { value: number }) => sum + grade.value, 0) /
-              cell.grades.length;
+              cellRecord.grades.reduce((sum: number, grade: { value: number }) => sum + grade.value, 0) /
+              cellRecord.grades.length;
 
             const currentGrade = studentReport.courses[tc.courseCode].monthlyGrades[monthKey];
 
@@ -354,28 +386,28 @@ export async function GET(request: NextRequest) {
           }
 
           // Store assessments
-          if (cell.assessments && cell.assessments.length > 0) {
+          if (cellRecord.assessments && cellRecord.assessments.length > 0) {
             studentReport.courses[tc.courseCode].monthlyAssessments[monthKey] = [
               ...studentReport.courses[tc.courseCode].monthlyAssessments[monthKey],
-              ...cell.assessments,
+              ...cellRecord.assessments,
             ];
           }
 
           // Track presence
-          if (cell.presenceStatus !== null) {
+          if (cellRecord.presenceStatus !== null) {
             const presence = studentReport.courses[tc.courseCode].monthlyPresence[monthKey];
             presence.total += 1;
 
-            if (cell.presenceStatus === "present") {
+            if (cellRecord.presenceStatus === "present") {
               presence.present += 1;
-            } else if (cell.presenceStatus === "absent") {
+            } else if (cellRecord.presenceStatus === "absent") {
               presence.absent += 1;
-            } else if (cell.presenceStatus === "late") {
+            } else if (cellRecord.presenceStatus === "late") {
               presence.late += 1;
             }
           }
         } catch (err) {
-          console.error("Error processing cell date:", cell.date, err);
+          console.error("Error processing cell date:", cellRecord.date, err);
         }
       });
 
@@ -386,11 +418,12 @@ export async function GET(request: NextRequest) {
         const assessments = studentReport.courses[tc.courseCode].monthlyAssessments[monthKey];
 
         if (rawGrade !== null) {
+          const teacherCourseKey = `${tc.teacherCode}_${tc.courseCode}`;
           studentReport.courses[tc.courseCode].monthlyGrades[monthKey] = calculateFinalScore(
             rawGrade,
             assessments,
-            tc.courseCode,
-            courseValues
+            teacherCourseKey,
+            assessmentValues
           );
         }
       }
@@ -438,6 +471,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       reportCard: finalStudentReport,
+      customAssessments: customAssessments.map((ca: CustomAssessment) => ({
+        _id: ca._id.toString(),
+        type: ca.type,
+        value: ca.value,
+        weight: ca.weight,
+        isGlobal: ca.isGlobal,
+        teacherCode: ca.teacherCode,
+        createdAt: ca.createdAt,
+      })),
+      assessmentValues,
       yearOptions: [
         { value: (currentJYear - 1).toString(), label: `${currentJYear - 1}-${currentJYear}` },
         { value: currentJYear.toString(), label: `${currentJYear}-${currentJYear + 1}` },

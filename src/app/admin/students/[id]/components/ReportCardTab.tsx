@@ -17,7 +17,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, GraduationCap, Star, TrendingUp } from "lucide-react";
+import {
+  CalendarDays,
+  GraduationCap,
+  Star,
+  TrendingUp,
+  Award,
+} from "lucide-react";
 
 // Types from the reportcards component
 interface AssessmentEntry {
@@ -126,6 +132,20 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
   const [yearOptions, setYearOptions] = useState<
     { value: string; label: string }[]
   >([]);
+  const [customAssessments, setCustomAssessments] = useState<
+    Array<{
+      _id: string;
+      type: "title" | "value";
+      value: string;
+      weight?: number;
+      isGlobal: boolean;
+      teacherCode?: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [assessmentValues, setAssessmentValues] = useState<
+    Record<string, Record<string, number>>
+  >({});
 
   useEffect(() => {
     const fetchReportCard = async () => {
@@ -149,6 +169,8 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
 
         const data = await response.json();
         setReportCard(data.reportCard);
+        setCustomAssessments(data.customAssessments || []);
+        setAssessmentValues(data.assessmentValues || {});
         setYearOptions(data.yearOptions);
         if (!selectedYear && data.currentYear) {
           setSelectedYear(data.currentYear);
@@ -212,7 +234,7 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
   const courses = Object.values(reportCard.courses);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* Header with Year Selection */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-2">
@@ -296,6 +318,134 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
         </CardContent>
       </Card>
 
+      {/* Custom Assessments Summary */}
+      {customAssessments.length > 0 && (
+        <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-purple-700">
+              <Award className="h-5 w-5" />
+              ارزیابی‌های سفارشی معلمان
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-purple-600">
+                  {toPersianDigits(customAssessments.length)}
+                </div>
+                <div className="text-sm text-gray-600">کل ارزیابی‌ها</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-blue-600">
+                  {toPersianDigits(
+                    customAssessments.filter((a) => a.type === "title").length
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">عناوین ارزیابی</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-green-600">
+                  {toPersianDigits(
+                    customAssessments.filter((a) => a.type === "value").length
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">مقادیر ارزیابی</div>
+              </div>
+              <div className="text-center p-3 bg-white rounded-lg border">
+                <div className="text-2xl font-bold text-orange-600">
+                  {toPersianDigits(
+                    customAssessments.filter((a) => a.isGlobal).length
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">ارزیابی‌های عمومی</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-purple-700 mb-2">
+                ارزیابی‌های مقداری موجود:
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {customAssessments
+                  .filter((a) => a.type === "value")
+                  .sort((a, b) => (b.weight || 0) - (a.weight || 0))
+                  .map((assessment) => (
+                    <div
+                      key={assessment._id}
+                      className="flex items-center justify-between p-2 bg-white rounded border"
+                    >
+                      <span className="text-sm font-medium text-purple-700">
+                        {assessment.value}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs px-2 py-1 rounded ${
+                            assessment.isGlobal
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {assessment.isGlobal ? "عمومی" : "خصوصی"}
+                        </span>
+                        <span className="text-xs text-gray-600 font-bold">
+                          وزن: {toPersianDigits(assessment.weight || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Teacher-specific assessments summary */}
+            <div className="mt-4 space-y-2">
+              <h4 className="font-semibold text-purple-700 mb-2">
+                ارزیابی‌های اختصاصی معلمان:
+              </h4>
+              {Object.entries(assessmentValues).map(
+                ([teacherCourseKey, values]) => {
+                  const customValues = Object.entries(values).filter(
+                    ([key]) => {
+                      // Filter out default assessment values
+                      const defaultValues = [
+                        "عالی",
+                        "خوب",
+                        "متوسط",
+                        "ضعیف",
+                        "بسیار ضعیف",
+                      ];
+                      return !defaultValues.includes(key);
+                    }
+                  );
+
+                  if (customValues.length === 0) return null;
+
+                  return (
+                    <div
+                      key={teacherCourseKey}
+                      className="p-2 bg-gray-50 rounded border"
+                    >
+                      <div className="text-xs font-medium text-gray-700 mb-1">
+                        {teacherCourseKey.replace("_", " - ")}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {customValues.map(([key, value]) => (
+                          <span
+                            key={key}
+                            className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded"
+                          >
+                            {key}: {toPersianDigits(value)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Report Card Table */}
       <Card className="overflow-hidden">
         <CardHeader>
@@ -336,7 +486,7 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
               <TableBody>
                 {courses.map((course, index) => (
                   <TableRow key={index} className="hover:bg-gray-50">
-                    <TableCell className="font-medium text-center border-r">
+                    <TableCell className="font-medium text-center border-l">
                       {course.courseName}
                     </TableCell>
                     <TableCell className="text-center text-sm text-gray-600">
@@ -384,7 +534,7 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-center font-bold border-l">
+                    <TableCell className="text-center font-bold border-r">
                       {course.yearAverage !== null ? (
                         <div
                           className={`${getScoreColorClass(

@@ -1,7 +1,7 @@
 {
   "localhost:3000": {
-    "schoolCode":"2295566177",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/parsamooz?authSource=admin",
+    "schoolCode":"95012284",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/files?authSource=admin",
     "description": "Local development database"
   },
   "localhost:3001": {
