@@ -468,9 +468,118 @@ export async function GET(request: NextRequest) {
       weightedGradesInfo,
     };
 
+    // Calculate class ranking
+    let classRanking: number | null = null;
+    let totalStudents = 0;
+
+    try {
+      // Get all students in the same class
+      const classStudents = classData.data.students || [];
+      totalStudents = classStudents.length;
+
+      if (totalStudents > 1 && weightedAverage !== null) {
+        // Calculate weighted averages for all students in the class
+        const studentAverages: { studentCode: string; average: number }[] = [];
+
+        for (const classStudent of classStudents) {
+          if (classStudent.studentCode === studentCode) {
+            // Current student
+            studentAverages.push({
+              studentCode: classStudent.studentCode,
+              average: weightedAverage,
+            });
+            continue;
+          }
+
+          // Calculate other students' averages using the same logic
+          let studentWeightedSum = 0;
+          let studentTotalWeight = 0;
+
+          for (const tc of teacherCourses) {
+            const courseData = await db.collection("courses").findOne({ "data.courseCode": tc.courseCode });
+            if (!courseData) continue;
+
+            const vahed = courseData.data.vahed || 1;
+
+            // Get grades for this student and course
+            const studentCellData = await db
+              .collection("classsheet")
+              .find({
+                "data.studentCode": classStudent.studentCode,
+                "data.teacherCode": tc.teacherCode,
+                "data.courseCode": tc.courseCode,
+                "data.schoolCode": schoolCode,
+              })
+              .toArray();
+
+            // Filter for the selected year
+            const filteredStudentCells = studentCellData.filter((cell) => {
+              const cellRecord = cell as { date?: string };
+              if (!cellRecord.date) return false;
+
+              try {
+                const cellDate = new Date(cellRecord.date);
+                if (isNaN(cellDate.getTime())) return false;
+
+                const [cellYear, cellMonth] = gregorian_to_jalali(
+                  cellDate.getFullYear(),
+                  cellDate.getMonth() + 1,
+                  cellDate.getDate()
+                );
+
+                if (cellMonth >= 7) {
+                  return cellYear.toString() === yearToUse;
+                } else {
+                  return cellYear.toString() === (parseInt(yearToUse) + 1).toString();
+                }
+              } catch {
+                return false;
+              }
+            });
+
+            // Calculate average grade for this course
+            const courseGrades: number[] = [];
+            filteredStudentCells.forEach((cell) => {
+              const cellRecord = cell as { grades?: { value: number }[] };
+              if (cellRecord.grades && cellRecord.grades.length > 0) {
+                const gradeAverage =
+                  cellRecord.grades.reduce((sum: number, grade: { value: number }) => sum + grade.value, 0) /
+                  cellRecord.grades.length;
+                courseGrades.push(gradeAverage);
+              }
+            });
+
+            if (courseGrades.length > 0) {
+              const courseAverage = courseGrades.reduce((sum, grade) => sum + grade, 0) / courseGrades.length;
+              studentWeightedSum += courseAverage * vahed;
+              studentTotalWeight += vahed;
+            }
+          }
+
+          if (studentTotalWeight > 0) {
+            const studentAverage = studentWeightedSum / studentTotalWeight;
+            studentAverages.push({
+              studentCode: classStudent.studentCode,
+              average: studentAverage,
+            });
+          }
+        }
+
+        // Sort by average (highest first) and find ranking
+        studentAverages.sort((a, b) => b.average - a.average);
+        const studentRank = studentAverages.findIndex(s => s.studentCode === studentCode);
+        classRanking = studentRank !== -1 ? studentRank + 1 : null;
+      }
+    } catch (error) {
+      console.error("Error calculating class ranking:", error);
+      // Don't fail the entire request if ranking calculation fails
+    }
+
     return NextResponse.json({
       success: true,
       reportCard: finalStudentReport,
+      classRanking,
+      totalStudents,
       customAssessments: customAssessments.map((ca: CustomAssessment) => ({
         _id: ca._id.toString(),
         type: ca.type,

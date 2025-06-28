@@ -23,6 +23,8 @@ import {
   Star,
   TrendingUp,
   Award,
+  Trophy,
+  BarChart3,
 } from "lucide-react";
 
 // Types from the reportcards component
@@ -146,6 +148,41 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
   const [assessmentValues, setAssessmentValues] = useState<
     Record<string, Record<string, number>>
   >({});
+  const [showProgress, setShowProgress] = useState(true);
+  const [showRanking, setShowRanking] = useState(true);
+  const [classRanking, setClassRanking] = useState<number | null>(null);
+  const [totalStudents, setTotalStudents] = useState<number>(0);
+
+  // Progress calculation function (similar to reportcards)
+  const calculateProgress = (
+    currentGrade: number | null,
+    previousGrade: number | null
+  ): number | null => {
+    if (currentGrade === null || previousGrade === null) return null;
+    if (previousGrade === 0) return null; // Avoid division by zero
+
+    const progressPercent =
+      ((currentGrade - previousGrade) / previousGrade) * 100;
+    return Math.round(progressPercent * 10) / 10; // Round to 1 decimal place
+  };
+
+  // Get progress indicator color class
+  const getProgressColorClass = (progress: number | null): string => {
+    if (progress === null) return "";
+    if (progress > 5) return "text-green-600 bg-green-50";
+    if (progress > 0) return "text-green-600 bg-green-50";
+    if (progress === 0) return "text-gray-600 bg-gray-50";
+    if (progress > -5) return "text-red-600 bg-red-50";
+    return "text-red-600 bg-red-50";
+  };
+
+  // Get progress indicator symbol
+  const getProgressSymbol = (progress: number | null): string => {
+    if (progress === null) return "";
+    if (progress > 0) return "↑";
+    if (progress === 0) return "→";
+    return "↓";
+  };
 
   useEffect(() => {
     const fetchReportCard = async () => {
@@ -171,6 +208,8 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
         setReportCard(data.reportCard);
         setCustomAssessments(data.customAssessments || []);
         setAssessmentValues(data.assessmentValues || {});
+        setClassRanking(data.classRanking || null);
+        setTotalStudents(data.totalStudents || 0);
         setYearOptions(data.yearOptions);
         if (!selectedYear && data.currentYear) {
           setSelectedYear(data.currentYear);
@@ -241,23 +280,53 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
           <GraduationCap className="h-6 w-6 text-blue-600" />
           <h2 className="text-2xl font-bold text-gray-900">کارنامه تحصیلی</h2>
         </div>
-        {yearOptions.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Label htmlFor="year-select">سال تحصیلی:</Label>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger id="year-select" className="w-48">
-                <SelectValue placeholder="انتخاب سال تحصیلی" />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Display Options */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-progress"
+                checked={showProgress}
+                onChange={(e) => setShowProgress(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="show-progress" className="text-sm">
+                نمایش پیشرفت
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-ranking"
+                checked={showRanking}
+                onChange={(e) => setShowRanking(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="show-ranking" className="text-sm">
+                نمایش رتبه
+              </Label>
+            </div>
           </div>
-        )}
+          {/* Year Selection */}
+          {yearOptions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="year-select">سال تحصیلی:</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger id="year-select" className="w-48">
+                  <SelectValue placeholder="انتخاب سال تحصیلی" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Overall Statistics */}
@@ -269,7 +338,7 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-white rounded-lg border">
               <div className="text-2xl font-bold text-blue-600">
                 {toPersianDigits(courses.length)}
@@ -292,6 +361,20 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
               </div>
               <div className="text-sm text-gray-600">مجموع واحد</div>
             </div>
+            {/* Class Ranking */}
+            {showRanking && classRanking && totalStudents > 0 && (
+              <div className="text-center p-4 bg-white rounded-lg border">
+                <div className="flex items-center justify-center gap-1">
+                  <Trophy className="h-5 w-5 text-yellow-600" />
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {toPersianDigits(classRanking)}
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  رتبه از {toPersianDigits(totalStudents)} نفر
+                </div>
+              </div>
+            )}
           </div>
 
           {reportCard.weightedGradesInfo &&
@@ -495,45 +578,80 @@ export default function ReportCardTab({ studentId }: ReportCardTabProps) {
                     <TableCell className="text-center font-bold text-purple-600">
                       {toPersianDigits(course.vahed)}
                     </TableCell>
-                    {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6].map((month) => {
-                      const monthKey = month.toString();
-                      const grade = course.monthlyGrades[monthKey];
-                      const assessments =
-                        course.monthlyAssessments[monthKey] || [];
+                    {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6].map(
+                      (month, monthIndex) => {
+                        const monthKey = month.toString();
+                        const grade = course.monthlyGrades[monthKey];
+                        const assessments =
+                          course.monthlyAssessments[monthKey] || [];
 
-                      return (
-                        <TableCell key={month} className="text-center p-2">
-                          <div className="space-y-1">
-                            {grade !== null ? (
-                              <div
-                                className={`font-semibold ${getScoreColorClass(
-                                  grade
-                                )}`}
-                              >
-                                {toPersianDigits(grade.toFixed(1))}
-                              </div>
-                            ) : (
-                              <div className="text-gray-400">---</div>
-                            )}
+                        // Calculate progress compared to previous month
+                        const monthOrder = [
+                          7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6,
+                        ];
+                        const previousMonthIndex = monthIndex - 1;
+                        const previousMonth =
+                          previousMonthIndex >= 0
+                            ? monthOrder[previousMonthIndex]
+                            : null;
+                        const previousGrade = previousMonth
+                          ? course.monthlyGrades[previousMonth.toString()]
+                          : null;
+                        const progress = showProgress
+                          ? calculateProgress(grade, previousGrade)
+                          : null;
 
-                            {assessments.length > 0 && (
-                              <div className="space-y-1">
-                                {assessments.map((assessment, i) => (
+                        return (
+                          <TableCell key={month} className="text-center p-2">
+                            <div className="space-y-1">
+                              {grade !== null ? (
+                                <div className="space-y-1">
                                   <div
-                                    key={i}
-                                    className={`text-xs px-1 py-0.5 rounded border ${getAssessmentValueClass(
-                                      assessment.value
+                                    className={`font-semibold ${getScoreColorClass(
+                                      grade
                                     )}`}
                                   >
-                                    {assessment.value}
+                                    {toPersianDigits(grade.toFixed(1))}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                      );
-                    })}
+                                  {/* Progress indicator */}
+                                  {showProgress && progress !== null && (
+                                    <div
+                                      className={`text-xs px-2 py-1 rounded-full ${getProgressColorClass(
+                                        progress
+                                      )}`}
+                                    >
+                                      <BarChart3 className="h-3 w-3 inline ml-1" />
+                                      {getProgressSymbol(progress)}{" "}
+                                      {toPersianDigits(
+                                        Math.abs(progress).toFixed(1)
+                                      )}
+                                      %
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-gray-400">---</div>
+                              )}
+
+                              {assessments.length > 0 && (
+                                <div className="space-y-1">
+                                  {assessments.map((assessment, i) => (
+                                    <div
+                                      key={i}
+                                      className={`text-xs px-1 py-0.5 rounded border ${getAssessmentValueClass(
+                                        assessment.value
+                                      )}`}
+                                    >
+                                      {assessment.value}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        );
+                      }
+                    )}
                     <TableCell className="text-center font-bold border-r">
                       {course.yearAverage !== null ? (
                         <div

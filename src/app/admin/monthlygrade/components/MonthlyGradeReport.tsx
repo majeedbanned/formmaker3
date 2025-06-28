@@ -462,6 +462,7 @@ const MonthlyGradeReport = ({
 
   // Add a new useEffect to fetch custom assessment values when teacherCourse changes
   useEffect(() => {
+    console.log("Assessment data", selectedTeacherCourse);
     if (!selectedTeacherCourse) return;
 
     const [teacherCode, courseCode] = selectedTeacherCourse.split("-");
@@ -471,7 +472,7 @@ const MonthlyGradeReport = ({
         const response = await fetch(
           `/api/assessments?teacherCode=${teacherCode}&courseCode=${courseCode}&schoolCode=${schoolCode}`
         );
-
+        console.log("Assessment data:", "assessmentData");
         if (!response.ok) {
           // If there's an error, use default values
           setCourseSpecificAssessmentValues({});
@@ -479,15 +480,18 @@ const MonthlyGradeReport = ({
         }
 
         const assessmentData = await response.json();
+
+        console.log("Assessment data:", assessmentData);
         const customValues: Record<string, number> = {};
 
         if (
           assessmentData &&
-          Array.isArray(assessmentData) &&
-          assessmentData.length > 0
+          Array.isArray(assessmentData.data) &&
+          assessmentData.data.length > 0
         ) {
+          console.log("Assessment value found:", "assessmentData");
           // Process assessment data to extract custom values
-          assessmentData.forEach((assessment: AssessmentDataItem) => {
+          assessmentData.data.forEach((assessment: AssessmentDataItem) => {
             // Extract assessment data from the response
             const data = assessment.data || assessment;
 
