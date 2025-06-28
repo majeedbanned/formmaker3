@@ -2394,7 +2394,7 @@ const ReportCards = ({
     // Create options for dropdown with "all" as first option
     const options = [
       { value: "all", label: "همه دانش‌آموزان" },
-      ...classData.students.map((student) => ({
+      ...classData.students?.map((student) => ({
         value: student.studentCode,
         label: `${student.studentName} ${student.studentlname}`,
       })),

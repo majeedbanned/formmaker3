@@ -14,8 +14,8 @@
     "description": "Production database for alireza.ir"
   }
   ,
-  "parsplus1.farsamooz.ir": {
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/parsplus1?authSource=admin",
-    "description": "parsplus1.farsamooz.ir"
+  "files.farsamooz.ir": {
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/files?authSource=admin",
+    "description": "files.farsamooz.ir"
   }
 } 
