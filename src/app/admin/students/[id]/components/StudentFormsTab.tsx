@@ -28,6 +28,7 @@ import {
   MessageSquare,
   FileDown,
   RefreshCw,
+  Mail,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -68,39 +69,104 @@ const FormValueRenderer: React.FC<{ value: unknown }> = ({ value }) => {
     );
   }
 
+  // Handle signature data (base64 image)
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "signatureDataUrl" in value &&
+    typeof (value as { signatureDataUrl: string }).signatureDataUrl === "string"
+  ) {
+    const signatureData = value as {
+      signatureDataUrl: string;
+      timestamp?: string;
+    };
+
+    return (
+      <div className="space-y-2">
+        <div className="border rounded-lg p-2 bg-gray-50 max-w-md">
+          <img
+            src={signatureData.signatureDataUrl}
+            alt="امضاء دیجیتال"
+            className="max-w-full h-auto rounded border bg-white"
+            style={{ maxHeight: "200px" }}
+          />
+        </div>
+        {signatureData.timestamp && (
+          <div className="text-xs text-gray-500 flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            تاریخ امضاء:{" "}
+            {new Date(signatureData.timestamp).toLocaleDateString("fa-IR")}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Handle file uploads
   if (
     typeof value === "object" &&
     value !== null &&
-    "path" in value &&
-    typeof (value as { path?: string }).path === "string"
+    ("path" in value || "filename" in value)
   ) {
     const fileValue = value as {
-      path: string;
+      path?: string;
       originalName?: string;
       filename?: string;
+      size?: number;
+      type?: string;
+      uploadedAt?: string;
     };
+
+    const fileName =
+      fileValue.originalName || fileValue.filename || "فایل آپلود شده";
+    const fileSize = fileValue.size
+      ? `${Math.round(fileValue.size / 1024)} کیلوبایت`
+      : "";
+
     return (
       <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 p-3 rounded-lg">
         <div className="bg-blue-100 p-2 rounded-lg">
           <FileDown className="h-4 w-4 text-blue-600" />
         </div>
-        <div>
-          <a
-            href={fileValue.path}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
-          >
-            {fileValue.originalName || fileValue.filename || "فایل ضمیمه"}
-          </a>
-          <p className="text-xs text-blue-500 mt-1">کلیک برای دانلود</p>
+        <div className="flex-1">
+          <div className="font-medium text-blue-800">{fileName}</div>
+          {fileSize && (
+            <div className="text-xs text-blue-600 mt-1">حجم: {fileSize}</div>
+          )}
+          {fileValue.uploadedAt && (
+            <div className="text-xs text-blue-600 mt-1">
+              آپلود:{" "}
+              {new Date(fileValue.uploadedAt).toLocaleDateString("fa-IR")}
+            </div>
+          )}
         </div>
+        {fileValue.path && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              let fileUrl;
+              if (fileValue.path!.startsWith("http")) {
+                fileUrl = fileValue.path;
+              } else {
+                fileUrl = `${window.location.origin}/${fileValue.path!.replace(
+                  /^\//,
+                  ""
+                )}`;
+              }
+              window.open(fileUrl, "_blank");
+            }}
+            className="h-8 px-3 text-blue-600 hover:bg-blue-100"
+          >
+            <Eye className="h-4 w-4 ml-1" />
+            مشاهده
+          </Button>
+        )}
       </div>
     );
   }
 
-  // Handle arrays
+  // Handle arrays (group fields or multiple values)
   if (Array.isArray(value)) {
     return (
       <div className="space-y-2">
@@ -118,6 +184,51 @@ const FormValueRenderer: React.FC<{ value: unknown }> = ({ value }) => {
           </div>
         ))}
       </div>
+    );
+  }
+
+  // Handle rating values (display as stars)
+  if (typeof value === "number" && value >= 0 && value <= 10) {
+    const stars = Math.round(value);
+    const maxStars = 5;
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center">
+          {Array.from({ length: maxStars }, (_, i) => (
+            <span
+              key={i}
+              className={`text-lg ${
+                i < stars ? "text-yellow-400" : "text-gray-300"
+              }`}
+            >
+              ★
+            </span>
+          ))}
+        </div>
+        <span className="text-sm text-gray-600">
+          ({value} از {maxStars})
+        </span>
+      </div>
+    );
+  }
+
+  // Handle boolean values (checkbox/switch fields)
+  if (typeof value === "boolean") {
+    return value ? (
+      <Badge
+        variant="outline"
+        className="bg-green-50 border-green-200 text-green-700 px-3 py-1 rounded-lg font-medium"
+      >
+        ✓ بله
+      </Badge>
+    ) : (
+      <Badge
+        variant="outline"
+        className="bg-red-50 border-red-200 text-red-700 px-3 py-1 rounded-lg font-medium"
+      >
+        ✗ خیر
+      </Badge>
     );
   }
 
@@ -142,23 +253,59 @@ const FormValueRenderer: React.FC<{ value: unknown }> = ({ value }) => {
     );
   }
 
-  // Handle boolean values
-  if (typeof value === "boolean") {
-    return value ? (
-      <Badge
-        variant="outline"
-        className="bg-green-50 border-green-200 text-green-700 px-3 py-1 rounded-lg font-medium"
-      >
-        ✓ بله
-      </Badge>
-    ) : (
-      <Badge
-        variant="outline"
-        className="bg-red-50 border-red-200 text-red-700 px-3 py-1 rounded-lg font-medium"
-      >
-        ✗ خیر
-      </Badge>
-    );
+  // Handle string values with special formatting
+  if (typeof value === "string") {
+    // Check if it's a date string (ISO format)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}.*)?$/;
+    if (dateRegex.test(value)) {
+      try {
+        const date = new Date(value);
+        return (
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-500" />
+            <span className="text-gray-800">
+              {date.toLocaleDateString("fa-IR")}
+              {value.includes("T") && (
+                <span className="text-gray-500 mr-2">
+                  {date.toLocaleTimeString("fa-IR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              )}
+            </span>
+          </div>
+        );
+      } catch {
+        // If date parsing fails, treat as regular string
+      }
+    }
+
+    // Check if it's an email
+    if (value.includes("@") && value.includes(".")) {
+      return (
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-blue-500" />
+          <a
+            href={`mailto:${value}`}
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            {value}
+          </a>
+        </div>
+      );
+    }
+
+    // Handle long text (textarea)
+    if (value.length > 100) {
+      return (
+        <div className="bg-gray-50 p-3 rounded-lg border">
+          <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans">
+            {value}
+          </pre>
+        </div>
+      );
+    }
   }
 
   // Default: return as string
