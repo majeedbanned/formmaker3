@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import GradesTab from "./components/GradesTab";
 import ReportCardTab from "./components/ReportCardTab";
 import StudentFormsTab from "./components/StudentFormsTab";
 import StudentAccountingTab from "./components/StudentAccountingTab";
+import CommunicationsTab from "./components/CommunicationsTab";
 
 interface Student {
   _id: string;
@@ -271,7 +272,7 @@ export default function StudentProfilePage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger
             value="presence"
             className="flex items-center space-x-2 space-x-reverse"
@@ -308,11 +309,11 @@ export default function StudentProfilePage() {
             <span>حسابداری</span>
           </TabsTrigger>
           <TabsTrigger
-            value="financial"
+            value="communications"
             className="flex items-center space-x-2 space-x-reverse"
           >
-            <User className="h-4 w-4" />
-            <span>مالی</span>
+            <MessageSquare className="h-4 w-4" />
+            <span>ارتباطات</span>
           </TabsTrigger>
         </TabsList>
 
@@ -336,21 +337,8 @@ export default function StudentProfilePage() {
           <StudentAccountingTab studentId={studentId} />
         </TabsContent>
 
-        <TabsContent value="financial" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <User className="h-5 w-5 ml-2 text-orange-600" />
-                اطلاعات مالی
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">این بخش در حال توسعه است</p>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="communications" className="mt-6">
+          <CommunicationsTab studentId={studentId} student={student} />
         </TabsContent>
       </Tabs>
     </div>
