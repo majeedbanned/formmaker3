@@ -16,10 +16,10 @@ import {
   UserCheck,
   Users,
   ClipboardList,
-  BookOpen,
   MessageSquare,
   TrendingUp,
   AlertCircle,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -27,6 +27,7 @@ import PresenceTab from "./components/PresenceTab";
 import GradesTab from "./components/GradesTab";
 import ReportCardTab from "./components/ReportCardTab";
 import StudentFormsTab from "./components/StudentFormsTab";
+import StudentAccountingTab from "./components/StudentAccountingTab";
 
 interface Student {
   _id: string;
@@ -303,8 +304,8 @@ export default function StudentProfilePage() {
             value="assignments"
             className="flex items-center space-x-2 space-x-reverse"
           >
-            <BookOpen className="h-4 w-4" />
-            <span>تکالیف</span>
+            <DollarSign className="h-4 w-4" />
+            <span>حسابداری</span>
           </TabsTrigger>
           <TabsTrigger
             value="financial"
@@ -332,20 +333,7 @@ export default function StudentProfilePage() {
         </TabsContent>
 
         <TabsContent value="assignments" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BookOpen className="h-5 w-5 ml-2 text-purple-600" />
-                تکالیف و پروژه‌ها
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">این بخش در حال توسعه است</p>
-              </div>
-            </CardContent>
-          </Card>
+          <StudentAccountingTab studentId={studentId} />
         </TabsContent>
 
         <TabsContent value="financial" className="mt-6">
