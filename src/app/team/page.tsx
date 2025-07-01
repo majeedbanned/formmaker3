@@ -12,6 +12,7 @@ import {
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import LandingNavbar from "@/components/landing/LandingNavbar";
+import FooterSection from "@/components/landing/FooterSection";
 
 interface Teacher {
   id: number;
@@ -441,6 +442,8 @@ export default function TeamPage() {
           </motion.div>
         </div>
       </section>
+
+      <FooterSection />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   ArrowLongRightIcon,
 } from "@heroicons/react/24/outline";
 import LandingNavbar from "@/components/landing/LandingNavbar";
+import FooterSection from "@/components/landing/FooterSection";
 
 interface NewsItem {
   id: number;
@@ -425,6 +426,8 @@ export default function NewsPage() {
           </motion.div>
         </div>
       </section>
+
+      <FooterSection />
     </div>
   );
 }
