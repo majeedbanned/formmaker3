@@ -42,6 +42,32 @@ export async function GET(request: NextRequest) {
               twitter: "#",
               email: "s.karimi@school.ir"
             }
+          },
+          {
+            id: 3,
+            name: "دکتر محمد حسین حسینی",
+            role: "مدیر آموزشی مدرسه",
+            bio: "دارای دکترای مدیریت آموزشی از دانشگاه تهران با بیش از ۱۵ سال سابقه موفق در مدیریت مدارس و توسعه برنامه‌های آموزشی کارآمد.",
+            avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+            subjects: ["مدیریت آموزشی", "برنامه‌ریزی درسی"],
+            social: {
+              linkedin: "#",
+              twitter: "#",
+              email: "m.hosseini@school.ir"
+            }
+          },
+          {
+            id: 4,
+            name: "دکتر سارا حسینی",
+            role: "کارشناس ارشد برنامه‌ریزی درسی",
+            bio: "فارغ‌التحصیل دانشگاه شهید بهشتی با تجربه طراحی برنامه‌های درسی نوین که یادگیری دانش‌آموزان را به حداکثر می‌رساند.",
+            avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+            subjects: ["طراحی برنامه درسی", "ارزشیابی آموزشی"],
+            social: {
+              linkedin: "#",
+              twitter: "#",
+              email: "s.hosseini@school.ir"
+            }
           }
         ],
         linkText: "مشاهده تمام معلمان و مشاوران",
