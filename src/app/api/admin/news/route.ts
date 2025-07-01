@@ -13,39 +13,39 @@ export async function GET(request: NextRequest) {
     // If no content exists, return default content
     if (!newsContent) {
       const defaultContent = {
-        title: "آخرین اخبار",
-        subtitle: "تازه‌ترین رویدادها و اخبار",
-        description: "از آخرین تحولات، رویدادها و بروزرسانی‌های پارسا موز مطلع شوید.",
+        title: "آخرین اخبار مدرسه",
+        subtitle: "جدیدترین رویدادها و اطلاعیه‌ها",
+        description: "با پیگیری اخبار و اطلاعیه‌های مدرسه، از آخرین رویدادها، برنامه‌ها و دستاوردهای دانش‌آموزان مطلع شوید.",
         news: [
           {
             id: 1,
-            title: "برگزاری همایش فناوری آموزشی در تهران",
-            excerpt: "همایش سالانه فناوری آموزشی با حضور مدیران مدارس برتر کشور در تهران برگزار شد.",
-            date: "۲ مهر ۱۴۰۳",
+            title: "برگزاری جشن آغاز سال تحصیلی",
+            excerpt: "مراسم باشکوهی با حضور دانش‌آموزان و والدین به مناسبت شروع سال تحصیلی جدید برگزار شد.",
+            date: "۱ مهر ۱۴۰۴",
             category: "رویدادها",
-            image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+            image: "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
             link: "/news/1"
           },
           {
             id: 2,
-            title: "انتشار نسخه جدید پارسا موز با قابلیت‌های هوش مصنوعی",
-            excerpt: "نسخه جدید پارسا موز با بهره‌گیری از هوش مصنوعی، امکانات تازه‌ای برای ارزیابی پیشرفت دانش‌آموزان ارائه می‌دهد.",
-            date: "۱۵ شهریور ۱۴۰۳",
-            category: "محصولات",
-            image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+            title: "کسب رتبه برتر در مسابقات علمی",
+            excerpt: "دانش‌آموزان مدرسه ما موفق به کسب مقام‌های برتر در مسابقات علمی استانی شدند و افتخار آفریدند.",
+            date: "۲۰ شهریور ۱۴۰۴",
+            category: "دستاوردها",
+            image: "https://images.unsplash.com/photo-1596495577886-d920f1fb7238?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
             link: "/news/2"
           },
           {
             id: 3,
-            title: "همکاری پارسا موز با وزارت آموزش و پرورش",
-            excerpt: "تفاهم‌نامه همکاری میان پارسا موز و وزارت آموزش و پرورش جهت توسعه سیستم‌های نوین آموزشی به امضا رسید.",
-            date: "۵ مرداد ۱۴۰۳",
-            category: "همکاری‌ها",
-            image: "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+            title: "بازدید مسئولین آموزش و پرورش از مدرسه",
+            excerpt: "هیئتی از مسئولان آموزش و پرورش با حضور در مدرسه از امکانات و فعالیت‌های آموزشی بازدید کردند.",
+            date: "۵ شهریور ۱۴۰۴",
+            category: "بازدیدها",
+            image: "https://images.unsplash.com/photo-1609859590888-31b8ed6dfa25?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
             link: "/news/3"
           }
         ],
-        viewAllText: "مشاهده همه اخبار",
+        viewAllText: "مشاهده همه اخبار مدرسه",
         viewAllLink: "/news",
         // Style settings
         backgroundColor: "#FFFFFF",
@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
       return NextResponse.json({ success: true, news: defaultContent });
     }
 

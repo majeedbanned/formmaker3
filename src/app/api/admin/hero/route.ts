@@ -13,18 +13,18 @@ export async function GET(request: NextRequest) {
     // If no content exists, return default content
     if (!heroContent) {
       const defaultContent = {
-        title: "پارسا موز",
-        subtitle: "سیستم مدیریت آموزش",
-        description: "سیستم مدیریت آموزش، راهکاری جامع برای مدارس و موسسات آموزشی. با پارسا موز، آسان‌تر تدریس کنید، عملکرد دانش آموزان را رصد کنید و ارتباط موثرتری با والدین داشته باشید.",
-        primaryButtonText: "شروع رایگان",
+        title: "مدرسه ما",
+        subtitle: "آموزش، پرورش و موفقیت در کنار هم",
+        description: "در مدرسه ما، آموزش باکیفیت و ارتباط مؤثر با دانش‌آموزان و والدین در اولویت است. با ما، فرزندان شما در محیطی ایمن و پویا برای آینده‌ای روشن آماده می‌شوند.",
+        primaryButtonText: "ثبت‌نام کنید",
         primaryButtonLink: "/signup",
-        secondaryButtonText: "نمایش دمو",
-        secondaryButtonLink: "/demo",
+        secondaryButtonText: "بازدید از مدرسه",
+        secondaryButtonLink: "/tour",
         images: [
           {
-            url: "/images/hero-dashboard.png",
-            alt: "Dashboard Preview",
-            title: "پیشخوان مدیریت"
+            url: "/images/school-hero.jpg",
+            alt: "نمایی از مدرسه و دانش‌آموزان",
+            title: "مدرسه ما"
           }
         ],
         // Default style settings
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
       return NextResponse.json({ success: true, hero: defaultContent });
     }
 

@@ -13,20 +13,20 @@ export async function GET(request: NextRequest) {
     // If no config exists, create default one
     if (!appDownload) {
       const defaultAppDownload = {
-        sectionTitle: "پارسا موز را همیشه همراه داشته باشید",
-        sectionSubtitle: "اپلیکیشن موبایل",
-        sectionDescription: "با استفاده از اپلیکیشن موبایل پارسا موز، در هر زمان و مکان به سیستم مدیریت آموزشی خود دسترسی داشته باشید. مدیریت کلاس‌ها، پیگیری پیشرفت دانش‌آموزان و ارتباط با والدین را از طریق گوشی هوشمند خود انجام دهید.",
+        sectionTitle: "اپلیکیشن مدرسه ما را همیشه همراه داشته باشید",
+        sectionSubtitle: "اپ موبایل رسمی مدرسه",
+        sectionDescription: "با اپلیکیشن موبایل مدرسه، از هر جا و در هر زمان به اطلاعات درسی، کارنامه، برنامه کلاس‌ها و اطلاعیه‌های مدرسه دسترسی داشته باشید. والدین و دانش‌آموزان می‌توانند به‌راحتی در ارتباط باشند و پیشرفت تحصیلی را دنبال کنند.",
         features: [
           {
             id: "1",
-            title: "رابط کاربری ساده و زیبا",
-            description: "طراحی شده برای استفاده آسان و سریع توسط معلمان، مدیران، والدین و دانش‌آموزان.",
+            title: "رابط کاربری ساده و جذاب",
+            description: "طراحی شده برای سهولت استفاده دانش‌آموزان و والدین، با محیطی کاربرپسند و روان.",
             icon: "DevicePhoneMobileIcon",
           },
           {
             id: "2",
-            title: "سازگار با همه دستگاه‌ها",
-            description: "قابل استفاده بر روی گوشی‌های اندروید، آیفون و تبلت‌ها با تجربه کاربری یکسان.",
+            title: "سازگار با تمام گوشی‌ها",
+            description: "قابل نصب روی گوشی‌های اندروید و آیفون، با عملکرد عالی و بدون محدودیت.",
             icon: "DeviceTabletIcon",
           },
         ],
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+      
 
       await collection?.insertOne(defaultAppDownload);
       appDownload = defaultAppDownload;

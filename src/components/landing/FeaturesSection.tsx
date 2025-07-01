@@ -343,7 +343,7 @@ export default function FeaturesSection() {
                   }}
                   variants={item}
                 >
-                  <div>
+                  <div className="text-center flex items-center justify-center flex-col">
                     <div
                       className="flex items-center justify-center h-12 w-12 rounded-md"
                       style={{
@@ -354,13 +354,13 @@ export default function FeaturesSection() {
                       <IconComponent className="h-6 w-6" aria-hidden="true" />
                     </div>
                     <h3
-                      className="mt-4 text-lg font-medium"
+                      className="mt-4 text-lg font-medium text-center"
                       style={{ color: featuresData.featureTitleColor }}
                     >
                       {feature.name}
                     </h3>
                     <p
-                      className="mt-2 text-base"
+                      className="mt-2 text-base text-right"
                       style={{ color: featuresData.featureDescriptionColor }}
                     >
                       {feature.description}

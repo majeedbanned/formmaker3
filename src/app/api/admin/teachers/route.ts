@@ -13,38 +13,38 @@ export async function GET(request: NextRequest) {
     // If no content exists, return default content
     if (!teachersContent) {
       const defaultContent = {
-        title: "تیم آموزشی",
-        subtitle: "با متخصصان ما آشنا شوید",
-        description: "تیمی از بهترین متخصصان آموزشی و مشاوران تحصیلی در پارسا موز به ارائه خدمات می‌پردازند.",
+        title: "تیم معلمان ما",
+        subtitle: "با معلمان و مشاوران برجسته مدرسه آشنا شوید",
+        description: "مدرسه ما با همراهی گروهی از معلمان متخصص و مشاوران آموزشی مجرب، محیطی علمی و انگیزه‌بخش برای دانش‌آموزان فراهم کرده است.",
         teachers: [
           {
             id: 1,
             name: "دکتر علی محمدی",
-            role: "مدیر آموزشی",
-            bio: "دارای دکترای مدیریت آموزشی از دانشگاه تهران با بیش از ۱۵ سال سابقه مدیریت در مدارس و موسسات آموزشی.",
+            role: "مدیر آموزشی مدرسه",
+            bio: "دارای دکترای مدیریت آموزشی از دانشگاه تهران با بیش از ۱۵ سال سابقه موفق در مدیریت مدارس و توسعه برنامه‌های آموزشی کارآمد.",
             avatar: "https://randomuser.me/api/portraits/men/32.jpg",
             subjects: ["مدیریت آموزشی", "برنامه‌ریزی درسی"],
             social: {
               linkedin: "#",
               twitter: "#",
-              email: "a.mohammadi@parsamooz.ir"
+              email: "a.mohammadi@school.ir"
             }
           },
           {
             id: 2,
             name: "دکتر سارا کریمی",
-            role: "متخصص برنامه‌ریزی درسی",
-            bio: "فارغ‌التحصیل دانشگاه شهید بهشتی در رشته برنامه‌ریزی آموزشی، با تجربه طراحی برنامه‌های درسی نوآورانه برای مدارس پیشرو.",
+            role: "کارشناس ارشد برنامه‌ریزی درسی",
+            bio: "فارغ‌التحصیل دانشگاه شهید بهشتی با تجربه طراحی برنامه‌های درسی نوین که یادگیری دانش‌آموزان را به حداکثر می‌رساند.",
             avatar: "https://randomuser.me/api/portraits/women/44.jpg",
             subjects: ["طراحی برنامه درسی", "ارزشیابی آموزشی"],
             social: {
               linkedin: "#",
               twitter: "#",
-              email: "s.karimi@parsamooz.ir"
+              email: "s.karimi@school.ir"
             }
           }
         ],
-        linkText: "مشاهده همه اساتید و متخصصین",
+        linkText: "مشاهده تمام معلمان و مشاوران",
         linkUrl: "/team",
         // Style settings
         backgroundColor: "#F9FAFB",
@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
       return NextResponse.json({ success: true, teachers: defaultContent });
     }
 
