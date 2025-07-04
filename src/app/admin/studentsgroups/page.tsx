@@ -173,7 +173,7 @@ function StudentsPageContent() {
                 label: "کد مدرسه",
                 name: "schoolCode",
                 type: "number",
-                defaultValue: "2295566177",
+                defaultValue: user?.schoolCode,
               },
             ],
           }}

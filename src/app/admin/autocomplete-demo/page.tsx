@@ -5,10 +5,12 @@ import FormModal from "@/components/FormModal";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/types/crud";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AutocompleteDemoPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleSubmit = async (data: Record<string, unknown>) => {
     setLoading(true);
@@ -75,7 +77,7 @@ export default function AutocompleteDemoPage() {
         valueField: "studentCode",
         sortField: "studentName",
         sortOrder: "asc",
-        filterQuery: { schoolCode: "2295566177" },
+        filterQuery: { schoolCode: user?.schoolCode },
       },
       autoCompleteStyle: {
         allowNew: false,
@@ -100,7 +102,7 @@ export default function AutocompleteDemoPage() {
         valueField: "studentCode",
         sortField: "studentFamily",
         sortOrder: "asc",
-        filterQuery: { schoolCode: "2295566177" },
+        filterQuery: { schoolCode: user?.schoolCode },
       },
       autoCompleteStyle: {
         allowNew: false,
@@ -127,7 +129,7 @@ export default function AutocompleteDemoPage() {
         valueField: "studentCode",
         sortField: "studentCode",
         sortOrder: "asc",
-        filterQuery: { schoolCode: "2295566177" },
+        filterQuery: { schoolCode: user?.schoolCode },
       },
       autoCompleteStyle: {
         allowNew: false,
@@ -153,7 +155,7 @@ export default function AutocompleteDemoPage() {
         customLabel: "{studentName} {studentFamily} ({studentCode})",
         sortField: "studentName",
         sortOrder: "asc",
-        filterQuery: { schoolCode: "2295566177" },
+        filterQuery: { schoolCode: user?.schoolCode },
       },
       autoCompleteStyle: {
         allowNew: false,
@@ -179,7 +181,7 @@ export default function AutocompleteDemoPage() {
         valueField: "studentCode",
         sortField: "studentName",
         sortOrder: "asc",
-        filterQuery: { schoolCode: "2295566177" },
+        filterQuery: { schoolCode: user?.schoolCode },
       },
       autoCompleteStyle: {
         allowNew: true, // Allow users to enter custom values

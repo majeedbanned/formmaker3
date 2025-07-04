@@ -2345,8 +2345,24 @@ const ClassSheet = ({
         <table className="min-w-full bg-white border-collapse rounded-lg overflow-hidden">
           <thead>
             <tr>
-              <th className=" px-4 py-4 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-blue-600 text-white font-bold text-sm shadow-sm">
-                نام دانش‌آموز
+              <th className=" px-3 py-3 w-[160px] min-w-[160px] h-12 border-r border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold text-sm shadow-sm">
+                <div className="flex items-center justify-center space-x-2 space-x-reverse">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+                    />
+                  </svg>
+                  <span>دانش‌آموزان</span>
+                </div>
               </th>
               {allColumns.length > 0 ? (
                 allColumns.map((col, index) => (
@@ -2412,14 +2428,54 @@ const ClassSheet = ({
               return (
                 <tr key={student.studentCode}>
                   <td
-                    className="sticky right-0 z-10 px-4 py-3 w-[150px] min-w-[150px] h-14 border-r border-b border-gray-200 bg-white cursor-pointer hover:bg-blue-50 shadow-sm"
+                    className="sticky right-0 z-10 px-2 py-2 w-[160px] min-w-[160px] h-12 border-r border-b border-gray-200 bg-white cursor-pointer hover:bg-gradient-to-l hover:from-blue-50 hover:to-indigo-50 shadow-sm transition-all duration-200"
                     onClick={() => handleStudentNameClick(student)}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{fullName}</span>
-                      <span className="text-blue-500 text-xs bg-blue-50 px-2 py-0.5 rounded">
-                        گزارش
-                      </span>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      {/* Student Avatar */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full overflow-hidden shadow-md ring-1 ring-white">
+                          <img
+                            src={`/avatars/${student.studentCode}.jpg`}
+                            alt={`${fullName} Avatar`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to initial-based avatar
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.className =
+                                  "w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-md ring-1 ring-white";
+                                parent.innerHTML = `<span class="text-white font-bold text-sm">${student.studentName.charAt(
+                                  0
+                                )}</span>`;
+                              }
+                            }}
+                          />
+                        </div>
+                        {/* Activity status indicator */}
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border border-white shadow-sm"></div>
+                      </div>
+
+                      {/* Student Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900 text-xs truncate">
+                            {fullName}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {student.studentCode}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      <div className="flex-shrink-0">
+                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-1.5 py-0.5 rounded text-xs font-medium shadow-sm hover:shadow-md transition-all duration-200">
+                          گزارش
+                        </div>
+                      </div>
                     </div>
                   </td>
                   {allColumns.map((col, index) => {
