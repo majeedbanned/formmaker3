@@ -164,7 +164,7 @@ export default function Dashboard() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen ">
         <div className="container mx-auto p-6" dir="rtl">
           {/* Header Section */}
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-0">

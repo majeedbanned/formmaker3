@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import StudentClassSheet from "./components/StudentClassSheet";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 // Types
 type GradeEntry = {
@@ -132,29 +134,36 @@ export default function StudentClassSheetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-            کارنامه من
-          </h1>
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div className="flex items-center justify-center space-x-6 text-sm text-gray-600">
-              <span className="flex items-center">
-                <span className="font-medium text-gray-800">{user.name}</span>
-              </span>
-              <span className="text-gray-400">|</span>
-              <span>کد دانش‌آموزی: {studentCode}</span>
-            </div>
-          </div>
-        </div>
-
-        <StudentClassSheet
-          gradeData={gradeData}
-          studentCode={studentCode}
-          studentName={user.name}
+    // <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="container mx-auto p-6">
+      <div className="mb-8">
+        {/* <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
+            دفتر کلاسی من{" "}
+          </h1> */}
+        <PageHeader
+          title="دفتر کلاسی من"
+          subtitle=""
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
         />
+
+        {/* <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex items-center justify-center space-x-6 text-sm text-gray-600">
+            <span className="flex items-center">
+              <span className="font-medium text-gray-800">{user.name}</span>
+            </span>
+            <span className="text-gray-400">|</span>
+            <span>کد دانش‌آموزی: {studentCode}</span>
+          </div>
+        </div> */}
       </div>
+
+      <StudentClassSheet
+        gradeData={gradeData}
+        studentCode={studentCode}
+        studentName={user.name}
+      />
     </div>
+    // </div>
   );
 }

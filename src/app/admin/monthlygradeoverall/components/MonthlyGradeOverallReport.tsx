@@ -286,10 +286,10 @@ const MonthlyGradeOverallReport = ({
         value: currentJYear.toString(),
         label: toPersianDigits(currentJYear),
       },
-      {
-        value: (currentJYear - 1).toString(),
-        label: toPersianDigits(currentJYear - 1),
-      },
+      // {
+      //   value: (currentJYear - 1).toString(),
+      //   label: toPersianDigits(currentJYear - 1),
+      // },
     ];
 
     setYearOptions(years);
