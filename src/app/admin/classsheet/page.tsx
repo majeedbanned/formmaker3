@@ -3,6 +3,8 @@ import ClassSheet from "./component/ClassSheet";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { classSheetHelpSections } from "./ClassSheetHelpContent";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -43,6 +45,7 @@ export default function ClassSheetPage() {
   const [classDocuments, setClassDocuments] = useState<ClassDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const { user, isLoading } = useAuth();
 
   // Get schoolCode and teacherCode from authenticated user
@@ -117,6 +120,19 @@ export default function ClassSheetPage() {
     fetchClassData();
   }, [schoolCode, teacherCode, isLoading]);
 
+  // Help keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setShowHelp(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-4">
@@ -174,11 +190,41 @@ export default function ClassSheetPage() {
   }
 
   return (
-    <div>
+    <div className="relative">
+      {/* Help Button */}
+      <button
+        onClick={() => setShowHelp(true)}
+        className="fixed top-4 left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2"
+        title="راهنما (F1)"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span className="hidden sm:inline">راهنما</span>
+      </button>
+
       <ClassSheet
         schoolCode={schoolCode}
         teacherCode={teacherCode}
         classDocuments={classDocuments}
+      />
+
+      {/* Help Panel */}
+      <HelpPanel
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        title="راهنمای سیستم کلاس‌برگ"
+        sections={classSheetHelpSections}
       />
     </div>
   );

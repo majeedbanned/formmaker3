@@ -8,6 +8,8 @@ import TransactionForm from "./components/TransactionForm";
 import PersonSummary from "./components/PersonSummary";
 import AccountingSummary from "./components/AccountingSummary";
 import BulkTransactionForm from "./components/BulkTransactionForm";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { accountingHelpSections } from "./AccountingHelpContent";
 
 interface Transaction {
   _id: string;
@@ -37,6 +39,7 @@ export default function AccountingPage() {
     Transaction | undefined
   >(undefined);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Auto-select current user if they're student or teacher
   useEffect(() => {
@@ -49,6 +52,19 @@ export default function AccountingPage() {
       });
     }
   }, [user]);
+
+  // Help keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setShowHelp(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Refresh data
   const refreshData = () => {
@@ -115,14 +131,15 @@ export default function AccountingPage() {
               </p>
             </div>
 
-            {/* Admin-only bulk transaction button */}
-            {!isReadOnly && (
+            <div className="flex items-center gap-3">
+              {/* Help Button */}
               <button
-                onClick={() => setShowBulkTransactionForm(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                onClick={() => setShowHelp(true)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                title="راهنما (F1)"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -131,12 +148,35 @@ export default function AccountingPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                ثبت دسته‌جمعی کلاس
+                راهنما
               </button>
-            )}
+
+              {/* Admin-only bulk transaction button */}
+              {!isReadOnly && (
+                <button
+                  onClick={() => setShowBulkTransactionForm(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  ثبت دسته‌جمعی کلاس
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -357,6 +397,14 @@ export default function AccountingPage() {
             )}
           </>
         )}
+
+        {/* Help Panel */}
+        <HelpPanel
+          isOpen={showHelp}
+          onClose={() => setShowHelp(false)}
+          title="راهنمای سیستم حسابداری"
+          sections={accountingHelpSections}
+        />
       </div>
     </div>
   );
