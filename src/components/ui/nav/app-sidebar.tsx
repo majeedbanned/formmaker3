@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { NavMain } from "@/components/ui/nav/nav-main";
-import { NavProjects } from "@/components/ui/nav/nav-projects";
 import { NavUser } from "@/components/ui/nav/nav-user";
 import { TeamSwitcher } from "@/components/ui/nav/team-switcher";
 import {
@@ -424,6 +423,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     error: menuError,
   } = useDynamicMenu();
 
+  // State to track which menu section is currently expanded (accordion behavior)
+  const [activeMenuIndex, setActiveMenuIndex] = React.useState<number | null>(
+    0
+  );
+
+  // Function to handle menu toggle (accordion behavior)
+  const handleMenuToggle = React.useCallback((index: number) => {
+    setActiveMenuIndex(index === -1 ? null : index);
+  }, []);
+
   // Convert dynamic menus to NavMain format with stable reference
   const filteredNavMain = React.useMemo(() => {
     if (!user) return [];
@@ -431,17 +440,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Return empty array while loading, but don't recreate if we have cached data
     if (menusLoading && dynamicMenus.length === 0) return [];
 
-    return dynamicMenus.map((section) => ({
+    return dynamicMenus.map((section, index) => ({
       title: section.title,
       url: section.url,
       icon: SquareTerminal, // Default icon, can be customized based on section.icon if available
-      isActive: true,
+      isActive: activeMenuIndex === index, // Only the selected menu is active
       items: section.items.map((item) => ({
         title: item.title,
         url: item.url,
       })),
     }));
-  }, [user?.userType, user?.username, dynamicMenus]); // Only depend on stable user properties
+  }, [
+    user?.userType,
+    user?.username,
+    dynamicMenus,
+    activeMenuIndex,
+    handleMenuToggle,
+  ]); // Include activeMenuIndex in dependencies
 
   // Convert auth user to NavUser format with stable reference
   const navUser = React.useMemo(() => {
@@ -500,7 +515,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={filteredNavMain} />
+        <NavMain
+          items={filteredNavMain}
+          activeIndex={activeMenuIndex}
+          onToggle={handleMenuToggle}
+        />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>

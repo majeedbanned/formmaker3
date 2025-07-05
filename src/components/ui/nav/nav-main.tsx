@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronLeft, type LucideIcon } from "lucide-react";
 
 import {
   Collapsible,
@@ -20,6 +20,8 @@ import {
 
 export function NavMain({
   items,
+  activeIndex,
+  onToggle,
 }: {
   items: {
     title: string;
@@ -31,16 +33,23 @@ export function NavMain({
       url: string;
     }[];
   }[];
+  activeIndex?: number | null;
+  onToggle?: (index: number) => void;
 }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>پارس پلاس- اتوماسیون هوشمند آموزشی</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {items.map((item, index) => (
           <Collapsible
             key={item.title}
             asChild
-            defaultOpen={item.isActive}
+            open={activeIndex === index}
+            onOpenChange={(open) => {
+              if (onToggle) {
+                onToggle(open ? index : -1);
+              }
+            }}
             className="group/collapsible"
           >
             <SidebarMenuItem>
