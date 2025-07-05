@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
   Users,
   FileText,
   Save,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ClassSelectionStep } from "./components/ClassSelectionStep";
@@ -25,6 +26,8 @@ import { GradeTitleStep } from "./components/GradeTitleStep";
 import { StudentsGradingStep } from "./components/StudentsGradingStep";
 import { ReviewSaveStep } from "./components/ReviewSaveStep";
 import { GradeListsView } from "./components/GradeListsView";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { gradingSystemHelpSections } from "./GradingSystemHelpContent";
 
 interface GradingData {
   selectedClass: any | null;
@@ -89,6 +92,20 @@ export default function GradingSystemPage() {
     isEditing: false,
   });
   const [showWizard, setShowWizard] = useState(false);
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+
+  // Keyboard shortcut for help panel (F1)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setHelpPanelOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const nextStep = () => {
     if (currentStep < STEPS.length) {
@@ -198,12 +215,23 @@ export default function GradingSystemPage() {
               مدیریت و ثبت نمرات دانش‌آموزان
             </p>
           </div>
-          {(user.userType === "teacher" || user.userType === "school") && (
-            <Button onClick={startNewGrading} size="lg" className="gap-2">
-              <FileText className="h-5 w-5" />
-              ثبت نمره جدید
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHelpPanelOpen(true)}
+              className="gap-2"
+            >
+              <HelpCircle className="h-4 w-4" />
+              راهنما
             </Button>
-          )}
+            {(user.userType === "teacher" || user.userType === "school") && (
+              <Button onClick={startNewGrading} size="lg" className="gap-2">
+                <FileText className="h-5 w-5" />
+                ثبت نمره جدید
+              </Button>
+            )}
+          </div>
         </div>
 
         <GradeListsView
@@ -211,6 +239,13 @@ export default function GradingSystemPage() {
           userCode={user.userType === "teacher" ? user.username : undefined}
           schoolCode={user.schoolCode}
           onEditGradeList={startEditGrading}
+        />
+
+        <HelpPanel
+          isOpen={helpPanelOpen}
+          onClose={() => setHelpPanelOpen(false)}
+          sections={gradingSystemHelpSections}
+          title="راهنمای سیستم نمره‌دهی"
         />
       </div>
     );
@@ -229,9 +264,20 @@ export default function GradingSystemPage() {
                 {STEPS[currentStep - 1]?.description}
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={resetWizard}>
-              بازگشت به فهرست
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHelpPanelOpen(true)}
+                className="gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                راهنما
+              </Button>
+              <Button variant="outline" onClick={resetWizard}>
+                بازگشت به فهرست
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4 mt-6">
@@ -357,6 +403,13 @@ export default function GradingSystemPage() {
           </div>
         </CardContent>
       </Card>
+
+      <HelpPanel
+        isOpen={helpPanelOpen}
+        onClose={() => setHelpPanelOpen(false)}
+        sections={gradingSystemHelpSections}
+        title="راهنمای سیستم نمره‌دهی"
+      />
     </div>
   );
 }
