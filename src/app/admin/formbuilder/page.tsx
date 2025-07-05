@@ -10,6 +10,8 @@ import FormPreview from "./components/FormPreview";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import "./rtl.css";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 export default function FormBuilderPage() {
   const [activeTab, setActiveTab] = useState("list");
@@ -111,8 +113,14 @@ export default function FormBuilderPage() {
 
   return (
     <div className="container mx-auto  py-8 rtl">
+      <PageHeader
+        title="فرم ساز"
+        subtitle="ایجاد و ویرایش فرم‌های آموزشی"
+        icon={<AcademicCapIcon className="w-6 h-6" />}
+        gradient={true}
+      />
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">فرم ساز</h1>
+        {/* <h1 className="text-3xl font-bold">فرم ساز</h1> */}
         <Button onClick={handleCreateForm} className="flex items-center gap-2">
           <PlusCircle className="h-4 w-4 ml-2" />
           ایجاد فرم جدید
