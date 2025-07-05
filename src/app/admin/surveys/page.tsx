@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import {
   Copy,
   AlertCircle,
   Activity,
+  HelpCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +33,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Survey } from "./types/survey";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { surveysHelpSections } from "./SurveysHelpContent";
 
 export default function SurveysPage() {
   const router = useRouter();
@@ -39,6 +42,20 @@ export default function SurveysPage() {
   const { surveys, loading, error, deleteSurvey, duplicateSurvey } =
     useSurveys();
   const [searchTerm, setSearchTerm] = useState("");
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+
+  // Keyboard shortcut for help panel (F1)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setHelpPanelOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const filteredSurveys = surveys.filter(
     (survey) =>
@@ -205,16 +222,27 @@ export default function SurveysPage() {
                   : "نظرسنجی‌های مدرسه را مدیریت کنید"}
               </p>
             </div>
-            {user?.userType !== "student" && (
+            <div className="flex items-center gap-3">
               <Button
-                onClick={handleCreateSurvey}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
-                size="lg"
+                variant="outline"
+                size="sm"
+                onClick={() => setHelpPanelOpen(true)}
+                className="flex items-center gap-2"
               >
-                <Plus className="h-5 w-5 ml-2" />
-                ایجاد نظرسنجی جدید
+                <HelpCircle className="h-4 w-4" />
+                راهنما
               </Button>
-            )}
+              {user?.userType !== "student" && (
+                <Button
+                  onClick={handleCreateSurvey}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
+                  size="lg"
+                >
+                  <Plus className="h-5 w-5 ml-2" />
+                  ایجاد نظرسنجی جدید
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Enhanced Search */}
@@ -829,6 +857,13 @@ export default function SurveysPage() {
             ))}
           </div>
         )}
+
+        <HelpPanel
+          isOpen={helpPanelOpen}
+          onClose={() => setHelpPanelOpen(false)}
+          sections={surveysHelpSections}
+          title="راهنمای سیستم نظرسنجی"
+        />
       </div>
     </div>
   );
