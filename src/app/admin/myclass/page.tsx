@@ -6,8 +6,10 @@ import {
   VideoCameraIcon,
   CalendarDaysIcon,
   ClockIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 
 interface WeeklySchedule {
   platform: string;
@@ -280,10 +282,17 @@ export default function MyClassPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-gray-50 py-8">
+    <main dir="rtl" className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4">
+        <PageHeader
+          title={getPageTitle()}
+          subtitle={getPageTitle()}
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
         <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-          <h1 className="text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
+          {/* <h1 className="text-3xl font-bold text-gray-900">{getPageTitle()}</h1> */}
+
           <div className="flex items-center gap-2 text-gray-600 text-lg bg-white px-4 py-2 rounded-lg shadow-sm">
             <CalendarDaysIcon className="h-5 w-5 text-blue-500" />
             <span className="font-medium">{currentDay}</span>

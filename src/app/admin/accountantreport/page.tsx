@@ -6,6 +6,8 @@ import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import DateObject from "react-date-object";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 interface FinancialStats {
   totalIncome: number;
@@ -156,18 +158,17 @@ export default function AccountantReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4" dir="rtl">
+    <div className="min-h-screen p-4" dir="rtl">
       <div className="max-w-7xl mx-auto">
+        <PageHeader
+          title="گزارش‌های حسابداری"
+          subtitle="تحلیل‌های مالی و آماری جامع مدرسه"
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                گزارش‌های حسابداری
-              </h1>
-              <p className="text-gray-600">تحلیل‌های مالی و آماری جامع مدرسه</p>
-            </div>
-
             {/* Date Range Selector */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">

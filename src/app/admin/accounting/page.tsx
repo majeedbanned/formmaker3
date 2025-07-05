@@ -92,10 +92,7 @@ export default function AccountingPage() {
 
   if (!user || !["school", "student", "teacher"].includes(user.userType)) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-gray-50"
-        dir="rtl"
-      >
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">دسترسی محدود</h1>
           <p className="text-gray-600">
