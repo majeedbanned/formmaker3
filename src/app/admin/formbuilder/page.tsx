@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, HelpCircle } from "lucide-react";
 import FormBuilderList from "./components/FormBuilderList";
 import FormBuilderEditor from "./components/FormBuilderEditor";
 import FormPreview from "./components/FormPreview";
@@ -12,11 +12,27 @@ import { toast } from "sonner";
 import "./rtl.css";
 import PageHeader from "@/components/PageHeader";
 import { AcademicCapIcon } from "@heroicons/react/24/outline";
+import HelpPanel from "@/components/ui/HelpPanel";
+import { formBuilderHelpSections } from "./FormBuilderHelpContent";
 
 export default function FormBuilderPage() {
   const [activeTab, setActiveTab] = useState("list");
   const [editingForm, setEditingForm] = useState<any>(null);
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { user, isLoading } = useAuth();
+
+  // Keyboard shortcut for help panel (F1)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F1") {
+        event.preventDefault();
+        setHelpPanelOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleCreateForm = () => {
     if (!user) {
@@ -121,10 +137,24 @@ export default function FormBuilderPage() {
       />
       <div className="flex justify-between items-center mb-6">
         {/* <h1 className="text-3xl font-bold">فرم ساز</h1> */}
-        <Button onClick={handleCreateForm} className="flex items-center gap-2">
-          <PlusCircle className="h-4 w-4 ml-2" />
-          ایجاد فرم جدید
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHelpPanelOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <HelpCircle className="h-4 w-4" />
+            راهنما
+          </Button>
+          <Button
+            onClick={handleCreateForm}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4 ml-2" />
+            ایجاد فرم جدید
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -168,6 +198,13 @@ export default function FormBuilderPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <HelpPanel
+        isOpen={helpPanelOpen}
+        onClose={() => setHelpPanelOpen(false)}
+        sections={formBuilderHelpSections}
+        title="راهنمای فرم ساز"
+      />
     </div>
   );
 }
