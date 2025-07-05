@@ -5,6 +5,8 @@ import CRUDComponent from "@/components/CRUDComponent";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -362,7 +364,12 @@ function StudentsPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle()}</h1>
+        <PageHeader
+          title={pageTitle()}
+          subtitle={pageTitle()}
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
 
         {user?.userType === "teacher" && (
           <div className="bg-blue-50 text-right border border-blue-200 rounded-md p-3 mb-4">

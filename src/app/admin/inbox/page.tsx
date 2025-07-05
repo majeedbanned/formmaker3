@@ -19,10 +19,12 @@ import {
   CalendarIcon,
   AdjustmentsHorizontalIcon,
   PencilSquareIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { toast } from "sonner";
 import { getPersianDate } from "@/utils/dateUtils";
+import PageHeader from "@/components/PageHeader";
 
 // Message interface
 interface Message {
@@ -975,18 +977,29 @@ export default function InboxPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8" dir="rtl">
+    <main className="min-h-screen py-8" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <PageHeader
+          title={messageType === "inbox" ? "صندوق پیام‌ها" : "پیام‌های ارسالی"}
+          subtitle={
+            messageType === "inbox"
+              ? "مدیریت پیام‌ها"
+              : "مدیریت پیام‌های ارسالی"
+          }
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
+          {/* <h1 className="text-2xl font-bold text-gray-900">
             {messageType === "inbox" ? "صندوق پیام‌ها" : "پیام‌های ارسالی"}
-          </h1>
+          </h1> */}
+
           <div className="flex gap-4 items-center">
             {/* Message type toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-gray-100 w-[350px] rounded-lg p-1">
               <button
                 onClick={() => setMessageType("inbox")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-md text-sm w-[150px] font-medium transition-colors ${
                   messageType === "inbox"
                     ? "bg-white text-blue-600 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -996,7 +1009,7 @@ export default function InboxPage() {
               </button>
               <button
                 onClick={() => setMessageType("sent")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-md w-[150px] text-sm font-medium transition-colors ${
                   messageType === "sent"
                     ? "bg-white text-blue-600 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
@@ -1009,7 +1022,7 @@ export default function InboxPage() {
             {/* Filter for starred messages */}
             <button
               onClick={() => setShowStarredOnly(!showStarredOnly)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-md border ${
+              className={`flex w-[450px] items-center gap-1.5 px-3 py-2 rounded-md border ${
                 showStarredOnly
                   ? "bg-yellow-50 border-yellow-300 text-yellow-700"
                   : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -1028,7 +1041,7 @@ export default function InboxPage() {
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className="block  w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
               <option value={10}>10 پیام در هر صفحه</option>
               <option value={25}>25 پیام در هر صفحه</option>

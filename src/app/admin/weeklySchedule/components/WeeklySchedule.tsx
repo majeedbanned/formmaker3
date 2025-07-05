@@ -960,9 +960,9 @@ const WeeklySchedule = ({
 
           {/* Day filter */}
           <div>
-            <Label htmlFor="day-select" className="block mb-2 text-right">
+            {/* <Label htmlFor="day-select" className="block mb-2 text-right">
               روز
-            </Label>
+            </Label> */}
             <Select value={selectedDay} onValueChange={setSelectedDay}>
               <SelectTrigger id="day-select">
                 <SelectValue placeholder="همه روزها" />
