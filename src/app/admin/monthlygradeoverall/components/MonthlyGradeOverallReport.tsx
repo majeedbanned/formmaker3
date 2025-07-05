@@ -286,10 +286,10 @@ const MonthlyGradeOverallReport = ({
         value: currentJYear.toString(),
         label: toPersianDigits(currentJYear),
       },
-      // {
-      //   value: (currentJYear - 1).toString(),
-      //   label: toPersianDigits(currentJYear - 1),
-      // },
+      {
+        value: (currentJYear - 1).toString(),
+        label: toPersianDigits(currentJYear - 1),
+      },
     ];
 
     setYearOptions(years);
@@ -1514,9 +1514,9 @@ const MonthlyGradeOverallReport = ({
       <style dangerouslySetInnerHTML={{ __html: verticalTextStyles }} />
       <div className={`space-y-6 ${isPrinting ? "printing" : ""}`} dir="rtl">
         <Card className="print:hidden">
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle className="text-xl">فیلترها</CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>

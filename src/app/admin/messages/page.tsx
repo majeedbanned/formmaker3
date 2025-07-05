@@ -288,7 +288,7 @@ const layout: LayoutSettings = {
   width: "100%",
 
   texts: {
-    addButton: "افزودن",
+    addButton: "ارسال پیام جدید",
     editButton: "ویرایش",
     deleteButton: "حذف",
     cancelButton: "انصراف",
@@ -296,7 +296,7 @@ const layout: LayoutSettings = {
     searchButton: "جستجو",
     advancedSearchButton: "جستجوی پیشرفته",
     applyFiltersButton: "اعمال فیلترها",
-    addModalTitle: "افزودن مورد جدید",
+    addModalTitle: "",
     editModalTitle: "ویرایش مورد",
     deleteModalTitle: "تایید حذف",
     advancedSearchModalTitle: "جستجوی پیشرفته",
@@ -713,7 +713,7 @@ function StudentsPageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4">
         <PageHeader
           title={pageTitle()}

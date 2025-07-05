@@ -33,13 +33,10 @@ function ChatContent() {
   }
 
   return (
-    <main
-      className="h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden"
-      dir="rtl"
-    >
+    <main className="h-screen bg-gradient-to-br overflow-hidden" dir="rtl">
       <div className="h-full flex flex-col">
         {/* Compact Header */}
-        <div className="flex-shrink-0 px-6 py-3 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
+        <div className="flex-shrink-0 px-6 py-3 border-b backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-reverse space-x-3">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">

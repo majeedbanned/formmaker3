@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import PresenceReport from "./components/PresenceReport";
 import { useAuth } from "@/hooks/useAuth";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -196,7 +198,13 @@ export default function PresenceReportPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">گزارش حضور و غیاب</h1>
+      {/* <h1 className="text-2xl font-bold mb-6 text-center">گزارش حضور و غیاب</h1> */}
+      <PageHeader
+        title="گزارش حضور و غیاب"
+        subtitle="گزارش حضور و غیاب"
+        icon={<AcademicCapIcon className="w-6 h-6" />}
+        gradient={true}
+      />
       <PresenceReport
         schoolCode={schoolCode || ""}
         teacherCode={teacherCode}

@@ -24,6 +24,8 @@ import "../print.css";
 import { useAuth } from "@/hooks/useAuth";
 import ComparativeAnalysis from "./ComparativeAnalysis";
 import ActivityTrends from "./ActivityTrends";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 // Types
 export type TeacherActivity = {
@@ -358,8 +360,8 @@ const TeacherActivities: React.FC = () => {
       className="min-h-screen bg-gradient-to-b from-gray-50 to-white"
       dir="rtl"
     >
-      <div className="container px-4 py-8 mx-auto max-w-7xl">
-        <header className="mb-8">
+      <div className="container px-4 py-0 mx-auto ">
+        {/* <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 animate-fade-in">
             گزارش و رتبه‌بندی فعالیت معلمان
           </h1>
@@ -368,7 +370,15 @@ const TeacherActivities: React.FC = () => {
             فراهم می‌کند. می‌توانید گزارش‌های مختلف را در قالب نمودار، خلاصه و
             جزئیات مشاهده کنید.
           </p>
-        </header>
+        </header> */}
+        <PageHeader
+          title="گزارش و رتبه‌بندی فعالیت معلمان"
+          subtitle="  این بخش امکان مشاهده و ارزیابی فعالیت‌های آموزشی کادر معلمان را
+            فراهم می‌کند. می‌توانید گزارش‌های مختلف را در قالب نمودار، خلاصه و
+            جزئیات مشاهده کنید."
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
 
         {/* Filters section */}
         <div className="mb-8 bg-white rounded-xl shadow-md overflow-hidden transition-all hover:shadow-lg">

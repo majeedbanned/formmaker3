@@ -52,7 +52,7 @@ const layout: LayoutSettings = {
   width: "100%",
 
   texts: {
-    addButton: "افزودن",
+    addButton: "ارسال نوتیفیکیشن جدید",
     editButton: "ویرایش",
     deleteButton: "حذف",
     cancelButton: "انصراف",
@@ -460,11 +460,11 @@ function StudentsPageContent() {
   // Define a title based on user type
   const pageTitle = () => {
     if (user?.userType === "student") {
-      return "ارسال پیام به معلمان";
+      return "ارسال نوتیفیکیشن به معلمان";
     } else if (user?.userType === "teacher") {
-      return "ارسال پیام به کلاس ها";
+      return "ارسال نوتیفیکیشن به کلاس ها";
     } else {
-      return "ارسال پیام";
+      return "ارسال نوتیفیکیشن";
     }
   };
 
@@ -515,7 +515,7 @@ function StudentsPageContent() {
       <div className="max-w-7xl mx-auto px-4">
         <PageHeader
           title={pageTitle()}
-          subtitle="ارسال اعلان ها"
+          subtitle="(نوتیفیکیشن بر روی گوشی های دانش آموزان و معلمان ارسال می شود)"
           icon={<AcademicCapIcon className="w-6 h-6" />}
           gradient={true}
         />

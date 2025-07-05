@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ReportCards from "./components/ReportCards";
 import { useAuth } from "@/hooks/useAuth";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
+import PageHeader from "@/components/PageHeader";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -172,9 +174,15 @@ export default function ReportCardsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">
+      {/* <h1 className="text-2xl font-bold mb-6 text-center">
         کارنامه تحصیلی دانش‌آموزان
-      </h1>
+      </h1> */}
+      <PageHeader
+        title="        کارنامه تحصیلی دانش‌آموزان"
+        // subtitle="گزارش ماهانه نمرات"
+        icon={<AcademicCapIcon className="w-6 h-6" />}
+        gradient={true}
+      />
       <ReportCards
         schoolCode={schoolCode || ""}
         teacherCode={teacherCode}

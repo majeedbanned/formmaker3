@@ -1225,9 +1225,9 @@ const MonthlyGradeReport = ({
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       <div className={`space-y-6 ${isPrinting ? "printing" : ""}`} dir="rtl">
         <Card className="print:hidden">
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle className="text-xl">فیلترها</CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>

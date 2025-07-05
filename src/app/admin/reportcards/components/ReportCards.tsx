@@ -2514,9 +2514,9 @@ const ReportCards = ({
       <div className={`space-y-6 ${isPrinting ? "printing" : ""}`} dir="rtl">
         <Card className="print:hidden filter-card shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xl text-gray-800">
+            {/* <CardTitle className="text-xl text-gray-800">
               تنظیمات نمایش
-            </CardTitle>
+            </CardTitle> */}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

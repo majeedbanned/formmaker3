@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
 import {
+  AcademicCapIcon,
   ChatBubbleLeftRightIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
@@ -40,13 +41,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 // Import to get Persian date
 import { getPersianDate } from "@/utils/dateUtils";
+import PageHeader from "@/components/PageHeader";
 
 const layout: LayoutSettings = {
   direction: "rtl",
   width: "100%",
 
   texts: {
-    addButton: "افزودن",
+    addButton: "ارسال اس ام اس جدید",
     editButton: "ویرایش",
     deleteButton: "حذف",
     cancelButton: "انصراف",
@@ -579,14 +581,20 @@ function StudentsPageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4">
+        <PageHeader
+          title={pageTitle()}
+          subtitle="(پیام بر روی گوشی های دانش آموزان و معلمان ارسال می شود)"
+          icon={<AcademicCapIcon className="w-6 h-6" />}
+          gradient={true}
+        />
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{pageTitle()}</h1>
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <div className="bg-white shadow rounded-lg px-4 py-3 flex items-center">
-              <div className="text-right">
-                <p className="text-sm text-gray-500">اعتبار پیامک</p>
+          {/* <h1 className="text-3xl font-bold text-gray-900">{pageTitle()}</h1> */}
+
+          <div className="flex items-center space-x-4 gap-2 space-x-reverse">
+            <div className="bg-white shadow rounded-lg px-4 py-1 flex items-center">
+              <div className="text-right flex flex-row justify-center items-center gap-2">
                 <p className="text-lg font-semibold">
                   {isLoadingCredit ? (
                     <span className="flex items-center">
@@ -597,6 +605,7 @@ function StudentsPageContent() {
                     `${Number(smsCredit).toLocaleString()} ریال`
                   )}
                 </p>
+                <p className="text-sm text-gray-500">اعتبار پیامک</p>
               </div>
               <button
                 onClick={fetchSmsCredit}

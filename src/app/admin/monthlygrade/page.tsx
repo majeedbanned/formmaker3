@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import MonthlyGradeReport from "./components/MonthlyGradeReport";
 import { useAuth } from "@/hooks/useAuth";
+import PageHeader from "@/components/PageHeader";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 
 // Define the types needed
 type WeeklySchedule = {
@@ -196,9 +198,15 @@ export default function MonthlyGradePage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">
+      {/* <h1 className="text-2xl font-bold mb-6 text-center">
         گزارش ماهانه نمرات
-      </h1>
+      </h1> */}
+      <PageHeader
+        title="گزارش ماهانه نمرات"
+        subtitle="گزارش ماهانه نمرات"
+        icon={<AcademicCapIcon className="w-6 h-6" />}
+        gradient={true}
+      />
       <MonthlyGradeReport
         schoolCode={schoolCode || ""}
         teacherCode={teacherCode}
