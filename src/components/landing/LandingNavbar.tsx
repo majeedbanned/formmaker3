@@ -236,10 +236,10 @@ export default function LandingNavbar() {
               <Link href="/">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">پ</span>
+                    {/* <span className="text-white font-bold text-lg">پ</span> */}
                   </div>
                   <span className="mr-2 text-xl font-bold text-gray-900">
-                    پارسا‌موز
+                    مدرسه من{" "}
                   </span>
                 </div>
               </Link>
@@ -271,10 +271,10 @@ export default function LandingNavbar() {
                 </div>
                 <span
                   className={`mr-2 text-xl font-bold ${
-                    scrolled ? "text-gray-900" : "text-white"
+                    scrolled ? "text-gray-900" : "text-indigo-500"
                   }`}
                 >
-                  پارسا‌موز
+                  مدرسه من
                 </span>
               </div>
             </Link>
@@ -290,7 +290,7 @@ export default function LandingNavbar() {
                     className={`px-3 py-2 text-sm font-medium transition-colors flex items-center ${
                       scrolled
                         ? "text-gray-900 hover:text-indigo-600"
-                        : "text-indigo-300 hover:text-indigo-500"
+                        : "text-indigo-500 hover:text-indigo-500"
                     }`}
                     onClick={() =>
                       setActiveDropdown(
@@ -336,7 +336,7 @@ export default function LandingNavbar() {
                   className={`px-3 py-2 text-sm font-medium transition-colors ${
                     scrolled
                       ? "text-gray-900 hover:text-indigo-600"
-                      : "text-indigo-300 hover:text-indigo-500"
+                      : "text-indigo-500 hover:text-indigo-500"
                   }`}
                 >
                   {link.name}
