@@ -53,8 +53,18 @@ export default function LandingNavbar() {
       const data = await response.json();
       if (data.success) {
         const items = data.items || [];
-        const organizedItems = organizeNavItems(items);
-        setNavItems(organizedItems);
+
+        // If no items exist in the database (collection doesn't exist or is empty),
+        // use default navigation items
+        if (items.length === 0) {
+          console.log(
+            "No navigation items found in database, using default items"
+          );
+          setNavItems(getDefaultNavItems());
+        } else {
+          const organizedItems = organizeNavItems(items);
+          setNavItems(organizedItems);
+        }
       } else {
         console.error("Navigation API returned error:", data.error);
         setNavItems(getDefaultNavItems());

@@ -53,9 +53,9 @@ export default function RootLayout({
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden flex-row-reverse md:block" />
-                    <BreadcrumbItem>
+                    {/* <BreadcrumbItem>
                       <BreadcrumbPage>فرم‌ساز</BreadcrumbPage>
-                    </BreadcrumbItem>
+                    </BreadcrumbItem> */}
                   </BreadcrumbList>
                 </Breadcrumb>
               </div>
