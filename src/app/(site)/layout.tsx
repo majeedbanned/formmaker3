@@ -5,7 +5,7 @@ export default function HomeLayout({ children }) {
     <html>
       <body className={`${vazirmatn.className} antialiased`}>
         <div>
-          <header>site Layout Header</header>
+          {/* <header>site Layout Header</header> */}
           <main>{children}</main>
         </div>
       </body>

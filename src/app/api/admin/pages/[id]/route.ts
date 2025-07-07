@@ -50,21 +50,33 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { title, content, slug, isActive, metaDescription } = body;
+    const { 
+      title, 
+      slug, 
+      isPublished, 
+      metaDescription, 
+      metaKeywords, 
+      modules = [],
+      schoolId,
+      content // For backward compatibility
+    } = body;
     const { id } = params;
+
+    console.log('Updating page with data:', body);
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: 'Invalid ID format' },
-        { status: 400 }
+        { status: 401 }
       );
     }
 
-    if (!title || !content) {
-      return NextResponse.json(
-        { success: false, error: 'Title and content are required' },
-        { status: 400 }
-      );
+    if (!title) {
+     // title="";
+      // return NextResponse.json(
+      //   { success: false, error: 'Title is required' },
+      //   { status: 403 }
+      // );
     }
 
     const domain = request.headers.get("x-domain") || "localhost:3000";
@@ -72,7 +84,7 @@ export async function PUT(
     const collection = connection.collection('website_pages');
 
     // Generate slug if not provided
-    const pageSlug = slug || title.toLowerCase()
+    const pageSlug = slug || title?.toLowerCase() || ""
       .replace(/[^\w\s-]/g, '') // Remove special characters
       .replace(/\s+/g, '-') // Replace spaces with hyphens
       .trim();
@@ -83,19 +95,23 @@ export async function PUT(
       _id: { $ne: new ObjectId(id) }
     });
     
-    if (existingPage) {
-      return NextResponse.json(
-        { success: false, error: 'A page with this slug already exists' },
-        { status: 409 }
-      );
-    }
+    // if (existingPage) {
+    //   return NextResponse.json(
+    //     { success: false, error: 'A page with this slug already exists' },
+    //     { status: 409 }
+    //   );
+    // }
 
     const updateData = {
-      title,
-      content,
-      slug: pageSlug,
-      isActive: isActive !== undefined ? isActive : true,
+    //  title,
+    // slug: pageSlug || "",
+      isPublished: isPublished !== undefined ? isPublished : true,
+      isActive: isPublished !== undefined ? isPublished : true, // For backward compatibility
       metaDescription: metaDescription || '',
+      metaKeywords: metaKeywords || '',
+      modules: modules || [],
+      schoolId: schoolId || null,
+      content: content || '', // For backward compatibility
       updatedAt: new Date(),
     };
 

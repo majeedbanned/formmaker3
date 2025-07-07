@@ -27,11 +27,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, content, slug, isActive, metaDescription } = body;
-
-    if (!title || !content) {
+    const { 
+      title, 
+      slug, 
+      isPublished, 
+      metaDescription, 
+      metaKeywords, 
+      modules = [], 
+      schoolId,
+      content // For backward compatibility
+    } = body;
+    
+    console.log('Creating page with data:', body);
+    
+    if (!title) {
       return NextResponse.json(
-        { success: false, error: 'Title and content are required' },
+        { success: false, error: 'Title is required' },
         { status: 400 }
       );
     }
@@ -57,10 +68,14 @@ export async function POST(request: NextRequest) {
 
     const newPage = {
       title,
-      content,
       slug: pageSlug,
-      isActive: isActive !== undefined ? isActive : true,
+      isPublished: isPublished !== undefined ? isPublished : true,
+      isActive: isPublished !== undefined ? isPublished : true, // For backward compatibility
       metaDescription: metaDescription || '',
+      metaKeywords: metaKeywords || '',
+      modules: modules || [],
+      schoolId: schoolId || null,
+      content: content || '', // For backward compatibility
       createdAt: new Date(),
       updatedAt: new Date(),
     };
