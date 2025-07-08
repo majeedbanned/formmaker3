@@ -229,23 +229,27 @@ export default function LandingNavbar() {
 
   if (loading) {
     return (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md py-2">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl shadow-xl border-b border-white/20 py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
-                    {/* <span className="text-white font-bold text-lg">پ</span> */}
+                  <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className="w-6 h-6 bg-white/20 rounded-full animate-pulse"></div>
                   </div>
-                  <span className="mr-2 text-xl font-bold text-gray-900">
-                    مدرسه من{" "}
-                  </span>
+                  <div className="mr-3 bg-gray-200 h-6 w-24 rounded-lg animate-pulse"></div>
                 </div>
               </Link>
             </div>
-            <div className="hidden md:flex items-center">
-              <div className="animate-pulse bg-gray-200 h-4 w-96 rounded"></div>
+            <div className="hidden md:flex items-center space-x-2 rtl:space-x-reverse">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-gray-200 h-8 w-16 rounded-xl animate-pulse"
+                ></div>
+              ))}
+              <div className="bg-gradient-to-r from-indigo-200 to-purple-200 h-10 w-16 rounded-2xl animate-pulse ml-4"></div>
             </div>
           </div>
         </div>
@@ -255,28 +259,68 @@ export default function LandingNavbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white shadow-md py-2" : "bg-transparent py-4"
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? "bg-white/90 backdrop-blur-xl shadow-xl border-b border-white/20 py-2"
+          : "bg-gradient-to-r from-white/10 via-white/5 to-white/10 backdrop-blur-sm py-4"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Subtle animated background elements */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-1/4 w-32 h-32 bg-gradient-to-r from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse" />
+        <div
+          className="absolute top-0 right-1/4 w-24 h-24 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: "1000ms" }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <Link href="/">
-              <div className="flex items-center">
-                <div
-                  className={`w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center`}
-                >
-                  <span className="text-white font-bold text-lg">پ</span>
-                </div>
-                <span
-                  className={`mr-2 text-xl font-bold ${
-                    scrolled ? "text-gray-900" : "text-indigo-500"
+              <motion.div
+                className="flex items-center group"
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.3 }}
+              >
+                <motion.div
+                  className={`relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                    scrolled
+                      ? "bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg"
+                      : "bg-gradient-to-r from-indigo-400 to-purple-500 shadow-xl"
                   }`}
+                  whileHover={{
+                    rotate: [0, -10, 10, 0],
+                    scale: 1.1,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 opacity-50 blur-md group-hover:opacity-80 transition-opacity duration-300" />
+
+                  <span className="relative text-white font-bold text-xl filter drop-shadow-sm">
+                    پ
+                  </span>
+
+                  {/* Floating particles */}
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse opacity-70" />
+                  <div
+                    className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full animate-pulse opacity-70"
+                    style={{ animationDelay: "500ms" }}
+                  />
+                </motion.div>
+
+                <motion.span
+                  className={`mr-3 text-2xl font-bold transition-all duration-300 ${
+                    scrolled
+                      ? "text-transparent bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text"
+                      : "text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text"
+                  }`}
+                  whileHover={{ scale: 1.05 }}
                 >
                   مدرسه من
-                </span>
-              </div>
+                </motion.span>
+              </motion.div>
             </Link>
           </div>
 
@@ -286,89 +330,140 @@ export default function LandingNavbar() {
               // If item has children, render as dropdown
               link.children && link.children.length > 0 ? (
                 <div key={link._id} className="relative">
-                  <button
-                    className={`px-3 py-2 text-sm font-medium transition-colors flex items-center ${
+                  <motion.button
+                    className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 flex items-center rounded-xl hover:bg-white/10 backdrop-blur-sm ${
                       scrolled
-                        ? "text-gray-900 hover:text-indigo-600"
-                        : "text-indigo-500 hover:text-indigo-500"
+                        ? "text-gray-900 hover:text-indigo-600 hover:bg-indigo-50/80"
+                        : "text-indigo-600 hover:text-indigo-700"
                     }`}
                     onClick={() =>
                       setActiveDropdown(
                         activeDropdown === link._id ? null : link._id
                       )
                     }
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {link.name}
+                    {/* Hover background effect */}
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+                    <span className="relative z-10">{link.name}</span>
                     <ChevronDownIcon
-                      className={`mr-1 h-4 w-4 transition-transform ${
+                      className={`relative z-10 mr-1 h-4 w-4 transition-transform duration-300 ${
                         activeDropdown === link._id ? "rotate-180" : ""
                       }`}
                     />
-                  </button>
+                  </motion.button>
 
                   {activeDropdown === link._id && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md shadow-lg z-10"
+                      className="absolute right-0 mt-2 py-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 z-10"
                       onMouseLeave={() => setActiveDropdown(null)}
                     >
-                      {link.children.map((child) => (
-                        <a
+                      {/* Dropdown glow effect */}
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-50 blur-xl" />
+
+                      {link.children.map((child, index) => (
+                        <motion.a
                           key={child._id}
                           href={child.href}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
+                          className="relative block px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600 transition-all duration-200 rounded-lg mx-2"
                           onClick={() => setActiveDropdown(null)}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          whileHover={{ scale: 1.02, x: 5 }}
                         >
                           {child.name}
-                        </a>
+                        </motion.a>
                       ))}
                     </motion.div>
                   )}
                 </div>
               ) : (
                 // Regular link without dropdown
-                <a
+                <motion.a
                   key={link._id}
                   href={link.href}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-xl hover:bg-white/10 backdrop-blur-sm ${
                     scrolled
-                      ? "text-gray-900 hover:text-indigo-600"
-                      : "text-indigo-500 hover:text-indigo-500"
+                      ? "text-gray-900 hover:text-indigo-600 hover:bg-indigo-50/80"
+                      : "text-indigo-600 hover:text-indigo-700"
                   }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {link.name}
-                </a>
+                  {/* Hover background effect */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+                  <span className="relative z-10">{link.name}</span>
+                </motion.a>
               )
             )}
 
-            <a
+            <motion.a
               href="/login"
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 ml-4"
+              className="relative inline-flex items-center justify-center px-6 py-2.5 border border-transparent rounded-2xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 ml-4 transition-all duration-300"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
             >
-              ورود
-            </a>
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 opacity-50 blur-lg group-hover:opacity-100 transition-opacity duration-300" />
+
+              {/* Animated background */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-400/20 to-purple-400/20 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+              <span className="relative z-10 filter drop-shadow-sm">ورود</span>
+
+              {/* Floating particle */}
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse opacity-70" />
+            </motion.a>
           </div>
 
           {/* Mobile menu button */}
           <div className="flex md:hidden">
-            <button
+            <motion.button
               type="button"
-              className={`inline-flex items-center justify-center p-2 rounded-md ${
+              className={`relative inline-flex items-center justify-center p-3 rounded-2xl backdrop-blur-sm transition-all duration-300 ${
                 scrolled
-                  ? "text-gray-900 hover:text-indigo-600"
-                  : "text-indigo-300 hover:text-indigo-500"
+                  ? "text-gray-900 hover:text-indigo-600 hover:bg-indigo-50/80"
+                  : "text-indigo-600 hover:text-indigo-700 hover:bg-white/10"
               }`}
               onClick={() => setIsOpen(!isOpen)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {isOpen ? (
-                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-              )}
-            </button>
+              {/* Hover background effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+              <motion.div
+                className="relative z-10"
+                initial={false}
+                animate={isOpen ? "open" : "closed"}
+              >
+                {isOpen ? (
+                  <motion.div
+                    initial={{ rotate: 0 }}
+                    animate={{ rotate: 180 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ rotate: 180 }}
+                    animate={{ rotate: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                  </motion.div>
+                )}
+              </motion.div>
+            </motion.button>
           </div>
         </div>
       </div>
@@ -376,30 +471,53 @@ export default function LandingNavbar() {
       {/* Mobile menu */}
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.3 }}
-          className="md:hidden bg-white"
+          initial={{ opacity: 0, height: 0, y: -20 }}
+          animate={{ opacity: 1, height: "auto", y: 0 }}
+          exit={{ opacity: 0, height: 0, y: -20 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+          className="md:hidden bg-white/95 backdrop-blur-xl border-t border-white/20"
         >
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 max-h-[80vh] overflow-y-auto">
-            {allNavLinks.map((link) => (
-              <a
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-white/5" />
+
+          <div className="relative px-4 pt-4 pb-6 space-y-2 sm:px-6 max-h-[80vh] overflow-y-auto">
+            {allNavLinks.map((link, index) => (
+              <motion.a
                 key={link._id}
                 href={link.href}
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-indigo-50 hover:text-indigo-600"
+                className="block px-4 py-3 rounded-2xl text-base font-medium text-gray-900 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600 transition-all duration-300"
                 onClick={() => setIsOpen(false)}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.3 }}
+                whileHover={{ scale: 1.02, x: 5 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {link.name}
-              </a>
+              </motion.a>
             ))}
-            <a
+
+            <motion.a
               href="/login"
-              className="block px-3 py-2 rounded-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 text-center mt-4"
+              className="relative block px-4 py-3 rounded-2xl text-base font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-center mt-6 shadow-lg transition-all duration-300"
               onClick={() => setIsOpen(false)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: allNavLinks.length * 0.1 + 0.2,
+                duration: 0.3,
+              }}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
             >
-              ورود
-            </a>
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 opacity-50 blur-lg" />
+
+              <span className="relative z-10 filter drop-shadow-sm">ورود</span>
+
+              {/* Floating particle */}
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse opacity-70" />
+            </motion.a>
           </div>
         </motion.div>
       )}
