@@ -350,7 +350,7 @@ export default function HeroSection() {
                     alt={
                       heroData.images[currentImageIndex]?.alt || "Hero Image"
                     }
-                    className="w-full h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
+                    className="w-full h-full object-cover rounded-lg shadow-2xl transition-opacity duration-500"
                     onLoad={() => {
                       console.log(
                         "Image loaded successfully:",
