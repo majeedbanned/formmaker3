@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { GradingSelectionStep } from "./components/GradingSelectionStep";
 import { ReportConfigurationStep } from "./components/ReportConfigurationStep";
 import { ReportPreviewStep } from "./components/ReportPreviewStep";
+import PageHeader from "@/components/PageHeader";
 
 interface GradeData {
   score?: number;
@@ -164,12 +165,18 @@ export default function ReportCardCreatorPage() {
     <div className="container mx-auto p-6" dir="rtl">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <h1 className="text-3xl font-bold">سازنده کارنامه</h1>
           <p className="text-muted-foreground mt-2">
             ایجاد کارنامه‌های تخصصی برای دانش‌آموزان
           </p>
-        </div>
+        </div> */}
+        <PageHeader
+          title="سازنده کارنامه"
+          subtitle="ایجاد کارنامه‌های تخصصی برای دانش‌آموزان"
+          icon={<FileText className="w-6 h-6" />}
+          gradient={true}
+        />
 
         {/* Progress Bar */}
         <Card className="mb-8">

@@ -28,6 +28,7 @@ import { ReviewSaveStep } from "./components/ReviewSaveStep";
 import { GradeListsView } from "./components/GradeListsView";
 import HelpPanel from "@/components/ui/HelpPanel";
 import { gradingSystemHelpSections } from "./GradingSystemHelpContent";
+import PageHeader from "@/components/PageHeader";
 
 interface GradingData {
   selectedClass: any | null;
@@ -208,13 +209,13 @@ export default function GradingSystemPage() {
   if (!showWizard) {
     return (
       <div className="container mx-auto p-6" dir="rtl">
+        <PageHeader
+          title="سیستم نمره‌دهی"
+          subtitle="مدیریت و ثبت نمرات دانش‌آموزان"
+          icon={<FileText className="w-6 h-6" />}
+          gradient={true}
+        />
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">سیستم نمره‌دهی</h1>
-            <p className="text-muted-foreground mt-2">
-              مدیریت و ثبت نمرات دانش‌آموزان
-            </p>
-          </div>
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
