@@ -37,13 +37,181 @@ export default function LandingNavbarManagement() {
     }
   }, [isAuthenticated]);
 
+  // Default navigation items - same as in LandingNavbar
+  const getDefaultNavItems = () => {
+    return [
+      {
+        name: "خانه",
+        href: "#",
+        type: "main" as const,
+        isActive: true,
+        order: 1,
+      },
+      {
+        name: "ویژگی‌ها",
+        href: "#features",
+        type: "main" as const,
+        isActive: true,
+        order: 2,
+      },
+      {
+        name: "درباره ما",
+        href: "#about",
+        type: "main" as const,
+        isActive: true,
+        order: 3,
+      },
+      {
+        name: "تعرفه‌ها",
+        href: "#pricing",
+        type: "main" as const,
+        isActive: true,
+        order: 4,
+      },
+      {
+        name: "تماس با ما",
+        href: "#contact",
+        type: "main" as const,
+        isActive: true,
+        order: 5,
+      },
+    ];
+  };
+
+  const getDefaultDropdownItems = () => {
+    return [
+      {
+        name: "تیم آموزشی",
+        href: "#teachers",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 1,
+      },
+      {
+        name: "گالری",
+        href: "#gallery",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 2,
+      },
+      {
+        name: "اخبار",
+        href: "#news",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 3,
+      },
+      {
+        name: "مقالات",
+        href: "#articles",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 4,
+      },
+      {
+        name: "اپلیکیشن",
+        href: "#app",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 5,
+      },
+      {
+        name: "نظرات",
+        href: "#testimonials",
+        type: "dropdown" as const,
+        isActive: true,
+        order: 6,
+      },
+    ];
+  };
+
+  const saveDefaultNavItems = async () => {
+    try {
+      // First, create the main "بیشتر" item
+      const moreMainItem = {
+        name: "بیشتر",
+        href: "#",
+        type: "main" as const,
+        isActive: true,
+        order: 6,
+      };
+
+      const mainResponse = await fetch("/api/admin/navigation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(moreMainItem),
+      });
+
+      if (!mainResponse.ok) {
+        throw new Error("Failed to create main item");
+      }
+
+      const mainResult = await mainResponse.json();
+      const moreItemId = mainResult.item._id;
+
+      // Create all other default main items
+      const defaultMainItems = getDefaultNavItems();
+      for (const item of defaultMainItems) {
+        await fetch("/api/admin/navigation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(item),
+        });
+      }
+
+      // Create dropdown items with parent reference
+      const defaultDropdownItems = getDefaultDropdownItems();
+      for (const item of defaultDropdownItems) {
+        await fetch("/api/admin/navigation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...item,
+            parent: moreItemId,
+          }),
+        });
+      }
+
+      console.log("Default navigation items saved to database");
+    } catch (error) {
+      console.error("Error saving default navigation items:", error);
+    }
+  };
+
   const fetchNavItems = async () => {
     try {
       const response = await fetch("/api/admin/navigation");
       const data = await response.json();
-      setNavItems(data.items || []);
+
+      if (data.success) {
+        const items = data.items || [];
+
+        // If no items exist in the database, save default items
+        if (items.length === 0) {
+          console.log(
+            "No navigation items found in database, saving default items"
+          );
+          await saveDefaultNavItems();
+          // Fetch again after saving defaults
+          const updatedResponse = await fetch("/api/admin/navigation");
+          const updatedData = await updatedResponse.json();
+          setNavItems(updatedData.items || []);
+        } else {
+          setNavItems(items);
+        }
+      } else {
+        console.error("Navigation API returned error:", data.error);
+        setNavItems([]);
+      }
     } catch (error) {
       console.error("Error fetching navigation items:", error);
+      setNavItems([]);
     } finally {
       setLoading(false);
     }
