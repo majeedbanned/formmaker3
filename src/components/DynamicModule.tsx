@@ -113,7 +113,7 @@ const DynamicModule: React.FC<DynamicModuleProps> = ({
       {/* Admin overlay controls */}
       {isEditMode && isSchoolAdmin && (
         <div className="absolute top-4 right-4 z-10 flex items-center space-x-2 rtl:space-x-reverse">
-          <button
+          {/* <button
             onClick={() =>
               onToggleVisibility?.(moduleConfig.id, !moduleConfig.isVisible)
             }
@@ -125,14 +125,14 @@ const DynamicModule: React.FC<DynamicModuleProps> = ({
             title={moduleConfig.isVisible ? "پنهان کردن" : "نمایش دادن"}
           >
             {moduleConfig.isVisible ? "👁️" : "🙈"}
-          </button>
-          <button
+          </button> */}
+          {/* <button
             onClick={handleEdit}
             className="p-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
             title="ویرایش"
           >
             <CogIcon className="h-4 w-4" />
-          </button>
+          </button> */}
           {!moduleDefinition.isRequired && (
             <button
               onClick={() => onDelete?.(moduleConfig.id)}

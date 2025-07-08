@@ -8,6 +8,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -89,7 +90,7 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({
       } ${module.isVisible ? "" : "opacity-60"}`}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 rtl:space-x-reverse">
+        <div className="flex items-center space-x-3 space-x-reverse">
           <div
             {...attributes}
             {...listeners}
@@ -97,7 +98,7 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({
           >
             <Bars3Icon className="h-5 w-5 text-gray-400" />
           </div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <div className="flex items-center space-x-2 space-x-reverse">
             <span className="text-2xl">{moduleDefinition.icon}</span>
             <div>
               <h3 className="font-medium text-gray-900">
@@ -109,7 +110,7 @@ const SortableModuleItem: React.FC<SortableModuleItemProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+        <div className="flex items-center space-x-2 space-x-reverse">
           <button
             onClick={() => onToggleVisibility(module.id)}
             className={`p-2 rounded-lg transition-colors ${
@@ -184,10 +185,10 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
     setHasChanges(false);
   }, [currentModules]);
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over.id) {
+    if (over && active.id !== over.id) {
       setModules((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
@@ -236,9 +237,9 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
   };
 
   const handleDeleteModule = (moduleId: string) => {
-    const module = modules.find((m) => m.id === moduleId);
-    if (module) {
-      const moduleDefinition = getModuleDefinition(module.type);
+    const moduleToDelete = modules.find((m) => m.id === moduleId);
+    if (moduleToDelete) {
+      const moduleDefinition = getModuleDefinition(moduleToDelete.type);
       if (moduleDefinition.isRequired) {
         toast.error("این ماژول الزامی است و قابل حذف نیست");
         return;
@@ -278,23 +279,26 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      dir="rtl"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+          <div className="flex items-center space-x-3 space-x-reverse">
             <Cog6ToothIcon className="h-6 w-6 text-blue-600" />
             <h2 className="text-xl font-semibold text-gray-900">
               مدیریت ماژول‌ها
             </h2>
           </div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <div className="flex items-center space-x-2 space-x-reverse">
             {hasChanges && (
-              <div className="flex items-center space-x-2 rtl:space-x-reverse text-amber-600">
+              <div className="flex items-center space-x-2 space-x-reverse text-amber-600">
                 <ExclamationTriangleIcon className="h-5 w-5" />
                 <span className="text-sm font-medium">تغییرات ذخیره نشده</span>
               </div>
@@ -308,7 +312,7 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col h-full max-h-[calc(90vh-80px)]">
+        <div className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 border-b">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">
@@ -316,7 +320,7 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
               </h3>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center space-x-2 rtl:space-x-reverse px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-2 space-x-reverse px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <PlusIcon className="h-4 w-4" />
                 <span>افزودن ماژول</span>
@@ -342,7 +346,7 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
                     <SortableModuleItem
                       key={module.id}
                       module={module}
-                      onEdit={(moduleId) => {
+                      onEdit={() => {
                         // Handle edit - this will be implemented later
                         toast.info(
                           "ویرایش ماژول‌ها در نسخه بعدی اضافه خواهد شد"
@@ -358,13 +362,13 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
           </div>
         </div>
 
-        <div className="p-6 border-t bg-gray-50">
+        <div className="p-6 border-t bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 rtl:space-x-reverse text-sm text-gray-600">
+            <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
               <span>تعداد ماژول‌ها:</span>
               <span className="font-medium">{modules.length}</span>
             </div>
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            <div className="flex items-center space-x-3 space-x-reverse">
               <button
                 onClick={handleCancel}
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -374,7 +378,7 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
               <button
                 onClick={handleSave}
                 disabled={!hasChanges}
-                className={`flex items-center space-x-2 rtl:space-x-reverse px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center space-x-2 space-x-reverse px-4 py-2 rounded-lg transition-colors ${
                   hasChanges
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -417,7 +421,7 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
 
               <div className="p-6">
                 <div className="mb-6">
-                  <div className="flex items-center space-x-4 rtl:space-x-reverse mb-4">
+                  <div className="flex items-center space-x-4 space-x-reverse mb-4">
                     <label className="text-sm font-medium text-gray-700">
                       دسته‌بندی:
                     </label>
@@ -446,9 +450,9 @@ const ModuleManager: React.FC<ModuleManagerProps> = ({
                     <button
                       key={module.type}
                       onClick={() => handleAddModule(module.type)}
-                      className="p-4 text-left rtl:text-right border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                      className="p-4 text-right border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
                     >
-                      <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                      <div className="flex items-center space-x-3 space-x-reverse">
                         <span className="text-2xl">{module.icon}</span>
                         <div>
                           <h4 className="font-medium text-gray-900">
