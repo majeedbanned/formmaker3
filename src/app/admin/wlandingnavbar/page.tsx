@@ -330,10 +330,7 @@ export default function LandingNavbarManagement() {
   const organizedItems = organizeNavItems(navItems);
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
-      dir="rtl"
-    >
+    <div className="min-h-screen " dir="rtl">
       <div className="container mx-auto p-6">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">

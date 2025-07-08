@@ -6,6 +6,7 @@ import { Plus, Edit2, Trash2, FileText, Eye, Layout } from "lucide-react";
 import { ModuleConfig } from "@/types/modules";
 import PageBuilder from "@/components/admin/PageBuilder";
 import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader";
 
 interface DynamicPage {
   _id?: string;
@@ -166,12 +167,18 @@ export default function PagesManagement() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">مدیریت صفحات</h1>
         <p className="mt-2 text-gray-600">
           ایجاد و مدیریت صفحات وب‌سایت با سیستم ماژولار
         </p>
-      </div>
+      </div> */}
+      <PageHeader
+        title="مدیریت صفحات"
+        subtitle="ایجاد و مدیریت صفحات وب‌سایت با سیستم ماژولار"
+        icon={<FileText className="w-6 h-6" />}
+        gradient={true}
+      />
 
       <div className="flex justify-between items-center mb-6">
         <Button
