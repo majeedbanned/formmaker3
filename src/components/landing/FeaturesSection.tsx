@@ -90,7 +90,6 @@ export default function FeaturesSection() {
   const [featuresData, setFeaturesData] = useState<FeaturesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   // Check if user is school admin
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
@@ -162,7 +161,6 @@ export default function FeaturesSection() {
   }, []);
 
   const handleSave = async (data: FeaturesData) => {
-    setIsSaving(true);
     try {
       const response = await fetch("/api/admin/features", {
         method: "POST",
@@ -187,8 +185,6 @@ export default function FeaturesSection() {
     } catch (error) {
       console.error("Error saving features data:", error);
       toast.error("خطا در ذخیره تغییرات");
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -279,9 +275,32 @@ export default function FeaturesSection() {
     <>
       <section
         id="features"
-        className="py-24 relative"
+        className="py-24 relative overflow-hidden"
         style={{ backgroundColor: featuresData.backgroundColor }}
       >
+        {/* Animated background elements */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-10 left-10 w-72 h-72 bg-gradient-to-r from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse" />
+          <div
+            className="absolute bottom-10 right-10 w-96 h-96 bg-gradient-to-r from-pink-400/20 to-orange-400/20 rounded-full blur-3xl animate-pulse"
+            style={{ animationDelay: "1000ms" }}
+          />
+          <div
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-indigo-400/20 to-teal-400/20 rounded-full blur-3xl animate-pulse"
+            style={{ animationDelay: "2000ms" }}
+          />
+        </div>
+
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div
+            className="w-full h-full"
+            style={{
+              backgroundImage: `radial-gradient(circle at 25px 25px, ${featuresData.titleColor} 2px, transparent 0)`,
+              backgroundSize: "50px 50px",
+            }}
+          />
+        </div>
         {/* Admin Controls */}
         {isSchoolAdmin && (
           <button
@@ -291,49 +310,59 @@ export default function FeaturesSection() {
           >
             <CogIcon className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
           </button>
-
-          // <div className="absolute top-4 right-4 z-10">
-          //   <button
-          //     onClick={() => setIsEditModalOpen(true)}
-          //     disabled={isSaving}
-          //     className="flex items-center gap-2 bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/80 transition-colors text-sm font-medium backdrop-blur-sm"
-          //   >
-          //     <PencilIcon className="h-4 w-4" />
-          //     ویرایش
-          //   </button>
-          // </div>
         )}
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="text-center"
+            className="text-center relative"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <h2
-              className="text-base font-semibold tracking-wide uppercase"
+            {/* Decorative elements */}
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent rounded-full" />
+
+            <motion.h2
+              className="text-base font-semibold tracking-wide uppercase mb-4 relative"
               style={{ color: featuresData.titleColor }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
               {featuresData.title}
-            </h2>
-            <p
-              className="mt-2 text-3xl font-extrabold sm:text-4xl"
+              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent" />
+            </motion.h2>
+
+            <motion.p
+              className="text-3xl font-extrabold sm:text-4xl lg:text-5xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent"
               style={{ color: featuresData.subtitleColor }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.3 }}
             >
               {featuresData.subtitle}
-            </p>
-            <p
-              className="mt-4 max-w-2xl text-xl mx-auto"
+            </motion.p>
+
+            <motion.p
+              className="mt-6 max-w-3xl text-xl leading-relaxed mx-auto"
               style={{ color: featuresData.descriptionColor }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
             >
               {featuresData.description}
-            </p>
+            </motion.p>
+
+            {/* Bottom decorative line */}
+            <div className="mt-8 mx-auto w-32 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
           </motion.div>
 
           <motion.div
-            className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3"
+            className="mt-20 grid gap-8 md:grid-cols-2 lg:grid-cols-3"
             variants={container}
             initial="hidden"
             whileInView="show"
@@ -344,42 +373,95 @@ export default function FeaturesSection() {
               return (
                 <motion.div
                   key={index}
-                  className="relative p-6 rounded-lg border shadow-sm hover:shadow-lg transition-shadow duration-300"
-                  style={{
-                    backgroundColor: featuresData.cardBackgroundColor,
-                    borderColor: featuresData.cardBorderColor,
-                  }}
+                  className="group relative"
                   variants={item}
+                  whileHover={{
+                    y: -8,
+                    transition: { duration: 0.3, ease: "easeOut" },
+                  }}
                 >
-                  <div className="text-center flex items-center justify-center flex-col">
-                    <div
-                      className="flex items-center justify-center h-12 w-12 rounded-md"
-                      style={{
-                        backgroundColor: featuresData.iconBackgroundColor,
-                        color: featuresData.iconColor,
+                  {/* Floating background with glassmorphism */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/60 to-white/40 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl group-hover:shadow-3xl transition-all duration-500" />
+
+                  {/* Animated glow effect */}
+                  <div
+                    className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
+                    style={{
+                      background: `linear-gradient(45deg, ${featuresData.iconBackgroundColor}20, ${featuresData.iconBackgroundColor}10, ${featuresData.iconBackgroundColor}20)`,
+                    }}
+                  />
+
+                  {/* Main card content */}
+                  <div className="relative z-10 p-8 h-full flex flex-col items-center text-center">
+                    {/* Floating icon container */}
+                    <motion.div
+                      className="relative mb-6"
+                      whileHover={{
+                        scale: 1.1,
+                        rotate: [0, -10, 10, 0],
+                        transition: { duration: 0.5 },
                       }}
                     >
-                      <IconComponent className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                    <h3
-                      className="mt-4 text-lg font-medium text-center"
+                      {/* Icon glow background */}
+                      <div
+                        className="absolute inset-0 rounded-2xl blur-md opacity-50 group-hover:opacity-100 transition-opacity duration-300"
+                        style={{
+                          background: `linear-gradient(135deg, ${featuresData.iconBackgroundColor}, ${featuresData.iconBackgroundColor}80)`,
+                        }}
+                      />
+
+                      {/* Icon container */}
+                      <div
+                        className="relative flex items-center justify-center h-16 w-16 rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300"
+                        style={{
+                          background: `linear-gradient(135deg, ${featuresData.iconBackgroundColor}, ${featuresData.iconBackgroundColor}CC)`,
+                          color: featuresData.iconColor,
+                        }}
+                      >
+                        <IconComponent
+                          className="h-8 w-8 filter drop-shadow-sm"
+                          aria-hidden="true"
+                        />
+                      </div>
+
+                      {/* Floating particles */}
+                      <div className="absolute -top-2 -right-2 w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full animate-pulse opacity-60" />
+                      <div
+                        className="absolute -bottom-2 -left-2 w-2 h-2 bg-gradient-to-r from-pink-400 to-orange-400 rounded-full animate-pulse opacity-60"
+                        style={{ animationDelay: "500ms" }}
+                      />
+                    </motion.div>
+
+                    {/* Title with modern typography */}
+                    <motion.h3
+                      className="text-xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent"
                       style={{ color: featuresData.featureTitleColor }}
+                      whileHover={{ scale: 1.05 }}
                     >
                       {feature.name}
-                    </h3>
+                    </motion.h3>
+
+                    {/* Description with better spacing */}
                     <p
-                      className="mt-2 text-base text-right"
+                      className="text-base leading-relaxed text-right flex-grow"
                       style={{ color: featuresData.featureDescriptionColor }}
                     >
                       {feature.description}
                     </p>
+
+                    {/* Bottom accent line */}
+                    <div className="mt-6 w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
+
+                  {/* Hover border effect */}
                   <div
-                    className="absolute inset-0 rounded-lg pointer-events-none border-2 border-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"
+                    className="absolute inset-0 rounded-3xl border-2 border-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"
                     style={{
-                      background: `linear-gradient(90deg, ${featuresData.iconBackgroundColor}20 0%, rgba(0,0,0,0) 50%, ${featuresData.iconBackgroundColor}20 100%) border-box`,
+                      background: `linear-gradient(45deg, ${featuresData.iconBackgroundColor}40, transparent, ${featuresData.iconBackgroundColor}40) border-box`,
+                      mask: "linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)",
+                      maskComposite: "subtract",
                     }}
-                  ></div>
+                  />
                 </motion.div>
               );
             })}
