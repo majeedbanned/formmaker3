@@ -275,20 +275,21 @@ export default function TestimonialsSection() {
 
         {testimonialsData.testimonials.length > 0 && (
           <div className="relative">
-            <div className="relative overflow-hidden">
-              <div
-                className="flex transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(${currentIndex * -100}%)` }}
-              >
-                {testimonialsData.testimonials.map((testimonial) => (
-                  <motion.div
-                    key={testimonial.id}
-                    className="min-w-full px-4"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5 }}
-                  >
+            <div className="relative min-h-[400px] flex items-center justify-center px-4">
+              {testimonialsData.testimonials.map((testimonial, index) => (
+                <motion.div
+                  key={testimonial.id}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
+                    index === currentIndex ? "opacity-100" : "opacity-0"
+                  }`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{
+                    opacity: index === currentIndex ? 1 : 0,
+                    scale: index === currentIndex ? 1 : 0.9,
+                  }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="max-w-4xl mx-auto">
                     <div
                       className="rounded-2xl shadow-xl p-8 md:p-10 flex flex-col items-center text-center"
                       style={{
@@ -317,7 +318,7 @@ export default function TestimonialsSection() {
                             color: testimonialsData.testimonialTextColor,
                           }}
                         >
-                          "{testimonial.content}"
+                          &ldquo;{testimonial.content}&rdquo;
                         </p>
                       </blockquote>
 
@@ -358,9 +359,9 @@ export default function TestimonialsSection() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
 
             {/* Navigation dots */}

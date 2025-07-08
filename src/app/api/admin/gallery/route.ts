@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       const defaultGallery: GalleryData = {
         title: "گالری تصاویر",
         subtitle: "لحظه‌های ماندگار",
-        description: "مجموعه‌ای از تصاویر محیط‌های آموزشی، مدارس و رویدادهای مرتبط با پارسا موز.",
+        description: "مجموعه‌ای از تصاویر محیط‌های آموزشی، مدارس و رویدادهای مرتبط   .",
         isVisible: true,
         galleries: [
           {

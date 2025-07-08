@@ -6,7 +6,7 @@ import FloatingChat from "@/components/FloatingChat";
 import { MathJaxContext } from "better-react-mathjax";
 
 export const metadata: Metadata = {
-  title: "پارسا موز | سیستم مدیریت آموزش",
+  title: "  سیستم مدیریت آموزش",
   description: "سامانه مدیریت آموزش و یادگیری برای مدارس و موسسات آموزشی",
 };
 
