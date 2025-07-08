@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useDynamicMenu } from "@/hooks/useDynamicMenu";
+import { useMenuState } from "@/hooks/useMenuState";
 
 // This is sample data.
 const data = {
@@ -423,28 +424,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     error: menuError,
   } = useDynamicMenu();
 
-  // State to track which menu section is currently expanded (accordion behavior)
-  const [activeMenuIndex, setActiveMenuIndex] = React.useState<number | null>(
-    0
-  );
+  // Persistent menu state management
+  const {
+    toggleMenu,
+    isMenuExpanded,
+    isLoaded: menuStateLoaded,
+  } = useMenuState();
 
   // Function to handle menu toggle (accordion behavior)
-  const handleMenuToggle = React.useCallback((index: number) => {
-    setActiveMenuIndex(index === -1 ? null : index);
-  }, []);
+  const handleMenuToggle = React.useCallback(
+    (index: number) => {
+      toggleMenu(index);
+    },
+    [toggleMenu]
+  );
 
   // Convert dynamic menus to NavMain format with stable reference
   const filteredNavMain = React.useMemo(() => {
     if (!user) return [];
 
     // Return empty array while loading, but don't recreate if we have cached data
-    if (menusLoading && dynamicMenus.length === 0) return [];
+    if ((menusLoading && dynamicMenus.length === 0) || !menuStateLoaded)
+      return [];
 
     return dynamicMenus.map((section, index) => ({
       title: section.title,
       url: section.url,
       icon: SquareTerminal, // Default icon, can be customized based on section.icon if available
-      isActive: activeMenuIndex === index, // Only the selected menu is active
+      isActive: isMenuExpanded(index), // Use persistent expanded state
       items: section.items.map((item) => ({
         title: item.title,
         url: item.url,
@@ -454,9 +461,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     user?.userType,
     user?.username,
     dynamicMenus,
-    activeMenuIndex,
-    handleMenuToggle,
-  ]); // Include activeMenuIndex in dependencies
+    isMenuExpanded,
+    menuStateLoaded,
+    menusLoading,
+  ]); // Updated dependencies
 
   // Convert auth user to NavUser format with stable reference
   const navUser = React.useMemo(() => {
@@ -470,7 +478,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [user?.name, user?.username]); // Only depend on specific user properties
 
   // Only show loading state if we're loading and have no cached data
-  if (menusLoading && dynamicMenus.length === 0 && !menuError) {
+  if (
+    (menusLoading && dynamicMenus.length === 0 && !menuError) ||
+    !menuStateLoaded
+  ) {
     return (
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
@@ -515,11 +526,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain
-          items={filteredNavMain}
-          activeIndex={activeMenuIndex}
-          onToggle={handleMenuToggle}
-        />
+        <NavMain items={filteredNavMain} onToggle={handleMenuToggle} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>

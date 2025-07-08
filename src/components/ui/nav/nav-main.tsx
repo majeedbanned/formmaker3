@@ -20,7 +20,6 @@ import {
 
 export function NavMain({
   items,
-  activeIndex,
   onToggle,
 }: {
   items: {
@@ -33,7 +32,6 @@ export function NavMain({
       url: string;
     }[];
   }[];
-  activeIndex?: number | null;
   onToggle?: (index: number) => void;
 }) {
   return (
@@ -44,10 +42,10 @@ export function NavMain({
           <Collapsible
             key={item.title}
             asChild
-            open={activeIndex === index}
-            onOpenChange={(open) => {
+            open={item.isActive}
+            onOpenChange={() => {
               if (onToggle) {
-                onToggle(open ? index : -1);
+                onToggle(index);
               }
             }}
             className="group/collapsible"
