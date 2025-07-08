@@ -205,7 +205,10 @@ export default function FeaturesEditModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      dir="rtl"
+    >
       <div className="fixed inset-0" onClick={handleBackdropClick} />
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] overflow-hidden relative">
         <motion.div
@@ -291,7 +294,7 @@ export default function FeaturesEditModal({
                           یا خیر
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 space-x-reverse">
                         <span
                           className={`text-sm font-medium ${
                             formData.isVisible
@@ -397,7 +400,7 @@ export default function FeaturesEditModal({
                       <button
                         type="button"
                         onClick={addFeature}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
+                        className="flex items-center gap-2 space-x-reverse px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-100 rounded-md hover:bg-indigo-200 transition-colors"
                       >
                         <PlusIcon className="h-4 w-4" />
                         افزودن ویژگی جدید
@@ -416,7 +419,7 @@ export default function FeaturesEditModal({
                         <button
                           type="button"
                           onClick={addFeature}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                          className="inline-flex items-center gap-2 space-x-reverse px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
                         >
                           <PlusIcon className="h-4 w-4" />
                           افزودن اولین ویژگی
@@ -560,7 +563,7 @@ export default function FeaturesEditModal({
                             featureDescriptionColor: "#6B7280",
                           });
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-100 border border-indigo-300 rounded-lg hover:bg-indigo-200 transition-colors"
+                        className="flex items-center gap-2 space-x-reverse px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-100 border border-indigo-300 rounded-lg hover:bg-indigo-200 transition-colors"
                       >
                         <div className="w-4 h-4 bg-indigo-500 rounded-full"></div>
                         کلاسیک آبی
@@ -582,7 +585,7 @@ export default function FeaturesEditModal({
                             featureDescriptionColor: "#6B7280",
                           });
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-lg hover:bg-green-200 transition-colors"
+                        className="flex items-center gap-2 space-x-reverse px-4 py-2 text-sm font-medium text-green-700 bg-green-100 border border-green-300 rounded-lg hover:bg-green-200 transition-colors"
                       >
                         <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                         طبیعت سبز
@@ -604,7 +607,7 @@ export default function FeaturesEditModal({
                             featureDescriptionColor: "#6B7280",
                           });
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-lg hover:bg-red-200 transition-colors"
+                        className="flex items-center gap-2 space-x-reverse px-4 py-2 text-sm font-medium text-red-700 bg-red-100 border border-red-300 rounded-lg hover:bg-red-200 transition-colors"
                       >
                         <div className="w-4 h-4 bg-red-500 rounded-full"></div>
                         انرژی قرمز
@@ -625,7 +628,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ پس‌زمینه
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.backgroundColor}
@@ -655,7 +658,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ عنوان کوچک
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.titleColor}
@@ -685,7 +688,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ عنوان اصلی
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.subtitleColor}
@@ -715,7 +718,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ توضیحات
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.descriptionColor}
@@ -755,7 +758,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             پس‌زمینه کارت
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.cardBackgroundColor}
@@ -785,7 +788,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             حاشیه کارت
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.cardBorderColor}
@@ -815,7 +818,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             پس‌زمینه آیکون
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.iconBackgroundColor}
@@ -845,7 +848,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ آیکون
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.iconColor}
@@ -875,7 +878,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ عنوان ویژگی
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.featureTitleColor}
@@ -905,7 +908,7 @@ export default function FeaturesEditModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             رنگ توضیحات ویژگی
                           </label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 space-x-reverse">
                             <input
                               type="color"
                               value={formData.featureDescriptionColor}
@@ -949,7 +952,7 @@ export default function FeaturesEditModal({
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
                   {loading ? (
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 space-x-reverse">
                       <span className="inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full animate-spin"></span>
                       در حال ذخیره...
                     </span>

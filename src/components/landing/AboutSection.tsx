@@ -11,6 +11,7 @@ import {
   EyeSlashIcon,
 } from "@heroicons/react/24/solid";
 import AboutEditModal from "./AboutEditModal";
+import { CogIcon } from "lucide-react";
 
 interface Stat {
   id: number;
@@ -247,16 +248,24 @@ export default function AboutSection() {
       >
         {/* Admin Controls */}
         {isSchoolAdmin && (
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              disabled={isSaving}
-              className="flex items-center gap-2 bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/80 transition-colors text-sm font-medium backdrop-blur-sm"
-            >
-              <PencilIcon className="h-4 w-4" />
-              ویرایش
-            </button>
-          </div>
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="absolute top-4 left-4 z-20 p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200 group"
+            title="ویرایش بخش تماس با ما"
+          >
+            <CogIcon className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
+          </button>
+
+          // <div className="absolute top-4 right-4 z-10">
+          //   <button
+          //     onClick={() => setIsEditModalOpen(true)}
+          //     disabled={isSaving}
+          //     className="flex items-center gap-2 bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/80 transition-colors text-sm font-medium backdrop-blur-sm"
+          //   >
+          //     <PencilIcon className="h-4 w-4" />
+          //     ویرایش
+          //   </button>
+          // </div>
         )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
