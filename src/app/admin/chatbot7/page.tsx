@@ -562,10 +562,8 @@ export default function Chatbot7Page() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         <div className="p-4 bg-white shadow">
-          <h1 className="text-xl font-bold">دستیار MongoDB</h1>
-          <p className="text-sm text-gray-500">
-            از من سؤالات خود را در مورد پایگاه داده بپرسید
-          </p>
+          <h1 className="text-xl font-bold">دستیار هوش مصنوعی</h1>
+          <p className="text-sm text-gray-500">از من سؤالات خود را بپرسید</p>
         </div>
 
         <div className="flex-1 overflow-auto p-4">
@@ -578,7 +576,7 @@ export default function Chatbot7Page() {
             <div className="flex h-full items-center justify-center">
               <Card className="w-96">
                 <CardHeader>
-                  <CardTitle>به دستیار MongoDB خوش آمدید</CardTitle>
+                  <CardTitle>به دستیار هوش مصنوعی خوش آمدید</CardTitle>
                   <CardDescription>
                     برای شروع یک گفتگوی جدید ایجاد کنید یا از تاریخچه گفتگوها
                     انتخاب نمایید

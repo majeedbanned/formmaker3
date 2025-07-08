@@ -41,6 +41,7 @@ import {
   Edit,
   Trash2,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -57,6 +58,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import RichTextEditor from "@/components/ui/rich-text-editor";
+import PageHeader from "@/components/PageHeader";
 
 // Types
 interface Question {
@@ -1317,13 +1319,20 @@ function QuestionBankContent(): React.ReactElement {
 
   return (
     <div dir="rtl" className="container mx-auto p-6">
+      <PageHeader
+        title="بانک سوالات من"
+        subtitle="این صفحه تنها سوالاتی که توسط شما ایجاد شده‌اند را نمایش می‌دهد"
+        icon={<FileText className="w-6 h-6" />}
+        gradient={true}
+      />
       <div className="flex justify-between mb-6">
-        <div>
+        {/* <div>
           <h1 className="text-2xl font-bold">بانک سوالات من</h1>
           <p className="text-gray-500 text-sm mt-1">
             این صفحه تنها سوالاتی که توسط شما ایجاد شده‌اند را نمایش می‌دهد
           </p>
-        </div>
+        </div> */}
+
         <div className="flex items-center gap-4">
           <Button
             variant="default"

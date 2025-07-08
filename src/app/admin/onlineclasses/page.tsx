@@ -326,7 +326,7 @@ function StudentsPageContent() {
     {
       enabled: true,
       visible: true,
-      isShowInList: true,
+      isShowInList: false,
       isSearchable: true,
       name: "weeklySchedule",
       title: "برنامه هفتگی",

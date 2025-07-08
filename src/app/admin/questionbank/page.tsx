@@ -41,6 +41,7 @@ import {
   Edit,
   Trash2,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -56,6 +57,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import PageHeader from "@/components/PageHeader";
 
 // Types
 interface Question {
@@ -306,15 +308,32 @@ function QuestionBankContent() {
 
     setFilters({ grade, cat1, cat2, cat3, cat4, difficulty, type });
 
-    fetchQuestions(parseInt(page, 10), {
-      grade,
-      cat1,
-      cat2,
-      cat3,
-      cat4,
-      difficulty,
-      type,
-    });
+    // Only fetch questions if there are filters applied (not just empty strings)
+    const hasFilters =
+      grade || cat1 || cat2 || cat3 || cat4 || difficulty || type;
+    if (hasFilters) {
+      fetchQuestions(parseInt(page, 10), {
+        grade,
+        cat1,
+        cat2,
+        cat3,
+        cat4,
+        difficulty,
+        type,
+      });
+    } else {
+      // Clear questions and reset pagination when no filters are applied
+      setQuestions([]);
+      setPagination({
+        total: 0,
+        page: 1,
+        limit: 10,
+        pages: 0,
+      });
+      setLoading(false);
+    }
+
+    // Always fetch categories to populate filter options
     fetchCategories({ grade, cat1, cat2, cat3, cat4, difficulty, type });
   }, [searchParams]);
 
@@ -919,8 +938,13 @@ function QuestionBankContent() {
 
   return (
     <div dir="rtl" className="container mx-auto p-6">
+      <PageHeader
+        title="بانک سوالات"
+        subtitle="سوالات را بر اساس پایه و دسته‌بندی فیلتر کنید"
+        icon={<FileText className="w-6 h-6" />}
+        gradient={true}
+      />
       <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-bold">بانک سوالات</h1>
         <div className="flex items-center gap-4">
           <Button
             variant="default"

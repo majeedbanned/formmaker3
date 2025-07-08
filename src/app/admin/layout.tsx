@@ -48,8 +48,9 @@ export default function RootLayout({
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="/admin/dashboard">
-                        پارس آموز
+                      <BreadcrumbLink href="/">
+                        {" "}
+                        رفتن به صفحه اصلی
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden flex-row-reverse md:block" />
