@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
 import { toast } from "sonner";
 import {
@@ -48,86 +49,75 @@ export default function AboutSection() {
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
 
   // Check if user is school admin
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
 
   // Load about data from database
-  const loadAboutData = async () => {
-    try {
-      console.log("Fetching about data...");
-      // Add cache busting to ensure fresh data after uploads
-      const response = await fetch("/api/admin/about", {
-        cache: "no-store",
-        headers: {
-          "x-domain": window.location.hostname + ":" + window.location.port,
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch about data");
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        console.log("About data fetched successfully:", data.about);
-        setAboutData(data.about);
-      } else {
-        console.log("Using default about data");
-      }
-    } catch (error) {
-      console.error("Error loading about data:", error);
-      // Set default data on error
-      setAboutData({
-        title: "درباره پارسا موز",
-        description:
-          "پارسا موز با هدف ارتقای کیفیت آموزش و تسهیل فرآیندهای مدیریتی مدارس ایجاد شده است. تیم ما متشکل از متخصصان آموزشی و مهندسان نرم‌افزار، راهکاری جامع برای نیازهای آموزشی امروز طراحی کرده‌اند.",
-        benefitsTitle: "مزایای استفاده",
-        benefits: [
-          "بهبود ارتباط بین معلمان، دانش‌آموزان و والدین",
-          "صرفه‌جویی در زمان با اتوماسیون فرآیندهای اداری",
-          "تحلیل و گزارش‌گیری جامع از عملکرد آموزشی",
-          "دسترسی آسان به اطلاعات از هر دستگاه و هر مکان",
-          "پشتیبانی فنی ۲۴/۷ و بروزرسانی‌های منظم",
-        ],
-        stats: [
-          { id: 1, name: "سال تجربه", value: "+10" },
-          { id: 2, name: "مدارس", value: "+250" },
-          { id: 3, name: "دانش‌آموزان", value: "+45K" },
-          { id: 4, name: "رضایت مشتریان", value: "98%" },
-        ],
-        image: {
-          url: "/images/about-team.jpg",
-          alt: "Our team at work",
-        },
-        isVisible: true,
-        backgroundColor: "#FFFFFF",
-        titleColor: "#111827",
-        descriptionColor: "#6B7280",
-        benefitsTitleColor: "#111827",
-        benefitsTextColor: "#6B7280",
-        benefitsIconColor: "#10B981",
-        statsBackgroundColor: "#FFFFFF",
-        statsNameColor: "#6B7280",
-        statsValueColor: "#4F46E5",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const loadAboutData = async () => {
+      try {
+        const response = await fetch("/api/admin/about", {
+          headers: {
+            "x-domain": window.location.hostname + ":" + window.location.port,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch about data");
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setAboutData(data.about);
+        }
+      } catch (error) {
+        console.error("Error loading about data:", error);
+        // Set default data on error
+        setAboutData({
+          title: "درباره پارسا موز",
+          description:
+            "پارسا موز با هدف ارتقای کیفیت آموزش و تسهیل فرآیندهای مدیریتی مدارس ایجاد شده است. تیم ما متشکل از متخصصان آموزشی و مهندسان نرم‌افزار، راهکاری جامع برای نیازهای آموزشی امروز طراحی کرده‌اند.",
+          benefitsTitle: "مزایای استفاده",
+          benefits: [
+            "بهبود ارتباط بین معلمان، دانش‌آموزان و والدین",
+            "صرفه‌جویی در زمان با اتوماسیون فرآیندهای اداری",
+            "تحلیل و گزارش‌گیری جامع از عملکرد آموزشی",
+            "دسترسی آسان به اطلاعات از هر دستگاه و هر مکان",
+            "پشتیبانی فنی ۲۴/۷ و بروزرسانی‌های منظم",
+          ],
+          stats: [
+            { id: 1, name: "سال تجربه", value: "+10" },
+            { id: 2, name: "مدارس", value: "+250" },
+            { id: 3, name: "دانش‌آموزان", value: "+45K" },
+            { id: 4, name: "رضایت مشتریان", value: "98%" },
+          ],
+          image: {
+            url: "/images/about-team.jpg",
+            alt: "Our team at work",
+          },
+          isVisible: true,
+          backgroundColor: "#FFFFFF",
+          titleColor: "#111827",
+          descriptionColor: "#6B7280",
+          benefitsTitleColor: "#111827",
+          benefitsTextColor: "#6B7280",
+          benefitsIconColor: "#10B981",
+          statsBackgroundColor: "#FFFFFF",
+          statsNameColor: "#6B7280",
+          statsValueColor: "#4F46E5",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadAboutData();
   }, []);
 
   const handleSave = async (data: AboutData) => {
     setIsSaving(true);
     try {
-      console.log("Saving about data:", data);
-      
       const response = await fetch("/api/admin/about", {
         method: "POST",
         headers: {
@@ -137,22 +127,20 @@ export default function AboutSection() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
-      console.log("About save response:", result);
+      if (!response.ok) {
+        throw new Error("Failed to save about data");
+      }
 
-      if (response.ok && result.success) {
+      const result = await response.json();
+      if (result.success) {
         setAboutData(data);
         toast.success("تغییرات بخش درباره ما با موفقیت ذخیره شد");
-        // Refresh data to ensure fresh content
-        await loadAboutData();
-        console.log("About data saved and refreshed successfully");
       } else {
-        console.error("Failed to save about data:", result);
         throw new Error(result.error || "Failed to save about data");
       }
     } catch (error) {
       console.error("Error saving about data:", error);
-      toast.error("خطا در ذخیره تغییرات: " + (error instanceof Error ? error.message : "خطای نامشخص"));
+      toast.error("خطا در ذخیره تغییرات");
     } finally {
       setIsSaving(false);
     }
@@ -339,30 +327,17 @@ export default function AboutSection() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative h-80 lg:h-96 overflow-hidden rounded-lg shadow-xl">
-                <img
+                <Image
                   src={aboutData.image.url}
                   alt={aboutData.image.alt}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onLoad={() => {
-                    console.log("About section image loaded successfully:", aboutData.image.url);
-                    setImageLoading(false);
-                  }}
-                  onLoadStart={() => {
-                    setImageLoading(true);
-                  }}
+                  fill
+                  className="object-cover"
+                  style={{ objectFit: "cover" }}
                   onError={(e) => {
-                    console.error("About section image failed to load:", aboutData.image.url);
-                    setImageLoading(false);
-                    // Fallback to placeholder image instead of hiding
                     const target = e.target as HTMLImageElement;
                     target.src = "/images/placeholder.jpg";
                   }}
                 />
-                {imageLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-                  </div>
-                )}
 
                 {/* Decorative elements */}
                 <div

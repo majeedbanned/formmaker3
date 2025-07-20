@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -106,7 +105,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
     `,
     date: "۱۲ شهریور ۱۴۰۳",
     category: "فناوری",
-    image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/articles/digital-education-solutions.jpg",
     author: "دکتر مریم احمدی",
     readTime: "۸ دقیقه",
     views: 1532,
@@ -118,7 +117,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
         excerpt: "هوش مصنوعی چگونه می‌تواند به بهبود کیفیت آموزش و شخصی‌سازی تجربه یادگیری دانش‌آموزان کمک کند؟",
         date: "۴ مرداد ۱۴۰۳",
         category: "هوش مصنوعی",
-        image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/articles/ai-in-education.jpg",
         link: "/blog/2",
       },
       {
@@ -127,7 +126,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
         excerpt: "مدیریت کلاس‌های آنلاین چالش‌های خاص خود را دارد. راهکارهای عملی برای مدیریت مؤثر کلاس‌های آنلاین.",
         date: "۲۸ تیر ۱۴۰۳",
         category: "مدیریت",
-        image: "https://images.unsplash.com/photo-1610484826967-09c5720778c7?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/articles/online-class-management.jpg",
         link: "/blog/3",
       },
     ],
@@ -150,7 +149,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
     `,
     date: "۴ مرداد ۱۴۰۳",
     category: "هوش مصنوعی",
-    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/articles/ai-education-quality.jpg",
     author: "مهندس علی محمدی",
     readTime: "۶ دقیقه",
     views: 1204,
@@ -171,7 +170,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
         excerpt: "چگونه می‌توان از تحلیل داده‌های آموزشی برای شناسایی نقاط ضعف و قوت دانش‌آموزان استفاده کرد؟",
         date: "۱۰ تیر ۱۴۰۳",
         category: "تحلیل داده",
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/articles/educational-data-analysis.jpg",
         link: "/blog/4",
       },
     ],
@@ -194,7 +193,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
     `,
     date: "۲۸ تیر ۱۴۰۳",
     category: "مدیریت",
-    image: "https://images.unsplash.com/photo-1610484826967-09c5720778c7?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/articles/online-class-management-guide.jpg",
     author: "زهرا کریمی",
     readTime: "۱۰ دقیقه",
     views: 983,
@@ -206,7 +205,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
         excerpt: "امروزه با رشد فناوری‌های دیجیتال، روش‌های سنتی آموزش نیازمند بازنگری هستند.",
         date: "۱۲ شهریور ۱۴۰۳",
         category: "فناوری",
-        image: "https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/articles/digital-education-solutions.jpg",
         link: "/blog/1",
       },
       {
@@ -215,7 +214,7 @@ const mockBlogArticles: { [key: string]: BlogArticle } = {
         excerpt: "ارزیابی عادلانه و مؤثر دانش‌آموزان در محیط آنلاین نیازمند تکنیک‌ها و ابزارهای خاصی است.",
         date: "۱۵ خرداد ۱۴۰۳",
         category: "ارزیابی",
-        image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/articles/online-assessment-methods.jpg",
         link: "/blog/5",
       },
     ],
@@ -236,9 +235,17 @@ export default function BlogArticlePage() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch("/api/admin/articles");
+      console.log("Fetching blog article content styles...");
+      const response = await fetch("/api/admin/articles", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+        },
+      });
       const data = await response.json();
       if (data.success) {
+        console.log("Blog article content styles fetched successfully:", data.articles);
         setContent({
           backgroundColor: data.articles.backgroundColor || defaultArticlesContent.backgroundColor,
           titleColor: data.articles.titleColor || defaultArticlesContent.titleColor,
@@ -254,23 +261,28 @@ export default function BlogArticlePage() {
           tagBackgroundColor: data.articles.tagBackgroundColor || defaultArticlesContent.tagBackgroundColor,
           tagTextColor: data.articles.tagTextColor || defaultArticlesContent.tagTextColor,
         });
+      } else {
+        console.log("Using default blog article content styles");
       }
     } catch (error) {
-      console.error("Error fetching content:", error);
+      console.error("Error fetching blog article content:", error);
     }
   };
 
   const fetchArticle = async () => {
     try {
+      console.log("Fetching blog article with ID:", params.id);
       // For now, use mock data. In a real app, this would fetch from API
       const articleData = mockBlogArticles[params.id as string];
       if (articleData) {
+        console.log("Blog article found:", articleData.title);
         setArticle(articleData);
       } else {
+        console.log("Blog article not found for ID:", params.id);
         setNotFound(true);
       }
     } catch (error) {
-      console.error("Error fetching article:", error);
+      console.error("Error fetching blog article:", error);
       setNotFound(true);
     } finally {
       setLoading(false);
@@ -348,12 +360,19 @@ export default function BlogArticlePage() {
       {/* Hero Image */}
       <section className="pt-20">
         <div className="relative h-[400px] w-full">
-          <Image
+          <img
             src={article.image}
             alt={article.title}
-            fill
-            className="object-cover"
-            priority
+            className="absolute inset-0 w-full h-full object-cover"
+            onLoad={() => {
+              console.log("Blog article hero image loaded successfully:", article.image);
+            }}
+            onError={(e) => {
+              console.error("Blog article hero image failed to load:", article.image);
+              // Fallback to placeholder image
+              const target = e.target as HTMLImageElement;
+              target.src = "/images/placeholder.jpg";
+            }}
           />
           <div className="absolute inset-0 bg-black bg-opacity-40" />
           <div
@@ -525,11 +544,19 @@ export default function BlogArticlePage() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
                   <div className="relative h-48">
-                    <Image
+                    <img
                       src={relatedItem.image}
                       alt={relatedItem.title}
-                      fill
-                      className="object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onLoad={() => {
+                        console.log("Related article image loaded successfully:", relatedItem.image);
+                      }}
+                      onError={(e) => {
+                        console.error("Related article image failed to load:", relatedItem.image);
+                        // Fallback to placeholder image
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/images/placeholder.jpg";
+                      }}
                     />
                     <div
                       className="absolute top-0 right-0 m-4 text-xs font-medium py-1 px-2 rounded-full"

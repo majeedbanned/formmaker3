@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -96,8 +95,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
     `,
     date: "۲ مهر ۱۴۰۳",
     category: "رویدادها",
-    image:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/news/educational-technology-conference.jpg",
     author: "دکتر احمد محمدی",
     readTime: "۸ دقیقه",
     views: 1247,
@@ -110,8 +108,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
           "نسخه جدید پارسا موز با بهره‌گیری از هوش مصنوعی، امکانات تازه‌ای برای ارزیابی پیشرفت دانش‌آموزان ارائه می‌دهد.",
         date: "۱۵ شهریور ۱۴۰۳",
         category: "محصولات",
-        image:
-          "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/news/parsamooz-ai-update.jpg",
         link: "/news/2",
       },
       {
@@ -121,8 +118,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
           "تفاهم‌نامه همکاری میان پارسا موز و وزارت آموزش و پرورش جهت توسعه سیستم‌های نوین آموزشی به امضا رسید.",
         date: "۵ مرداد ۱۴۰۳",
         category: "همکاری‌ها",
-        image:
-          "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/news/ministry-collaboration.jpg",
         link: "/news/3",
       },
     ],
@@ -146,8 +142,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
     `,
     date: "۱۵ شهریور ۱۴۰۳",
     category: "محصولات",
-    image:
-      "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/news/parsamooz-ai-features.jpg",
     author: "مهندس علی کریمی",
     readTime: "۶ دقیقه",
     views: 892,
@@ -196,8 +191,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
     `,
     date: "۵ مرداد ۱۴۰۳",
     category: "همکاری‌ها",
-    image:
-      "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.0.3",
+    image: "/uploads/news/ministry-partnership.jpg",
     author: "سارا احمدی",
     readTime: "۵ دقیقه",
     views: 634,
@@ -221,8 +215,7 @@ const mockNewsArticles: { [key: string]: NewsArticle } = {
           "نسخه جدید پارسا موز با بهره‌گیری از هوش مصنوعی، امکانات تازه‌ای برای ارزیابی پیشرفت دانش‌آموزان ارائه می‌دهد.",
         date: "۱۵ شهریور ۱۴۰۳",
         category: "محصولات",
-        image:
-          "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image: "/uploads/news/parsamooz-ai-update.jpg",
         link: "/news/2",
       },
     ],
@@ -244,11 +237,19 @@ export default function NewsArticlePage() {
 
   const fetchContent = async () => {
     try {
+      console.log("Fetching news article content styles...");
       // Fetch news content styles
-      const response = await fetch("/api/admin/news");
+      const response = await fetch("/api/admin/news", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
+        console.log("News article content styles fetched successfully:", data.news);
         setContent({
           backgroundColor:
             data.news.backgroundColor || defaultNewsContent.backgroundColor,
@@ -274,17 +275,22 @@ export default function NewsArticlePage() {
           readMoreColor:
             data.news.readMoreColor || defaultNewsContent.readMoreColor,
         });
+      } else {
+        console.log("Using default news article content styles");
       }
 
+      console.log("Fetching news article with ID:", newsId);
       // For now, use mock data. In production, you would fetch from API
       const foundArticle = mockNewsArticles[newsId];
       if (foundArticle) {
+        console.log("News article found:", foundArticle.title);
         setArticle(foundArticle);
       } else {
+        console.log("News article not found for ID:", newsId);
         setNotFound(true);
       }
     } catch (error) {
-      console.error("Error fetching article:", error);
+      console.error("Error fetching news article:", error);
       setNotFound(true);
     } finally {
       setIsLoading(false);
@@ -436,12 +442,19 @@ export default function NewsArticlePage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
           >
-            <Image
+            <img
               src={article.image}
               alt={article.title}
-              fill
-              className="object-cover"
-              priority
+              className="absolute inset-0 w-full h-full object-cover"
+              onLoad={() => {
+                console.log("News article hero image loaded successfully:", article.image);
+              }}
+              onError={(e) => {
+                console.error("News article hero image failed to load:", article.image);
+                // Fallback to placeholder image
+                const target = e.target as HTMLImageElement;
+                target.src = "/images/placeholder.jpg";
+              }}
             />
             <div className="absolute inset-0 bg-black bg-opacity-20"></div>
             <div
@@ -591,11 +604,19 @@ export default function NewsArticlePage() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
                   <div className="relative h-48">
-                    <Image
+                    <img
                       src={relatedItem.image}
                       alt={relatedItem.title}
-                      fill
-                      className="object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onLoad={() => {
+                        console.log("Related news image loaded successfully:", relatedItem.image);
+                      }}
+                      onError={(e) => {
+                        console.error("Related news image failed to load:", relatedItem.image);
+                        // Fallback to placeholder image
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/images/placeholder.jpg";
+                      }}
                     />
                     <div
                       className="absolute top-0 right-0 m-4 text-xs font-medium py-1 px-2 rounded-full"
