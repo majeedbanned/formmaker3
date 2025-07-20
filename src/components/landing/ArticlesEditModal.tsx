@@ -67,6 +67,7 @@ export default function ArticlesEditModal({
   const [activeTab, setActiveTab] = useState<
     "content" | "appearance" | "articles"
   >("content");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,13 +99,16 @@ export default function ArticlesEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     setLoading(true);
     try {
+      console.log("Saving articles data from modal:", formData);
       await onSave(formData);
       onClose();
     } catch (error) {
-      console.error("Error saving articles data:", error);
+      console.error("Error saving articles data from modal:", error);
     } finally {
+      setIsSaving(false);
       setLoading(false);
     }
   };
@@ -151,24 +155,29 @@ export default function ArticlesEditModal({
   const handleImageUpload = async (articleId: string, file: File) => {
     setUploadingImages((prev) => [...prev, articleId]);
 
-    const formDataToSend = new FormData();
-    formDataToSend.append("file", file);
-
     try {
+      console.log(`Uploading article image for article ${articleId}:`, file.name);
+      
+      const formDataToSend = new FormData();
+      formDataToSend.append("file", file);
+
       const response = await fetch("/api/upload/article-images", {
         method: "POST",
         body: formDataToSend,
       });
 
       const data = await response.json();
+      console.log(`Article image upload response for ${articleId}:`, data);
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Upload failed");
+        throw new Error(data.error || `Upload failed for ${file.name}`);
       }
 
+      // Update the article with the new image URL
       updateArticle(articleId, "image", data.url);
+      console.log(`Article image upload successful for ${articleId}, URL:`, data.url);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("Article image upload error:", error);
       alert(
         `خطا در آپلود تصویر: ${
           error instanceof Error ? error.message : "خطای ناشناخته"
@@ -678,24 +687,37 @@ export default function ArticlesEditModal({
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
                                     آپلود تصویر
                                   </label>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        handleImageUpload(article.id, file);
-                                      }
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                  />
-                                  {uploadingImages.includes(article.id) && (
-                                    <div className="mt-2 p-2 bg-indigo-50 rounded-md">
-                                      <p className="text-sm text-indigo-600">
-                                        در حال آپلود...
-                                      </p>
-                                    </div>
-                                  )}
+                                  <div className="flex items-center gap-4">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleImageUpload(article.id, file).then(() => {
+                                            // Clear the file input after upload
+                                            if (e.target) {
+                                              e.target.value = "";
+                                            }
+                                          });
+                                        }
+                                      }}
+                                      className="hidden"
+                                      id={`article-image-${article.id}`}
+                                      disabled={uploadingImages.includes(article.id)}
+                                    />
+                                    <label
+                                      htmlFor={`article-image-${article.id}`}
+                                      className="cursor-pointer inline-flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 px-4 py-2 rounded-md text-sm font-medium text-indigo-700 transition-colors disabled:opacity-50"
+                                    >
+                                      <span>
+                                        {uploadingImages.includes(article.id) ? "در حال آپلود..." : "انتخاب تصویر"}
+                                      </span>
+                                    </label>
+                                    {uploadingImages.includes(article.id) && (
+                                      <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
@@ -751,12 +773,26 @@ export default function ArticlesEditModal({
                                       src={article.image}
                                       alt={article.title || "Preview"}
                                       className="w-full h-full object-cover"
+                                      onLoad={() => {
+                                        console.log(
+                                          "Article preview image loaded successfully:",
+                                          article.image
+                                        );
+                                      }}
                                       onError={(e) => {
-                                        console.error("Failed to load article image preview:", article.image);
-                                        e.currentTarget.style.display = "none";
+                                        console.error(
+                                          "Article preview image failed to load:",
+                                          article.image
+                                        );
+                                        // Fallback to placeholder image instead of hiding
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = "/images/placeholder.jpg";
                                       }}
                                     />
                                   </div>
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    URL: {article.image}
+                                  </p>
                                 </div>
                               )}
                             </div>
@@ -776,15 +812,23 @@ export default function ArticlesEditModal({
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={loading || uploadingImages.length > 0}
+                  disabled={isSaving || loading || uploadingImages.length > 0}
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
-                  {loading ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                  {isSaving || loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full animate-spin"></span>
+                      در حال ذخیره...
+                    </span>
+                  ) : (
+                    "ذخیره تغییرات"
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 font-medium transition-colors"
+                  disabled={isSaving || uploadingImages.length > 0}
+                  className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
                   لغو
                 </button>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
 import { toast } from "sonner";
 import {
@@ -57,12 +56,14 @@ export default function AboutSection() {
   // Load about data from database
   const loadAboutData = async () => {
     try {
+      console.log("Fetching about data...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/about", {
         cache: "no-store",
         headers: {
           "x-domain": window.location.hostname + ":" + window.location.port,
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
       });
 
@@ -72,7 +73,10 @@ export default function AboutSection() {
 
       const data = await response.json();
       if (data.success) {
+        console.log("About data fetched successfully:", data.about);
         setAboutData(data.about);
+      } else {
+        console.log("Using default about data");
       }
     } catch (error) {
       console.error("Error loading about data:", error);
@@ -122,6 +126,8 @@ export default function AboutSection() {
   const handleSave = async (data: AboutData) => {
     setIsSaving(true);
     try {
+      console.log("Saving about data:", data);
+      
       const response = await fetch("/api/admin/about", {
         method: "POST",
         headers: {
@@ -131,22 +137,22 @@ export default function AboutSection() {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save about data");
-      }
-
       const result = await response.json();
-      if (result.success) {
+      console.log("About save response:", result);
+
+      if (response.ok && result.success) {
         setAboutData(data);
         toast.success("تغییرات بخش درباره ما با موفقیت ذخیره شد");
         // Refresh data to ensure fresh content
         await loadAboutData();
+        console.log("About data saved and refreshed successfully");
       } else {
+        console.error("Failed to save about data:", result);
         throw new Error(result.error || "Failed to save about data");
       }
     } catch (error) {
       console.error("Error saving about data:", error);
-      toast.error("خطا در ذخیره تغییرات");
+      toast.error("خطا در ذخیره تغییرات: " + (error instanceof Error ? error.message : "خطای نامشخص"));
     } finally {
       setIsSaving(false);
     }
@@ -333,23 +339,21 @@ export default function AboutSection() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative h-80 lg:h-96 overflow-hidden rounded-lg shadow-xl">
-                <Image
+                <img
                   src={aboutData.image.url}
                   alt={aboutData.image.alt}
-                  fill
-                  className="object-cover"
-                  style={{ objectFit: "cover" }}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 40vw"
-                  priority
-                  onLoadingComplete={() => {
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onLoad={() => {
+                    console.log("About section image loaded successfully:", aboutData.image.url);
                     setImageLoading(false);
                   }}
                   onLoadStart={() => {
                     setImageLoading(true);
                   }}
                   onError={(e) => {
-                    console.error("Failed to load about section image:", aboutData.image.url);
+                    console.error("About section image failed to load:", aboutData.image.url);
                     setImageLoading(false);
+                    // Fallback to placeholder image instead of hiding
                     const target = e.target as HTMLImageElement;
                     target.src = "/images/placeholder.jpg";
                   }}
