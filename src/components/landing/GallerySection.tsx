@@ -36,6 +36,7 @@ export default function GallerySection() {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [imageLoadingStates, setImageLoadingStates] = useState<{[key: number]: boolean}>({});
 
   // Check if user is school admin
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
@@ -56,7 +57,13 @@ export default function GallerySection() {
 
   const fetchGalleryData = async () => {
     try {
-      const response = await fetch("/api/admin/gallery");
+      // Add cache busting to ensure fresh data after uploads
+      const response = await fetch("/api/admin/gallery", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
       const data = await response.json();
       if (data.success) {
         setGalleryData(data.gallery);
@@ -287,7 +294,25 @@ export default function GallerySection() {
                     alt={image.title}
                     fill
                     className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority={index < 3}
+                    onLoadingComplete={() => {
+                      setImageLoadingStates(prev => ({...prev, [image.id]: false}));
+                    }}
+                    onLoadStart={() => {
+                      setImageLoadingStates(prev => ({...prev, [image.id]: true}));
+                    }}
+                    onError={(e) => {
+                      console.error("Failed to load image:", image.src);
+                      setImageLoadingStates(prev => ({...prev, [image.id]: false}));
+                      e.currentTarget.style.display = "none";
+                    }}
                   />
+                  {imageLoadingStates[image.id] && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300">
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <h3 className="text-white font-medium text-lg">
@@ -341,6 +366,11 @@ export default function GallerySection() {
                   alt={selectedImage.title}
                   fill
                   className="object-contain"
+                  sizes="90vw"
+                  priority
+                  onError={(e) => {
+                    console.error("Failed to load image in lightbox:", selectedImage.src);
+                  }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-4">
                   <h3 className="text-white font-medium text-lg text-right">
