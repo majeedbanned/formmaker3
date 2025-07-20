@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
 import { CogIcon } from "@heroicons/react/24/outline";
 import GalleryEditModal from "./GalleryEditModal";
@@ -57,16 +56,21 @@ export default function GallerySection() {
 
   const fetchGalleryData = async () => {
     try {
+      console.log("Fetching gallery data...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/gallery", {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
       });
       const data = await response.json();
       if (data.success) {
+        console.log("Gallery data fetched successfully:", data.gallery);
         setGalleryData(data.gallery);
+      } else {
+        console.log("Using default gallery data");
       }
     } catch (error) {
       console.error("Error fetching gallery data:", error);
@@ -120,6 +124,8 @@ export default function GallerySection() {
 
   const handleSaveGallery = async (data: GalleryData) => {
     try {
+      console.log("Saving gallery data:", data);
+      
       const response = await fetch("/api/admin/gallery", {
         method: "POST",
         headers: {
@@ -129,11 +135,14 @@ export default function GallerySection() {
       });
 
       const result = await response.json();
+      console.log("Gallery save response:", result);
 
-      if (response.ok) {
+      if (response.ok && result.success) {
         setGalleryData(data);
         setShowEditModal(false);
+        // Refresh gallery data to ensure fresh content
         await fetchGalleryData();
+        console.log("Gallery data saved and refreshed successfully");
       } else {
         console.error("Failed to save gallery data:", result);
         alert("خطا در ذخیره اطلاعات: " + (result.error || "خطای نامشخص"));
@@ -289,23 +298,23 @@ export default function GallerySection() {
                     paddingBottom: `${(image.height / image.width) * 100}%`,
                   }}
                 >
-                  <Image
+                  <img
                     src={image.src}
                     alt={image.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    priority={index < 3}
-                    onLoadingComplete={() => {
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onLoad={() => {
+                      console.log("Gallery image loaded successfully:", image.src);
                       setImageLoadingStates(prev => ({...prev, [image.id]: false}));
                     }}
                     onLoadStart={() => {
                       setImageLoadingStates(prev => ({...prev, [image.id]: true}));
                     }}
                     onError={(e) => {
-                      console.error("Failed to load image:", image.src);
+                      console.error("Gallery image failed to load:", image.src);
                       setImageLoadingStates(prev => ({...prev, [image.id]: false}));
-                      e.currentTarget.style.display = "none";
+                      // Fallback to placeholder image instead of hiding
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/images/placeholder.jpg";
                     }}
                   />
                   {imageLoadingStates[image.id] && (
@@ -361,15 +370,18 @@ export default function GallerySection() {
                   maxWidth: "90vw",
                 }}
               >
-                <Image
+                <img
                   src={selectedImage.src}
                   alt={selectedImage.title}
-                  fill
-                  className="object-contain"
-                  sizes="90vw"
-                  priority
+                  className="w-full h-full object-contain"
+                  onLoad={() => {
+                    console.log("Lightbox image loaded successfully:", selectedImage.src);
+                  }}
                   onError={(e) => {
-                    console.error("Failed to load image in lightbox:", selectedImage.src);
+                    console.error("Lightbox image failed to load:", selectedImage.src);
+                    // Fallback to placeholder image
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/images/placeholder.jpg";
                   }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-4">

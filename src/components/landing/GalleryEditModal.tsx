@@ -57,6 +57,7 @@ export default function GalleryEditModal({
     "content"
   );
   const [selectedGalleryId, setSelectedGalleryId] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,8 +96,10 @@ export default function GalleryEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     setLoading(true);
     try {
+      console.log("Saving gallery data from modal:", formData);
       await onSave(formData);
       const mockEvent = {
         preventDefault: () => {},
@@ -104,8 +107,9 @@ export default function GalleryEditModal({
       } as React.MouseEvent;
       handleCloseClick(mockEvent);
     } catch (error) {
-      console.error("Error saving gallery data:", error);
+      console.error("Error saving gallery data from modal:", error);
     } finally {
+      setIsSaving(false);
       setLoading(false);
     }
   };
@@ -218,7 +222,10 @@ export default function GalleryEditModal({
     setUploadingImages((prev) => ({ ...prev, [galleryId]: true }));
 
     try {
+      console.log(`Starting bulk upload of ${files.length} images for gallery ${galleryId}`);
+      
       const uploadPromises = Array.from(files).map(async (file) => {
+        console.log(`Uploading file: ${file.name}`);
         const formDataToSend = new FormData();
         formDataToSend.append("file", file);
 
@@ -228,9 +235,10 @@ export default function GalleryEditModal({
         });
 
         const data = await response.json();
+        console.log(`Upload response for ${file.name}:`, data);
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || "Upload failed");
+          throw new Error(data.error || `Upload failed for ${file.name}`);
         }
 
         return {
@@ -256,9 +264,9 @@ export default function GalleryEditModal({
         galleries: updatedGalleries,
       });
 
-      console.log(`Successfully uploaded ${uploadedImages.length} images`);
+      console.log(`Successfully uploaded ${uploadedImages.length} images to gallery ${galleryId}`);
     } catch (error) {
-      console.error("Bulk upload error:", error);
+      console.error("Gallery bulk upload error:", error);
       alert(
         `خطا در آپلود تصاویر: ${
           error instanceof Error ? error.message : "خطای ناشناخته"
@@ -569,8 +577,12 @@ export default function GalleryEditModal({
                                     handleBulkImageUpload(
                                       selectedGallery.id,
                                       e.target.files
-                                    );
-                                    e.target.value = "";
+                                    ).then(() => {
+                                      // Clear the file input after upload
+                                      if (e.target) {
+                                        e.target.value = "";
+                                      }
+                                    });
                                   }
                                 }}
                                 className="hidden"
@@ -646,10 +658,20 @@ export default function GalleryEditModal({
                                         src={image.src}
                                         alt={image.title}
                                         className="w-full h-full object-cover"
+                                        onLoad={() => {
+                                          console.log(
+                                            "Gallery preview image loaded successfully:",
+                                            image.src
+                                          );
+                                        }}
                                         onError={(e) => {
-                                          const target =
-                                            e.target as HTMLImageElement;
-                                          target.style.display = "none";
+                                          console.error(
+                                            "Gallery preview image failed to load:",
+                                            image.src
+                                          );
+                                          // Fallback to placeholder image instead of hiding
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = "/images/placeholder.jpg";
                                         }}
                                       />
                                     </div>
@@ -761,11 +783,11 @@ export default function GalleryEditModal({
                 <button
                   type="submit"
                   disabled={
-                    loading || Object.values(uploadingImages).some(Boolean)
+                    isSaving || loading || Object.values(uploadingImages).some(Boolean)
                   }
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
-                  {loading ? (
+                  {isSaving || loading ? (
                     <span className="flex items-center gap-2">
                       <span className="inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full animate-spin"></span>
                       در حال ذخیره...
@@ -777,7 +799,8 @@ export default function GalleryEditModal({
                 <button
                   type="button"
                   onClick={handleCloseClick}
-                  className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 font-medium transition-colors"
+                  disabled={isSaving || Object.values(uploadingImages).some(Boolean)}
+                  className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
                   لغو
                 </button>
