@@ -116,12 +116,18 @@ export async function POST(request: NextRequest) {
     const db = await connectToDatabase(domain);
     const collection = db.collection("gallery_settings");
     
-    // Update or create gallery configuration
-    const result = await collection.replaceOne(
+    // Update or create gallery configuration using updateOne with $set to avoid _id conflicts
+    const result = await collection.updateOne(
       {},
       {
-        ...data,
-        updatedAt: new Date(),
+        $set: {
+          title: data.title,
+          subtitle: data.subtitle,
+          description: data.description,
+          galleries: data.galleries,
+          isVisible: data.isVisible,
+          updatedAt: new Date(),
+        }
       },
       { upsert: true }
     );
