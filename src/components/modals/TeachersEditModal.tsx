@@ -133,12 +133,14 @@ export default function TeachersEditModal({
   const [activeTab, setActiveTab] = useState("content");
   const [content, setContent] = useState<TeachersContent>(currentContent);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadingTeachers, setUploadingTeachers] = useState<number[]>([]);
 
   useEffect(() => {
     setContent(currentContent);
   }, [currentContent]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !content.title.trim() ||
       !content.subtitle.trim() ||
@@ -148,8 +150,16 @@ export default function TeachersEditModal({
       return;
     }
 
-    onSave(content);
-    onClose();
+    setIsSaving(true);
+    try {
+      console.log("Saving teachers content from modal:", content);
+      await onSave(content);
+      onClose();
+    } catch (error) {
+      console.error("Error saving teachers content from modal:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAddTeacher = () => {
@@ -214,8 +224,11 @@ export default function TeachersEditModal({
   const handleImageUpload = async (teacherId: number, file: File) => {
     if (!file) return;
 
+    setUploadingTeachers(prev => [...prev, teacherId]);
     setIsUploading(true);
     try {
+      console.log("Uploading teacher image:", file.name, "for teacher ID:", teacherId);
+      
       const formData = new FormData();
       formData.append("file", file);
 
@@ -225,17 +238,25 @@ export default function TeachersEditModal({
       });
 
       const data = await response.json();
+      console.log("Teacher image upload response:", data);
 
-      if (data && data.success) {
-        handleTeacherUpdate(teacherId, { avatar: data.url });
-        toast.success("تصویر با موفقیت آپلود شد");
-      } else {
-        toast.error(data.message || "خطا در آپلود تصویر");
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `Upload failed for ${file.name}`);
       }
+
+      // Update the teacher with the new avatar URL
+      handleTeacherUpdate(teacherId, { avatar: data.url });
+      toast.success("تصویر با موفقیت آپلود شد");
+      console.log("Teacher image upload successful, URL:", data.url);
     } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("خطا در آپلود تصویر");
+      console.error("Teacher image upload error:", error);
+      toast.error(
+        `خطا در آپلود تصویر: ${
+          error instanceof Error ? error.message : "خطای ناشناخته"
+        }`
+      );
     } finally {
+      setUploadingTeachers(prev => prev.filter(id => id !== teacherId));
       setIsUploading(false);
     }
   };
@@ -477,9 +498,20 @@ export default function TeachersEditModal({
                             src={teacher.avatar}
                             alt={teacher.name}
                             className="w-16 h-16 rounded-full object-cover border"
+                            onLoad={() => {
+                              console.log(
+                                "Teacher avatar preview loaded successfully:",
+                                teacher.avatar
+                              );
+                            }}
                             onError={(e) => {
-                              console.error("Failed to load teacher avatar preview:", teacher.avatar);
-                              e.currentTarget.style.display = "none";
+                              console.error(
+                                "Teacher avatar preview failed to load:",
+                                teacher.avatar
+                              );
+                              // Fallback to placeholder image instead of hiding
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/images/placeholder.jpg";
                             }}
                           />
                         )}
@@ -490,21 +522,32 @@ export default function TeachersEditModal({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                handleImageUpload(teacher.id, file);
+                                handleImageUpload(teacher.id, file).then(() => {
+                                  // Clear the file input after upload
+                                  if (e.target) {
+                                    e.target.value = "";
+                                  }
+                                });
                               }
                             }}
                             className="hidden"
                             id={`teacher-image-${teacher.id}`}
+                            disabled={uploadingTeachers.includes(teacher.id)}
                           />
                           <label
                             htmlFor={`teacher-image-${teacher.id}`}
-                            className="cursor-pointer inline-flex items-center space-x-2 rtl:space-x-reverse bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm"
+                            className="cursor-pointer inline-flex items-center space-x-2 rtl:space-x-reverse bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm disabled:opacity-50"
                           >
                             <PhotoIcon className="w-4 h-4" />
                             <span>
-                              {isUploading ? "در حال آپلود..." : "انتخاب تصویر"}
+                              {uploadingTeachers.includes(teacher.id) 
+                                ? "در حال آپلود..." 
+                                : "انتخاب تصویر"}
                             </span>
                           </label>
+                          {uploadingTeachers.includes(teacher.id) && (
+                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+                          )}
                         </div>
                       </div>
                       <input
@@ -518,6 +561,11 @@ export default function TeachersEditModal({
                         className="w-full mt-2 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="یا لینک تصویر را وارد کنید"
                       />
+                      {teacher.avatar && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          URL: {teacher.avatar}
+                        </p>
+                      )}
                     </div>
 
                     {/* Subjects */}
@@ -1119,15 +1167,24 @@ export default function TeachersEditModal({
         <div className="flex justify-end space-x-4 rtl:space-x-reverse p-6 border-t bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            disabled={isSaving || isUploading || uploadingTeachers.length > 0}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             انصراف
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            disabled={isSaving || isUploading || uploadingTeachers.length > 0}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ذخیره تغییرات
+            {isSaving ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full animate-spin"></span>
+                در حال ذخیره...
+              </span>
+            ) : (
+              "ذخیره تغییرات"
+            )}
           </button>
         </div>
       </motion.div>

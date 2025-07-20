@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { toast } from "sonner";
 import { AcademicCapIcon, CogIcon } from "@heroicons/react/24/outline";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
@@ -113,18 +112,23 @@ export default function TeachersSection() {
 
   const fetchTeachersContent = async () => {
     try {
+      console.log("Fetching teachers content...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/teachers", {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "x-domain": window.location.hostname + ":" + window.location.port,
         },
       });
       const data = await response.json();
 
       if (data.success) {
+        console.log("Teachers content fetched successfully:", data.teachers);
         setContent(data.teachers);
       } else {
+        console.log("Using default teachers content");
         setContent(defaultTeachersContent);
       }
     } catch (error) {
@@ -137,27 +141,33 @@ export default function TeachersSection() {
 
   const handleSave = async (updatedContent: TeachersContent) => {
     try {
+      console.log("Saving teachers content:", updatedContent);
+      
       const response = await fetch("/api/admin/teachers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-domain": window.location.hostname + ":" + window.location.port,
         },
         body: JSON.stringify(updatedContent),
       });
 
       const data = await response.json();
+      console.log("Teachers save response:", data);
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setContent(updatedContent);
         toast.success("تغییرات با موفقیت ذخیره شد");
         // Refresh content to ensure fresh data
         await fetchTeachersContent();
+        console.log("Teachers content saved and refreshed successfully");
       } else {
-        toast.error("خطا در ذخیره تغییرات");
+        console.error("Failed to save teachers content:", data);
+        toast.error("خطا در ذخیره تغییرات: " + (data.error || "خطای نامشخص"));
       }
     } catch (error) {
       console.error("Error saving teachers content:", error);
-      toast.error("خطا در ذخیره تغییرات");
+      toast.error("خطا در ذخیره تغییرات: " + (error instanceof Error ? error.message : "خطای نامشخص"));
     }
   };
 
@@ -301,23 +311,23 @@ export default function TeachersSection() {
               <div className="p-6">
                 <div className="flex flex-col items-center">
                   <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-indigo-50 mb-4">
-                    <Image
+                    <img
                       src={teacher.avatar}
                       alt={teacher.name}
-                      fill
-                      className="object-cover"
-                      sizes="128px"
-                      priority={index < 3}
-                      onLoadingComplete={() => {
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onLoad={() => {
+                        console.log("Teacher avatar loaded successfully:", teacher.avatar);
                         setImageLoadingStates(prev => ({...prev, [teacher.id]: false}));
                       }}
                       onLoadStart={() => {
                         setImageLoadingStates(prev => ({...prev, [teacher.id]: true}));
                       }}
                       onError={(e) => {
-                        console.error("Failed to load teacher avatar:", teacher.avatar);
+                        console.error("Teacher avatar failed to load:", teacher.avatar);
                         setImageLoadingStates(prev => ({...prev, [teacher.id]: false}));
-                        e.currentTarget.style.display = "none";
+                        // Fallback to placeholder image instead of hiding
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/images/placeholder.jpg";
                       }}
                     />
                     {imageLoadingStates[teacher.id] && (
