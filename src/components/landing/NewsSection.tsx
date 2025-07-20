@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image";
 import { toast } from "sonner";
 import { ArrowLongRightIcon, CogIcon } from "@heroicons/react/24/outline";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
@@ -114,18 +113,22 @@ export default function NewsSection() {
 
   const fetchNewsContent = async () => {
     try {
+      console.log("Fetching news content...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/news", {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
       });
       const data = await response.json();
 
       if (data.success) {
+        console.log("News content fetched successfully:", data.news);
         setContent(data.news);
       } else {
+        console.log("Using default news content");
         setContent(defaultNewsContent);
       }
     } catch (error) {
@@ -138,6 +141,8 @@ export default function NewsSection() {
 
   const handleSave = async (updatedContent: NewsContent) => {
     try {
+      console.log("Saving news content:", updatedContent);
+      
       const response = await fetch("/api/admin/news", {
         method: "POST",
         headers: {
@@ -147,14 +152,16 @@ export default function NewsSection() {
       });
 
       const data = await response.json();
+      console.log("News save response:", data);
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setContent(updatedContent);
         toast.success("تغییرات با موفقیت ذخیره شد");
         // Refresh content to ensure fresh data
         await fetchNewsContent();
       } else {
-        toast.error("خطا در ذخیره تغییرات");
+        console.error("Failed to save news content:", data);
+        toast.error("خطا در ذخیره تغییرات: " + (data.error || "خطای نامشخص"));
       }
     } catch (error) {
       console.error("Error saving news content:", error);
@@ -292,23 +299,23 @@ export default function NewsSection() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               <div className="relative h-48 w-full">
-                <Image
+                <img
                   src={item.image}
                   alt={item.title}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  priority={index < 3}
-                  onLoadingComplete={() => {
+                  className="w-full h-full object-cover"
+                  onLoad={() => {
+                    console.log("News image loaded successfully:", item.image);
                     setImageLoadingStates(prev => ({...prev, [item.id]: false}));
                   }}
                   onLoadStart={() => {
                     setImageLoadingStates(prev => ({...prev, [item.id]: true}));
                   }}
                   onError={(e) => {
-                    console.error("Failed to load news image:", item.image);
+                    console.error("News image failed to load:", item.image);
                     setImageLoadingStates(prev => ({...prev, [item.id]: false}));
-                    e.currentTarget.style.display = "none";
+                    // Fallback to placeholder image instead of hiding
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/images/placeholder.jpg";
                   }}
                 />
                 {imageLoadingStates[item.id] && (

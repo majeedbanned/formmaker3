@@ -129,12 +129,13 @@ export default function NewsEditModal({
   const [activeTab, setActiveTab] = useState("content");
   const [content, setContent] = useState<NewsContent>(currentContent);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setContent(currentContent);
   }, [currentContent]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !content.title.trim() ||
       !content.subtitle.trim() ||
@@ -144,8 +145,16 @@ export default function NewsEditModal({
       return;
     }
 
-    onSave(content);
-    onClose();
+    setIsSaving(true);
+    try {
+      console.log("Saving news content from modal:", content);
+      await onSave(content);
+      onClose();
+    } catch (error) {
+      console.error("Error saving news content from modal:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAddNews = () => {
@@ -194,16 +203,23 @@ export default function NewsEditModal({
       });
 
       const data = await response.json();
+      console.log("News image upload response:", data);
 
-      if (data && data.success) {
-        handleNewsUpdate(newsId, { image: data.url });
-        toast.success("تصویر با موفقیت آپلود شد");
-      } else {
-        toast.error(data.message || "خطا در آپلود تصویر");
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || "Upload failed");
       }
+
+      // Update the news item with the new image URL
+      handleNewsUpdate(newsId, { image: data.url });
+      toast.success("تصویر با موفقیت آپلود شد");
+      console.log("News image upload successful, URL:", data.url);
     } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("خطا در آپلود تصویر");
+      console.error("News image upload error:", error);
+      toast.error(
+        `خطا در آپلود تصویر: ${
+          error instanceof Error ? error.message : "خطای ناشناخته"
+        }`
+      );
     } finally {
       setIsUploading(false);
     }
@@ -476,53 +492,91 @@ export default function NewsEditModal({
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         تصویر خبر
                       </label>
-                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                        {newsItem.image && (
-                          <img
-                            src={newsItem.image}
-                            alt={newsItem.title}
-                            className="w-16 h-16 rounded object-cover border"
-                            onError={(e) => {
-                              console.error("Failed to load news image preview:", newsItem.image);
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
+                      
+                      {/* Image Upload Button */}
+                      <div className="mb-4">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleImageUpload(newsItem.id, file).then(() => {
+                                // Clear the file input after upload
+                                if (e.target) {
+                                  e.target.value = "";
+                                }
+                              });
+                            }
+                          }}
+                          className="hidden"
+                          id={`news-image-${newsItem.id}`}
+                          disabled={isUploading}
+                        />
+                        <label
+                          htmlFor={`news-image-${newsItem.id}`}
+                          className="cursor-pointer inline-flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 px-4 py-2 rounded-md text-sm font-medium text-indigo-700 transition-colors disabled:opacity-50"
+                        >
+                          <PhotoIcon className="h-4 w-4" />
+                          <span>
+                            {isUploading ? "در حال آپلود..." : "انتخاب تصویر"}
+                          </span>
+                        </label>
+                        {isUploading && (
+                          <div className="inline-block ml-2 animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
                         )}
-                        <div className="flex-1">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(newsItem.id, file);
-                              }
-                            }}
-                            className="hidden"
-                            id={`news-image-${newsItem.id}`}
-                          />
-                          <label
-                            htmlFor={`news-image-${newsItem.id}`}
-                            className="cursor-pointer inline-flex items-center space-x-2 rtl:space-x-reverse bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm"
-                          >
-                            <PhotoIcon className="w-4 h-4" />
-                            <span>
-                              {isUploading ? "در حال آپلود..." : "انتخاب تصویر"}
-                            </span>
-                          </label>
-                        </div>
                       </div>
-                      <input
-                        type="url"
-                        value={newsItem.image}
-                        onChange={(e) =>
-                          handleNewsUpdate(newsItem.id, {
-                            image: e.target.value,
-                          })
-                        }
-                        className="w-full mt-2 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="یا لینک تصویر را وارد کنید"
-                      />
+
+                      {/* Manual URL Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          URL تصویر
+                        </label>
+                        <input
+                          type="url"
+                          value={newsItem.image}
+                          onChange={(e) =>
+                            handleNewsUpdate(newsItem.id, {
+                              image: e.target.value,
+                            })
+                          }
+                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="/uploads/news/image.jpg"
+                        />
+                      </div>
+
+                      {/* Image Preview */}
+                      {newsItem.image && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            پیش‌نمایش:
+                          </p>
+                          <div className="relative w-48 h-32 border rounded-md overflow-hidden bg-gray-50">
+                            <img
+                              src={newsItem.image}
+                              alt={newsItem.title || "Preview"}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                console.error(
+                                  "News preview image failed to load:",
+                                  newsItem.image
+                                );
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                              }}
+                              onLoad={() => {
+                                console.log(
+                                  "News preview image loaded successfully:",
+                                  newsItem.image
+                                );
+                              }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            URL: {newsItem.image}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1045,15 +1099,24 @@ export default function NewsEditModal({
         <div className="flex justify-end space-x-4 rtl:space-x-reverse p-6 border-t bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            disabled={isSaving}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             انصراف
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            disabled={isSaving || isUploading}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ذخیره تغییرات
+            {isSaving ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full animate-spin"></span>
+                در حال ذخیره...
+              </span>
+            ) : (
+              "ذخیره تغییرات"
+            )}
           </button>
         </div>
       </motion.div>
