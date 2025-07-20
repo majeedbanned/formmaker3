@@ -104,6 +104,7 @@ export default function NewsSection() {
   const [content, setContent] = useState<NewsContent>(defaultNewsContent);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageLoadingStates, setImageLoadingStates] = useState<{[key: number]: boolean}>({});
 
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
 
@@ -113,7 +114,13 @@ export default function NewsSection() {
 
   const fetchNewsContent = async () => {
     try {
-      const response = await fetch("/api/admin/news");
+      // Add cache busting to ensure fresh data after uploads
+      const response = await fetch("/api/admin/news", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -144,6 +151,8 @@ export default function NewsSection() {
       if (data.success) {
         setContent(updatedContent);
         toast.success("تغییرات با موفقیت ذخیره شد");
+        // Refresh content to ensure fresh data
+        await fetchNewsContent();
       } else {
         toast.error("خطا در ذخیره تغییرات");
       }
@@ -288,7 +297,25 @@ export default function NewsSection() {
                   alt={item.title}
                   fill
                   className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  priority={index < 3}
+                  onLoadingComplete={() => {
+                    setImageLoadingStates(prev => ({...prev, [item.id]: false}));
+                  }}
+                  onLoadStart={() => {
+                    setImageLoadingStates(prev => ({...prev, [item.id]: true}));
+                  }}
+                  onError={(e) => {
+                    console.error("Failed to load news image:", item.image);
+                    setImageLoadingStates(prev => ({...prev, [item.id]: false}));
+                    e.currentTarget.style.display = "none";
+                  }}
                 />
+                {imageLoadingStates[item.id] && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+                  </div>
+                )}
                 <div
                   className="absolute top-0 right-0 m-4 text-xs font-medium py-1 px-2 rounded"
                   style={{

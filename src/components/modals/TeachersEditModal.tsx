@@ -477,6 +477,10 @@ export default function TeachersEditModal({
                             src={teacher.avatar}
                             alt={teacher.name}
                             className="w-16 h-16 rounded-full object-cover border"
+                            onError={(e) => {
+                              console.error("Failed to load teacher avatar preview:", teacher.avatar);
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         )}
                         <div className="flex-1">

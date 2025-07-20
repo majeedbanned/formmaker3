@@ -751,6 +751,10 @@ export default function ArticlesEditModal({
                                       src={article.image}
                                       alt={article.title || "Preview"}
                                       className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        console.error("Failed to load article image preview:", article.image);
+                                        e.currentTarget.style.display = "none";
+                                      }}
                                     />
                                   </div>
                                 </div>

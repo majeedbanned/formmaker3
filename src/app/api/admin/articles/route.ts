@@ -170,8 +170,17 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    // Use upsert to create or update the articles configuration
-    await collection.replaceOne({}, dataToSave, { upsert: true });
+    // Update or create articles configuration using updateOne with $set to avoid _id conflicts
+    await collection.updateOne(
+      {},
+      {
+        $set: dataToSave,
+        $setOnInsert: {
+          createdAt: new Date(),
+        }
+      },
+      { upsert: true }
+    );
 
     return NextResponse.json({
       success: true,

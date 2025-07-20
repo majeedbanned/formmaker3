@@ -188,10 +188,15 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    // Upsert - update if exists, create if doesn't
-    await collection.replaceOne(
+    // Update or create teachers configuration using updateOne with $set to avoid _id conflicts
+    await collection.updateOne(
       {},
-      { ...teachersData, createdAt: new Date() },
+      {
+        $set: teachersData,
+        $setOnInsert: {
+          createdAt: new Date(),
+        }
+      },
       { upsert: true }
     );
     

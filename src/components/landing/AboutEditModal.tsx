@@ -65,6 +65,7 @@ export default function AboutEditModal({
   const [activeTab, setActiveTab] = useState<
     "content" | "benefits" | "stats" | "appearance"
   >("content");
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -158,6 +159,41 @@ export default function AboutEditModal({
     const newStats = [...formData.stats];
     newStats[index] = { ...newStats[index], [field]: value };
     setFormData({ ...formData, stats: newStats });
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("file", file);
+
+      const response = await fetch("/api/upload/about-images", {
+        method: "POST",
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setFormData({
+        ...formData,
+        image: { ...formData.image, url: data.url },
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(
+        `خطا در آپلود تصویر: ${
+          error instanceof Error ? error.message : "خطای ناشناخته"
+        }`
+      );
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -359,6 +395,40 @@ export default function AboutEditModal({
                       تصویر بخش
                     </h3>
                     <div className="space-y-4">
+                      {/* Image Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          آپلود تصویر
+                        </label>
+                        <div className="flex items-center gap-4">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file);
+                              }
+                            }}
+                            className="hidden"
+                            id="about-image-upload"
+                            disabled={isUploading}
+                          />
+                          <label
+                            htmlFor="about-image-upload"
+                            className="cursor-pointer inline-flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 px-4 py-2 rounded-md text-sm font-medium text-indigo-700 transition-colors disabled:opacity-50"
+                          >
+                            <PhotoIcon className="h-4 w-4" />
+                            <span>
+                              {isUploading ? "در حال آپلود..." : "انتخاب تصویر"}
+                            </span>
+                          </label>
+                          {isUploading && (
+                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+                          )}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           آدرس تصویر
@@ -407,6 +477,7 @@ export default function AboutEditModal({
                               alt={formData.image.alt}
                               className="w-full h-full object-cover"
                               onError={(e) => {
+                                console.error("Failed to load about section image preview:", formData.image.url);
                                 const target = e.target as HTMLImageElement;
                                 target.src = "/images/placeholder.jpg";
                               }}

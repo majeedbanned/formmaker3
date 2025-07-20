@@ -49,69 +49,73 @@ export default function AboutSection() {
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Check if user is school admin
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
 
   // Load about data from database
-  useEffect(() => {
-    const loadAboutData = async () => {
-      try {
-        const response = await fetch("/api/admin/about", {
-          headers: {
-            "x-domain": window.location.hostname + ":" + window.location.port,
-          },
-        });
+  const loadAboutData = async () => {
+    try {
+      // Add cache busting to ensure fresh data after uploads
+      const response = await fetch("/api/admin/about", {
+        cache: "no-store",
+        headers: {
+          "x-domain": window.location.hostname + ":" + window.location.port,
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch about data");
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          setAboutData(data.about);
-        }
-      } catch (error) {
-        console.error("Error loading about data:", error);
-        // Set default data on error
-        setAboutData({
-          title: "درباره پارسا موز",
-          description:
-            "پارسا موز با هدف ارتقای کیفیت آموزش و تسهیل فرآیندهای مدیریتی مدارس ایجاد شده است. تیم ما متشکل از متخصصان آموزشی و مهندسان نرم‌افزار، راهکاری جامع برای نیازهای آموزشی امروز طراحی کرده‌اند.",
-          benefitsTitle: "مزایای استفاده",
-          benefits: [
-            "بهبود ارتباط بین معلمان، دانش‌آموزان و والدین",
-            "صرفه‌جویی در زمان با اتوماسیون فرآیندهای اداری",
-            "تحلیل و گزارش‌گیری جامع از عملکرد آموزشی",
-            "دسترسی آسان به اطلاعات از هر دستگاه و هر مکان",
-            "پشتیبانی فنی ۲۴/۷ و بروزرسانی‌های منظم",
-          ],
-          stats: [
-            { id: 1, name: "سال تجربه", value: "+10" },
-            { id: 2, name: "مدارس", value: "+250" },
-            { id: 3, name: "دانش‌آموزان", value: "+45K" },
-            { id: 4, name: "رضایت مشتریان", value: "98%" },
-          ],
-          image: {
-            url: "/images/about-team.jpg",
-            alt: "Our team at work",
-          },
-          isVisible: true,
-          backgroundColor: "#FFFFFF",
-          titleColor: "#111827",
-          descriptionColor: "#6B7280",
-          benefitsTitleColor: "#111827",
-          benefitsTextColor: "#6B7280",
-          benefitsIconColor: "#10B981",
-          statsBackgroundColor: "#FFFFFF",
-          statsNameColor: "#6B7280",
-          statsValueColor: "#4F46E5",
-        });
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch about data");
       }
-    };
 
+      const data = await response.json();
+      if (data.success) {
+        setAboutData(data.about);
+      }
+    } catch (error) {
+      console.error("Error loading about data:", error);
+      // Set default data on error
+      setAboutData({
+        title: "درباره پارسا موز",
+        description:
+          "پارسا موز با هدف ارتقای کیفیت آموزش و تسهیل فرآیندهای مدیریتی مدارس ایجاد شده است. تیم ما متشکل از متخصصان آموزشی و مهندسان نرم‌افزار، راهکاری جامع برای نیازهای آموزشی امروز طراحی کرده‌اند.",
+        benefitsTitle: "مزایای استفاده",
+        benefits: [
+          "بهبود ارتباط بین معلمان، دانش‌آموزان و والدین",
+          "صرفه‌جویی در زمان با اتوماسیون فرآیندهای اداری",
+          "تحلیل و گزارش‌گیری جامع از عملکرد آموزشی",
+          "دسترسی آسان به اطلاعات از هر دستگاه و هر مکان",
+          "پشتیبانی فنی ۲۴/۷ و بروزرسانی‌های منظم",
+        ],
+        stats: [
+          { id: 1, name: "سال تجربه", value: "+10" },
+          { id: 2, name: "مدارس", value: "+250" },
+          { id: 3, name: "دانش‌آموزان", value: "+45K" },
+          { id: 4, name: "رضایت مشتریان", value: "98%" },
+        ],
+        image: {
+          url: "/images/about-team.jpg",
+          alt: "Our team at work",
+        },
+        isVisible: true,
+        backgroundColor: "#FFFFFF",
+        titleColor: "#111827",
+        descriptionColor: "#6B7280",
+        benefitsTitleColor: "#111827",
+        benefitsTextColor: "#6B7280",
+        benefitsIconColor: "#10B981",
+        statsBackgroundColor: "#FFFFFF",
+        statsNameColor: "#6B7280",
+        statsValueColor: "#4F46E5",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadAboutData();
   }, []);
 
@@ -135,6 +139,8 @@ export default function AboutSection() {
       if (result.success) {
         setAboutData(data);
         toast.success("تغییرات بخش درباره ما با موفقیت ذخیره شد");
+        // Refresh data to ensure fresh content
+        await loadAboutData();
       } else {
         throw new Error(result.error || "Failed to save about data");
       }
@@ -333,11 +339,26 @@ export default function AboutSection() {
                   fill
                   className="object-cover"
                   style={{ objectFit: "cover" }}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 40vw"
+                  priority
+                  onLoadingComplete={() => {
+                    setImageLoading(false);
+                  }}
+                  onLoadStart={() => {
+                    setImageLoading(true);
+                  }}
                   onError={(e) => {
+                    console.error("Failed to load about section image:", aboutData.image.url);
+                    setImageLoading(false);
                     const target = e.target as HTMLImageElement;
                     target.src = "/images/placeholder.jpg";
                   }}
                 />
+                {imageLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                  </div>
+                )}
 
                 {/* Decorative elements */}
                 <div

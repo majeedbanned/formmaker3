@@ -133,10 +133,15 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    // Upsert - update if exists, create if doesn't
-    await collection.replaceOne(
+    // Update or create about configuration using updateOne with $set to avoid _id conflicts
+    await collection.updateOne(
       {},
-      { ...aboutData, createdAt: new Date() },
+      {
+        $set: aboutData,
+        $setOnInsert: {
+          createdAt: new Date(),
+        }
+      },
       { upsert: true }
     );
     

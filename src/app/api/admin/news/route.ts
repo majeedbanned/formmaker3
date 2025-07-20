@@ -163,10 +163,18 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    // Upsert - update if exists, create if doesn't
-    await collection.replaceOne(
+    // Update or create news configuration using updateOne with $set to avoid _id conflicts  
+    await collection.updateOne(
       {},
-      { ...newsData, createdAt: new Date() },
+      {
+        $set: {
+          ...newsData,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+        }
+      },
       { upsert: true }
     );
     

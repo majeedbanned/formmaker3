@@ -12,3 +12,6 @@ windowewewerwe
 
 "@tailwindcss/oxide-linux-x64-gnu": "^4.1.3",
  "@tailwindcss/oxide-linux-x64-gnu": "^4.1.3",
+
+  "@tailwindcss/oxide": "^4.1.11",
+  

@@ -103,6 +103,7 @@ export default function TeachersSection() {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageLoadingStates, setImageLoadingStates] = useState<{[key: number]: boolean}>({});
 
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
 
@@ -112,7 +113,13 @@ export default function TeachersSection() {
 
   const fetchTeachersContent = async () => {
     try {
-      const response = await fetch("/api/admin/teachers");
+      // Add cache busting to ensure fresh data after uploads
+      const response = await fetch("/api/admin/teachers", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -143,6 +150,8 @@ export default function TeachersSection() {
       if (data.success) {
         setContent(updatedContent);
         toast.success("تغییرات با موفقیت ذخیره شد");
+        // Refresh content to ensure fresh data
+        await fetchTeachersContent();
       } else {
         toast.error("خطا در ذخیره تغییرات");
       }
@@ -297,7 +306,25 @@ export default function TeachersSection() {
                       alt={teacher.name}
                       fill
                       className="object-cover"
+                      sizes="128px"
+                      priority={index < 3}
+                      onLoadingComplete={() => {
+                        setImageLoadingStates(prev => ({...prev, [teacher.id]: false}));
+                      }}
+                      onLoadStart={() => {
+                        setImageLoadingStates(prev => ({...prev, [teacher.id]: true}));
+                      }}
+                      onError={(e) => {
+                        console.error("Failed to load teacher avatar:", teacher.avatar);
+                        setImageLoadingStates(prev => ({...prev, [teacher.id]: false}));
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
+                    {imageLoadingStates[teacher.id] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-full">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+                      </div>
+                    )}
                   </div>
                   <h3
                     className="text-xl font-bold"

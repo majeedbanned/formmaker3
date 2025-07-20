@@ -482,6 +482,10 @@ export default function NewsEditModal({
                             src={newsItem.image}
                             alt={newsItem.title}
                             className="w-16 h-16 rounded object-cover border"
+                            onError={(e) => {
+                              console.error("Failed to load news image preview:", newsItem.image);
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         )}
                         <div className="flex-1">
