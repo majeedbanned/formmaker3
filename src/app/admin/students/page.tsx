@@ -408,6 +408,180 @@ function StudentsPageContent() {
         requiredMessage: "لطفا یک تصویر آپلود کنید",
       },
     },
+
+
+
+    {
+      name: "codemelli",
+      title: "کد ملی",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "کد ملی الزامی نیست",
+      },
+    },
+    {
+      name: "birthplace ",
+      title: "محل تولد",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "محل تولد الزامی نیست",
+      },
+    },
+    {
+      name: "IDserial",
+      title: "شماره شناسنامه",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "شماره شناسنامه الزامی نیست",
+      },
+    },
+    {
+      name: "fatherEducation",
+      title: "تحصیلات پدر",
+      type: "dropdown",
+      isShowInList: false,
+      isSearchable: true,
+      options: [
+        { label: "دیپلم", value: "دیپلم" },
+        { label: "کاردانی", value: "کاردانی" },
+        { label: "کارشناسی", value: "کارشناسی" },
+        { label: "کارشناسی ارشد", value: "کارشناسی ارشد" },
+        { label: "دکترا", value: "دکترا" },
+      ],
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+          requiredMessage: "تحصیلات پدر الزامی نیست",
+      },
+    },
+
+    {
+      name: "motherEducation",
+      title: "تحصیلات مادر",
+      type: "dropdown",
+      isShowInList: false,
+      isSearchable: true,
+      options: [
+        { label: "دیپلم", value: "دیپلم" },
+        { label: "کاردانی", value: "کاردانی" },
+        { label: "کارشناسی", value: "کارشناسی" },
+        { label: "کارشناسی ارشد", value: "کارشناسی ارشد" },
+        { label: "دکترا", value: "دکترا" },
+      ],
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+          requiredMessage: "تحصیلات مادر الزامی نیست",
+      },
+    },
+
+    {
+      name: "fatherJob",
+      title: "شغل پدر",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "شغل پدر الزامی نیست",
+      },
+    },
+
+    {
+      name: "motherJob",
+      title: "شغل مادر",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "شغل مادر الزامی نیست",
+      },
+    },
+
+    {
+      name: "infos",
+      title: "اطلاعات جمعی",
+      type: "checkbox",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      defaultValue: [],
+      isMultiple: true,
+      options: [
+        { value: "shahid", label: "شهدا و جانبازان" },
+        { value: "anjoman", label: "انجمن مدرسه" },
+        { value: "schoolbus", label: "متقاضی سرویس مدرسه" },
+        { value: "farhangison", label: " فرزند فرهنگی" },
+        { value: "komite", label: "کمیته" },
+        { value: "atba", label: "اتباع" },
+       
+      ],
+      validation: {
+        requiredMessage: "Please select at least one interest",
+      },
+    },
+
+    {
+      name: "address",
+      title: "آدرس",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "آدرس الزامی نیست",
+      },
+    },
+    {
+      name: "postalcode",
+      title: "کد پستی",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "کد پستی الزامی نیست",
+      },
+    },
+
     {
       enabled: true,
       visible: true,
