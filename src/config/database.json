@@ -24,9 +24,19 @@
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/omr?authSource=admin",
     "description": "omr.farsamooz.ir"
   }
+
+  
   ,"expoupdate.farsamooz.ir": {
     "schoolCode":"95092920",
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/expoupdate?authSource=admin",
     "description": "expoupdate.farsamooz.ir"
   }
+
+  ,
+  "harati.farsamooz.ir": {
+    "schoolCode":"95121357",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/harati?authSource=admin",
+    "description": "harati.farsamooz.ir"
+  }
+  
 } 
