@@ -234,7 +234,13 @@ export default function Home({
           name: "owner",
           title: "صاحب شماره",
           type: "dropdown",
-          options: [{ label: "معلم", value: "معلم" }],
+          options: [
+            { label: "معلم", value: "معلم" },
+            { label: "شماره مجازی", value: "شماره مجازی" },
+          ],
+           
+
+          
         },
         {
           name: "number",
@@ -344,8 +350,8 @@ export default function Home({
       ],
     },
     {
-      name: "status",
-      title: "وضعیت",
+      name: "jobStatus",
+      title: " وضعیت استخدامی",
       type: "dropdown",
       isShowInList: true,
       isSearchable: true,
@@ -375,16 +381,26 @@ export default function Home({
         { value: "3", label: "دوم متوسطه" },
       ],
     },
-    {
-      name: "major",
-      title: "رشته",
-      type: "textbox",
-      isShowInList: true,
-      isSearchable: true,
-      required: false,
-      enabled: true,
-      visible: true,
-    },
+    // {
+    //   name: "major",
+    //   title: "  رشته تحصیلی ",
+    //   type: "textbox",
+    //   isShowInList: true,
+    //   isSearchable: true,
+    //   required: false,
+    //   enabled: true,
+    //   visible: true,
+    // },
+    // {
+    //   name: "major2",
+    //   title: "  رشته تدریس ",
+    //   type: "textbox",
+    //   isShowInList: true,
+    //   isSearchable: true,
+    //   required: false,
+    //   enabled: true,
+    //   visible: true,
+    // },
     {
       name: "personelID",
       title: "شماره پرسنلی",
@@ -405,6 +421,224 @@ export default function Home({
       enabled: true,
       visible: true,
     },
+
+
+    {
+      name: "originalService",
+      title: "  منطق اصلى خدمت",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+
+    {
+      name: "originalServiceUnit",
+      title: " واحد سارمانى اصلى",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "employmentStatus",
+      title: "وضعيت اشتغال (شاغل - بارشته) ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "educationDegree",
+      title: " مدرک تحصیلی",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "educationMajor",
+      title: " رشته تحصيلي",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "teachingMajor",
+      title: " رشته اصلى تدريس",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "teachingTitle",
+      title: " عنوان تدريس برای اين آموزشگاه",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "workingHours",
+      title: "ساعت موظف ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "nonWorkingHours",
+      title: "ساعت غير موظف ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "bankAccount",
+      title: " شماره حساب بانك  ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+
+    {
+      name: "bankName",
+      title: " نام  بانك  ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "maritalStatus",
+      title: "وضعیت تاهل ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "pot",
+      title: "پست ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "educationStatus",
+      title: "وضعيت تحصیلی",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "resignationStatus",
+      title: " وضعيت ايثار كرى",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "workHistory",
+      title: " سابقه کار",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+
+    {
+      name: "managementHistory",
+      title: " سابقه معاونت و مدیریت",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+
+    {
+      name: "exactAddress",
+      title: " ادرس دقیق",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+    {
+      name: "IDserial",
+      title: "شما ه شناسنامه ",
+      type: "text",
+      isShowInList: false,
+      isSearchable: false,
+      required: false,
+      enabled: true,
+      visible: true,
+    
+    },
+   
+
+
   ] as const;
 
   return (

@@ -372,6 +372,8 @@ function StudentsPageContent() {
             { label: "پدر", value: "پدر" },
             { label: "مادر", value: "مادر" },
             { label: "دانش آموز", value: "دانش آموز" },
+            { label: "دانش آموز شماره مجازی", value: "دانش آموز شماره مجازی" },
+
           ],
         },
         {
@@ -390,7 +392,7 @@ function StudentsPageContent() {
     },
     {
       name: "avatar",
-      title: "تصویر",
+      title: "تصویر 3*4",
       type: "file",
       isShowInList: true,
       isSearchable: false,
@@ -405,7 +407,7 @@ function StudentsPageContent() {
         multiple: false,
       },
       validation: {
-        requiredMessage: "لطفا یک تصویر آپلود کنید",
+        requiredMessage: "لطفا یک تصویر 3*4 آپلود کنید",
       },
     },
 
@@ -509,6 +511,21 @@ function StudentsPageContent() {
       visible: true,
       validation: {
         requiredMessage: "شغل پدر الزامی نیست",
+      },
+    },
+
+    {
+      name: "fatherWorkPlace",
+      title: "محل کار پدر",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+
+      required: false,
+      enabled: true,
+      visible: true,
+      validation: {
+        requiredMessage: "محل کار پدر الزامی نیست",
       },
     },
 
