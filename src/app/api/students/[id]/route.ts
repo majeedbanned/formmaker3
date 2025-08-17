@@ -19,9 +19,17 @@ export async function GET(
     }
 
     // Check if user has permission to view student data
-    if (user.userType !== "school" && user.userType !== "teacher") {
+    if (user.userType !== "school" && user.userType !== "teacher" && user.userType !== "student") {
       return NextResponse.json(
         { error: "شما مجوز دسترسی به این اطلاعات را ندارید" },
+        { status: 403 }
+      );
+    }
+
+    // Students can only view their own profile
+    if (user.userType === "student" && params.id !== user.id) {
+      return NextResponse.json(
+        { error: "دانش آموزان فقط می‌توانند پروفایل خود را مشاهده کنند" },
         { status: 403 }
       );
     }
@@ -39,10 +47,17 @@ export async function GET(
     }
 
     // Find the student
-    const student = await connection.collection("students").findOne({
+    const queryFilter: any = {
       _id: new ObjectId(studentId),
-      "data.schoolCode": user.schoolCode,
-    });
+    };
+
+    // Students can access their own profile regardless of schoolCode
+    // Teachers and schools need schoolCode filter
+    if (user.userType !== "student") {
+      queryFilter["data.schoolCode"] = user.schoolCode;
+    }
+
+    const student = await connection.collection("students").findOne(queryFilter);
 
     if (!student) {
       return NextResponse.json(

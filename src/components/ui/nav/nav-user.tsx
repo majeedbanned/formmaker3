@@ -7,8 +7,10 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -38,6 +40,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
+  const { user: authUser } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -55,6 +58,10 @@ export function NavUser({
     } catch (error) {
       console.error("Logout failed:", error);
     }
+  };
+
+  const handleProfile = () => {
+    router.push("/admin/profile");
   };
 
   return (
@@ -96,27 +103,14 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup> */}
+              {authUser?.userType === "student" && (
+                <DropdownMenuItem onClick={handleProfile}>
+                  <User className="ml-2" />
+                  پروفایل من
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="ml-2" />
