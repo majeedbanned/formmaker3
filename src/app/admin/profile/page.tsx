@@ -155,10 +155,13 @@ function StudentProfileContent() {
     if (!avatarFile || !user) return;
 
     const formData = new FormData();
-    formData.append('avatar', avatarFile);
+    formData.append('file', avatarFile);
     formData.append('studentId', user.id);
 
     try {
+      setError(null);
+      setSuccess(null);
+
       const response = await fetch('/api/students/upload-avatar', {
         method: 'POST',
         headers: {
@@ -179,7 +182,8 @@ function StudentProfileContent() {
         setAvatarFile(null);
         setSuccess("تصویر با موفقیت بارگذاری شد");
       } else {
-        throw new Error("خطا در بارگذاری تصویر");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "خطا در بارگذاری تصویر");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "خطا در بارگذاری تصویر");
@@ -333,7 +337,7 @@ function StudentProfileContent() {
               <div className="text-center">
                 <Avatar className="w-32 h-32 mx-auto mb-4">
                   <AvatarImage
-                    src={profileData.data.avatar ? `/uploads/avatars/${profileData.data.avatar.filename}` : undefined}
+                    src={profileData.data.avatar ? `/avatars/${profileData.data.avatar.filename}` : undefined}
                     alt="پروفایل"
                   />
                   <AvatarFallback className="text-2xl">

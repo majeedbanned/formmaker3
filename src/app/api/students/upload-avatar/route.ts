@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getCurrentUser } from "../../chatbot7/config/route";
 import { mkdir, writeFile } from "fs/promises";
+import { ObjectId } from "mongodb";
 import path from "path";
 
 export async function POST(request: NextRequest) {
@@ -12,16 +13,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only school users can upload student avatars
-    if (user.userType !== "school") {
-      return NextResponse.json(
-        { error: "Only school administrators can upload student avatars" },
-        { status: 403 }
-      );
-    }
-
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const studentId = formData.get("studentId") as string;
     const studentCode = formData.get("studentCode") as string;
 
     if (!file) {
@@ -31,10 +25,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!studentCode) {
+    // Check permissions based on user type
+    if (user.userType === "student") {
+      // Students can only upload their own avatar
+      if (!studentId || studentId !== user.id) {
+        return NextResponse.json(
+          { error: "Students can only upload their own avatar" },
+          { status: 403 }
+        );
+      }
+    } else if (user.userType === "school") {
+      // School administrators need studentCode
+      if (!studentCode) {
+        return NextResponse.json(
+          { error: "Student code is required" },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { error: "Student code is required" },
-        { status: 400 }
+        { error: "Unauthorized user type" },
+        { status: 403 }
       );
     }
 
@@ -60,11 +71,23 @@ export async function POST(request: NextRequest) {
     // Connect to database
     const connection = await connectToDatabase(domain);
     
-    // Verify that the student exists and belongs to the school
-    const student = await connection.collection("students").findOne({
-      "data.studentCode": studentCode,
-      "data.schoolCode": user.schoolCode,
-    });
+    // Build query based on user type
+    let studentQuery: any;
+    if (user.userType === "student") {
+      // For students, find by their own ID
+      studentQuery = {
+        _id: new ObjectId(studentId)
+      };
+    } else {
+      // For school administrators, find by student code and school
+      studentQuery = {
+        "data.studentCode": studentCode,
+        "data.schoolCode": user.schoolCode,
+      };
+    }
+    
+    // Verify that the student exists
+    const student = await connection.collection("students").findOne(studentQuery);
 
     if (!student) {
       return NextResponse.json(
@@ -121,7 +144,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Avatar uploaded successfully",
       avatar: avatarData,
-      studentCode: studentCode,
+      studentCode: user.userType === "student" ? student.data.studentCode : studentCode,
     });
 
   } catch (error) {
