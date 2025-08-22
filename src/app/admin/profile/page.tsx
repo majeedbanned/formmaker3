@@ -154,36 +154,62 @@ function StudentProfileContent() {
   const uploadAvatar = async () => {
     if (!avatarFile || !user) return;
 
-    const formData = new FormData();
-    formData.append('file', avatarFile);
-    formData.append('studentId', user.id);
-
     try {
       setError(null);
       setSuccess(null);
 
-      const response = await fetch('/api/students/upload-avatar', {
+      // Step 1: Upload the image file
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', avatarFile);
+
+      const uploadResponse = await fetch('/api/upload/avatars', {
         method: 'POST',
-        headers: {
-          "x-domain": window.location.host,
-        },
-        body: formData,
+        body: uploadFormData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok || !uploadData.success) {
+        throw new Error(uploadData.error || "خطا در آپلود تصویر");
+      }
+
+      // Step 2: Save avatar info to database
+      const avatarData = {
+        filename: uploadData.filename,
+        originalName: uploadData.originalName,
+        path: uploadData.url,
+        size: uploadData.size,
+        type: uploadData.type,
+        uploadedAt: uploadData.uploadedAt,
+      };
+
+      const saveResponse = await fetch('/api/students/update-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          studentId: user.id,
+          profileData: {
+            avatar: avatarData
+          }
+        }),
+      });
+
+      if (saveResponse.ok) {
         setProfileData(prev => ({
           ...prev!,
           data: {
             ...prev!.data,
-            avatar: data.avatar
+            avatar: avatarData
           }
         }));
         setAvatarFile(null);
-        setSuccess("تصویر با موفقیت بارگذاری شد");
+        setSuccess("تصویر با موفقیت بارگذاری و ذخیره شد");
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "خطا در بارگذاری تصویر");
+        const errorData = await saveResponse.json();
+        throw new Error(errorData.error || "خطا در ذخیره اطلاعات تصویر");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "خطا در بارگذاری تصویر");
@@ -337,7 +363,7 @@ function StudentProfileContent() {
               <div className="text-center">
                 <Avatar className="w-32 h-32 mx-auto mb-4">
                   <AvatarImage
-                    src={profileData.data.avatar ? `/avatars/${profileData.data.avatar.filename}` : undefined}
+                    src={profileData.data.avatar ? profileData.data.avatar.path : undefined}
                     alt="پروفایل"
                   />
                   <AvatarFallback className="text-2xl">

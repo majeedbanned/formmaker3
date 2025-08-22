@@ -1,30 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getCurrentUser } from "../../chatbot7/config/route";
 import { ObjectId } from "mongodb";
 
-// Helper function to get current user from headers
-async function getCurrentUser(request: NextRequest) {
-  const userId = request.headers.get("x-user-id");
-  const userType = request.headers.get("x-user-type");
-  const schoolCode = request.headers.get("x-school-code");
-  const username = request.headers.get("x-username");
-  
-  if (!userId || !userType || !schoolCode || !username) {
-    return null;
-  }
-  
-  return {
-    id: userId,
-    userType,
-    schoolCode,
-    username
-  };
-}
+
 
 export async function PUT(request: NextRequest) {
   try {
     // Get current user from headers
-    const user = getCurrentUser(request);
+    const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -72,7 +56,8 @@ export async function PUT(request: NextRequest) {
       'motherJob',
       'infos',
       'address',
-      'postalcode'
+      'postalcode',
+      'avatar'
     ];
 
     // Filter the profile data to only include allowed fields
@@ -125,3 +110,4 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
