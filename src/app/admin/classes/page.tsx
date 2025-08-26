@@ -200,7 +200,7 @@ export default function Home() {
       visible: true,
       readonly: false,
       options: [
-        { label: "پیشفرض", value: "0" },
+        { label: "بدون رشته", value: "0" },
         { label: "ریاضی فیزیک", value: "15000" },
         { label: "علوم تجربی", value: "16000" },
         { label: "ادبيات و علوم انساني", value: "17000" },
