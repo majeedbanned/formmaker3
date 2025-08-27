@@ -173,6 +173,303 @@ function getIdentifierField(userType: string): string {
 }
 
 /**
+ * Default permissions for students when no permissions are found
+ */
+const DEFAULT_STUDENT_PERMISSIONS: UserPermission[] = [
+  {
+    "systems": "9",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "31",
+    "access": [
+      "show"
+    ]
+  },
+  {
+    "systems": "38",
+    "access": [
+      "show",
+      "list",
+      "search"
+    ]
+  },
+  {
+    "systems": "29",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "35",
+    "access": [
+      "show",
+      "list",
+      "search"
+    ]
+  },
+  {
+    "systems": "11",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "20",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "32",
+    "access": [
+      "show",
+      "list",
+      "search"
+    ]
+  },
+  {
+    "systems": "16",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "12",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "26",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "17",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "25",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "36",
+    "access": [
+      "show",
+      "list",
+      "search"
+    ]
+  },
+  {
+    "systems": "7",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "search"
+    ]
+  }
+];
+
+/**
+ * Default permissions for teachers when no permissions are found
+ */
+const DEFAULT_TEACHER_PERMISSIONS: UserPermission[] = [
+  {
+    "systems": "39",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "9",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "28",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "27",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "30",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "31",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete",
+      "search"
+    ]
+  },
+  {
+    "systems": "38",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "29",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "35",
+    "access": [
+      "show",
+      "list",
+      "create"
+    ]
+  },
+  {
+    "systems": "20",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "32",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "24",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "15",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "12",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "26",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "10",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "25",
+    "access": [
+      "show"
+    ]
+  },
+  {
+    "systems": "36",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "14",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "systems": "13",
+    "access": [
+      "show",
+      "list"
+    ]
+  },
+  {
+    "systems": "7",
+    "access": [
+      "show",
+      "list",
+      "create",
+      "edit",
+      "delete"
+    ]
+  }
+];
+
+/**
  * Fetch user permissions from the database
  */
 async function fetchUserPermissions(userType: string, username: string): Promise<UserPermission[]> {
@@ -200,9 +497,32 @@ async function fetchUserPermissions(userType: string, username: string): Promise
       throw new Error(`User not found in ${collectionName}`);
     }
 
-    return userData[0].data.premisions || [];
+    const permissions = userData[0].data.premisions || [];
+    
+    // If permissions are empty, return default permissions based on user type
+    if (permissions.length === 0) {
+      if (userType === 'student') {
+        console.log('📚 No permissions found for student, using default permissions');
+        return DEFAULT_STUDENT_PERMISSIONS;
+      } else if (userType === 'teacher') {
+        console.log('👨‍🏫 No permissions found for teacher, using default permissions');
+        return DEFAULT_TEACHER_PERMISSIONS;
+      }
+    }
+
+    return permissions;
   } catch (error) {
     console.error('Error fetching user permissions:', error);
+    
+    // If there's an error, return default permissions based on user type
+    if (userType === 'student') {
+      console.log('📚 Error fetching student permissions, using default permissions as fallback');
+      return DEFAULT_STUDENT_PERMISSIONS;
+    } else if (userType === 'teacher') {
+      console.log('👨‍🏫 Error fetching teacher permissions, using default permissions as fallback');
+      return DEFAULT_TEACHER_PERMISSIONS;
+    }
+    
     return [];
   }
 }
