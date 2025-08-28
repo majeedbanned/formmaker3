@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
       "data.schoolCode": user.schoolCode,
     });
 
+    console.log(student,"student");
+
     if (!student) {
       return NextResponse.json(
         { error: "Student not found or doesn't belong to your school" },
