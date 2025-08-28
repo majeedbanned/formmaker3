@@ -187,28 +187,28 @@ export default function Home() {
               requiredMessage: "واحد الزامی است",
             },
           },
-          {
-            name: "major",
-            title: "رشته",
-            type: "dropdown",
-            isSearchable: true,
-            required: true,
-            isShowInList: true,
-            enabled: true,
-            visible: true,
-            readonly: false,
-            groupUniqueness: true,
-            options: [
-              { label: "پیشفرض", value: "0" },
-              { label: "ریاضی فیزیک", value: "15000" },
-              { label: "علوم تجربی", value: "16000" },
-              { label: "ادبيات و علوم انساني", value: "17000" },
-              { label: "علوم و معارف اسلامي", value: "18000" },
-            ],
-            validation: {
-              requiredMessage: "لطفا یک رشته را انتخاب کنید",
-            },
-          },
+          // {
+          //   name: "major",
+          //   title: "رشته",
+          //   type: "dropdown",
+          //   isSearchable: true,
+          //   required: true,
+          //   isShowInList: true,
+          //   enabled: true,
+          //   visible: true,
+          //   readonly: false,
+          //   groupUniqueness: true,
+          //   options: [
+          //     { label: "پیشفرض", value: "0" },
+          //     { label: "ریاضی فیزیک", value: "15000" },
+          //     { label: "علوم تجربی", value: "16000" },
+          //     { label: "ادبيات و علوم انساني", value: "17000" },
+          //     { label: "علوم و معارف اسلامي", value: "18000" },
+          //   ],
+          //   validation: {
+          //     requiredMessage: "لطفا یک رشته را انتخاب کنید",
+          //   },
+          // },
         ]
       : []),
 
@@ -226,6 +226,28 @@ export default function Home() {
       options: gradeOptions,
       validation: {
         requiredMessage: "لطفا یک پایه تحصیلی را انتخاب کنید",
+      },
+    },
+
+    {
+      name: "major",
+      title: "رشته",
+      type: "dropdown",
+      isSearchable: true,
+      required: true,
+      isShowInList: true,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      options: [
+        { label: "(پیش دبستانی  - دبستان - متوسطه اول)بدون رشته", value: "0" },
+        { label: "ریاضی فیزیک", value: "15000" },
+        { label: "علوم تجربی", value: "16000" },
+        { label: "ادبيات و علوم انساني", value: "17000" },
+        { label: "علوم و معارف اسلامي", value: "18000" },
+      ],
+      validation: {
+        requiredMessage: "لطفا یک رشته را انتخاب کنید",
       },
     },
 
