@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     
     // Verify that the student exists and belongs to the school
     const student = await connection.collection("students").findOne({
-      "data.studentCode": studentCode,
+      "data.studentCode": studentCode
       // "data.schoolCode": user.schoolCode,
     });
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (!student) {
       return NextResponse.json(
-        { error: "Student not found or doesn't belong to your school"+ },
+        { error: "Student not found or doesn't belong to your school" },
         { status: 404 }
       );
     }
