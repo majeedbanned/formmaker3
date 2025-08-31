@@ -2423,7 +2423,7 @@ const ClassSheet = ({
             </tr>
           </thead>
           <tbody className="text-gray-700">
-            {students.map((student) => {
+            {students?.map((student) => {
               const fullName = `${student.studentName} ${student.studentlname}`;
               return (
                 <tr key={student.studentCode}>
