@@ -222,6 +222,7 @@ export default function Home() {
       readonly: false,
 
       options: [
+        { label: "پیش فرض", value: "0" },
         { label: "اول ابتدایی", value: "1" },
         { label: "دوم ابتدایی", value: "2" },
         { label: "سوم ابتدایی", value: "3" },
