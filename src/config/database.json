@@ -81,6 +81,13 @@
     "schoolCode":"44560603",
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bh2?authSource=admin",
     "description": "bh2.farsamooz.ir"
+  },
+
+  
+  "farsi.farsamooz.ir": {
+    "schoolCode":"80063324",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/farsi?authSource=admin",
+    "description": "farsi.farsamooz.ir"
   }
   
 } 
