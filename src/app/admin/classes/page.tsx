@@ -4,6 +4,7 @@ import CRUDComponent from "@/components/CRUDComponent";
 import {
   UserPlusIcon,
   QuestionMarkCircleIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +15,14 @@ import { classesHelpSections } from "./ClassesHelpContent";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader";
 import { BookOpenIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -59,6 +68,22 @@ export default function Home() {
     name: string;
   } | null>(null);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+  const [studentsModalOpen, setStudentsModalOpen] = useState(false);
+  const [studentsData, setStudentsData] = useState<Array<{
+    _id: string;
+    data: {
+      studentCode: string;
+      studentName?: string;
+      studentFamily?: string;
+      phone?: string;
+      [key: string]: unknown;
+    };
+  }>>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [selectedClassForStudents, setSelectedClassForStudents] = useState<{
+    code: string;
+    name: string;
+  } | null>(null);
 
   // Keyboard shortcut for help panel (F1)
   useEffect(() => {
@@ -90,6 +115,47 @@ export default function Home() {
 
     // Open the import modal
     setImportModalOpen(true);
+  };
+
+  // Function to handle showing students in class
+  const handleShowStudents = async (
+    rowId: string,
+    rowData?: Record<string, unknown>
+  ) => {
+    if (!rowData) return;
+
+    // Set the selected class for the students modal
+    setSelectedClassForStudents({
+      code: rowData.classCode as string,
+      name: rowData.className as string,
+    });
+
+    // Open the students modal and start loading
+    setStudentsModalOpen(true);
+    setLoadingStudents(true);
+
+    try {
+      const response = await fetch(
+        `/api/students/findByClass?classCode=${rowData.classCode}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch students: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      setStudentsData(result.data || []);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      setStudentsData([]);
+    } finally {
+      setLoadingStudents(false);
+    }
   };
 
   // Function to process imported students
@@ -595,6 +661,11 @@ export default function Home() {
               action: handleImportStudents,
               icon: UserPlusIcon,
             },
+            {
+              label: "نمایش دانش آموزان این کلاس",
+              action: handleShowStudents,
+              icon: UsersIcon,
+            },
           ]}
           onAfterAdd={async (entity) => {
             return;
@@ -700,6 +771,91 @@ export default function Home() {
             schoolCode={user?.schoolCode || ""}
           />
         )}
+
+        {/* Students List Modal */}
+        <Dialog
+          open={studentsModalOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setStudentsModalOpen(false);
+              setSelectedClassForStudents(null);
+              setStudentsData([]);
+              setLoadingStudents(false);
+            }
+          }}
+        >
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <UsersIcon className="w-5 h-5 text-blue-600" />
+                دانش آموزان کلاس{" "}
+                {selectedClassForStudents?.name || ""}
+                {selectedClassForStudents?.code && (
+                  <Badge variant="secondary" className="text-sm">
+                    کد: {selectedClassForStudents.code}
+                  </Badge>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="mt-4">
+              {loadingStudents ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                  <span className="mr-2 text-gray-600">در حال بارگذاری...</span>
+                </div>
+              ) : studentsData.length === 0 ? (
+                <div className="text-center py-8">
+                  <UsersIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">
+                    هیچ دانش آموزی در این کلاس یافت نشد
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-gray-700">
+                      تعداد دانش آموزان: {studentsData.length}
+                    </h3>
+                  </div>
+                  
+                  <div className="grid gap-3">
+                    {studentsData.map((student, index) => (
+                      <div
+                        key={student._id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-blue-600">
+                              {index + 1}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-gray-900">
+                                {student.data.studentName || "نام نامشخص"}{" "}
+                                {student.data.studentFamily || ""}
+                              </h4>
+                              <Badge variant="outline" className="text-xs">
+                                کد: {student.data.studentCode}
+                              </Badge>
+                            </div>
+                            {student.data.phone && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                تلفن: {student.data.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Help Panel */}
         <HelpPanel
