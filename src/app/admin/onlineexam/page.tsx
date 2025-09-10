@@ -336,8 +336,8 @@ export default function OnlineExamPage() {
                           {data.examCode}
                         </TableCell>
                         <TableCell>{data.examName}</TableCell>
-                        <TableCell>{data.dateTime.startDate}</TableCell>
-                        <TableCell>{data.dateTime.endDate}</TableCell>
+                        <TableCell>{data?.dateTime?.startDate}</TableCell>
+                        <TableCell>{data?.dateTime?.endDate}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2 space-x-reverse">
                             {active ? (

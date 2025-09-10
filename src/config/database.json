@@ -1,9 +1,11 @@
 {
+
   "localhost:3000": {
-    "schoolCode":"95012284",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/files?authSource=admin",
+    "schoolCode":"44559909",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/gh2?authSource=admin",
     "description": "Local development database"
   },
+
   "localhost:3001": {
     "connectionString": "mongodb://masterdbUser:anotherStrongPassword123@185.128.137.182:27017/masterdb?authSource=masterdb",
     "description": "Test environment database"
