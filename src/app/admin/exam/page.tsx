@@ -50,11 +50,11 @@ const layout: LayoutSettings = {
 
 function StudentsPageContent() {
   const { user, isLoading } = useAuth();
-  const {
-    isLoading: permissionLoading,
-    hasAccess,
-    error: permissionError,
-  } = usePagePermission("show");
+  // const {
+  //   isLoading: permissionLoading,
+  //   hasAccess,
+  //   error: permissionError,
+  // } = usePagePermission("show");
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
@@ -157,41 +157,41 @@ function StudentsPageContent() {
   console.log("user", user);
 
   // Show loading while auth or permission is being checked
-  if (isLoading || permissionLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (isLoading || permissionLoading) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+  //         <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Show error if permission check failed
-  if (permissionError) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
-          <p className="text-gray-600">{permissionError}</p>
-        </div>
-      </div>
-    );
-  }
+  // if (permissionError) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
+  //         <p className="text-gray-600">{permissionError}</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // If permission check completed but user doesn't have access,
   // the hook will redirect to /noaccess, but we can show a message while redirecting
-  if (!hasAccess) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
-          <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
-        </div>
-      </div>
-    );
-  }
+  // if (!hasAccess) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
+  //         <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const sampleFormStructure: FormField[] = [
     {
@@ -214,6 +214,32 @@ function StudentsPageContent() {
         requiredMessage: "کد امتحان الزامی است",
       },
     },
+
+    {
+      name: "examcreator",
+      title: "معلم سازنده",
+      type: "text",
+      isShowInList: false,
+      isSearchable: true,
+      required: true,
+      enabled: true,
+      readonly: true,
+      visible: true,
+      defaultValue: user?.userType === "teacher" ? user.username : "",
+      listLabelColor: "#2563eb",
+    //  dataSource: {
+    //   collectionName: "teachers",
+    //   labelField: "teacherName",
+    //   valueField: "teacherCode",
+    //   sortField: "teacherCode",
+    //   sortOrder: "asc" as "asc" | "desc",
+    //   filterQuery: { "data.teacherCode": user?.username },
+    //  },
+      validation: {
+        requiredMessage: "عنوان گفتگو الزامی است",
+      },
+    },
+
     {
       name: "examName",
       title: "نام امتحان",
@@ -926,20 +952,35 @@ function StudentsPageContent() {
             ]}
             initialFilter={{
               schoolCode: user?.schoolCode || "",
-              ...(user?.userType === "student" && studentTeachers.length > 0
+              ...(user?.userType === "teacher"
                 ? {
-                    "recipients.teachers": { $in: studentTeachers },
+                    "examcreator": user.username,
                   }
-                : {}),
-              ...(user?.userType === "teacher" && teacherClasses.length > 0
+                : 
+                {}),
+
+                ...(user?.userType === "student"
                 ? {
-                    $or: [
-                      { "recipients.classCode": { $in: teacherClasses } },
-                      { "data.teacherCode": user.username },
-                    ],
+                    "rexamcreator": "0"
                   }
                 : {}),
             }}
+            // initialFilter={{
+            //   schoolCode: user?.schoolCode || "",
+            //   ...(user?.userType === "student" && studentTeachers.length > 0
+            //     ? {
+            //         "recipients.teachers": { $in: studentTeachers },
+            //       }
+            //     : {}),
+            //   ...(user?.userType === "teacher" && teacherClasses.length > 0
+            //     ? {
+            //         $or: [
+            //           { "recipients.classCode": { $in: teacherClasses } },
+            //           { "data.teacherCode": user.username },
+            //         ],
+            //       }
+            //     : {}),
+            // }}
             layout={layout}
           />
         )}
