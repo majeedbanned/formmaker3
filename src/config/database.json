@@ -91,5 +91,34 @@
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/farsi?authSource=admin",
     "description": "farsi.farsamooz.ir"
   }
+,
+  "df1.farsamooz.ir": {
+    "schoolCode":"96023603",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/df1?authSource=admin",
+    "description": "df1.farsamooz.ir"
+  }
+
+  ,
+  "df2.farsamooz.ir": {
+    "schoolCode":"44567002",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/df2?authSource=admin",
+    "description": "df2.farsamooz.ir"
+  }
+
+  ,
+  "nooralavi.farsamooz.ir": {
+    "schoolCode":"80047691",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/nooralavi?authSource=admin",
+    "description": "nooralavi.farsamooz.ir"
+  }
+
+  ,
+  "efaf.farsamooz.ir": {
+    "schoolCode":"95090544",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/efaf?authSource=admin",
+    "description": "efaf.farsamooz.ir"
+  }
+
+
   
 } 
