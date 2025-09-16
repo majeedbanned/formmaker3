@@ -606,7 +606,7 @@ const WeeklySchedule = ({
 
       if (classData) {
         // Fill schedule with cl
-        // dfdhdfgd
+        // dfdhdfgdrtdfvdfvdscs
       //
         classData.data.teachers.forEach((teacher) => {
 
