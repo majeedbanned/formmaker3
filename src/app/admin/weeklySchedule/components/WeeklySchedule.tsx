@@ -605,8 +605,12 @@ const WeeklySchedule = ({
       const classData = classes.find((c) => c.data.classCode === selectedClass);
 
       if (classData) {
-        // Fill schedule with class data
+        // Fill schedule with cl
+        // 
+      //
         classData.data.teachers.forEach((teacher) => {
+
+          if(teacher.weeklySchedule){   
           teacher.weeklySchedule?.forEach((schedule) => {
             if (
               scheduleData[schedule.timeSlot] &&
@@ -617,7 +621,7 @@ const WeeklySchedule = ({
                 teacherCode: teacher.teacherCode,
               });
             }
-          });
+          });}
         });
       }
     } else if (view === "teacher" && selectedTeacher) {
@@ -628,7 +632,7 @@ const WeeklySchedule = ({
         );
 
         teacherSchedules.forEach((teacher) => {
-          teacher.weeklySchedule?.forEach((schedule) => {
+          teacher?.weeklySchedule?.forEach((schedule) => {
             if (
               scheduleData[schedule.timeSlot] &&
               scheduleData[schedule.timeSlot][schedule.day]
@@ -647,7 +651,12 @@ const WeeklySchedule = ({
       // Comprehensive view for school admins - show all classes
       classes.forEach((classData) => {
         classData.data.teachers.forEach((teacher) => {
-          teacher.weeklySchedule?.forEach((schedule) => {
+          // console.log
+          // if
+          // ("eeeee",teacher);
+
+          if(teacher.weeklySchedule){
+          teacher?.weeklySchedule?.forEach((schedule) => {
             if (
               scheduleData[schedule.timeSlot] &&
               scheduleData[schedule.timeSlot][schedule.day]
@@ -660,6 +669,8 @@ const WeeklySchedule = ({
               });
             }
           });
+          }
+
         });
       });
     }
