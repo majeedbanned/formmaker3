@@ -9,6 +9,7 @@ import {
 } from "../components/widgets";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
+import OnboardingStatus from "@/components/OnboardingStatus";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [isWidgetSelectorOpen, setIsWidgetSelectorOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isOnboardingMinimized, setIsOnboardingMinimized] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -263,6 +265,21 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Onboarding Status for School Users */}
+          {user.userType === "school" && (
+            <OnboardingStatus
+              isMinimized={isOnboardingMinimized}
+              onToggleMinimize={() => setIsOnboardingMinimized(!isOnboardingMinimized)}
+            />
+          )}
+
+          {/* Debug: Show user type */}
+          {/* {process.env.NODE_ENV === "development" && (
+            <div className="bg-yellow-100 p-2 rounded mb-4 text-sm">
+              Debug: User Type = {user.userType}, Username = {user.username}
+            </div>
+          )} */}
 
           {/* Customization Mode Indicator */}
           <AnimatePresence>
