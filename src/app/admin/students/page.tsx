@@ -676,42 +676,42 @@ function StudentsPageContent() {
           collectionName="students"
           // initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
-          importFunction={{
-            active: true,
-            title: "وارد کردن اطلاعات دانش‌آموزان",
-            nameBinding: [
-              {
-                label: "کد دانش آموز",
-                name: "studentCode",
-                type: "number",
-                isUnique: true,
-              },
-              {
-                label: "نام دانش آموز",
-                name: "studentName",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "نام خانوادگی",
-                name: "studentFamily",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "شماره تلفن",
-                name: "phone",
-                type: "text",
-                isUnique: false,
-              },
-              {
-                label: "کد مدرسه",
-                name: "schoolCode",
-                type: "number",
-                defaultValue: user?.schoolCode,
-              },
-            ],
-          }}
+          // importFunction={{
+          //   active: true,
+          //   title: "وارد کردن اطلاعات دانش‌آموزان",
+          //   nameBinding: [
+          //     {
+          //       label: "کد دانش آموز",
+          //       name: "studentCode",
+          //       type: "number",
+          //       isUnique: true,
+          //     },
+          //     {
+          //       label: "نام دانش آموز",
+          //       name: "studentName",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "نام خانوادگی",
+          //       name: "studentFamily",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "شماره تلفن",
+          //       name: "phone",
+          //       type: "text",
+          //       isUnique: false,
+          //     },
+          //     {
+          //       label: "کد مدرسه",
+          //       name: "schoolCode",
+          //       type: "number",
+          //       defaultValue: user?.schoolCode,
+          //     },
+          //   ],
+          // }}
           // rowActions={[
           //   {
           //     label: "مشاهده سند",
