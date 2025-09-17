@@ -289,11 +289,13 @@ export default function CRUDComponent({
       headers.push("ردیف");
       fieldKeys.push("__rowNumber");
 
-      // Add headers for all fields (not just visible ones)
-      formStructure.forEach((field) => {
-        headers.push(field.title); // Use Farsi title
-        fieldKeys.push(field.name);
-      });
+      // Add headers for all fields (not just visible ones), excluding image fields
+      formStructure
+        .filter((field) => field.type !== "file" || !field.fileConfig?.allowedTypes?.some(type => type.startsWith("image/")))
+        .forEach((field) => {
+          headers.push(field.title); // Use Farsi title
+          fieldKeys.push(field.name);
+        });
 
       // Add headers to worksheet
       const headerRow = worksheet.addRow(headers);
@@ -317,40 +319,94 @@ export default function CRUDComponent({
         // Add row number
         row.push(index + 1);
 
-        // Add field values for all fields
-        formStructure.forEach((field) => {
-          const value = entity.data[field.name];
+        // Add field values for all fields, excluding image fields
+        formStructure
+          .filter((field) => field.type !== "file" || !field.fileConfig?.allowedTypes?.some(type => type.startsWith("image/")))
+          .forEach((field) => {
+            const value = entity.data[field.name];
 
-          if (field.type === "dropdown" && field.options) {
-            // For dropdown fields, show the label instead of value
-            const option = field.options.find((opt) => opt.value === value);
-            row.push(option ? option.label : String(value || ""));
-          } else if (field.type === "checkbox" || field.type === "switch") {
-            // For boolean fields, show Yes/No in Farsi
-            row.push(value ? "بله" : "خیر");
-          } else if (field.type === "datepicker" && value) {
-            // For date fields, format the date
-            const date = new Date(value as string);
-            row.push(date.toLocaleDateString("fa-IR"));
-          } else if (Array.isArray(value)) {
-            // For array values, join them
-            row.push(value.join(", "));
-          } else if (typeof value === "object" && value !== null) {
-            // For object values, stringify them
-            row.push(JSON.stringify(value));
-          } else {
-            // For simple values
-            row.push(String(value || ""));
+            if (field.type === "dropdown" && field.options) {
+              // For dropdown fields, show the label instead of value
+              const option = field.options.find((opt) => opt.value === value);
+              row.push(option ? option.label : String(value || ""));
+            } else if (field.type === "checkbox" || field.type === "switch") {
+              // For boolean fields, show Yes/No in Farsi
+              row.push(value ? "بله" : "خیر");
+            } else if (field.type === "datepicker" && value) {
+              // For date fields, show as plain string (as stored in database)
+              row.push(String(value));
+            } else if (Array.isArray(value)) {
+              // For array values, handle objects in simple delimited format
+              if (value.length === 0) {
+                row.push("");
+              } else if (typeof value[0] === "object" && value[0] !== null) {
+                // Array of objects - format as simple delimited strings
+                try {
+                  const formattedItems = value.map((item, index) => {
+                    if (typeof item === "object" && item !== null) {
+                      // Convert object to key:value pairs
+                      const pairs = Object.entries(item)
+                        .map(([key, val]) => `${key}: ${val}`)
+                        .join(", ");
+                      return `[${index + 1}] ${pairs}`;
+                    }
+                    return String(item);
+                  });
+                  row.push(formattedItems.join(" | "));
+                } catch (error) {
+                  row.push(String(value));
+                }
+              } else {
+                // Array of simple values - join them
+                row.push(value.join(", "));
+              }
+            } else if (typeof value === "object" && value !== null) {
+              // For object values, show as formatted JSON for readability
+              try {
+                row.push(JSON.stringify(value, null, 2));
+              } catch (error) {
+                // Fallback if JSON.stringify fails
+                row.push(String(value));
+              }
+            } else {
+              // For simple values
+              row.push(String(value || ""));
+            }
+          });
+
+        const addedRow = worksheet.addRow(row);
+        
+        // Apply text wrapping only for cells that contain JSON objects (not arrays)
+        addedRow.eachCell((cell, colNumber) => {
+          if (cell.value && typeof cell.value === 'string' && 
+              cell.value.includes('{') && !cell.value.includes('|')) {
+            cell.alignment = { 
+              wrapText: true, 
+              vertical: 'top',
+              horizontal: 'left' 
+            };
           }
         });
-
-        worksheet.addRow(row);
       });
 
-      // Auto-fit columns
-      worksheet.columns.forEach((column) => {
+      // Auto-fit columns with special handling for JSON content
+      worksheet.columns.forEach((column, index) => {
         if (column.header) {
-          column.width = Math.max(15, String(column.header).length + 5);
+          let maxWidth = Math.max(15, String(column.header).length + 5);
+          
+          // Check if this column might contain JSON objects by sampling first few rows
+          const sampleRows = Math.min(5, entities.length);
+          for (let rowIndex = 0; rowIndex < sampleRows; rowIndex++) {
+            const cellValue = worksheet.getCell(rowIndex + 2, index + 1).value; // +2 for header row, +1 for 1-based indexing
+            if (cellValue && typeof cellValue === 'string' && 
+                (cellValue.includes('{') || cellValue.includes('|'))) {
+              // Likely complex content, set wider column
+              maxWidth = Math.max(maxWidth, 50);
+              break;
+            }
+          }
+          
+          column.width = Math.min(maxWidth, 100); // Cap at 100 to prevent extremely wide columns
         }
       });
 
