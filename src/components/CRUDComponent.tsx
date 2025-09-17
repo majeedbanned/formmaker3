@@ -26,6 +26,7 @@ export default function CRUDComponent({
     canSearchAllFields: true,
   },
   importFunction,
+  excelExport,
   rowActions = [],
   layout = {
     direction: "ltr",
@@ -169,22 +170,13 @@ export default function CRUDComponent({
         if (!permissions.canEdit) return;
         entity = await updateEntity(editingId, data);
 
-        const editeddata = {
-          ...data,
-          recordId: editingId,
-        };
-
-        onAfterEdit?.(editeddata);
+        onAfterEdit?.(entity);
       } else {
         if (!permissions.canAdd) return;
         entity = await createEntity(data);
         console.log("entity", entity);
         console.log("data", data);
-        const addeddata = {
-          ...data,
-          recordId: entity._id,
-        };
-        onAfterAdd?.(addeddata);
+        onAfterAdd?.(entity);
       }
       setIsModalOpen(false);
       setEditingId(null);
@@ -267,6 +259,130 @@ export default function CRUDComponent({
     setAdvancedSearch(initialFilter || {});
   };
 
+  const exportToExcel = async () => {
+    if (!excelExport?.enabled || entities.length === 0) return;
+
+    try {
+      // Dynamically import ExcelJS (only when needed)
+      const ExcelJS = (await import("exceljs")).default;
+
+      // Create a new workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "FormMaker";
+      workbook.lastModifiedBy = "FormMaker CRUD";
+      workbook.created = new Date();
+      workbook.modified = new Date();
+
+      // Add a worksheet
+      const worksheet = workbook.addWorksheet(
+        excelExport.sheetName || collectionName
+      );
+
+      // Set RTL direction for the worksheet
+      worksheet.views = [{ rightToLeft: layout.direction === "rtl" }];
+
+      // Define headers - use Farsi titles from formStructure
+      const headers: string[] = [];
+      const fieldKeys: string[] = [];
+
+      // Add row number column
+      headers.push("ردیف");
+      fieldKeys.push("__rowNumber");
+
+      // Add headers for all fields (not just visible ones)
+      formStructure.forEach((field) => {
+        headers.push(field.title); // Use Farsi title
+        fieldKeys.push(field.name);
+      });
+
+      // Add headers to worksheet
+      const headerRow = worksheet.addRow(headers);
+
+      // Style the header row
+      headerRow.font = { bold: true, size: 12 };
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE7E6E6" },
+      };
+      headerRow.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+
+      // Add data rows
+      entities.forEach((entity, index) => {
+        const row: (string | number | boolean)[] = [];
+
+        // Add row number
+        row.push(index + 1);
+
+        // Add field values for all fields
+        formStructure.forEach((field) => {
+          const value = entity.data[field.name];
+
+          if (field.type === "dropdown" && field.options) {
+            // For dropdown fields, show the label instead of value
+            const option = field.options.find((opt) => opt.value === value);
+            row.push(option ? option.label : String(value || ""));
+          } else if (field.type === "checkbox" || field.type === "switch") {
+            // For boolean fields, show Yes/No in Farsi
+            row.push(value ? "بله" : "خیر");
+          } else if (field.type === "datepicker" && value) {
+            // For date fields, format the date
+            const date = new Date(value as string);
+            row.push(date.toLocaleDateString("fa-IR"));
+          } else if (Array.isArray(value)) {
+            // For array values, join them
+            row.push(value.join(", "));
+          } else if (typeof value === "object" && value !== null) {
+            // For object values, stringify them
+            row.push(JSON.stringify(value));
+          } else {
+            // For simple values
+            row.push(String(value || ""));
+          }
+        });
+
+        worksheet.addRow(row);
+      });
+
+      // Auto-fit columns
+      worksheet.columns.forEach((column) => {
+        if (column.header) {
+          column.width = Math.max(15, String(column.header).length + 5);
+        }
+      });
+
+      // Generate the Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Create a Blob from the buffer
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      });
+
+      // Create a download link and trigger the download
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download =
+        excelExport.filename ||
+        `${collectionName}_${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("صدور فایل موفقیت‌آمیز بود", {
+        description: "فایل اکسل با موفقیت ایجاد شد.",
+      });
+    } catch (error) {
+      console.error("Excel export error:", error);
+      toast.error("خطا در صدور فایل", {
+        description: "مشکلی در ایجاد فایل اکسل رخ داد.",
+      });
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
@@ -302,6 +418,26 @@ export default function CRUDComponent({
             />
           )}
           <div className="flex gap-2">
+            {excelExport?.enabled && entities.length > 0 && (
+              <Button
+                onClick={exportToExcel}
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM3 5a2 2 0 012-2h6.586A2 2 0 0113 3.586L15.414 6A2 2 0 0116 7.414V9a1 1 0 11-2 0V8h-2a2 2 0 01-2-2V4H5v8a1 1 0 11-2 0V5z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {excelExport.buttonText || "صدور اکسل"}
+              </Button>
+            )}
             {importFunction?.active && permissions.canAdd && (
               <Button
                 onClick={handleImport}

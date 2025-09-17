@@ -701,6 +701,13 @@ export default function Home({
         </div> */}
 
         <CRUDComponent
+
+excelExport={{
+  enabled: true,
+  filename: "my_data.xlsx", // Optional
+  sheetName: "Data Sheet", // Optional
+  buttonText: "صدور اکسل", // Optional
+}}
           formStructure={sampleFormStructure}
           collectionName="teachers"
           initialFilter={hardcodedFilter}

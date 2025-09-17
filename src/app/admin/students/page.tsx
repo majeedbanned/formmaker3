@@ -674,6 +674,15 @@ function StudentsPageContent() {
         <CRUDComponent
           formStructure={sampleFormStructure}
           collectionName="students"
+
+
+          excelExport={{
+            enabled: true,
+            filename: "my_data.xlsx", // Optional
+            sheetName: "Data Sheet", // Optional
+            buttonText: "صدور اکسل", // Optional
+          }}
+
           // initialFilter={initialFilter as Record<string, unknown>}
           layout={layout}
           // importFunction={{

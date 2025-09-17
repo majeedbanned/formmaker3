@@ -334,6 +334,12 @@ export interface CRUDComponentProps {
       defaultValue?: string | number;
     }>;
   };
+  excelExport?: {
+    enabled: boolean;
+    filename?: string;
+    sheetName?: string;
+    buttonText?: string;
+  };
   rowActions?: RowAction[];
   layout?: LayoutSettings;
   // Event handlers
