@@ -5,6 +5,7 @@ import {
   UserPlusIcon,
   QuestionMarkCircleIcon,
   UsersIcon,
+  ArrowsRightLeftIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -155,6 +156,59 @@ export default function Home() {
       setStudentsData([]);
     } finally {
       setLoadingStudents(false);
+    }
+  };
+
+  // Function to handle rearranging class students
+  const handleRearrangeClasses = async (
+    rowId: string,
+    rowData?: Record<string, unknown>
+  ) => {
+    if (!rowData) return;
+
+    const classCode = rowData.classCode as string;
+    const className = rowData.className as string;
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `آیا از بازآرایی دانش آموزان کلاس "${className}" اطمینان دارید؟
+      
+      
+      
+      `
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/classes/rearrange`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          classCode: classCode,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to rearrange class: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      
+      // Show success message
+      alert(
+        `بازآرایی کلاس "${className}" با موفقیت انجام شد.\n\n${result.studentsCount} دانش آموز به لیست کلاس اضافه شد.`
+      );
+
+      // Optionally refresh the page data here
+      window.location.reload();
+      
+    } catch (error) {
+      console.error("Error rearranging class:", error);
+      alert("خطا در بازآرایی کلاس. لطفاً دوباره تلاش کنید.");
     }
   };
 
@@ -665,6 +719,11 @@ export default function Home() {
               label: "نمایش دانش آموزان این کلاس",
               action: handleShowStudents,
               icon: UsersIcon,
+            },
+            {
+              label: "بازآرایی کلاس",
+              action: handleRearrangeClasses,
+              icon: ArrowsRightLeftIcon,
             },
           ]}
           onAfterAdd={async (entity) => {
