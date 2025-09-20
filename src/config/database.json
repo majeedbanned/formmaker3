@@ -165,7 +165,7 @@
   ,
   "fereshtegan.farsamooz.ir": {
     "schoolCode":"29083506",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Fereshtegan?authSource=admin",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Freshtegan?authSource=admin",
     "description": "fereshtegan.farsamooz.ir"
   }
 
