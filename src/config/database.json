@@ -153,7 +153,7 @@
   ,
   "shahrestani.farsamooz.ir": {
     "schoolCode":"44569006",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahrestani?authSource=admin",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Shahrestani?authSource=admin",
     "description": "shahrestani.farsamooz.ir"
   }
   ,
@@ -165,7 +165,7 @@
   ,
   "fereshtegan.farsamooz.ir": {
     "schoolCode":"29083506",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/fereshtegan?authSource=admin",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Fereshtegan?authSource=admin",
     "description": "fereshtegan.farsamooz.ir"
   }
 
