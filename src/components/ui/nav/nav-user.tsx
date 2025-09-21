@@ -61,7 +61,15 @@ export function NavUser({
   };
 
   const handleProfile = () => {
-    router.push("/admin/profile");
+    // Route to appropriate profile page based on user type
+    if (authUser?.userType === "teacher") {
+      router.push("/admin/teacher-profile");
+    } else if (authUser?.userType === "student") {
+      router.push("/admin/profile");
+    } else {
+      // For other user types, default to student profile
+      router.push("/admin/profile");
+    }
   };
 
   return (
@@ -104,7 +112,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              {authUser?.userType === "student" && (
+              {(authUser?.userType === "student"  || authUser?.userType === "teacher") && (
                 <DropdownMenuItem onClick={handleProfile}>
                   <User className="ml-2" />
                   پروفایل من
