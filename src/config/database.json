@@ -163,11 +163,33 @@
     "description": "shahedsch2.farsamooz.ir"
   }
   ,
-  "fereshtegan.farsamooz.ir": {
-    "schoolCode":"29083506",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Freshtegan?authSource=admin",
-    "description": "fereshtegan.farsamooz.ir"
+  "asadsch.farsamooz.ir": {
+    "schoolCode":"44543404",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/asadsch?authSource=admin",
+    "description": "asadsch.farsamooz.ir"
   }
+
+,
+  "fereshtegan2.farsamooz.ir": {
+    "schoolCode":"49083506",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/fereshtegan2?authSource=admin",
+    "description": "fereshtegan2.farsamooz.ir"
+  }
+
+,
+  "adab.farsamooz.ir": {
+    "schoolCode":"96020274",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/adab?authSource=admin",
+    "description": "adab.farsamooz.ir"
+  }
+
+,
+  "bagher.farsamooz.ir": {
+    "schoolCode":"95062522",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bagher?authSource=admin",
+    "description": "bagher.farsamooz.ir"
+  }
+
 
 
   
