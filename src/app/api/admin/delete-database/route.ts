@@ -97,3 +97,5 @@ export async function GET(): Promise<NextResponse> {
     note: "Protected databases cannot be deleted"
   });
 }
+
+

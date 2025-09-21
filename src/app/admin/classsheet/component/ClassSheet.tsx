@@ -2,7 +2,7 @@
 
 "use client";
 // components/ClassSheet.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import DatePicker from "react-multi-date-picker";
 import type { Value } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -1207,7 +1207,13 @@ const ClassSheet = ({
     allColumns.push(...monthlyGradeColumns);
   }
 
-  const { students } = selectedClassDocument.data;
+  // Sort students by last name (studentlname) by default whenever class changes
+  const students = useMemo(() => {
+    const { students: unsortedStudents } = selectedClassDocument.data;
+    return unsortedStudents ? [...unsortedStudents].sort((a, b) => {
+      return a.studentlname.localeCompare(b.studentlname, 'fa');
+    }) : [];
+  }, [selectedClassDocument.data]);
 
   // Handle adding custom assessment title
   const handleAddCustomTitle = async () => {
