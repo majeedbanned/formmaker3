@@ -28,8 +28,11 @@ export async function POST(request: Request) {
       );
     }
     
+    // Get domain from request headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
     // Add phonebook
-    const result = await smsApi.addPhonebook(name, numbers);
+    const result = await smsApi.addPhonebook(domain, name, numbers, user.schoolCode);
     
     return NextResponse.json({ 
       success: true,

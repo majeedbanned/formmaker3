@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/app/api/chatbot7/config/route";
 // Set runtime to nodejs
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Verify user is authenticated
     const user = await getCurrentUser();
@@ -17,8 +17,11 @@ export async function GET() {
       );
     }
     
+    // Get domain from request headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
     // Get account credit
-    const credit = await smsApi.getCredit();
+    const credit = await smsApi.getCredit(domain, user.schoolCode);
     
     return NextResponse.json({ credit: credit || '0' });
   } catch (error) {

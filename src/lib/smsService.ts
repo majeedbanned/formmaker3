@@ -1,9 +1,64 @@
+// @ts-ignore - xmldom types not available
 import { DOMParser } from 'xmldom';
 import axios from 'axios';
+import { connectToDatabase } from './mongodb';
+import { logger } from './logger';
 
 const SMS_API_URL = 'http://185.112.33.61/webservice/send.php';
-const SMS_USERNAME ="majeedbanned"; process.env.SMS_USERNAME || '';
-const SMS_PASSWORD ="6323905";// process.env.SMS_PASSWORD || '';
+
+// Interface for SMS credentials
+interface SmsCredentials {
+  username: string;
+  password: string;
+}
+
+// Function to get SMS credentials from schools database
+async function getSmsCredentials(domain: string, schoolCode?: string): Promise<SmsCredentials> {
+  try {
+    const connection = await connectToDatabase(domain);
+    const schoolsCollection = connection.collection('schools');
+    
+    let query: Record<string, unknown> = {};
+    
+    if (schoolCode) {
+      // If schoolCode is provided, search by schoolCode
+      query = { 'data.schoolCode': schoolCode };
+    } else {
+      // If no schoolCode, get the first active school with SMS credentials
+      query = { 
+        'data.isActive': true
+      };
+      // Add SMS credential filters
+      Object.assign(query, {
+        'data.SMS_USERNAME': { $exists: true, $ne: null },
+        'data.SMS_PASSWORD': { $exists: true, $ne: null }
+      });
+    }
+    
+    const school = await schoolsCollection.findOne(query);
+    
+    if (!school || !school.data) {
+      throw new Error(`No school found with SMS credentials for domain: ${domain}${schoolCode ? `, schoolCode: ${schoolCode}` : ''}`);
+    }
+    
+    const smsUsername = school.data.SMS_USERNAME;
+    const smsPassword = school.data.SMS_PASSWORD;
+    
+    if (!smsUsername || !smsPassword) {
+      throw new Error(`SMS credentials not configured for school: ${school.data.schoolName || 'Unknown'}`);
+    }
+    
+    logger.info(`Retrieved SMS credentials for school: ${school.data.schoolName}, domain: ${domain}`);
+    
+    return {
+      username: smsUsername,
+      password: smsPassword
+    };
+  } catch (error) {
+    logger.error('Error retrieving SMS credentials:', error);
+    throw error;
+  }
+}
 
 // Helper to create SOAP envelope
 const createSoapEnvelope = (method: string, params: Record<string, string | string[]>): string => {
@@ -78,7 +133,7 @@ const makeSoapRequest = async (method: string, params: Record<string, string | s
     
     return parseSoapResponse(response.data);
   } catch (error) {
-    console.error(`Error in SOAP request for ${method}:`, error);
+    logger.error(`Error in SOAP request for ${method}:`, error);
     throw error;
   }
 };
@@ -86,119 +141,131 @@ const makeSoapRequest = async (method: string, params: Record<string, string | s
 // SMS API Methods
 export const smsApi = {
   // Get account credit
-  getCredit: async (): Promise<string | null> => {
+  getCredit: async (domain: string, schoolCode?: string): Promise<string | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('GetCredit', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD
+      Username: credentials.username,
+      Password: credentials.password
     }) as Promise<string | null>;
   },
   
   // Send SMS to multiple numbers
-  sendSMS: async (fromNumber: string, toNumbers: string[], content: string): Promise<string[] | null> => {
+  sendSMS: async (domain: string, fromNumber: string, toNumbers: string[], content: string, schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('SendSMS', {
       fromNum: fromNumber,
       toNum: toNumbers,
       Content: content,
       Type: '1', // 1 for normal SMS
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD
+      Username: credentials.username,
+      Password: credentials.password
     }) as Promise<string[] | null>;
   },
   
   // Send multiple contents to multiple numbers
-  sendMultiSMS: async (fromNumbers: string[], toNumbers: string[], contents: string[]): Promise<string[] | null> => {
+  sendMultiSMS: async (domain: string, fromNumbers: string[], toNumbers: string[], contents: string[], schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('SendMultiSMS', {
       fromNum: fromNumbers,
       toNum: toNumbers,
       Content: contents,
       Type: ['1'], // 1 for normal SMS
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD
+      Username: credentials.username,
+      Password: credentials.password
     }) as Promise<string[] | null>;
   },
   
   // Send SMS to a phonebook
-  sendToPhonebook: async (fromNumber: string, phonebookId: string, content: string): Promise<string[] | null> => {
+  sendToPhonebook: async (domain: string, fromNumber: string, phonebookId: string, content: string, schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('SendOfPhoneBook', {
       fromNum: fromNumber,
       phonebook: phonebookId,
       Content: content,
       Type: '1', // 1 for normal SMS
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD
+      Username: credentials.username,
+      Password: credentials.password
     }) as Promise<string[] | null>;
   },
   
   // List all phonebooks
-  listPhonebooks: async (): Promise<string[] | null> => {
+  listPhonebooks: async (domain: string, schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('listPhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       Name: ''
     }) as Promise<string[] | null>;
   },
   
   // Get numbers in a phonebook
-  getPhonebookNumbers: async (bookId: string): Promise<string[] | null> => {
+  getPhonebookNumbers: async (domain: string, bookId: string, schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('numbersPhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       BookID: bookId
     }) as Promise<string[] | null>;
   },
   
   // Add a new phonebook
-  addPhonebook: async (name: string, numbers: string[]): Promise<string[] | null> => {
+  addPhonebook: async (domain: string, name: string, numbers: string[], schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('AddPhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       Name: name,
       Numbers: numbers
     }) as Promise<string[] | null>;
   },
   
   // Add numbers to an existing phonebook
-  addToPhonebook: async (phonebookId: string, numbers: string[]): Promise<string[] | null> => {
+  addToPhonebook: async (domain: string, phonebookId: string, numbers: string[], schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('AddToPhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       Phonebook: phonebookId,
       Numbers: numbers
     }) as Promise<string[] | null>;
   },
   
   // Delete numbers from a phonebook
-  deleteNumbersFromPhonebook: async (bookId: string, numbers: string[]): Promise<string[] | null> => {
+  deleteNumbersFromPhonebook: async (domain: string, bookId: string, numbers: string[], schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('deleteNumbersOfPhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       BookID: bookId,
       Numbers: numbers
     }) as Promise<string[] | null>;
   },
   
   // Delete a phonebook
-  deletePhonebook: async (bookId: string): Promise<string[] | null> => {
+  deletePhonebook: async (domain: string, bookId: string, schoolCode?: string): Promise<string[] | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('deletePhonebook', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       BookID: bookId
     }) as Promise<string[] | null>;
   },
   
   // Get account details
-  getDetails: async (): Promise<string | null> => {
+  getDetails: async (domain: string, schoolCode?: string): Promise<string | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('details', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD
+      Username: credentials.username,
+      Password: credentials.password
     }) as Promise<string | null>;
   },
   
   // Get message delivery status
-  getStatus: async (messageId: string): Promise<string | null> => {
+  getStatus: async (domain: string, messageId: string, schoolCode?: string): Promise<string | null> => {
+    const credentials = await getSmsCredentials(domain, schoolCode);
     return makeSoapRequest('GetStatus', {
-      Username: SMS_USERNAME,
-      Password: SMS_PASSWORD,
+      Username: credentials.username,
+      Password: credentials.password,
       MessageID: messageId
     }) as Promise<string | null>;
   }

@@ -30,8 +30,11 @@ export async function POST(request: Request) {
       );
     }
     
+    // Get domain from request headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
     // Get phonebook numbers first
-    const numbers = await smsApi.getPhonebookNumbers(phonebookId);
+    const numbers = await smsApi.getPhonebookNumbers(domain, phonebookId, user.schoolCode);
     
     if (!numbers || numbers.length === 0) {
       return NextResponse.json(
@@ -41,10 +44,7 @@ export async function POST(request: Request) {
     }
     
     // Send SMS to phonebook
-    const messageIds = await smsApi.sendToPhonebook(fromNumber, phonebookId, message);
-    
-    // Get domain from request headers
-    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    const messageIds = await smsApi.sendToPhonebook(domain, fromNumber, phonebookId, message, user.schoolCode);
     
     // Save SMS records to database
     const connection = await connectToDatabase(domain);

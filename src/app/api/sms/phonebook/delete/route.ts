@@ -28,8 +28,11 @@ export async function DELETE(request: Request) {
       );
     }
     
+    // Get domain from request headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
     // Delete phonebook
-    const result = await smsApi.deletePhonebook(bookId);
+    const result = await smsApi.deletePhonebook(domain, bookId, user.schoolCode);
     
     return NextResponse.json({ 
       success: true,

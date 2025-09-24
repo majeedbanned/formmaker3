@@ -33,11 +33,11 @@ export async function POST(request: Request) {
     // Ensure toNumbers is an array
     const recipients = Array.isArray(toNumbers) ? toNumbers : [toNumbers];
     
-    // Send SMS
-    const messageIds = await smsApi.sendSMS(fromNumber, recipients, message);
-    
     // Get domain from request headers
     const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
+    // Send SMS
+    const messageIds = await smsApi.sendSMS(domain, fromNumber, recipients, message, user.schoolCode);
     
     // Save SMS records to database
     const connection = await connectToDatabase(domain);

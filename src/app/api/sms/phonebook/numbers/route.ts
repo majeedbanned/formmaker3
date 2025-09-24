@@ -28,8 +28,11 @@ export async function GET(request: Request) {
       );
     }
     
+    // Get domain from request headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+    
     // Get phonebook numbers
-    const numbers = await smsApi.getPhonebookNumbers(bookId);
+    const numbers = await smsApi.getPhonebookNumbers(domain, bookId, user.schoolCode);
     
     return NextResponse.json({ 
       numbers: numbers || []
