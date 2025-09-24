@@ -70,6 +70,38 @@ const sampleFormStructure: FormField[] = [
   },
 
   {
+    name: "SMS_USERNAME",
+    title: "نام کاربری پیامک",
+    type: "text",
+    isShowInList: false,
+    isSearchable: true,
+
+    required: false,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "نام کاربری الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
+    },
+  },
+
+  {
+    name: "SMS_PASSWORD",
+    title: "رمز عبور پیامک",
+    type: "text",
+    isShowInList: false,
+    isSearchable: true,
+    
+    required: false,
+    enabled: true,
+    visible: true,
+    validation: {
+          requiredMessage: "رمز عبور پیامک الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
+    },
+  },
+
+  {
     name: "domain",
     title: "دامنه",
     type: "text",
@@ -299,12 +331,12 @@ function SchoolsPageContent() {
         initialFilter={initialFilter}
         permissions={{
           canList: true,
-          canAdd: true,
-          canEdit: true,
-          canDelete: true,
-          canGroupDelete: true,
-          canAdvancedSearch: true,
-          canSearchAllFields: true,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false,
+          canGroupDelete: false,
+          canAdvancedSearch: false,
+          canSearchAllFields: false,
         }}
         rowActions={[
           {

@@ -2,8 +2,8 @@ import { DOMParser } from 'xmldom';
 import axios from 'axios';
 
 const SMS_API_URL = 'http://185.112.33.61/webservice/send.php';
-const SMS_USERNAME = process.env.SMS_USERNAME || '';
-const SMS_PASSWORD = process.env.SMS_PASSWORD || '';
+const SMS_USERNAME ="majeedbanned"; process.env.SMS_USERNAME || '';
+const SMS_PASSWORD ="6323905";// process.env.SMS_PASSWORD || '';
 
 // Helper to create SOAP envelope
 const createSoapEnvelope = (method: string, params: Record<string, string | string[]>): string => {
