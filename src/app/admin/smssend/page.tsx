@@ -126,9 +126,9 @@ function StudentsPageContent() {
     useState<boolean>(false);
   const [isSubmittingRegistration, setIsSubmittingRegistration] =
     useState<boolean>(false);
-  // Add state for API response display
-  const [apiResponse, setApiResponse] = useState<any>(null);
-  const [showResponseDialog, setShowResponseDialog] = useState<boolean>(false);
+  // Add state for edit mode
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [currentRecordId, setCurrentRecordId] = useState<string | null>(null);
 
   // Registration form
   const registrationForm = useForm<z.infer<typeof registrationFormSchema>>({
@@ -534,47 +534,68 @@ function StudentsPageContent() {
     try {
       setIsSubmittingRegistration(true);
 
-      const response = await fetch("/api/sms/register", {
-        method: "POST",
+      // Save or update data to database
+      const url = isEditMode ? "/api/crud/smsregistrations" : "/api/crud/smsregistrations";
+      const method = isEditMode ? "PUT" : "POST";
+      
+      const requestBody = isEditMode 
+        ? {
+            id: currentRecordId,
+            data: {
+              ...values,
+              schoolCode: user?.schoolCode,
+              submittedBy: user?.username,
+              updatedAt: new Date().toISOString()
+            },
+            formStructure: [] // Empty form structure for now
+          }
+        : {
+            data: {
+              ...values,
+              schoolCode: user?.schoolCode,
+              submittedBy: user?.username,
+              submittedAt: new Date().toISOString(),
+              status: "pending"
+            },
+            formStructure: [] // Empty form structure for now
+          };
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           "x-domain": window.location.host,
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(requestBody),
       });
 
-      const data = await response.json();
-      console.log("data", data);
-
-      // Check if result array exists and if the second value is '0', indicating an error
-      const isApiError =
-        data.result &&
-        Array.isArray(data.result) &&
-        data.result.length >= 2 &&
-        data.result[1] === "0";
-
-      // Set API response for dialog display
-      setApiResponse(data);
-
-      if (response.ok && !isApiError) {
-        toast.success("درخواست فعالسازی پیامک با موفقیت ارسال شد");
-        setIsRegistrationDialogOpen(false);
-        setShowResponseDialog(true);
-        registrationForm.reset();
-      } else {
-        // For API errors where second element is '0'
-        if (isApiError) {
-          toast.error(`خطا در ثبت درخواست: ${data.result[0]}`);
-        } else {
-          toast.error(`خطا در ثبت درخواست: ${data.error || "خطای نامشخص"}`);
+      if (response.ok) {
+        const savedData = await response.json();
+        const successMessage = isEditMode 
+          ? "اطلاعات درخواست فعالسازی پیامک با موفقیت به‌روزرسانی شد"
+          : "اطلاعات درخواست فعالسازی پیامک با موفقیت ذخیره شد";
+        
+        toast.success(successMessage);
+        
+        // If it was a new registration, set edit mode and store record ID
+        if (!isEditMode) {
+          setIsEditMode(true);
+          setCurrentRecordId(savedData._id);
         }
-        setShowResponseDialog(true);
+        
+        // Update form with saved data (including any server-generated fields)
+        registrationForm.reset({
+          ...values,
+          ...savedData.data // Include any additional fields from the saved record
+        });
+        
+      } else {
+        const errorData = await response.json();
+        toast.error(`خطا در ذخیره درخواست: ${errorData.error || "خطای نامشخص"}`);
       }
     } catch (error) {
-      console.error("Error submitting registration:", error);
-      toast.error("خطا در ثبت درخواست فعالسازی پیامک");
-      setApiResponse({ error: "خطا در ارتباط با سرور" });
-      setShowResponseDialog(true);
+      console.error("Error saving registration:", error);
+      toast.error("خطا در ذخیره درخواست فعالسازی پیامک");
     } finally {
       setIsSubmittingRegistration(false);
     }
@@ -620,7 +641,29 @@ function StudentsPageContent() {
 
             <Dialog
               open={isRegistrationDialogOpen}
-              onOpenChange={setIsRegistrationDialogOpen}
+              onOpenChange={(open) => {
+                setIsRegistrationDialogOpen(open);
+                // Reset edit mode and form when dialog is closed
+                if (!open) {
+                  setIsEditMode(false);
+                  setCurrentRecordId(null);
+                  registrationForm.reset({
+                    register_personality: "1",
+                    gender: "1",
+                    package: "2",
+                    first_name: "",
+                    last_name: "",
+                    uname: "",
+                    upass: "",
+                    upass_repeat: "",
+                    melli_code: "",
+                    email: "",
+                    mob: "",
+                    tel: "",
+                    addr: "",
+                  });
+                }
+              }}
             >
               <DialogTrigger asChild>
                 <Button className="bg-green-600 hover:bg-green-700">
@@ -633,9 +676,14 @@ function StudentsPageContent() {
                 dir="rtl"
               >
                 <DialogHeader>
-                  <DialogTitle>درخواست فعالسازی سرویس پیامک</DialogTitle>
+                  <DialogTitle>
+                    {isEditMode ? "ویرایش درخواست فعالسازی سرویس پیامک" : "درخواست فعالسازی سرویس پیامک"}
+                  </DialogTitle>
                   <DialogDescription>
-                    برای فعالسازی سرویس پیامک، لطفا فرم زیر را تکمیل کنید.
+                    {isEditMode 
+                      ? "می‌توانید اطلاعات ذخیره شده را ویرایش کنید."
+                      : "برای فعالسازی سرویس پیامک، لطفا فرم زیر را تکمیل کنید."
+                    }
                   </DialogDescription>
                 </DialogHeader>
 
@@ -1003,7 +1051,7 @@ function StudentsPageContent() {
                         {isSubmittingRegistration && (
                           <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
                         )}
-                        ثبت درخواست
+                        {isEditMode ? "به‌روزرسانی درخواست" : "ثبت درخواست"}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -1430,96 +1478,6 @@ function StudentsPageContent() {
           />
         )}
 
-        {/* Response display dialog */}
-        <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
-          <DialogContent className="sm:max-w-[600px]" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>
-                {apiResponse?.result &&
-                Array.isArray(apiResponse.result) &&
-                apiResponse.result.length >= 2 &&
-                apiResponse.result[1] !== "0"
-                  ? "درخواست با موفقیت ثبت شد"
-                  : "خطا در ثبت درخواست"}
-              </DialogTitle>
-              <DialogDescription>
-                جزئیات پاسخ سرور به درخواست شما
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4 p-4 bg-gray-50 border rounded-md overflow-auto max-h-[400px]">
-              {apiResponse?.result &&
-              Array.isArray(apiResponse.result) &&
-              apiResponse.result.length >= 2 &&
-              apiResponse.result[1] !== "0" ? (
-                <>
-                  <p className="text-green-600 font-semibold mb-2">
-                    درخواست با موفقیت انجام شد
-                  </p>
-                  <div className="mt-2">
-                    <p className="font-semibold mb-1">پاسخ سرویس پیامک:</p>
-                    <ul className="list-disc list-inside">
-                      {apiResponse.result.map((item: string, index: number) => (
-                        <li key={index} className="text-sm text-gray-700">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-red-600 font-semibold mb-2">
-                    خطا در ارسال درخواست
-                  </p>
-                  {apiResponse?.result &&
-                  Array.isArray(apiResponse.result) &&
-                  apiResponse.result.length >= 2 &&
-                  apiResponse.result[1] === "0" ? (
-                    <div>
-                      <p className="text-sm text-gray-700 font-bold mb-2">
-                        پیام خطا:
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {apiResponse.result[0]}
-                      </p>
-                      <p className="mt-3 text-sm text-gray-500">
-                        لطفاً اطلاعات خود را بررسی کرده و مجدداً تلاش کنید.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-700">
-                      {apiResponse?.error || "خطای نامشخص در سرور"}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <DialogFooter className="space-x-2 space-x-reverse">
-              {apiResponse?.result &&
-                Array.isArray(apiResponse.result) &&
-                apiResponse.result.length >= 2 &&
-                apiResponse.result[1] === "0" && (
-                  <Button
-                    onClick={() => {
-                      setShowResponseDialog(false);
-                      setIsRegistrationDialogOpen(true);
-                    }}
-                    variant="outline"
-                  >
-                    اصلاح اطلاعات
-                  </Button>
-                )}
-              <Button
-                onClick={() => setShowResponseDialog(false)}
-                className="w-full md:w-auto"
-              >
-                بستن
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </main>
   );
