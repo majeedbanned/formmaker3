@@ -447,7 +447,50 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if ((menusLoading && dynamicMenus.length === 0) || !menuStateLoaded)
       return [];
 
-    return dynamicMenus.map((section, index) => ({
+    // Combine dynamic menus with static ticketing menu
+    const allMenus = [...dynamicMenus];
+    
+    // Add static ticketing menu
+    const ticketingMenu = {
+      title: "سیستم تیکتینگ",
+      url: "#",
+      menuID: "ticketing",
+      menuIDOrder: 999, // Put at the end
+      items: [
+        {
+          title: "داشبورد تیکت‌ها",
+          url: "/admin/ticketing",
+          order: 1
+        },
+        {
+          title: "تیکت‌های من",
+          url: "/admin/ticketing/tickets",
+          order: 2
+        },
+        ...(user.userType === "teacher" ? [{
+          title: "ایجاد تیکت جدید",
+          url: "/admin/ticketing/tickets/new",
+          order: 3
+        }] : []),
+        ...(user.userType === "school" ? [
+          {
+            title: "مدیریت بخش‌ها",
+            url: "/admin/ticketing/departments",
+            order: 4
+          },
+          {
+            title: "تخصیص معلمان",
+            url: "/admin/ticketing/departments/assignments",
+            order: 5
+          }
+        ] : [])
+      ]
+    };
+    
+    if (user.userType!="student")
+    allMenus.push(ticketingMenu);
+
+    return allMenus.map((section, index) => ({
       title: section.title,
       url: section.url,
       icon: SquareTerminal, // Default icon, can be customized based on section.icon if available
