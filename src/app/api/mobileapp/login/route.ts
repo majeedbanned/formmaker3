@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import path from 'path';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 
 // Load database configuration
 const getDatabaseConfig = () => {
@@ -23,6 +24,10 @@ interface DatabaseConfig {
   };
 }
 
+// JWT Configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+const JWT_EXPIRES_IN = '7d'; // Token expires in 7 days
+
 interface LoginRequest {
   role: 'student' | 'teacher' | 'school';
   domain: string;
@@ -43,6 +48,17 @@ interface AuthenticatedUser {
   classCode?: { label: string; value: string }[];
   groups?: { label: string; value: string }[];
   maghta?: string;
+}
+
+interface JWTPayload {
+  userId: string;
+  domain: string;
+  schoolCode: string;
+  role: string;
+  userType: string;
+  username: string;
+  iat?: number;
+  exp?: number;
 }
 export async function Get(request: NextRequest) {
     return NextResponse.json({ message: 'Hello, world!' });
@@ -198,10 +214,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Return successful authentication
+      // Generate JWT token
+      const jwtPayload: JWTPayload = {
+        userId: authenticatedUser.id,
+        domain: authenticatedUser.domain,
+        schoolCode: authenticatedUser.schoolCode,
+        role: authenticatedUser.role,
+        userType: authenticatedUser.userType,
+        username: authenticatedUser.username,
+      };
+
+      const token = jwt.sign(jwtPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+      // Return successful authentication with JWT token
       return NextResponse.json({
         success: true,
         message: 'ورود موفق',
+        token,
         user: authenticatedUser
       });
 

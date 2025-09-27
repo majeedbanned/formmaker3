@@ -190,6 +190,69 @@
     "description": "bagher.farsamooz.ir"
   }
 
+,
+  "moalem2.farsamooz.ir": {
+    "schoolCode":"95114906",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/moalem2?authSource=admin",
+    "description": "moalem2.farsamooz.ir"
+  }
+,
+  "hafez.farsamooz.ir": {
+    "schoolCode":"95018158",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/hafez?authSource=admin",
+    "description": "hafez.farsamooz.ir"
+  }
+
+
+  ,
+  "talash.farsamooz.ir": {
+    "schoolCode":"5419564823",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/talash?authSource=admin",
+    "description": "talash.farsamooz.ir"
+  }
+
+
+  ,
+  "bahreini.farsamooz.ir": {
+    "schoolCode":"95093202",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bahreini?authSource=admin",
+    "description": "bahreini.farsamooz.ir"
+  }
+
+  ,
+  "shnabi.farsamooz.ir": {
+    "schoolCode":"96070380",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shnabi?authSource=admin",
+    "description": "shnabi.farsamooz.ir"
+  }
+
+  ,
+  "kamyab.farsamooz.ir": {
+    "schoolCode":"49075905",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/kamyab?authSource=admin",
+    "description": "kamyab.farsamooz.ir"
+  }
+
+  ,
+  "shab.farsamooz.ir": {
+    "schoolCode":"80042275",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shab?authSource=admin",
+    "description": "shab.farsamooz.ir"
+  }
+
+  ,
+  "shayestegan.farsamooz.ir": {
+    "schoolCode":"96082964",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shayestegan?authSource=admin",
+    "description": "shayestegan.farsamooz.ir"
+  }
+
+  ,
+  "dehkhoda.farsamooz.ir": {
+    "schoolCode":"95093502",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/dehkhoda?authSource=admin",
+    "description": "dehkhoda.farsamooz.ir"
+  }
 
 
   
