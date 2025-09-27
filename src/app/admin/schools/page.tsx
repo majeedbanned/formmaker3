@@ -332,7 +332,7 @@ function SchoolsPageContent() {
         permissions={{
           canList: true,
           canAdd: false,
-          canEdit: true,
+          canEdit: false,
           canDelete: false,
           canGroupDelete: false,
           canAdvancedSearch: false,
