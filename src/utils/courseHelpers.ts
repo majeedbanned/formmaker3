@@ -352,14 +352,6 @@ const predefinedCourses: Record<string, PredefinedCourse[]> = {
     
     
     
-   
-    
-    
-    
-    
-    
-    
-
 
     
 
