@@ -19,6 +19,18 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import { gregorian_to_jalali } from "@/utils/date-utils";
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -108,6 +120,15 @@ type ClassDocument = {
     }[];
     students: Student[];
   };
+};
+
+type StudentPhone = {
+  number: string;
+  owner: string;
+};
+
+type StudentWithPhones = Student & {
+  phones: StudentPhone[];
 };
 
 // Helper function: Convert numbers to Persian digits.
@@ -438,6 +459,49 @@ const PresenceReport = ({
     counts: number[];
     persianDates: string[];
   }>({ dates: [], counts: [], persianDates: [] });
+
+  // SMS related state
+  const [isSmsDialogOpen, setIsSmsDialogOpen] = useState(false);
+  const [smsMessage, setSmsMessage] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState<StudentWithPhones[]>([]);
+  const [selectedPhones, setSelectedPhones] = useState<Record<string, string[]>>({});
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [smsSection, setSmsSection] = useState<"absent" | "late">("absent");
+  const [isSmsEnabled, setIsSmsEnabled] = useState<boolean | null>(null);
+  const [isCheckingSmsStatus, setIsCheckingSmsStatus] = useState(true);
+  const { user } = useAuth();
+
+  // Check SMS activation status
+  useEffect(() => {
+    const checkSmsStatus = async () => {
+      if (user?.userType !== "school") {
+        setIsCheckingSmsStatus(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/sms/status-check", {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsSmsEnabled(data.isSmsEnabled);
+        } else {
+          setIsSmsEnabled(false);
+        }
+      } catch (error) {
+        console.error("Error checking SMS status:", error);
+        setIsSmsEnabled(false);
+      } finally {
+        setIsCheckingSmsStatus(false);
+      }
+    };
+
+    checkSmsStatus();
+  }, [user?.userType, schoolCode]);
 
   // Fetch teachers and courses info
   useEffect(() => {
@@ -811,6 +875,120 @@ const PresenceReport = ({
     });
   };
 
+  // SMS Functions
+  const openSmsDialog = async (section: "absent" | "late") => {
+    setSmsSection(section);
+    
+    // Get the appropriate records based on section
+    const records = section === "absent" ? todayAbsent : todayLate;
+    
+    if (records.length === 0) {
+      toast.warning(`هیچ ${section === "absent" ? "غیبتی" : "تاخیری"} در تاریخ انتخاب شده ثبت نشده است.`);
+      return;
+    }
+
+    // Fetch student phone numbers
+    try {
+      const studentCodes = records.map(record => record.studentCode);
+      const response = await fetch("/api/students/phone-numbers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          studentCodes,
+          schoolCode,
+        }),
+      });
+
+      if (response.ok) {
+        const { students } = await response.json();
+        setSelectedStudents(students);
+        
+        // Initialize selected phones for each student
+        const initialSelectedPhones: Record<string, string[]> = {};
+        students.forEach((student: StudentWithPhones) => {
+          initialSelectedPhones[student.studentCode] = [];
+        });
+        setSelectedPhones(initialSelectedPhones);
+        
+        setIsSmsDialogOpen(true);
+        setSmsMessage(`سلام، متاسفانه فرزند شما در تاریخ ${formatDate(selectedDate)} ${section === "absent" ? "غایب" : "با تاخیر"} بوده است.`);
+      } else {
+        toast.error("خطا در دریافت شماره‌های تلفن دانش‌آموزان");
+      }
+    } catch (error) {
+      console.error("Error fetching student phones:", error);
+      toast.error("خطا در دریافت شماره‌های تلفن دانش‌آموزان");
+    }
+  };
+
+  const handlePhoneSelection = (studentCode: string, phoneNumber: string, checked: boolean) => {
+    setSelectedPhones(prev => {
+      const current = prev[studentCode] || [];
+      if (checked) {
+        return { ...prev, [studentCode]: [...current, phoneNumber] };
+      } else {
+        return { ...prev, [studentCode]: current.filter(phone => phone !== phoneNumber) };
+      }
+    });
+  };
+
+  const sendSms = async () => {
+    if (!smsMessage.trim()) {
+      toast.error("لطفا متن پیام را وارد کنید");
+      return;
+    }
+
+    const allSelectedPhones = Object.values(selectedPhones).flat();
+    if (allSelectedPhones.length === 0) {
+      toast.error("لطفا حداقل یک شماره تلفن را انتخاب کنید");
+      return;
+    }
+
+    setIsSendingSms(true);
+
+    try {
+      const response = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          fromNumber: "9998762911", // Default SMS sender number
+          toNumbers: allSelectedPhones,
+          message: smsMessage,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`پیامک با موفقیت به ${allSelectedPhones.length} شماره ارسال شد`);
+        setIsSmsDialogOpen(false);
+        setSmsMessage("");
+        setSelectedPhones({});
+        setSelectedStudents([]);
+      } else {
+        const errorData = await response.json();
+        toast.error(`خطا در ارسال پیامک: ${errorData.error || "خطای نامشخص"}`);
+      }
+    } catch (error) {
+      console.error("Error sending SMS:", error);
+      toast.error("خطا در ارسال پیامک");
+    } finally {
+      setIsSendingSms(false);
+    }
+  };
+
+  const closeSmsDialog = () => {
+    setIsSmsDialogOpen(false);
+    setSmsMessage("");
+    setSelectedPhones({});
+    setSelectedStudents([]);
+  };
+
   //dir="rtl" lang="fa"
   return (
     <div className="space-y-6">
@@ -913,6 +1091,44 @@ const PresenceReport = ({
         </CardContent>
       </Card>
 
+      {/* SMS Status Warning */}
+      {user?.userType === "school" && !isCheckingSmsStatus && isSmsEnabled === false && (
+        <Card className="bg-orange-50 border-orange-200 print:hidden">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-orange-600 ml-3"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <div>
+                <h3 className="text-orange-800 font-medium">سرویس پیامک فعال نیست</h3>
+                <p className="text-orange-700 text-sm mt-1">
+                  برای ارسال پیامک به والدین دانش‌آموزان غایب یا با تاخیر، ابتدا باید سرویس پیامک را فعال کنید.{" "}
+                  <a
+                    href="/admin/smssend"
+                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                  >
+                    برای فعالسازی اینجا کلیک کنید
+                  </a>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center p-12">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
@@ -999,9 +1215,73 @@ const PresenceReport = ({
             {/* Today's Absences */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg text-red-800">
-                  غیبت‌های امروز
-                </CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg text-red-800">
+                    غیبت‌های امروز
+                  </CardTitle>
+                  {user?.userType === "school" && todayAbsent.length > 0 && (
+                    <>
+                      {isCheckingSmsStatus ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
+                          در حال بررسی وضعیت پیامک...
+                        </div>
+                      ) : isSmsEnabled ? (
+                        <Button
+                          onClick={() => openSmsDialog("absent")}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          size="sm"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="ml-2"
+                          >
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                          </svg>
+                          ارسال پیامک
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
+                          <div className="flex items-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                              <line x1="12" y1="9" x2="12" y2="13"></line>
+                              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span className="ml-2">
+                              سرویس پیامک فعال نیست. برای فعالسازی{" "}
+                              <a
+                                href="/admin/smssend"
+                                className="text-blue-600 hover:text-blue-800 underline font-medium"
+                              >
+                                اینجا کلیک کنید
+                              </a>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {todayAbsent.length > 0 ? (
@@ -1044,9 +1324,73 @@ const PresenceReport = ({
             {/* Today's Late Arrivals */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg text-yellow-800">
-                  تاخیرهای امروز
-                </CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg text-yellow-800">
+                    تاخیرهای امروز
+                  </CardTitle>
+                  {user?.userType === "school" && todayLate.length > 0 && (
+                    <>
+                      {isCheckingSmsStatus ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
+                          در حال بررسی وضعیت پیامک...
+                        </div>
+                      ) : isSmsEnabled ? (
+                        <Button
+                          onClick={() => openSmsDialog("late")}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                          size="sm"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="ml-2"
+                          >
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                          </svg>
+                          ارسال پیامک
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
+                          <div className="flex items-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                              <line x1="12" y1="9" x2="12" y2="13"></line>
+                              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span className="ml-2">
+                              سرویس پیامک فعال نیست. برای فعالسازی{" "}
+                              <a
+                                href="/admin/smssend"
+                                className="text-blue-600 hover:text-blue-800 underline font-medium"
+                              >
+                                اینجا کلیک کنید
+                              </a>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {todayLate.length > 0 ? (
@@ -1619,6 +1963,108 @@ const PresenceReport = ({
           </TabsContent>
         </Tabs>
       )}
+
+      {/* SMS Dialog */}
+      <Dialog open={isSmsDialogOpen} onOpenChange={setIsSmsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              ارسال پیامک به دانش‌آموزان {smsSection === "absent" ? "غایب" : "با تاخیر"}
+            </DialogTitle>
+            <DialogDescription>
+              انتخاب شماره‌های تلفن و نوشتن متن پیام برای ارسال به والدین
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Message Text */}
+            <div>
+              <Label htmlFor="sms-message" className="text-sm font-medium">
+                متن پیام
+              </Label>
+              <Textarea
+                id="sms-message"
+                value={smsMessage}
+                onChange={(e) => setSmsMessage(e.target.value)}
+                placeholder="متن پیام را وارد کنید..."
+                className="mt-2 min-h-[100px] text-right"
+              />
+            </div>
+
+            {/* Students and Phone Numbers */}
+            <div>
+              <Label className="text-sm font-medium mb-3 block">
+                انتخاب شماره‌های تلفن
+              </Label>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto border rounded-md p-4">
+                {selectedStudents.map((student) => (
+                  <div key={student.studentCode} className="border-b pb-3 last:border-b-0">
+                    <div className="font-medium text-gray-900 mb-2">
+                      {student.studentName} {student.studentlname}
+                    </div>
+                    <div className="space-y-2">
+                      {student.phones && student.phones.length > 0 ? (
+                        student.phones.map((phone, index) => (
+                          <div key={index} className="flex items-center space-x-2 space-x-reverse">
+                            <Checkbox
+                              id={`phone-${student.studentCode}-${index}`}
+                              checked={selectedPhones[student.studentCode]?.includes(phone.number) || false}
+                              onCheckedChange={(checked) =>
+                                handlePhoneSelection(student.studentCode, phone.number, checked as boolean)
+                              }
+                            />
+                            <Label
+                              htmlFor={`phone-${student.studentCode}-${index}`}
+                              className="flex-1 text-sm"
+                            >
+                              {phone.number} ({phone.owner})
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          هیچ شماره تلفنی ثبت نشده است
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary */}
+            {Object.values(selectedPhones).flat().length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <div className="text-sm text-blue-800">
+                  <strong>خلاصه:</strong> پیام به {Object.values(selectedPhones).flat().length} شماره ارسال خواهد شد
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeSmsDialog}
+              disabled={isSendingSms}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={sendSms}
+              disabled={isSendingSms || Object.values(selectedPhones).flat().length === 0}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSendingSms && (
+                <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+              )}
+              {isSendingSms ? "در حال ارسال..." : "ارسال پیامک"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
