@@ -469,7 +469,84 @@ const PresenceReport = ({
   const [smsSection, setSmsSection] = useState<"absent" | "late">("absent");
   const [isSmsEnabled, setIsSmsEnabled] = useState<boolean | null>(null);
   const [isCheckingSmsStatus, setIsCheckingSmsStatus] = useState(true);
+  const [smsCredit, setSmsCredit] = useState<string>("0");
+  const [isLoadingCredit, setIsLoadingCredit] = useState(false);
+  const [smsHistory, setSmsHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showSmsHistory, setShowSmsHistory] = useState(false);
+  const [smsHistoryPagination, setSmsHistoryPagination] = useState<any>(null);
+  const [smsHistoryFilters, setSmsHistoryFilters] = useState({
+    page: 1,
+    search: "",
+    section: "",
+    status: "",
+    startDate: "",
+    endDate: ""
+  });
   const { user } = useAuth();
+
+  // Fetch SMS credit
+  const fetchSmsCredit = async () => {
+    if (user?.userType !== "school" || !isSmsEnabled) return;
+
+    try {
+      setIsLoadingCredit(true);
+      const response = await fetch("/api/sms/credit", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSmsCredit(data.credit);
+      } else {
+        console.error("Failed to fetch SMS credit");
+      }
+    } catch (error) {
+      console.error("Error fetching SMS credit:", error);
+    } finally {
+      setIsLoadingCredit(false);
+    }
+  };
+
+  // Fetch SMS history with filters and pagination
+  const fetchSmsHistory = async (filters = smsHistoryFilters) => {
+    if (user?.userType !== "school") return;
+
+    try {
+      setIsLoadingHistory(true);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('page', filters.page.toString());
+      params.append('limit', '20');
+      
+      if (filters.search) params.append('search', filters.search);
+      if (filters.section) params.append('section', filters.section);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      const response = await fetch(`/api/sms/history?${params.toString()}`, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSmsHistory(data.history || []);
+        setSmsHistoryPagination(data.pagination || null);
+      } else {
+        console.error("Failed to fetch SMS history");
+      }
+    } catch (error) {
+      console.error("Error fetching SMS history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   // Check SMS activation status
   useEffect(() => {
@@ -489,6 +566,12 @@ const PresenceReport = ({
         if (response.ok) {
           const data = await response.json();
           setIsSmsEnabled(data.isSmsEnabled);
+          
+          // If SMS is enabled, fetch credit and history
+          if (data.isSmsEnabled) {
+            await fetchSmsCredit();
+            await fetchSmsHistory();
+          }
         } else {
           setIsSmsEnabled(false);
         }
@@ -965,11 +1048,39 @@ const PresenceReport = ({
 
       if (response.ok) {
         const result = await response.json();
+        
+        // Save SMS response to database
+        try {
+          await fetch("/api/sms/save-response", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-domain": window.location.host,
+            },
+            body: JSON.stringify({
+              messageId: result.messageIds?.[0] || `sms-${Date.now()}`,
+              fromNumber: "9998762911",
+              toNumbers: allSelectedPhones,
+              message: smsMessage,
+              recipientCount: allSelectedPhones.length,
+              senderCode: user?.username,
+              schoolCode: schoolCode,
+              smsResult: result,
+              section: smsSection
+            }),
+          });
+        } catch (saveError) {
+          console.error("Error saving SMS response:", saveError);
+        }
+
         toast.success(`پیامک با موفقیت به ${allSelectedPhones.length} شماره ارسال شد`);
         setIsSmsDialogOpen(false);
         setSmsMessage("");
         setSelectedPhones({});
         setSelectedStudents([]);
+        
+        // Refresh SMS history
+        fetchSmsHistory();
       } else {
         const errorData = await response.json();
         toast.error(`خطا در ارسال پیامک: ${errorData.error || "خطای نامشخص"}`);
@@ -987,6 +1098,43 @@ const PresenceReport = ({
     setSmsMessage("");
     setSelectedPhones({});
     setSelectedStudents([]);
+  };
+
+  // SMS History functions
+  const handleSmsHistorySearch = (searchTerm: string) => {
+    const newFilters = { ...smsHistoryFilters, search: searchTerm, page: 1 };
+    setSmsHistoryFilters(newFilters);
+    fetchSmsHistory(newFilters);
+  };
+
+  const handleSmsHistoryFilter = (key: string, value: string) => {
+    const newFilters = { ...smsHistoryFilters, [key]: value, page: 1 };
+    setSmsHistoryFilters(newFilters);
+    fetchSmsHistory(newFilters);
+  };
+
+  const handleSmsHistoryPageChange = (page: number) => {
+    const newFilters = { ...smsHistoryFilters, page };
+    setSmsHistoryFilters(newFilters);
+    fetchSmsHistory(newFilters);
+  };
+
+  const openSmsHistoryDialog = () => {
+    setShowSmsHistory(true);
+    fetchSmsHistory();
+  };
+
+  const closeSmsHistoryDialog = () => {
+    setShowSmsHistory(false);
+    // Reset filters when closing
+    setSmsHistoryFilters({
+      page: 1,
+      search: "",
+      section: "",
+      status: "",
+      startDate: "",
+      endDate: ""
+    });
   };
 
   //dir="rtl" lang="fa"
@@ -1128,6 +1276,103 @@ const PresenceReport = ({
           </CardContent>
         </Card>
       )}
+
+      {/* SMS Credit Info */}
+      {user?.userType === "school" && !isCheckingSmsStatus && isSmsEnabled === true && (
+        <Card className="bg-blue-50 border-blue-200 print:hidden">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-blue-600 ml-3"
+                >
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <div>
+                  <h3 className="text-blue-800 font-medium">سرویس پیامک فعال</h3>
+                  <p className="text-blue-700 text-sm">
+                    می‌توانید پیامک به والدین دانش‌آموزان ارسال کنید
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg px-4 py-2 flex items-center gap-2">
+                <div className="text-right flex flex-row justify-center items-center gap-2">
+                  <p className="text-lg font-semibold">
+                    {isLoadingCredit ? (
+                      <span className="flex items-center">
+                        <span className="h-4 w-4 mr-2 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></span>
+                        درحال بارگیری...
+                      </span>
+                    ) : (
+                      `${Number(smsCredit).toLocaleString()} ریال`
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-500">اعتبار پیامک</p>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={fetchSmsCredit}
+                    className="text-blue-500 hover:text-blue-700"
+                    disabled={isLoadingCredit}
+                    title="بروزرسانی اعتبار"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`${isLoadingCredit ? "animate-spin" : ""}`}
+                    >
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                      <path d="M21 3v5h-5"></path>
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                      <path d="M3 21v-5h5"></path>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={openSmsHistoryDialog}
+                    className="text-green-500 hover:text-green-700"
+                    title="تاریخچه پیامک‌ها"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 3h18v18H3zM9 9h6v6H9z"></path>
+                      <path d="M9 1v6"></path>
+                      <path d="M15 1v6"></path>
+                      <path d="M9 17v6"></path>
+                      <path d="M15 17v6"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
 
       {loading ? (
         <div className="flex items-center justify-center p-12">
@@ -2061,6 +2306,286 @@ const PresenceReport = ({
                 <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
               )}
               {isSendingSms ? "در حال ارسال..." : "ارسال پیامک"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS History Dialog */}
+      <Dialog open={showSmsHistory} onOpenChange={setShowSmsHistory}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              تاریخچه پیامک‌های ارسالی
+            </DialogTitle>
+            <DialogDescription>
+              مشاهده و جستجو در تاریخچه پیامک‌های ارسال شده
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Search and Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="search-input" className="text-sm font-medium">
+                  جستجو در متن پیام
+                </Label>
+                <div className="relative">
+                  <input
+                    id="search-input"
+                    type="text"
+                    placeholder="جستجو در متن پیام‌ها..."
+                    value={smsHistoryFilters.search}
+                    onChange={(e) => handleSmsHistorySearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  >
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="section-filter" className="text-sm font-medium">
+                  نوع پیام
+                </Label>
+                <select
+                  id="section-filter"
+                  value={smsHistoryFilters.section}
+                  onChange={(e) => handleSmsHistoryFilter('section', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">همه</option>
+                  <option value="absent">غیبت</option>
+                  <option value="late">تاخیر</option>
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="status-filter" className="text-sm font-medium">
+                  وضعیت
+                </Label>
+                <select
+                  id="status-filter"
+                  value={smsHistoryFilters.status}
+                  onChange={(e) => handleSmsHistoryFilter('status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">همه</option>
+                  <option value="success">موفق</option>
+                  <option value="failed">ناموفق</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Date Range Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date" className="text-sm font-medium">
+                  از تاریخ
+                </Label>
+                <input
+                  id="start-date"
+                  type="date"
+                  value={smsHistoryFilters.startDate}
+                  onChange={(e) => handleSmsHistoryFilter('startDate', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="end-date" className="text-sm font-medium">
+                  تا تاریخ
+                </Label>
+                <input
+                  id="end-date"
+                  type="date"
+                  value={smsHistoryFilters.endDate}
+                  onChange={(e) => handleSmsHistoryFilter('endDate', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="border rounded-lg">
+              <div className="p-4 border-b bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    {smsHistoryPagination && (
+                      <>
+                        نمایش {((smsHistoryPagination.page - 1) * smsHistoryPagination.limit) + 1} تا{' '}
+                        {Math.min(smsHistoryPagination.page * smsHistoryPagination.limit, smsHistoryPagination.totalCount)} از{' '}
+                        {smsHistoryPagination.totalCount} نتیجه
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => fetchSmsHistory()}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoadingHistory}
+                  >
+                    {isLoadingHistory ? (
+                      <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="ml-2"
+                      >
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                      </svg>
+                    )}
+                    بروزرسانی
+                  </Button>
+                </div>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto">
+                {isLoadingHistory ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : smsHistory.length > 0 ? (
+                  <div className="divide-y">
+                    {smsHistory.map((record, index) => (
+                      <div key={record.id || index} className="p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              record.status === 'success' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {record.section === 'absent' ? 'غیبت' : record.section === 'late' ? 'تاخیر' : 'نامشخص'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              record.status === 'success' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {record.status === 'success' ? 'موفق' : 'ناموفق'}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(record.sentAt)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700 mb-2">
+                          <strong>متن پیام:</strong> {record.message}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <strong>تعداد گیرندگان:</strong> {record.recipientCount} نفر
+                          {record.toNumbers && record.toNumbers.length > 0 && (
+                            <span className="mr-4">
+                              <strong>شماره‌ها:</strong> {record.toNumbers.slice(0, 3).join(', ')}
+                              {record.toNumbers.length > 3 && ` و ${record.toNumbers.length - 3} شماره دیگر`}
+                            </span>
+                          )}
+                        </div>
+                        {record.smsResult && record.smsResult.error && (
+                          <div className="text-sm text-red-600 mt-2">
+                            <strong>خطا:</strong> {record.smsResult.error}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-8 text-gray-500">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mx-auto mb-4 text-gray-400"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    <p>هیچ پیامکی یافت نشد</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {smsHistoryPagination && smsHistoryPagination.totalPages > 1 && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex justify-center items-center gap-2">
+                    <Button
+                      onClick={() => handleSmsHistoryPageChange(smsHistoryPagination.page - 1)}
+                      disabled={!smsHistoryPagination.hasPrevPage}
+                      variant="outline"
+                      size="sm"
+                    >
+                      قبلی
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, smsHistoryPagination.totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            onClick={() => handleSmsHistoryPageChange(pageNum)}
+                            variant={smsHistoryPagination.page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      onClick={() => handleSmsHistoryPageChange(smsHistoryPagination.page + 1)}
+                      disabled={!smsHistoryPagination.hasNextPage}
+                      variant="outline"
+                      size="sm"
+                    >
+                      بعدی
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeSmsHistoryDialog}
+            >
+              بستن
             </Button>
           </DialogFooter>
         </DialogContent>
