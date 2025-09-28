@@ -55,6 +55,8 @@ type CellData = {
   }[];
   presenceStatus: "present" | "absent" | "late" | null;
   descriptiveStatus?: string;
+  absenceAcceptable?: boolean;
+  absenceDescription?: string;
 };
 
 type PresenceRecord = {
@@ -69,6 +71,9 @@ type PresenceRecord = {
   date: string;
   timeSlot: string;
   presenceStatus: "present" | "absent" | "late";
+  id?: string;
+  absenceAcceptable?: boolean;
+  absenceDescription?: string;
 };
 
 type StudentStats = {
@@ -129,6 +134,14 @@ type StudentPhone = {
 
 type StudentWithPhones = Student & {
   phones: StudentPhone[];
+};
+
+type AbsenceStatusDialog = {
+  isOpen: boolean;
+  record: PresenceRecord | null;
+  isAcceptable: boolean;
+  description: string;
+  isSubmitting: boolean;
 };
 
 // Helper function: Convert numbers to Persian digits.
@@ -483,6 +496,13 @@ const PresenceReport = ({
     startDate: "",
     endDate: ""
   });
+  const [absenceStatusDialog, setAbsenceStatusDialog] = useState<AbsenceStatusDialog>({
+    isOpen: false,
+    record: null,
+    isAcceptable: false,
+    description: "",
+    isSubmitting: false
+  });
   const { user } = useAuth();
 
   // Fetch SMS credit
@@ -752,6 +772,9 @@ const PresenceReport = ({
           date: cell.date,
           timeSlot: cell.timeSlot,
           presenceStatus: cell.presenceStatus,
+          id: `${cell.studentCode}-${cell.courseCode}-${cell.date}-${cell.timeSlot}`,
+          absenceAcceptable: cell.absenceAcceptable,
+          absenceDescription: cell.absenceDescription,
         });
       }
 
@@ -1135,6 +1158,81 @@ const PresenceReport = ({
       startDate: "",
       endDate: ""
     });
+  };
+
+  // Absence Status functions
+  const openAbsenceStatusDialog = (record: PresenceRecord) => {
+    setAbsenceStatusDialog({
+      isOpen: true,
+      record,
+      isAcceptable: record.absenceAcceptable || false,
+      description: record.absenceDescription || "",
+      isSubmitting: false
+    });
+  };
+
+  const closeAbsenceStatusDialog = () => {
+    setAbsenceStatusDialog({
+      isOpen: false,
+      record: null,
+      isAcceptable: false,
+      description: "",
+      isSubmitting: false
+    });
+  };
+
+  const updateAbsenceStatus = async () => {
+    if (!absenceStatusDialog.record) return;
+
+    try {
+      setAbsenceStatusDialog(prev => ({ ...prev, isSubmitting: true }));
+
+      const response = await fetch("/api/classsheet/update-absence-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          classCode: absenceStatusDialog.record.classCode,
+          courseCode: absenceStatusDialog.record.courseCode,
+          studentCode: absenceStatusDialog.record.studentCode,
+          teacherCode: absenceStatusDialog.record.teacherCode,
+          date: absenceStatusDialog.record.date,
+          timeSlot: absenceStatusDialog.record.timeSlot,
+          isAcceptable: absenceStatusDialog.isAcceptable,
+          description: absenceStatusDialog.description,
+          schoolCode: schoolCode
+        }),
+      });
+
+      if (response.ok) {
+        // Update the local record
+        const updatedRecords = presenceRecords.map(record => {
+          if (record.id === absenceStatusDialog.record?.id) {
+            return {
+              ...record,
+              absenceAcceptable: absenceStatusDialog.isAcceptable,
+              absenceDescription: absenceStatusDialog.description
+            };
+          }
+          return record;
+        });
+        setPresenceRecords(updatedRecords);
+
+        // Show success message
+        alert("وضعیت غیبت با موفقیت به‌روزرسانی شد");
+        closeAbsenceStatusDialog();
+      } else {
+        const errorData = await response.json();
+        alert(`خطا در به‌روزرسانی وضعیت: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating absence status:", error);
+      alert("خطا در به‌روزرسانی وضعیت غیبت");
+    } finally {
+      setAbsenceStatusDialog(prev => ({ ...prev, isSubmitting: false }));
+    }
   };
 
   //dir="rtl" lang="fa"
@@ -1541,6 +1639,7 @@ const PresenceReport = ({
                           <TableHead className="text-right">درس</TableHead>
                           <TableHead className="text-right">معلم</TableHead>
                           <TableHead className="text-right">ساعت</TableHead>
+                          <TableHead className="text-right">وضعیت</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1553,6 +1652,28 @@ const PresenceReport = ({
                             <TableCell>{record.courseName}</TableCell>
                             <TableCell>{record.teacherName}</TableCell>
                             <TableCell>{record.timeSlot}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {record.absenceAcceptable !== undefined && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    record.absenceAcceptable 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {record.absenceAcceptable ? 'قابل قبول' : 'غیرقابل قبول'}
+                                  </span>
+                                )}
+                                {user?.userType === "school" && (
+                                  <button
+                                    onClick={() => openAbsenceStatusDialog(record)}
+                                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                                    title="مدیریت وضعیت غیبت"
+                                  >
+                                    مدیریت
+                                  </button>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1650,6 +1771,7 @@ const PresenceReport = ({
                           <TableHead className="text-right">درس</TableHead>
                           <TableHead className="text-right">معلم</TableHead>
                           <TableHead className="text-right">ساعت</TableHead>
+                          <TableHead className="text-right">وضعیت</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1662,6 +1784,28 @@ const PresenceReport = ({
                             <TableCell>{record.courseName}</TableCell>
                             <TableCell>{record.teacherName}</TableCell>
                             <TableCell>{record.timeSlot}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {record.absenceAcceptable !== undefined && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    record.absenceAcceptable 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {record.absenceAcceptable ? 'قابل قبول' : 'غیرقابل قبول'}
+                                  </span>
+                                )}
+                                {user?.userType === "school" && (
+                                  <button
+                                    onClick={() => openAbsenceStatusDialog(record)}
+                                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                                    title="مدیریت وضعیت تاخیر"
+                                  >
+                                    مدیریت
+                                  </button>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -2586,6 +2730,100 @@ const PresenceReport = ({
               onClick={closeSmsHistoryDialog}
             >
               بستن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Absence Status Dialog */}
+      <Dialog open={absenceStatusDialog.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          closeAbsenceStatusDialog();
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              مدیریت وضعیت {absenceStatusDialog.record?.presenceStatus === "absent" ? "غیبت" : "تاخیر"}
+            </DialogTitle>
+            <DialogDescription>
+              تعیین وضعیت قابل قبول بودن و افزودن توضیحات
+            </DialogDescription>
+          </DialogHeader>
+
+          {absenceStatusDialog.record && (
+            <div className="space-y-4">
+              {/* Student Info */}
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="text-sm text-gray-600 mb-1">دانش‌آموز</div>
+                <div className="font-medium">{absenceStatusDialog.record.studentName}</div>
+                <div className="text-sm text-gray-600">
+                  کلاس: {absenceStatusDialog.record.className} - درس: {absenceStatusDialog.record.courseName}
+                </div>
+                <div className="text-sm text-gray-600">
+                  تاریخ: {formatDate(absenceStatusDialog.record.date)} - ساعت: {absenceStatusDialog.record.timeSlot}
+                </div>
+              </div>
+
+              {/* Acceptable Checkbox */}
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <input
+                  type="checkbox"
+                  id="acceptable"
+                  checked={absenceStatusDialog.isAcceptable}
+                  onChange={(e) => setAbsenceStatusDialog(prev => ({ 
+                    ...prev, 
+                    isAcceptable: e.target.checked 
+                  }))}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <Label htmlFor="acceptable" className="text-sm font-medium">
+                  {absenceStatusDialog.record.presenceStatus === "absent" ? "غیبت قابل قبول است" : "تاخیر قابل قبول است"}
+                </Label>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  توضیحات (اختیاری)
+                </Label>
+                <textarea
+                  id="description"
+                  value={absenceStatusDialog.description}
+                  onChange={(e) => setAbsenceStatusDialog(prev => ({ 
+                    ...prev, 
+                    description: e.target.value 
+                  }))}
+                  placeholder="توضیحات مربوط به وضعیت..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeAbsenceStatusDialog}
+              disabled={absenceStatusDialog.isSubmitting}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={updateAbsenceStatus}
+              disabled={absenceStatusDialog.isSubmitting}
+            >
+              {absenceStatusDialog.isSubmitting ? (
+                <>
+                  <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
