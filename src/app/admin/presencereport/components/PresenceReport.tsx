@@ -1012,10 +1012,15 @@ const PresenceReport = ({
         const { students } = await response.json();
         setSelectedStudents(students);
         
-        // Initialize selected phones for each student
+        // Initialize selected phones for each student - auto-select first phone
         const initialSelectedPhones: Record<string, string[]> = {};
         students.forEach((student: StudentWithPhones) => {
-          initialSelectedPhones[student.studentCode] = [];
+          // Auto-select the first phone number if available
+          if (student.phones && student.phones.length > 0) {
+            initialSelectedPhones[student.studentCode] = [student.phones[0].number];
+          } else {
+            initialSelectedPhones[student.studentCode] = [];
+          }
         });
         setSelectedPhones(initialSelectedPhones);
         
@@ -1038,6 +1043,54 @@ const PresenceReport = ({
       } else {
         return { ...prev, [studentCode]: current.filter(phone => phone !== phoneNumber) };
       }
+    });
+  };
+
+  // Group selection functions
+  const selectGroupPhones = (groupType: "father" | "mother" | "student") => {
+    setSelectedPhones(prev => {
+      const newSelection = { ...prev };
+      
+      selectedStudents.forEach(student => {
+        const groupPhones = student.phones.filter(phone => 
+          phone.owner.toLowerCase().includes(groupType)
+        );
+        
+        if (groupPhones.length > 0) {
+          const currentSelection = newSelection[student.studentCode] || [];
+          const newNumbers = groupPhones.map(phone => phone.number);
+          
+          // Add only numbers that aren't already selected
+          const uniqueNumbers = [...new Set([...currentSelection, ...newNumbers])];
+          newSelection[student.studentCode] = uniqueNumbers;
+        }
+      });
+      
+      return newSelection;
+    });
+  };
+
+  const deselectGroupPhones = (groupType: "father" | "mother" | "student") => {
+    setSelectedPhones(prev => {
+      const newSelection = { ...prev };
+      
+      selectedStudents.forEach(student => {
+        const groupPhones = student.phones.filter(phone => 
+          phone.owner.toLowerCase().includes(groupType)
+        );
+        
+        if (groupPhones.length > 0) {
+          const currentSelection = newSelection[student.studentCode] || [];
+          const groupNumbers = groupPhones.map(phone => phone.number);
+          
+          // Remove group numbers from selection
+          newSelection[student.studentCode] = currentSelection.filter(
+            phone => !groupNumbers.includes(phone)
+          );
+        }
+      });
+      
+      return newSelection;
     });
   };
 
@@ -2385,6 +2438,53 @@ const PresenceReport = ({
               <Label className="text-sm font-medium mb-3 block">
                 انتخاب شماره‌های تلفن
               </Label>
+              
+              {/* Group Selection Buttons */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectGroupPhones("پدر")}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  انتخاب همه پدرها
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectGroupPhones("مادر")}
+                  className="text-pink-600 hover:text-pink-800"
+                >
+                  انتخاب همه مادرها
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectGroupPhones("دانش آموز")}
+                  className="text-green-600 hover:text-green-800"
+                >
+                  انتخاب همه دانش‌آموزان
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newSelection: Record<string, string[]> = {};
+                    selectedStudents.forEach(student => {
+                      newSelection[student.studentCode] = [];
+                    });
+                    setSelectedPhones(newSelection);
+                  }}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  لغو همه
+                </Button>
+              </div>
+              
               <div className="space-y-4 max-h-[300px] overflow-y-auto border rounded-md p-4">
                 {selectedStudents.map((student) => (
                   <div key={student.studentCode} className="border-b pb-3 last:border-b-0">
