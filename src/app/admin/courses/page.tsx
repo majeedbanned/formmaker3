@@ -245,6 +245,15 @@ export default function Home() {
         { label: "علوم تجربی", value: "16000" },
         { label: "ادبيات و علوم انساني", value: "17000" },
         { label: "علوم و معارف اسلامي", value: "18000" },
+       
+
+
+
+        { label: "مکانیک ۰۷۱۶۱۰", value: "71610" },
+        { label: "کامپیوتر ۰۶۸۸۱۰", value: "68810" },
+
+
+       
       ],
       validation: {
         requiredMessage: "لطفا یک رشته را انتخاب کنید",
