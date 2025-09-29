@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to view student data
-    if (user.userType !== "school" && user.userType !== "teacher") {
+    if (user.userType !== "school" && user.userType !== "teacher" && user.userType !== "student") {
       return NextResponse.json(
         { error: "شما مجوز دسترسی به این اطلاعات را ندارید" },
         { status: 403 }
@@ -30,26 +30,51 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    if (!studentId) {
-      return NextResponse.json(
-        { error: "شناسه دانش‌آموز الزامی است" },
-        { status: 400 }
-      );
-    }
+    let studentIdToUse: string;
+    let student: any;
 
-    // Validate ObjectId
-    if (!ObjectId.isValid(studentId)) {
-      return NextResponse.json(
-        { error: "شناسه دانش‌آموز نامعتبر است" },
-        { status: 400 }
-      );
-    }
+    // For student users, they can only access their own data
+    if (user.userType === "student") {
+      // Find the student by their username (studentCode)
+      student = await connection.collection("students").findOne({
+        "data.studentCode": user.username,
+        "data.schoolCode": user.schoolCode,
+      });
 
-    // First, get the student to verify permissions and get student code
-    const student = await connection.collection("students").findOne({
-      _id: new ObjectId(studentId),
-      "data.schoolCode": user.schoolCode,
-    });
+      if (!student) {
+        return NextResponse.json(
+          { error: "اطلاعات دانش‌آموز یافت نشد" },
+          { status: 404 }
+        );
+      }
+
+      // Use the student's _id for the query
+      studentIdToUse = student._id.toString();
+    } else {
+      // For school and teacher users, studentId is required
+      if (!studentId) {
+        return NextResponse.json(
+          { error: "شناسه دانش‌آموز الزامی است" },
+          { status: 400 }
+        );
+      }
+
+      // Validate ObjectId
+      if (!ObjectId.isValid(studentId)) {
+        return NextResponse.json(
+          { error: "شناسه دانش‌آموز نامعتبر است" },
+          { status: 400 }
+        );
+      }
+
+      studentIdToUse = studentId;
+
+      // Get the student to verify permissions and get student code
+      student = await connection.collection("students").findOne({
+        _id: new ObjectId(studentIdToUse),
+        "data.schoolCode": user.schoolCode,
+      });
+    }
 
     if (!student) {
       return NextResponse.json(

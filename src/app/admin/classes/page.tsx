@@ -250,6 +250,17 @@ export default function Home() {
         return familyA.localeCompare(familyB, "fa");
       });
 
+      // Generate 12 empty column headers
+      const generateEmptyColumns = () => {
+        const columns = [];
+        for (let i = 1; i <= 12; i++) {
+          columns.push(`ستون ${i}`);
+        }
+        return columns;
+      };
+
+      const emptyColumns = generateEmptyColumns();
+
       // Open print page in new window
       const printWindow = window.open("", "_blank");
       if (printWindow) {
@@ -332,17 +343,19 @@ export default function Home() {
                 background-color: #f3f4f6;
                 color: #374151;
                 font-weight: 600;
-                padding: 12px 6px;
+                padding: 8px 4px;
                 text-align: center;
                 border: 1px solid #d1d5db;
-                font-size: 12px;
+                font-size: 10px;
+                writing-mode: horizontal-tb;
+                text-orientation: mixed;
               }
               
               .students-table td {
-                padding: 8px 6px;
+                padding: 6px 4px;
                 border: 1px solid #d1d5db;
                 text-align: center;
-                font-size: 12px;
+                font-size: 10px;
               }
               
               .students-table tr:nth-child(even) {
@@ -430,28 +443,36 @@ export default function Home() {
                 <table class="students-table">
                   <thead>
                     <tr>
-                      <th style="width: 40px;">ردیف</th>
-                      <th style="width: 150px;">نام و نام خانوادگی</th>
-                      <th style="width: 80px;">کد دانش آموز</th>
-                      <th style="width: 100px;">شماره تلفن</th>
-                      <th style="width: 60px;">ستون 1</th>
-                      <th style="width: 60px;">ستون 2</th>
-                      <th style="width: 60px;">ستون 3</th>
-                      <th style="width: 60px;">ستون 4</th>
-                      <th style="width: 60px;">ستون 5</th>
-                      <th style="width: 60px;">ستون 6</th>
-                      <th style="width: 80px;">امضا</th>
+                      <th style="width: 30px;">ردیف</th>
+                      <th style="width: 100px;">نام خانوادگی</th>
+                      <th style="width: 80px;">نام</th>
+                      <th style="width: 60px;">کد دانش آموز</th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
+                      <th style="width: 45px;"></th>
                     </tr>
                   </thead>
                   <tbody>
                     ${sortedStudents.map((student: any, index: number) => `
                       <tr>
                         <td>${index + 1}</td>
-                        <td class="student-name">
-                          ${student.data.studentName || ""} ${student.data.studentFamily || ""}
-                        </td>
+                        <td class="student-name">${student.data.studentFamily || ""}</td>
+                        <td class="student-name">${student.data.studentName || ""}</td>
                         <td class="student-code">${student.data.studentCode || ""}</td>
-                        <td>${student.data.phone || "-"}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         <td></td>
                         <td></td>
                         <td></td>

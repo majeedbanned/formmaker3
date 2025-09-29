@@ -131,6 +131,15 @@ export default function PresenceReportPage() {
     else if (user.userType === "school") {
       setFilteredClassDocuments(classDocuments);
     }
+    // For student users, filter to only show their classes
+    else if (user.userType === "student" && user.username) {
+      const studentClasses = classDocuments.filter((doc) =>
+        doc.data.students.some(
+          (student) => student.studentCode === user.username
+        )
+      );
+      setFilteredClassDocuments(studentClasses);
+    }
     // Default - just in case
     else {
       setFilteredClassDocuments(classDocuments);
@@ -187,6 +196,8 @@ export default function PresenceReportPage() {
         <p className="text-yellow-600">
           {user.userType === "teacher"
             ? "هیچ کلاسی برای شما یافت نشد."
+            : user.userType === "student"
+            ? "شما در هیچ کلاسی ثبت نشده‌اید."
             : "هیچ کلاسی در مدرسه یافت نشد."}
         </p>
       </div>
