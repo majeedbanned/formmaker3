@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const searchParams = new URL(request.url).searchParams;
     const searchTerm = searchParams.get('search') || '';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '1000');
 
     // Connect to domain-specific database
     const connection = await connectToDatabase(domain);

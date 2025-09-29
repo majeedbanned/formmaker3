@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,70 +41,83 @@ interface Student {
 export default function StudentsSearchWidget() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Fetch data from the new API endpoint
+  // Debounce search term
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch students with server-side search
+  const fetchStudents = useCallback(async (searchQuery: string = "", isInitial = false) => {
+    try {
+      if (isInitial) {
         setLoading(true);
-        const response = await fetch(`/api/widget/students-search?limit=100`, {
-          headers: {
-            "x-domain": window.location.host,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAllStudents(data.students || []);
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "خطا در دریافت اطلاعات");
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "خطا در بارگذاری اطلاعات"
-        );
-      } finally {
-        setLoading(false);
+      } else {
+        setSearchLoading(true);
       }
-    };
+      
+      const url = searchQuery 
+        ? `/api/widget/students-search?search=${encodeURIComponent(searchQuery)}&limit=1000`
+        : `/api/widget/students-search?limit=1000`;
+        
+      const response = await fetch(url, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
 
+      if (response.ok) {
+        const data = await response.json();
+        setAllStudents(data.students || []);
+        setTotalCount(data.count || 0);
+        setError(null);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "خطا در دریافت اطلاعات");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "خطا در بارگذاری اطلاعات"
+      );
+    } finally {
+      setLoading(false);
+      setSearchLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
     if (
       user?.userType &&
       (user.userType === "school" || user.userType === "teacher")
     ) {
-      fetchStudents();
+      fetchStudents("", true);
     }
-  }, [user]);
+  }, [user, fetchStudents]);
 
-  // Filter students based on search term (client-side filtering for better UX)
-  const filteredStudents = useMemo(() => {
+  // Search when debounced term changes
+  useEffect(() => {
+    if (debouncedSearchTerm !== undefined) {
+      fetchStudents(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm, fetchStudents]);
+
+  // Display students (server-side filtered)
+  const displayStudents = useMemo(() => {
     if (!searchTerm.trim()) {
       return allStudents.slice(0, 6); // Show first 6 students when no search
     }
-
-    const term = searchTerm.toLowerCase().trim();
-    const filtered = allStudents.filter((student) => {
-      const fullName =
-        `${student.data.studentName} ${student.data.studentFamily}`.toLowerCase();
-      const studentCode = student.data.studentCode.toLowerCase();
-      const className =
-        student.data.classCode
-          ?.map((c) => c.label)
-          .join(" ")
-          .toLowerCase() || "";
-
-      return (
-        fullName.includes(term) ||
-        studentCode.includes(term) ||
-        className.includes(term)
-      );
-    });
-
-    return filtered.slice(0, 10); // Show max 10 results
+    return allStudents.slice(0, 10); // Show max 10 results when searching
   }, [allStudents, searchTerm]);
 
   // Get class name for a student
@@ -183,7 +196,7 @@ export default function StudentsSearchWidget() {
             <Users className="h-5 w-5 ml-2 text-blue-600" />
             جستجوی دانش‌آموزان
             <span className="mr-2 text-sm font-normal text-gray-500">
-              ({allStudents.length} دانش‌آموز)
+              ({searchTerm ? `${totalCount} نتیجه` : `${totalCount} دانش‌آموز`})
             </span>
           </CardTitle>
           <Link href="/admin/students">
@@ -197,17 +210,23 @@ export default function StudentsSearchWidget() {
         {/* Search Input */}
         <div className="relative">
           <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+          {searchLoading && (
+            <div className="absolute left-3 top-3">
+              <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+            </div>
+          )}
           <Input
             placeholder="جستجو بر اساس نام، نام خانوادگی، کد دانش‌آموزی یا کلاس..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10"
+            className={`pr-10 ${searchLoading ? 'pl-10' : ''}`}
+            disabled={searchLoading}
           />
         </div>
       </CardHeader>
 
       <CardContent>
-        {filteredStudents.length === 0 ? (
+        {displayStudents.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="h-8 w-8 text-blue-500" />
@@ -225,7 +244,7 @@ export default function StudentsSearchWidget() {
           </div>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {filteredStudents.map((student) => {
+            {displayStudents.map((student) => {
               const primaryPhone = getPrimaryPhone(student.data.phones);
               const className = getStudentClassName(student);
 
@@ -323,7 +342,7 @@ export default function StudentsSearchWidget() {
             })}
 
             {/* Show more button if there are more results */}
-            {searchTerm && allStudents.length > filteredStudents.length && (
+            {searchTerm && totalCount > displayStudents.length && (
               <div className="text-center pt-4">
                 <Link
                   href={`/admin/students?search=${encodeURIComponent(
@@ -331,27 +350,7 @@ export default function StudentsSearchWidget() {
                   )}`}
                 >
                   <Button variant="outline" size="sm">
-                    مشاهده همه نتایج (
-                    {
-                      allStudents.filter((student) => {
-                        const term = searchTerm.toLowerCase().trim();
-                        const fullName =
-                          `${student.data.studentName} ${student.data.studentFamily}`.toLowerCase();
-                        const studentCode =
-                          student.data.studentCode.toLowerCase();
-                        const className =
-                          student.data.classCode
-                            ?.map((c) => c.label)
-                            .join(" ")
-                            .toLowerCase() || "";
-                        return (
-                          fullName.includes(term) ||
-                          studentCode.includes(term) ||
-                          className.includes(term)
-                        );
-                      }).length
-                    }
-                    )
+                    مشاهده همه نتایج ({totalCount})
                     <ExternalLink className="h-4 w-4 mr-1" />
                   </Button>
                 </Link>
