@@ -6,6 +6,7 @@ import {
   QuestionMarkCircleIcon,
   UsersIcon,
   ArrowsRightLeftIcon,
+  PrinterIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -210,6 +211,321 @@ export default function Home() {
       console.error("Error rearranging class:", error);
       alert("خطا در بازآرایی کلاس. لطفاً دوباره تلاش کنید.");
     }
+  };
+
+  // Function to handle printing class list
+  const handlePrintClassList = async (
+    rowId: string,
+    rowData?: Record<string, unknown>
+  ) => {
+    if (!rowData) return;
+
+    const classCode = rowData.classCode as string;
+    const className = rowData.className as string;
+    const major = rowData.major as string;
+    const grade = rowData.Grade as string;
+
+    try {
+      // Fetch students for this class
+      const response = await fetch(
+        `/api/students/findByClass?classCode=${classCode}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch students: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      const students = result.data || [];
+
+      // Sort students by family name
+      const sortedStudents = students.sort((a: any, b: any) => {
+        const familyA = a.data.studentFamily || "";
+        const familyB = b.data.studentFamily || "";
+        return familyA.localeCompare(familyB, "fa");
+      });
+
+      // Open print page in new window
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="fa">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>لیست کلاس ${className}</title>
+            <style>
+              @page {
+                size: A4;
+                margin: 2cm;
+              }
+              
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              
+              body {
+                font-family: 'Vazir', 'Tahoma', sans-serif;
+                direction: rtl;
+                text-align: right;
+                line-height: 1.6;
+                color: #333;
+                background: white;
+              }
+              
+              .print-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              
+              .header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 3px solid #2563eb;
+                padding-bottom: 15px;
+                page-break-after: avoid;
+              }
+              
+              .school-name {
+                font-size: 20px;
+                font-weight: bold;
+                color: #1e40af;
+                margin-bottom: 8px;
+              }
+              
+              .class-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 4px;
+              }
+              
+              .class-info {
+                font-size: 14px;
+                color: #6b7280;
+                margin-bottom: 8px;
+              }
+              
+              .print-date {
+                font-size: 12px;
+                color: #9ca3af;
+              }
+              
+              .students-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                font-size: 14px;
+                page-break-inside: avoid;
+              }
+              
+              .students-table th {
+                background-color: #f3f4f6;
+                color: #374151;
+                font-weight: 600;
+                padding: 12px 6px;
+                text-align: center;
+                border: 1px solid #d1d5db;
+                font-size: 12px;
+              }
+              
+              .students-table td {
+                padding: 8px 6px;
+                border: 1px solid #d1d5db;
+                text-align: center;
+                font-size: 12px;
+              }
+              
+              .students-table tr:nth-child(even) {
+                background-color: #f9fafb;
+              }
+              
+              .students-table tr:hover {
+                background-color: #f3f4f6;
+              }
+              
+              .student-name {
+                font-weight: 500;
+                color: #1f2937;
+              }
+              
+              .student-code {
+                font-family: 'Courier New', monospace;
+                color: #6b7280;
+              }
+              
+              .footer {
+                margin-top: 40px;
+                text-align: center;
+                border-top: 2px solid #e5e7eb;
+                padding-top: 20px;
+                color: #6b7280;
+                font-size: 12px;
+              }
+              
+              .no-students {
+                text-align: center;
+                padding: 40px;
+                color: #6b7280;
+                font-size: 16px;
+              }
+              
+              @media print {
+                body {
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                
+                .print-container {
+                  padding: 0;
+                }
+                
+                .header {
+                  page-break-after: avoid;
+                  margin-bottom: 15px;
+                }
+                
+                .students-table {
+                  page-break-inside: auto;
+                  margin-top: 10px;
+                }
+                
+                .students-table thead {
+                  display: table-header-group;
+                }
+                
+                .students-table tbody tr {
+                  page-break-inside: avoid;
+                }
+                
+                .footer {
+                  page-break-before: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="print-container">
+              <div class="header">
+                <div class="school-name">${user?.name || "مدرسه"}</div>
+                <div class="class-title">لیست دانش آموزان کلاس ${className}</div>
+                <div class="class-info">
+                  کد کلاس: ${classCode} | 
+                  ${major !== "0" ? `رشته: ${getMajorName(major)} | ` : ""}
+                  ${grade !== "0" ? `پایه: ${getGradeName(grade)}` : ""}
+                </div>
+                <div class="print-date">تاریخ چاپ: ${new Date().toLocaleDateString("fa-IR")}</div>
+              </div>
+              
+              ${sortedStudents.length > 0 ? `
+                <table class="students-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 40px;">ردیف</th>
+                      <th style="width: 150px;">نام و نام خانوادگی</th>
+                      <th style="width: 80px;">کد دانش آموز</th>
+                      <th style="width: 100px;">شماره تلفن</th>
+                      <th style="width: 60px;">ستون 1</th>
+                      <th style="width: 60px;">ستون 2</th>
+                      <th style="width: 60px;">ستون 3</th>
+                      <th style="width: 60px;">ستون 4</th>
+                      <th style="width: 60px;">ستون 5</th>
+                      <th style="width: 60px;">ستون 6</th>
+                      <th style="width: 80px;">امضا</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${sortedStudents.map((student: any, index: number) => `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td class="student-name">
+                          ${student.data.studentName || ""} ${student.data.studentFamily || ""}
+                        </td>
+                        <td class="student-code">${student.data.studentCode || ""}</td>
+                        <td>${student.data.phone || "-"}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              ` : `
+                <div class="no-students">
+                  هیچ دانش آموزی در این کلاس یافت نشد
+                </div>
+              `}
+              
+              <div class="footer">
+                <p>تعداد کل دانش آموزان: ${sortedStudents.length} نفر</p>
+                <p>چاپ شده در تاریخ ${new Date().toLocaleDateString("fa-IR")} - ${new Date().toLocaleTimeString("fa-IR")}</p>
+              </div>
+            </div>
+            
+            <script>
+              // Auto print when page loads
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                }, 500);
+              };
+            </script>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      console.error("Error printing class list:", error);
+      alert("خطا در چاپ لیست کلاس. لطفاً دوباره تلاش کنید.");
+    }
+  };
+
+  // Helper function to get major name
+  const getMajorName = (majorValue: string) => {
+    const majors = [
+      { label: "بدون رشته", value: "0" },
+      { label: "ریاضی فیزیک", value: "15000" },
+      { label: "علوم تجربی", value: "16000" },
+      { label: "ادبيات و علوم انساني", value: "17000" },
+      { label: "علوم و معارف اسلامي", value: "18000" },
+      { label: "مکانیک ۰۷۱۶۱۰", value: "71610" },
+      { label: "کامپیوتر ۰۶۸۸۱۰", value: "68810" },
+    ];
+    return majors.find(m => m.value === majorValue)?.label || majorValue;
+  };
+
+  // Helper function to get grade name
+  const getGradeName = (gradeValue: string) => {
+    const grades = [
+      { label: "پیش فرض", value: "0" },
+      { label: "اول ابتدایی", value: "1" },
+      { label: "دوم ابتدایی", value: "2" },
+      { label: "سوم ابتدایی", value: "3" },
+      { label: "چهارم ابتدایی", value: "4" },
+      { label: "پنجم ابتدایی", value: "5" },
+      { label: "ششم ابتدایی", value: "6" },
+      { label: "هفتم متوسطه", value: "7" },
+      { label: "هشتم متوسطه", value: "8" },
+      { label: "نهم متوسطه", value: "9" },
+      { label: "دهم متوسطه", value: "10" },
+      { label: "یازدهم متوسطه", value: "11" },
+      { label: "دوازدهم متوسطه", value: "12" },
+    ];
+    return grades.find(g => g.value === gradeValue)?.label || gradeValue;
   };
 
   // Function to process imported students
@@ -721,6 +1037,11 @@ export default function Home() {
               label: "نمایش دانش آموزان این کلاس",
               action: handleShowStudents,
               icon: UsersIcon,
+            },
+            {
+              label: "چاپ لیست کلاس",
+              action: handlePrintClassList,
+              icon: PrinterIcon,
             },
             {
               label: "بازآرایی کلاس",
