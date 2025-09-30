@@ -225,7 +225,7 @@ function StudentsPageContent() {
       enabled: true,
       readonly: true,
       visible: true,
-      defaultValue: user?.userType === "teacher" ? user.username : "",
+      defaultValue: user?.username || "",
       listLabelColor: "#2563eb",
     //  dataSource: {
     //   collectionName: "teachers",

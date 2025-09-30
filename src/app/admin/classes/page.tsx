@@ -518,13 +518,29 @@ export default function Home() {
   // Helper function to get major name
   const getMajorName = (majorValue: string) => {
     const majors = [
-      { label: "بدون رشته", value: "0" },
+     
       { label: "ریاضی فیزیک", value: "15000" },
       { label: "علوم تجربی", value: "16000" },
       { label: "ادبيات و علوم انساني", value: "17000" },
       { label: "علوم و معارف اسلامي", value: "18000" },
       { label: "مکانیک ۰۷۱۶۱۰", value: "71610" },
       { label: "کامپیوتر ۰۶۸۸۱۰", value: "68810" },
+
+      { label: "راهنماي كرد شكري", value: "62201" },
+      { label: "كرافيك راياده اي (٣١٣)", value: "99011" },
+      { label: "مكاسي ديجيتال", value: "99211" },
+      { label: "نوازندكي ساز ايراني", value: "99411" },
+      { label: "نوازندكي ساز جهاني", value: "99421" },
+      { label: "راهنماي كرد شكري", value: "62291" },
+      { label: "كرافيك رايانه اي (٣١٢)", value: "99011"
+
+       },
+
+       { label: "نقاشی", value: "21120" },
+       { label: "معماری داخلی", value: "21210" },
+       { label: "حسابداری", value: "41110" },
+       
+
     ];
     return majors.find(m => m.value === majorValue)?.label || majorValue;
   };
@@ -664,6 +680,20 @@ export default function Home() {
         { label: "علوم و معارف اسلامي", value: "18000" },
         { label: "مکانیک ۰۷۱۶۱۰", value: "71610" },
         { label: "کامپیوتر ۰۶۸۸۱۰", value: "68810" },
+
+        { label: "راهنماي كرد شكري", value: "62201" },
+        { label: "كرافيك راياده اي (٣١٣)", value: "99011" },
+        { label: "مكاسي ديجيتال", value: "99211" },
+        { label: "نوازندكي ساز ايراني", value: "99411" },
+        { label: "نوازندكي ساز جهاني", value: "99421" },
+        { label: "راهنماي كرد شكري", value: "62291" },
+        { label: "كرافيك رايانه اي (٣١٢)", value: "99011"
+  
+         },
+  
+         { label: "نقاشی", value: "21120" },
+         { label: "معماری داخلی", value: "21210" },
+         { label: "حسابداری", value: "41110" },
       ],
       validation: {
         requiredMessage: "لطفا یک رشته را انتخاب کنید",
