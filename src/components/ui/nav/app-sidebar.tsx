@@ -394,6 +394,12 @@ const data = {
           system: "importstudents",
           requiredPermission: "show",
         },
+        {
+          title: "تنظیمات سیستم",
+          url: "/admin/preferences",
+          system: "school",
+          requiredPermission: "show",
+        },
       ],
     },
   ],

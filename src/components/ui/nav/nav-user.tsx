@@ -59,6 +59,9 @@ export function NavUser({
       console.error("Logout failed:", error);
     }
   };
+  const handleSettings = () => {
+    router.push("/admin/preferences");
+  };
 
   const handleProfile = () => {
     // Route to appropriate profile page based on user type
@@ -112,6 +115,15 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+
+            {authUser?.userType === "school" && (
+
+            <DropdownMenuItem onClick={handleSettings}>
+                  <User className="ml-2" />
+                 تنظیمات سیستم
+                </DropdownMenuItem>
+              )}
+
               {(authUser?.userType === "student"  || authUser?.userType === "teacher") && (
                 <DropdownMenuItem onClick={handleProfile}>
                   <User className="ml-2" />

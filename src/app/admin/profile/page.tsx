@@ -55,6 +55,8 @@ function StudentProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [canChangeProfile, setCanChangeProfile] = useState(false);
+  const [checkingPermissions, setCheckingPermissions] = useState(true);
 
   // Only allow students to access this page
   useEffect(() => {
@@ -62,6 +64,36 @@ function StudentProfileContent() {
       window.location.href = "/noaccess";
       return;
     }
+  }, [user]);
+
+  // Check if students can change their profile
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!user || user.userType !== "student") return;
+
+      try {
+        setCheckingPermissions(true);
+        const response = await fetch("/api/preferences/check", {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCanChangeProfile(data.canStudentsChangeProfile);
+        } else {
+          setCanChangeProfile(false);
+        }
+      } catch (err) {
+        console.error("Error checking permissions:", err);
+        setCanChangeProfile(false);
+      } finally {
+        setCheckingPermissions(false);
+      }
+    };
+
+    checkPermissions();
   }, [user]);
 
   // Fetch student profile data
@@ -277,13 +309,31 @@ function StudentProfileContent() {
     );
   }
 
-  if (loading) {
+  if (loading || checkingPermissions) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>در حال بارگذاری...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Check if student is allowed to change profile
+  if (!canChangeProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">ویرایش غیرفعال</h2>
+            <p className="text-gray-600">
+              در حال حاضر امکان ویرایش اطلاعات پروفایل برای دانش‌آموزان غیرفعال است.
+              لطفاً با مدیر مدرسه تماس بگیرید.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

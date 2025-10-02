@@ -518,7 +518,7 @@ export default function Home() {
   // Helper function to get major name
   const getMajorName = (majorValue: string) => {
     const majors = [
-     
+      { label: "بدون رشته", value: "0" },
       { label: "ریاضی فیزیک", value: "15000" },
       { label: "علوم تجربی", value: "16000" },
       { label: "ادبيات و علوم انساني", value: "17000" },
