@@ -81,7 +81,7 @@ const STEPS = [
 ];
 
 export default function GradingSystemPage() {
-  const { user } = useAuth();
+  const { user ,isLoading} = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [gradingData, setGradingData] = useState<GradingData>({
     selectedClass: null,
@@ -193,6 +193,15 @@ export default function GradingSystemPage() {
     );
   }
 
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
   // Only teachers and school admins can access grading system
   if (user.userType !== "teacher" && user.userType !== "school") {
     return (

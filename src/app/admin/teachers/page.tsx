@@ -1,4 +1,4 @@
-"use client";
+                                            "use client";
 
 import CRUDComponent from "@/components/CRUDComponent";
 import PageHeader from "@/components/PageHeader";
@@ -86,6 +86,17 @@ export default function Home({
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
+
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
         </div>
       </div>
     );

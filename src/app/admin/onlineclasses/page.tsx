@@ -150,6 +150,15 @@ function StudentsPageContent() {
       </div>
     );
   }
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
 
   // Create base form structure with role-based filtering
   const baseFormStructure: FormField[] = [

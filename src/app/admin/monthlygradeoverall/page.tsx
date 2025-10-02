@@ -146,6 +146,16 @@ export default function MonthlyGradeOverallPage() {
     );
   }
 
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center m-4">

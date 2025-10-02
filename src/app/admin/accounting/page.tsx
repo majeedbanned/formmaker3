@@ -25,7 +25,7 @@ interface Transaction {
 }
 
 export default function AccountingPage() {
-  const { user } = useAuth();
+  const { user ,isLoading} = useAuth();
   const [selectedPerson, setSelectedPerson] = useState<{
     _id: string;
     name: string;
@@ -99,6 +99,15 @@ export default function AccountingPage() {
             تنها مدیران مدرسه، دانش‌آموزان و معلمان می‌توانند به سیستم حسابداری
             دسترسی داشته باشند.
           </p>
+        </div>
+      </div>
+    );
+  }
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
         </div>
       </div>
     );

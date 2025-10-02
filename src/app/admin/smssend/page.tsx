@@ -42,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 // Import to get Persian date
 import { getPersianDate } from "@/utils/dateUtils";
 import PageHeader from "@/components/PageHeader";
+import { usePagePermission } from "@/hooks/usePagePermission";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -115,6 +116,14 @@ const registrationFormSchema = z
 function StudentsPageContent() {
   const { initialFilter } = useInitialFilter();
   const { user, isLoading } = useAuth();
+
+  const {
+    isLoading: permissionLoading,
+    hasAccess,
+    error: permissionError,
+  } = usePagePermission("show");
+
+  
   // Add state for teacher's classes
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
@@ -274,6 +283,15 @@ function StudentsPageContent() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
         </div>
       </div>
     );
@@ -600,6 +618,46 @@ function StudentsPageContent() {
       setIsSubmittingRegistration(false);
     }
   };
+
+
+
+
+  // if (isLoading || permissionLoading) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+  //         <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // //Show error if permission check failed
+  // if (permissionError) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
+  //         <p className="text-gray-600">{permissionError}</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // //If permission check completed but user doesn't have access,
+  // //the hook will redirect to /noaccess, but we can show a message while redirecting
+  // if (!hasAccess) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
+  //         <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
 
   return (
     <main className="min-h-screen py-8">

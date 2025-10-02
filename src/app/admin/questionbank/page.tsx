@@ -199,7 +199,7 @@ export default function QuestionBankPage() {
 // Separate client component
 function QuestionBankContent() {
   // Get current user
-  const { user } = useAuth();
+  const { user,isLoading} = useAuth();
 
   // State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -935,6 +935,16 @@ function QuestionBankContent() {
       setIsCreating(false);
     }
   };
+
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="container mx-auto p-6">

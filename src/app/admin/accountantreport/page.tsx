@@ -61,7 +61,7 @@ interface ClassFinancial {
 }
 
 export default function AccountantReportPage() {
-  const { user } = useAuth();
+  const { user ,isLoading} = useAuth();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     start: new DateObject().subtract(30, "days"),
@@ -152,6 +152,16 @@ export default function AccountantReportPage() {
             تنها مدیران مدرسه می‌توانند به گزارش‌های حسابداری دسترسی داشته
             باشند.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
         </div>
       </div>
     );

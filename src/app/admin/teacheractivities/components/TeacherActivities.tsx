@@ -89,6 +89,7 @@ const TeacherActivities: React.FC = () => {
   const oneMonthAgo = new Date(today);
   oneMonthAgo.setMonth(today.getMonth() - 1);
 
+
   const [startDate, setStartDate] = useState<Value>(oneMonthAgo);
   const [endDate, setEndDate] = useState<Value>(today);
   const [selectedTeacher, setSelectedTeacher] = useState<string>("");
@@ -355,6 +356,16 @@ const TeacherActivities: React.FC = () => {
     }
   };
 
+
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="min-h-screen bg-gradient-to-b from-gray-50 to-white"

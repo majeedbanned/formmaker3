@@ -6,6 +6,7 @@ import { ShareIcon } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings, Entity } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
 import { encryptFilter } from "@/utils/encryption";
+import { useAuth } from "@/hooks/useAuth";
 
 const sampleFormStructure: FormField[] = [
   {
@@ -299,7 +300,7 @@ const layout: LayoutSettings = {
 
 function SchoolsPageContent() {
   const initialFilter = useInitialFilter();
-
+  const { user ,isLoading} = useAuth();
   const shareWithFilters = (rowId: string) => {
     const encryptedFilter = encryptFilter({ id: rowId });
     const url = `/admin/schools?filter=${encryptedFilter}`;
@@ -321,6 +322,26 @@ function SchoolsPageContent() {
   const handleAfterGroupDelete = (ids: string[]) => {
     console.log("Group deleted:", ids);
   };
+
+  if (isLoading ) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+  if(user?.userType === "student"){
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
