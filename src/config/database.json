@@ -175,7 +175,12 @@
     "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/fereshtegan2?authSource=admin",
     "description": "fereshtegan2.farsamooz.ir"
   }
-
+  ,
+  "fereshtegan.farsamooz.ir": {
+    "schoolCode":"96099326",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/Freshtegan?authSource=admin",
+    "description": "fereshtegan.farsamooz.ir"
+  }
 ,
   "adab.farsamooz.ir": {
     "schoolCode":"96020274",
