@@ -170,8 +170,13 @@ function StudentsPageContent() {
       isSearchable: true,
       required: true,
       enabled: true,
+      readonly: true,
       visible: true,
-      readonly: false,
+      populateID: {
+        collection: "onlineclasses",
+        field: "data.classCode",
+      },
+     
       listLabelColor: "#2563eb",
       defaultValue: "",
       validation: {
