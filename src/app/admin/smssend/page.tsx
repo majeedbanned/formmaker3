@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import CRUDComponent from "@/components/CRUDComponent";
 import {
   AcademicCapIcon,
@@ -114,8 +115,16 @@ const registrationFormSchema = z
   });
 
 function StudentsPageContent() {
+  const router = useRouter();
   const { initialFilter } = useInitialFilter();
   const { user, isLoading } = useAuth();
+
+  // Redirect to new SMS page
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace('/admin/sendsms2');
+    }
+  }, [isLoading, user, router]);
 
   const {
     isLoading: permissionLoading,
@@ -283,6 +292,19 @@ function StudentsPageContent() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show redirect message while redirecting
+  if (!isLoading && user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-4 text-lg text-gray-600">در حال انتقال به صفحه جدید...</p>
+          <p className="mt-2 text-sm text-gray-500">صفحه ارسال پیامک به نسخه جدید منتقل شده است</p>
         </div>
       </div>
     );
