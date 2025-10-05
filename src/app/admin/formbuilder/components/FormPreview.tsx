@@ -43,6 +43,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SignaturePad from "react-signature-canvas";
 import { Rating } from "react-simple-star-rating";
+import DatePicker from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+import type { Value } from "react-multi-date-picker";
 import "../rtl.css"; // Import RTL styles
 
 // Extend the FormField type to include description
@@ -950,11 +954,30 @@ export default function FormPreview({
               <FormItem>
                 <FormLabel>{field.label}</FormLabel>
                 <FormControl>
-                  <Input
-                    type="date"
-                    placeholder={field.placeholder}
-                    {...formField}
-                  />
+                  <div className="relative" dir="ltr">
+                    <DatePicker
+                      calendar={persian}
+                      locale={persian_fa}
+                      value={formField.value}
+                      onChange={(date: Value) => {
+                        if (date) {
+                          const dateObj = date as unknown as { format: (format: string) => string };
+                          if (dateObj.format) {
+                            // Store Persian date in YYYY/MM/DD format
+                            formField.onChange(dateObj.format("YYYY/MM/DD"));
+                          }
+                        } else {
+                          formField.onChange("");
+                        }
+                      }}
+                      format="YYYY/MM/DD"
+                      className="w-full rounded-md border border-gray-300"
+                      inputClass="w-full rounded-md border border-gray-300 p-2 text-right"
+                      calendarPosition="bottom-right"
+                      containerClassName="rmdp-container"
+                      placeholder={field.placeholder || "YYYY/MM/DD"}
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

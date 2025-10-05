@@ -33,6 +33,7 @@ import { Progress } from "@/components/ui/progress1";
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
+import type { Value } from "react-multi-date-picker";
 
 interface FormPreviewProps {
   isOpen: boolean;
@@ -586,33 +587,31 @@ export default function FormPreview({
             </div>
           );
         case "date":
-          const datePickerProps = {
-            calendar: persian,
-            locale: persian_fa,
-            format: "YYYY/MM/DD", // Standard format for date picker
-            ...(field.datepickerStyle || {}), // Apply custom styles
-          };
-
           return (
             <div dir="ltr" className="relative">
               <DatePicker
-                value={formValues[fieldId] as string | Date | null}
-                onChange={(date) => {
-                  // Format the date to a string before saving
-                  const formattedDate = date
-                    ? date.format(datePickerProps.format)
-                    : null;
-                  handleInputChange(fieldId, formattedDate);
+                calendar={persian}
+                locale={persian_fa}
+                value={formValues[fieldId] as string | null}
+                onChange={(date: Value) => {
+                  if (date) {
+                    const dateObj = date as unknown as { format: (format: string) => string };
+                    if (dateObj.format) {
+                      // Store Persian date in YYYY/MM/DD format
+                      handleInputChange(fieldId, dateObj.format("YYYY/MM/DD"));
+                    }
+                  } else {
+                    handleInputChange(fieldId, null);
+                  }
                 }}
-                calendar={datePickerProps.calendar}
-                locale={datePickerProps.locale}
-                format={datePickerProps.format}
-                containerClassName="w-full"
-                inputClass={`w-full p-2 border rounded-md text-right ${
+                format="YYYY/MM/DD"
+                className="w-full rounded-md border border-gray-300"
+                inputClass={`w-full rounded-md border border-gray-300 p-2 text-right ${
                   hasError ? "border-red-500" : "border-gray-300"
                 }`}
-                placeholder="YYYY/MM/DD"
                 calendarPosition="bottom-right"
+                containerClassName="rmdp-container"
+                placeholder="YYYY/MM/DD"
               />
             </div>
           );
