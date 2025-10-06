@@ -57,6 +57,7 @@ import {
   History,
   Calendar,
   Download,
+  Cake,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -91,6 +92,7 @@ interface Student {
     phone?: string;
     groups?: string | Array<string>;
     schoolCode: string;
+    birthDate?: string;
   };
 }
 
@@ -101,6 +103,7 @@ interface Teacher {
     teacherName: string;
     phones?: Array<{ owner: string; number: string }>;
     schoolCode: string;
+    birthDate?: string;
   };
 }
 
@@ -215,6 +218,11 @@ export default function SendSMS2Page() {
   const [historyFilter, setHistoryFilter] = useState<string>("all"); // all, sent, failed, pending
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<SmsHistory | null>(null);
   const [isHistoryDetailOpen, setIsHistoryDetailOpen] = useState<boolean>(false);
+  
+  // Birthday states
+  const [isBirthdayDialogOpen, setIsBirthdayDialogOpen] = useState<boolean>(false);
+  const [birthdayPeople, setBirthdayPeople] = useState<Array<{type: 'student' | 'teacher', data: Student | Teacher}>>([]);
+  const [isLoadingBirthdays, setIsLoadingBirthdays] = useState<boolean>(false);
 
   // Fetch initial data
   // Load custom templates from localStorage on component mount
@@ -351,6 +359,77 @@ export default function SendSMS2Page() {
     } finally {
       setIsLoadingHistory(false);
     }
+  };
+
+
+  // Fetch people with birthdays today
+  const fetchBirthdayPeople = async () => {
+    setIsLoadingBirthdays(true);
+    try {
+      const response = await fetch("/api/birthday", {
+        headers: { "x-domain": window.location.host },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const birthdayList = data.people || [];
+        
+        setBirthdayPeople(birthdayList);
+        
+        if (birthdayList.length === 0) {
+          toast.info("امروز تولد کسی نیست");
+        } else {
+          toast.success(`${birthdayList.length} نفر امروز تولد دارند`);
+          setIsBirthdayDialogOpen(true);
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "خطا در بارگذاری لیست تولدها");
+      }
+    } catch (error) {
+      console.error("Error fetching birthday people:", error);
+      toast.error("خطا در بارگذاری لیست تولدها");
+    } finally {
+      setIsLoadingBirthdays(false);
+    }
+  };
+
+  // Select all birthday people
+  const selectAllBirthdayPeople = () => {
+    birthdayPeople.forEach(person => {
+      if (person.type === 'student') {
+        const studentData = (person.data as Student).data;
+        const studentCode = studentData.studentCode;
+        
+        if (!selectedStudents.includes(studentCode)) {
+          setSelectedStudents(prev => [...prev, studentCode]);
+        }
+        
+        // Auto-select all phone numbers for this student
+        const allPhones = getAllPhoneNumbersForPerson(person.data as Student);
+        setSelectedStudentPhones(prev => ({
+          ...prev,
+          [studentCode]: allPhones.map(p => p.number)
+        }));
+      } else {
+        const teacherData = (person.data as Teacher).data;
+        const teacherCode = teacherData.teacherCode;
+        
+        if (!selectedTeachers.includes(teacherCode)) {
+          setSelectedTeachers(prev => [...prev, teacherCode]);
+        }
+        
+        // Auto-select all phone numbers for this teacher
+        const allPhones = getAllPhoneNumbersForPerson(person.data as Teacher);
+        setSelectedTeacherPhones(prev => ({
+          ...prev,
+          [teacherCode]: allPhones.map(p => p.number)
+        }));
+      }
+    });
+    
+    setIsBirthdayDialogOpen(false);
+    toast.success(`${birthdayPeople.length} نفر به لیست گیرندگان اضافه شدند`);
   };
 
   // Get all phone numbers for a person
@@ -1051,6 +1130,21 @@ export default function SendSMS2Page() {
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       شماره دلخواه
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchBirthdayPeople}
+                      disabled={isLoadingBirthdays}
+                      className="bg-pink-50 hover:bg-pink-100 text-pink-700 border-pink-300"
+                      title="مشاهده کسانی که امروز تولد دارند"
+                    >
+                      {isLoadingBirthdays ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Cake className="h-4 w-4 mr-2" />
+                      )}
+                      تولد امروز
                     </Button>
                   </div>
 
@@ -2198,6 +2292,129 @@ export default function SendSMS2Page() {
               <Button variant="outline" onClick={() => setIsHistoryDetailOpen(false)}>
                 بستن
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Birthday Dialog */}
+        <Dialog open={isBirthdayDialogOpen} onOpenChange={setIsBirthdayDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-right">
+                <Cake className="h-5 w-5 text-pink-600" />
+                تولدهای امروز 🎉
+              </DialogTitle>
+              <DialogDescription className="text-right">
+                {birthdayPeople.length} نفر امروز تولد دارند
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {birthdayPeople.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Cake className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p>امروز تولد کسی نیست</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {birthdayPeople.map((person, index) => {
+                      const isStudent = person.type === 'student';
+                      const data = person.data.data;
+                      const name = isStudent 
+                        ? `${(data as Student['data']).studentName} ${(data as Student['data']).studentFamily}`
+                        : (data as Teacher['data']).teacherName;
+                      const code = isStudent 
+                        ? (data as Student['data']).studentCode
+                        : (data as Teacher['data']).teacherCode;
+                      const birthDate = (data as any).birthDate || 'نامشخص';
+                      
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-pink-100 p-2 rounded-full">
+                              <Cake className="h-5 w-5 text-pink-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{name}</p>
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Badge variant="outline" className="text-xs">
+                                  {isStudent ? 'دانش آموز' : 'معلم'}
+                                </Badge>
+                                <span>کد: {code}</span>
+                                <span>تاریخ تولد: {birthDate}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (isStudent) {
+                                const studentCode = (data as Student['data']).studentCode;
+                                if (!selectedStudents.includes(studentCode)) {
+                                  setSelectedStudents(prev => [...prev, studentCode]);
+                                  
+                                  // Auto-select all phone numbers for this student
+                                  const allPhones = getAllPhoneNumbersForPerson(person.data as Student);
+                                  setSelectedStudentPhones(prev => ({
+                                    ...prev,
+                                    [studentCode]: allPhones.map(p => p.number)
+                                  }));
+                                  
+                                  toast.success(`${name} به لیست گیرندگان اضافه شد`);
+                                } else {
+                                  toast.info(`${name} قبلاً انتخاب شده است`);
+                                }
+                              } else {
+                                const teacherCode = (data as Teacher['data']).teacherCode;
+                                if (!selectedTeachers.includes(teacherCode)) {
+                                  setSelectedTeachers(prev => [...prev, teacherCode]);
+                                  
+                                  // Auto-select all phone numbers for this teacher
+                                  const allPhones = getAllPhoneNumbersForPerson(person.data as Teacher);
+                                  setSelectedTeacherPhones(prev => ({
+                                    ...prev,
+                                    [teacherCode]: allPhones.map(p => p.number)
+                                  }));
+                                  
+                                  toast.success(`${name} به لیست گیرندگان اضافه شد`);
+                                } else {
+                                  toast.info(`${name} قبلاً انتخاب شده است`);
+                                }
+                              }
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            انتخاب
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800 text-right">
+                      💡 می‌توانید با کلیک روی دکمه "انتخاب همه" تمام افراد را به لیست گیرندگان اضافه کنید.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <DialogFooter className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setIsBirthdayDialogOpen(false)}>
+                بستن
+              </Button>
+              {birthdayPeople.length > 0 && (
+                <Button onClick={selectAllBirthdayPeople} className="bg-pink-600 hover:bg-pink-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  انتخاب همه ({birthdayPeople.length} نفر)
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
