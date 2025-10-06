@@ -26,6 +26,7 @@ export default function LandingNavbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [schoolName, setSchoolName] = useState<string>("مدرسه من");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -45,6 +46,7 @@ export default function LandingNavbar() {
 
   useEffect(() => {
     fetchNavItems();
+    fetchSchoolName();
   }, []);
 
   const fetchNavItems = async () => {
@@ -75,6 +77,21 @@ export default function LandingNavbar() {
       setNavItems(getDefaultNavItems());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSchoolName = async () => {
+    try {
+      const response = await fetch("/api/schools/name", {
+        headers: { "x-domain": window.location.host },
+      });
+      const data = await response.json();
+      if (data.success && data.schoolName) {
+        setSchoolName(data.schoolName);
+      }
+    } catch (error) {
+      console.error("Error fetching school name:", error);
+      // Keep default "مدرسه من" if fetch fails
     }
   };
 
@@ -311,14 +328,14 @@ export default function LandingNavbar() {
                 </motion.div>
 
                 <motion.span
-                  className={`mr-3 text-2xl font-bold transition-all duration-300 ${
+                  className={`mr-3 text-lg font-bold transition-all duration-300 ${
                     scrolled
                       ? "text-transparent bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text"
                       : "text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text"
                   }`}
                   whileHover={{ scale: 1.05 }}
                 >
-                  مدرسه من
+                  {schoolName}
                 </motion.span>
               </motion.div>
             </Link>
