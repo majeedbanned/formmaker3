@@ -7,6 +7,7 @@ import {
   StudentsSearchWidget,
   FormsWidget,
 } from "../components/widgets";
+import StudentSearchWidget from "../components/StudentSearchWidget";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
 import OnboardingStatus from "@/components/OnboardingStatus";
@@ -265,6 +266,13 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Student Search for School Users */}
+          {user.userType === "school" && (
+            <div className="mb-6">
+              <StudentSearchWidget />
+            </div>
+          )}
 
           {/* Onboarding Status for School Users */}
           {user.userType === "school" && (
