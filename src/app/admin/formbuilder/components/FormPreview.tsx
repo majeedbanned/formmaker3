@@ -449,6 +449,36 @@ export default function FormPreview({
         break;
 
       case "checkbox":
+        // If checkbox has options, it's a multi-select (array), otherwise it's a boolean
+        if (field.options && field.options.length > 0) {
+          // Checkbox group - array of strings
+          fieldSchema = z.preprocess(
+            (val) => {
+              // Convert to array if not already
+              if (Array.isArray(val)) return val;
+              if (val === null || val === undefined) return [];
+              return [];
+            },
+            field.required
+              ? z.array(z.string()).min(1, {
+                  message: `${field.label} الزامی است`,
+                })
+              : z.array(z.string()).optional()
+          );
+        } else {
+          // Single checkbox - boolean
+          fieldSchema = z.preprocess(
+            (val) => {
+              // Convert to boolean if not already
+              if (typeof val === 'boolean') return val;
+              if (Array.isArray(val)) return val.length > 0;
+              return false;
+            },
+            z.boolean().optional()
+          );
+        }
+        break;
+
       case "switch":
         fieldSchema = z.boolean().optional();
         break;
@@ -1096,27 +1126,97 @@ export default function FormPreview({
       }
 
       case "checkbox":
-        return (
-          <UIFormField
-            key={field.name}
-            control={methods.control}
-            name={field.name}
-            render={({ field: formField }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={formField.value}
-                    onCheckedChange={formField.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none mr-3">
-                  <FormLabel>{field.label}</FormLabel>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
+        // Check if checkbox has options (checkbox group) or is single
+        if (field.options && field.options.length > 0) {
+          // Checkbox group - multiple selection
+          return (
+            <UIFormField
+              key={field.name}
+              control={methods.control}
+              name={field.name}
+              render={() => (
+                <FormItem className="text-right" dir="rtl">
+                  <div className="mb-4">
+                    <FormLabel className="text-base">{field.label}</FormLabel>
+                    {field.description && (
+                      <p className="text-sm text-gray-500 mt-1">{field.description}</p>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    {field.options?.map((option) => (
+                      <UIFormField
+                        key={option.value}
+                        control={methods.control}
+                        name={field.name}
+                        render={({ field: formField }) => {
+                          return (
+                            <FormItem
+                              key={option.value}
+                              className="flex flex-row-reverse items-start space-x-3 space-x-reverse space-y-0"
+                            >
+                              <FormLabel className="font-normal cursor-pointer mr-2">
+                                {option.label}
+                              </FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={
+                                    Array.isArray(formField.value)
+                                      ? formField.value.includes(option.value)
+                                      : false
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    const currentValue = Array.isArray(formField.value)
+                                      ? formField.value
+                                      : [];
+                                    
+                                    if (checked) {
+                                      formField.onChange([...currentValue, option.value]);
+                                    } else {
+                                      formField.onChange(
+                                        currentValue.filter((value) => value !== option.value)
+                                      );
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        } else {
+          // Single checkbox
+          return (
+            <UIFormField
+              key={field.name}
+              control={methods.control}
+              name={field.name}
+              render={({ field: formField }) => (
+                <FormItem className="flex flex-row-reverse items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4 text-right" dir="rtl">
+                  <div className="space-y-1 leading-none mr-3">
+                    <FormLabel>{field.label}</FormLabel>
+                    {field.description && (
+                      <p className="text-sm text-gray-500">{field.description}</p>
+                    )}
+                  </div>
+                  <FormControl>
+                    <Checkbox
+                      checked={formField.value}
+                      onCheckedChange={formField.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        }
 
       case "radio":
         return (
