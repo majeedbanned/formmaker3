@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export default function BBBMeetingPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const className = decodeURIComponent(params.className as string);
   
   const [loading, setLoading] = useState(true);
@@ -16,11 +16,25 @@ export default function BBBMeetingPage() {
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("BBB Meeting Page - Auth Loading:", authLoading);
+    console.log("BBB Meeting Page - User:", user);
+    
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log("BBB Meeting Page - Waiting for auth to load...");
+      return;
+    }
+    
+    // After auth is loaded, check if user exists
     if (!user) {
+      console.log("BBB Meeting Page - No user after auth loaded, redirecting to login");
       toast.error("لطفاً ابتدا وارد شوید");
       router.push("/login");
       return;
     }
+
+    console.log("BBB Meeting Page - User type:", user.userType);
+    console.log("BBB Meeting Page - Class name:", className);
 
     const joinMeeting = async () => {
       try {
@@ -28,6 +42,8 @@ export default function BBBMeetingPage() {
         setError(null);
 
         // Fetch class details
+        console.log("BBB - Fetching class details for:", className, "schoolCode:", user.schoolCode);
+        
         const classResponse = await fetch("/api/data/onlineclasses", {
           method: "POST",
           headers: {
@@ -42,29 +58,29 @@ export default function BBBMeetingPage() {
           }),
         });
 
+        console.log("BBB - Class fetch response status:", classResponse.status);
+
         if (!classResponse.ok) {
           throw new Error("کلاس مورد نظر یافت نشد");
         }
 
         const classData = await classResponse.json();
+        console.log("BBB - Class data received:", classData);
+        
         if (!classData || classData.length === 0) {
           throw new Error("کلاس مورد نظر یافت نشد");
         }
 
         const classInfo = classData[0];
         const classCode = classInfo.data.onlineClassCode;
+        console.log("BBB - Class code:", classCode);
 
         // Get user's full name
-        let fullName = user.username;
-        if (user.userType === "student") {
-          fullName = `${user.studentName || ""} ${user.studentFamily || ""}`.trim();
-        } else if (user.userType === "teacher") {
-          fullName = `${user.teacherName || ""} ${user.teacherFamily || ""}`.trim();
-        } else if (user.userType === "school") {
-          fullName = user.schoolName || user.username;
-        }
+        const fullName = user.name || user.username;
+        console.log("BBB - User full name:", fullName);
 
         // Request to join/create meeting
+        console.log("BBB - Requesting to join meeting...");
         const joinResponse = await fetch("/api/bbb/join", {
           method: "POST",
           headers: {
@@ -81,13 +97,17 @@ export default function BBBMeetingPage() {
           }),
         });
 
+        console.log("BBB - Join response status:", joinResponse.status);
         const joinData = await joinResponse.json();
+        console.log("BBB - Join response data:", joinData);
 
         if (!joinResponse.ok || !joinData.success) {
+          console.error("BBB - Join failed:", joinData);
           throw new Error(joinData.error || "خطا در اتصال به کلاس");
         }
 
         setJoinUrl(joinData.joinUrl);
+        console.log("BBB - Join URL:", joinData.joinUrl);
 
         // Show appropriate message
         if (joinData.isNewMeeting) {
@@ -97,6 +117,7 @@ export default function BBBMeetingPage() {
         }
 
         // Redirect to BBB meeting
+        console.log("BBB - Redirecting to meeting...");
         window.location.href = joinData.joinUrl;
 
       } catch (err) {
@@ -109,17 +130,18 @@ export default function BBBMeetingPage() {
     };
 
     joinMeeting();
-  }, [user, className, router]);
+  }, [user, authLoading, className, router]);
 
-  if (loading && !error) {
+  // Show loading while auth is loading OR while joining meeting
+  if (authLoading || (loading && !error)) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center bg-white p-8 rounded-xl shadow-xl max-w-md">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            در حال اتصال به کلاس
+            {authLoading ? "در حال بررسی احراز هویت" : "در حال اتصال به کلاس"}
           </h2>
-          <p className="text-lg text-gray-600 mb-4">{className}</p>
+          {!authLoading && <p className="text-lg text-gray-600 mb-4">{className}</p>}
           <div className="flex items-center justify-center space-x-reverse space-x-2 text-sm text-gray-500">
             <div className="animate-pulse">●</div>
             <span>لطفاً صبر کنید</span>

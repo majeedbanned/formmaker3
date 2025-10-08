@@ -174,7 +174,7 @@ function StudentsPageContent() {
       visible: true,
       populateID: {
         collection: "onlineclasses",
-        field: "data.classCode",
+        field: "data.onlineClassCode",
       },
      
       listLabelColor: "#2563eb",

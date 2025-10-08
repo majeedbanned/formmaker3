@@ -23,10 +23,12 @@ export async function middleware(request: NextRequest) {
     logger.info(`API request for domain: ${domain}, path: ${request.nextUrl.pathname}`);
   }
 
-  // Check if this is an admin route
-  const isAdminRoute = request.nextUrl.pathname.startsWith("/s");
+  // Check if this is an admin or meeting route (both require authentication)
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin") || request.nextUrl.pathname.startsWith("/s");
+  const isMeetingRoute = request.nextUrl.pathname.startsWith("/meeting");
+  const isProtectedRoute = isAdminRoute || isMeetingRoute;
 
-  if (isAdminRoute) {
+  if (isProtectedRoute) {
     if (!token) {
       // Redirect to login if there's no token
       const loginUrl = new URL("/login", request.url);
@@ -89,5 +91,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/s/:path*", "/api/:path*"],
+  matcher: ["/admin/:path*", "/s/:path*", "/api/:path*", "/meeting/:path*"],
 }; 

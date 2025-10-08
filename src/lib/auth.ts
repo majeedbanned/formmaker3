@@ -77,7 +77,13 @@ export async function authenticateUser(
       userType,
       schoolCode,
       username,
-      name:userType === "student" ? userData.studentName+ ' ' + userData.studentFamily : userType==="teacher" ? userData.teacherName : userType==="school" ? userData.schoolName : "",
+      name: userType === "student" 
+        ? `${userData.studentName || ''} ${userData.studentFamily || ''}`.trim()
+        : userType === "teacher" 
+          ? `${userData.teacherName || ''} ${userData.teacherFamily || ''}`.trim()
+          : userType === "school" 
+            ? userData.schoolName || username
+            : username,
       role: userType,
       permissions: userData.premisions || userData.permissions || [],
       ...(userType === 'school' ? {
@@ -100,7 +106,13 @@ export async function authenticateUser(
         domain:domain,
         schoolCode,
         username,
-        name:userType === "student" ? userData.studentName+ ' ' + userData.studentFamily : userType==="teacher" ? userData.teacherName : userType==="school" ? userData.schoolName : "",
+        name: userType === "student" 
+          ? `${userData.studentName || ''} ${userData.studentFamily || ''}`.trim()
+          : userType === "teacher" 
+            ? `${userData.teacherName || ''} ${userData.teacherFamily || ''}`.trim()
+            : userType === "school" 
+              ? userData.schoolName || username
+              : username,
         role: userType,
         permissions: userData.premisions || userData.permissions || [],
         ...(userType === 'school' ? {
