@@ -48,6 +48,7 @@ import {
   Filter,
   X,
   Plus,
+  UserPlus,
   Eye,
   Trash2,
   Copy,
@@ -61,6 +62,17 @@ import {
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField as UIFormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 // Types
 interface Class {
@@ -147,6 +159,33 @@ interface SentMessage {
   senderName: string;
 }
 
+// SMS Registration form schema
+const smsRegistrationSchema = z.object({
+  register_personality: z.string().default("1"),
+  company: z.string().optional(),
+  first_name: z.string().min(1, { message: "نام الزامی است" }),
+  last_name: z.string().min(1, { message: "نام خانوادگی الزامی است" }),
+  father: z.string().optional(),
+  gender: z.string().default("1"),
+  uname: z.string().min(3, { message: "نام کاربری باید حداقل 3 کاراکتر باشد" }),
+  upass: z.string().min(6, { message: "رمز عبور باید حداقل 6 کاراکتر باشد" }),
+  upass_repeat: z.string().min(6, { message: "تکرار رمز عبور الزامی است" }),
+  date: z.string().optional(),
+  shenasname: z.string().optional(),
+  melli_code: z.string().optional(),
+  mob: z.string().optional(),
+  tel: z.string().optional(),
+  email: z.string().optional(),
+  fax: z.string().optional(),
+  post_code: z.string().optional(),
+  addr: z.string().optional(),
+  package: z.string().default("2"),
+  referrer: z.string().optional(),
+}).refine((data) => data.upass === data.upass_repeat, {
+  message: "رمز عبور و تکرار آن باید یکسان باشند",
+  path: ["upass_repeat"],
+});
+
 export default function SendSMS2Page() {
   const { user, isLoading } = useAuth();
 
@@ -205,6 +244,11 @@ export default function SendSMS2Page() {
   const [templateTitle, setTemplateTitle] = useState<string>("");
   const [templateContent, setTemplateContent] = useState<string>("");
   
+  // SMS Registration states
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState<boolean>(false);
+  const [isSubmittingRegistration, setIsSubmittingRegistration] = useState<boolean>(false);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [currentRecordId, setCurrentRecordId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [smsCredit, setSmsCredit] = useState<string>("0");
@@ -223,6 +267,26 @@ export default function SendSMS2Page() {
   const [isBirthdayDialogOpen, setIsBirthdayDialogOpen] = useState<boolean>(false);
   const [birthdayPeople, setBirthdayPeople] = useState<Array<{type: 'student' | 'teacher', data: Student | Teacher}>>([]);
   const [isLoadingBirthdays, setIsLoadingBirthdays] = useState<boolean>(false);
+
+  // Registration form
+  const registrationForm = useForm<z.infer<typeof smsRegistrationSchema>>({
+    resolver: zodResolver(smsRegistrationSchema),
+    defaultValues: {
+      register_personality: "1",
+      gender: "1",
+      package: "2",
+      first_name: "",
+      last_name: "",
+      uname: "",
+      upass: "",
+      upass_repeat: "",
+      melli_code: "",
+      email: "",
+      mob: "",
+      tel: "",
+      addr: "",
+    },
+  });
 
   // Fetch initial data
   // Load custom templates from localStorage on component mount
@@ -933,6 +997,75 @@ export default function SendSMS2Page() {
     }
   };
 
+  // Handle SMS registration submission
+  const onSubmitRegistration = async (values: z.infer<typeof smsRegistrationSchema>) => {
+    try {
+      setIsSubmittingRegistration(true);
+
+      const url = "/api/crud/smsregistrations";
+      const method = isEditMode ? "PUT" : "POST";
+      
+      const requestBody = isEditMode 
+        ? {
+            id: currentRecordId,
+            data: {
+              ...values,
+              schoolCode: user?.schoolCode,
+              submittedBy: user?.username,
+              updatedAt: new Date().toISOString()
+            },
+            formStructure: []
+          }
+        : {
+            data: {
+              ...values,
+              schoolCode: user?.schoolCode,
+              submittedBy: user?.username,
+              submittedAt: new Date().toISOString(),
+              status: "pending"
+            },
+            formStructure: []
+          };
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const savedData = await response.json();
+        const successMessage = isEditMode 
+          ? "اطلاعات درخواست فعالسازی پیامک با موفقیت به‌روزرسانی شد"
+          : "اطلاعات درخواست فعالسازی پیامک با موفقیت ذخیره شد";
+        
+        toast.success(successMessage);
+        
+        if (!isEditMode) {
+          setIsEditMode(true);
+          setCurrentRecordId(savedData._id);
+        }
+        
+        registrationForm.reset({
+          ...values,
+          ...savedData.data
+        });
+        
+      } else {
+        const errorData = await response.json();
+        toast.error(`خطا در ذخیره درخواست: ${errorData.error || "خطای نامشخص"}`);
+      }
+    } catch (error) {
+      console.error("Error saving registration:", error);
+      toast.error("خطا در ذخیره درخواست فعالسازی پیامک");
+    } finally {
+      setIsSubmittingRegistration(false);
+    }
+  };
+
   // Handle send SMS
   const handleSendSMS = async () => {
     if (!message.trim()) {
@@ -1043,16 +1176,26 @@ export default function SendSMS2Page() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={fetchSmsCredit}
-              disabled={isLoadingCredit}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isLoadingCredit ? "animate-spin" : ""}`}
-              />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsRegistrationDialogOpen(true)}
+                className="flex items-center gap-2 text-green-600 hover:text-green-700 border-green-600"
+              >
+                <UserPlus className="h-4 w-4" />
+                درخواست فعالسازی پیامک
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchSmsCredit}
+                disabled={isLoadingCredit}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoadingCredit ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -2503,6 +2646,374 @@ export default function SendSMS2Page() {
                 )}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* SMS Registration Dialog */}
+        <Dialog
+          open={isRegistrationDialogOpen}
+          onOpenChange={(open) => {
+            setIsRegistrationDialogOpen(open);
+            if (!open) {
+              setIsEditMode(false);
+              setCurrentRecordId(null);
+              registrationForm.reset({
+                register_personality: "1",
+                gender: "1",
+                package: "2",
+                first_name: "",
+                last_name: "",
+                uname: "",
+                upass: "",
+                upass_repeat: "",
+                melli_code: "",
+                email: "",
+                mob: "",
+                tel: "",
+                addr: "",
+              });
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>
+                {isEditMode ? "ویرایش درخواست فعالسازی سرویس پیامک" : "درخواست فعالسازی سرویس پیامک"}
+              </DialogTitle>
+              <DialogDescription>
+                {isEditMode 
+                  ? "می‌توانید اطلاعات ذخیره شده را ویرایش کنید."
+                  : "برای فعالسازی سرویس پیامک، لطفا فرم زیر را تکمیل کنید."
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            <Form {...registrationForm}>
+              <form onSubmit={registrationForm.handleSubmit(onSubmitRegistration)} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>نام</FormLabel>
+                        <FormControl>
+                          <Input placeholder="نام خود را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="last_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>نام خانوادگی</FormLabel>
+                        <FormControl>
+                          <Input placeholder="نام خانوادگی خود را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="father"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>نام پدر</FormLabel>
+                        <FormControl>
+                          <Input placeholder="نام پدر را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>جنسیت</FormLabel>
+                        <FormControl>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            {...field}
+                          >
+                            <option value="1">مرد</option>
+                            <option value="2">زن</option>
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="shenasname"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>شماره شناسنامه</FormLabel>
+                        <FormControl>
+                          <Input placeholder="شماره شناسنامه را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="melli_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>کد ملی</FormLabel>
+                        <FormControl>
+                          <Input placeholder="کد ملی را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="mob"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>موبایل</FormLabel>
+                        <FormControl>
+                          <Input placeholder="09xxxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="tel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>تلفن ثابت</FormLabel>
+                        <FormControl>
+                          <Input placeholder="021xxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ایمیل</FormLabel>
+                        <FormControl>
+                          <Input placeholder="example@example.com" {...field} type="email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="fax"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>فکس</FormLabel>
+                        <FormControl>
+                          <Input placeholder="شماره فکس" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="post_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>کد پستی</FormLabel>
+                        <FormControl>
+                          <Input placeholder="کد پستی را وارد کنید" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <UIFormField
+                    control={registrationForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>تاریخ تولد (شمسی)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="مثال: 1370/06/31" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <UIFormField
+                  control={registrationForm.control}
+                  name="addr"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>آدرس</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="آدرس دقیق را وارد کنید"
+                          {...field}
+                          className="min-h-[80px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-medium mb-2">اطلاعات کاربری</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="uname"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>نام کاربری</FormLabel>
+                          <FormControl>
+                            <Input placeholder="نام کاربری" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="package"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>نوع پکیج</FormLabel>
+                          <FormControl>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              {...field}
+                            >
+                              <option value="1">پکیج 1</option>
+                              <option value="2">پکیج 2</option>
+                              <option value="3">پکیج 3</option>
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="upass"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>رمز عبور</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="رمز عبور" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="upass_repeat"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>تکرار رمز عبور</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="تکرار رمز عبور" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="register_personality"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>نوع کاربری</FormLabel>
+                          <FormControl>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              {...field}
+                            >
+                              <option value="1">شخصی</option>
+                              <option value="2">شرکتی</option>
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <UIFormField
+                      control={registrationForm.control}
+                      name="referrer"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>معرف</FormLabel>
+                          <FormControl>
+                            <Input placeholder="معرف (اختیاری)" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter className="mt-6">
+                  <Button
+                    type="submit"
+                    disabled={isSubmittingRegistration}
+                    className="w-full md:w-auto"
+                  >
+                    {isSubmittingRegistration && (
+                      <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                    )}
+                    {isEditMode ? "به‌روزرسانی درخواست" : "ثبت درخواست"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>

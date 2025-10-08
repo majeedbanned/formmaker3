@@ -50,11 +50,11 @@ const layout: LayoutSettings = {
 
 function StudentsPageContent() {
   const { user, isLoading } = useAuth();
-  const {
-    isLoading: permissionLoading,
-    hasAccess,
-    error: permissionError,
-  } = usePagePermission("show");
+  // const {
+  //   isLoading: permissionLoading,
+  //   hasAccess,
+  //   error: permissionError,
+  // } = usePagePermission("show");
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
@@ -156,8 +156,8 @@ function StudentsPageContent() {
 
   console.log("user", user);
 
-  //Show loading while auth or permission is being checked
-  if (isLoading || permissionLoading) {
+  // //Show loading while auth or permission is being checked || permissionLoading
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -167,31 +167,39 @@ function StudentsPageContent() {
       </div>
     );
   }
-
-  //Show error if permission check failed
-  if (permissionError) {
+  if(user?.userType === "student"){
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
-          <p className="text-gray-600">{permissionError}</p>
+          <div className="text-red-600 text-lg mb-4">شما دسترسی به این صفحه را ندارید</div>
         </div>
       </div>
     );
   }
+  // //Show error if permission check failed
+  // if (permissionError) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-red-600 text-lg mb-4">خطا در بررسی دسترسی</div>
+  //         <p className="text-gray-600">{permissionError}</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
-  //If permission check completed but user doesn't have access,
-  //the hook will redirect to /noaccess, but we can show a message while redirecting
-  if (!hasAccess) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
-          <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
-        </div>
-      </div>
-    );
-  }
+  // //If permission check completed but user doesn't have access,
+  // //the hook will redirect to /noaccess, but we can show a message while redirecting
+  // if (!hasAccess) {
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="text-orange-600 text-lg mb-4">در حال انتقال...</div>
+  //         <p className="text-gray-600">شما به این صفحه دسترسی ندارید</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const sampleFormStructure: FormField[] = [
     {
