@@ -43,6 +43,43 @@ export default function SurveysPage() {
     useSurveys();
   const [searchTerm, setSearchTerm] = useState("");
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user]);
 
   // Keyboard shortcut for help panel (F1)
   useEffect(() => {
@@ -63,14 +100,15 @@ export default function SurveysPage() {
       survey.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // For teachers, separate created surveys from participable surveys
+  // For regular teachers (not admin), separate created surveys from participable surveys
+  // Admin teachers see all surveys like school users
   const createdSurveys =
-    user?.userType === "teacher"
+    user?.userType === "teacher" && !isAdminTeacher
       ? filteredSurveys.filter((survey) => survey.creatorId === user.id)
       : filteredSurveys;
 
   const participableSurveys =
-    user?.userType === "teacher"
+    user?.userType === "teacher" && !isAdminTeacher
       ? filteredSurveys.filter(
           (survey) => survey.creatorId !== user.id && survey.status === "active"
         )
@@ -217,7 +255,7 @@ export default function SurveysPage() {
               <p className="text-lg text-gray-600">
                 {user?.userType === "student"
                   ? "نظرسنجی‌های در دسترس برای شما"
-                  : user?.userType === "teacher"
+                  : user?.userType === "teacher" && !isAdminTeacher
                   ? "نظرسنجی‌های خود را مدیریت کنید"
                   : "نظرسنجی‌های مدرسه را مدیریت کنید"}
               </p>
@@ -318,7 +356,7 @@ export default function SurveysPage() {
         </div>
 
         {/* Surveys Grid */}
-        {user?.userType === "teacher" ? (
+        {user?.userType === "teacher" && !isAdminTeacher ? (
           <div className="space-y-12">
             {/* Created Surveys Section */}
             <div>

@@ -19,7 +19,45 @@ export default function FormBuilderPage() {
   const [activeTab, setActiveTab] = useState("list");
   const [editingForm, setEditingForm] = useState<any>(null);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
   const { user, isLoading } = useAuth();
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
 
   // Keyboard shortcut for help panel (F1)
   useEffect(() => {
@@ -51,9 +89,10 @@ export default function FormBuilderPage() {
   };
 
   const handleEditForm = (form: any) => {
-    // Only allow editing if this is the creator or a school admin
+    // Only allow editing if this is the creator, a school admin, or an admin teacher
     if (
       user?.userType !== "school" &&
+      !(user?.userType === "teacher" && isAdminTeacher) &&
       form.metadata?.createdBy !== user?.username
     ) {
       toast.error("شما اجازه ویرایش این فرم را ندارید");

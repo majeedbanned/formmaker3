@@ -188,6 +188,7 @@ const smsRegistrationSchema = z.object({
 
 export default function SendSMS2Page() {
   const { user, isLoading } = useAuth();
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
 
   // State management
   const [activeTab, setActiveTab] = useState<string>("compose");
@@ -311,13 +312,50 @@ export default function SendSMS2Page() {
     }
   }, [customTemplates]);
 
+  // Check if teacher has adminAccess
   useEffect(() => {
-    if (user && user.userType === "school") {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
+
+  useEffect(() => {
+    if (user && (user.userType === "school" || (user.userType === "teacher" && isAdminTeacher))) {
       fetchAllData();
       fetchSmsCredit();
       fetchSmsHistory();
     }
-  }, [user]);
+  }, [user, isAdminTeacher]);
 
   const fetchSmsCredit = async () => {
     try {
@@ -1132,7 +1170,7 @@ export default function SendSMS2Page() {
     );
   }
 
-  if (user?.userType !== "school") {
+  if (user?.userType !== "school" && !(user?.userType === "teacher" && isAdminTeacher)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">

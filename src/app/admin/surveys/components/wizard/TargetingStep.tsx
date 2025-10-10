@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +42,7 @@ export default function TargetingStep({
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
 
   // Use the passed props directly as state
   const [classSelections, setClassSelections] =
@@ -55,12 +56,43 @@ export default function TargetingStep({
     setTeacherSelections(teacherTargets);
   }, [classTargets, teacherTargets]);
 
+  // Check if teacher has adminAccess
   useEffect(() => {
-    fetchData();
-  }, [user?.schoolCode]);
+    const checkTeacherAdminAccess = async () => {
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
 
-  const fetchData = async () => {
-    console.log(user);
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user]);
+
+  // Fetch classes and teachers data
+  const fetchData = useCallback(async () => {
     if (!user?.schoolCode) return;
 
     setLoading(true);
@@ -78,8 +110,8 @@ export default function TargetingStep({
         setClasses(classesData.classes || []);
       }
 
-      // Only fetch teachers if user is school admin
-      if (user.userType === "school") {
+      // Only fetch teachers if user is school admin or admin teacher
+      if (user.userType === "school" || (user.userType === "teacher" && isAdminTeacher)) {
         const teachersResponse = await fetch(
           `/api/surveys/targets?schoolCode=${user.schoolCode}&type=teachers`,
           {
@@ -97,7 +129,11 @@ export default function TargetingStep({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, isAdminTeacher]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleClassToggle = (classCode: string, checked: boolean) => {
     const newSelections = checked
@@ -151,7 +187,7 @@ export default function TargetingStep({
       t.data.teacherCode.includes(searchTerm)
   );
 
-  const isTeacherUser = user?.userType === "teacher";
+  const isTeacherUser = user?.userType === "teacher" && !isAdminTeacher;
   const totalSelected = classSelections.length + teacherSelections.length;
 
   return (

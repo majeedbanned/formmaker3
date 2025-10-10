@@ -32,12 +32,23 @@ export async function GET(request: NextRequest) {
     const domain = request.headers.get('x-domain') || 'localhost:3000';
     const connection = await connectToDatabase(domain);
 
+    // Check if teacher has admin access
+    let isAdminTeacher = false;
+    if (user.userType === "teacher" && user.username) {
+      const teachersCollection = connection.collection("teachers");
+      const currentTeacher = await teachersCollection.findOne({
+        "data.schoolCode": schoolCode,
+        "data.teacherCode": user.username
+      });
+      isAdminTeacher = currentTeacher?.data?.adminAccess === true;
+    }
+
     if (type === "classes") {
       // Fetch classes
       let query: Record<string, unknown> = { "data.schoolCode": schoolCode };
       
-      // If user is a teacher, only show their classes
-      if (user.userType === "teacher") {
+      // If user is a regular teacher (not admin), only show their classes
+      if (user.userType === "teacher" && !isAdminTeacher) {
         query = {
           "data.schoolCode": schoolCode,
           "data.teachers.teacherCode": user.username || user.id
@@ -57,8 +68,8 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ classes });
     } else if (type === "teachers") {
-      // Only school admins can target teachers
-      if (user.userType !== "school") {
+      // Only school admins and admin teachers can target teachers
+      if (user.userType !== "school" && !isAdminTeacher) {
         return NextResponse.json(
           { error: "Only school admins can target teachers" },
           { status: 403 }

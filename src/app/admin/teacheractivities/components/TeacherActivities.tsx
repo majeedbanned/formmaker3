@@ -107,6 +107,7 @@ const TeacherActivities: React.FC = () => {
   const [activityChartData, setActivityChartData] = useState<
     ActivityChartData[]
   >([]);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
 
   // Get auth data
   const { user, isLoading: authLoading } = useAuth();
@@ -122,6 +123,43 @@ const TeacherActivities: React.FC = () => {
       }
     }
   }, [user, authLoading]);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (authLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, authLoading, schoolCode]);
 
   // Fetch teachers list
   useEffect(() => {
@@ -457,7 +495,7 @@ const TeacherActivities: React.FC = () => {
                 >
                   انتخاب معلم:
                 </Label>
-                {user?.userType === "teacher" ? (
+                {user?.userType === "teacher" && !isAdminTeacher ? (
                   <div className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-gray-50 text-gray-700">
                     {teachers[user.username] || user.username || "معلم جاری"}
                   </div>
@@ -577,7 +615,7 @@ const TeacherActivities: React.FC = () => {
                   </svg>
                   نمودار فعالیت
                 </TabsTrigger>
-                {user?.userType !== "teacher" && (
+                {(user?.userType !== "teacher" || isAdminTeacher) && (
                   <TabsTrigger
                     value="comparative"
                     className="py-4 px-6 font-medium transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600"
@@ -629,7 +667,7 @@ const TeacherActivities: React.FC = () => {
               >
                 <TeacherSummary
                   activities={
-                    user?.userType === "teacher"
+                    user?.userType === "teacher" && !isAdminTeacher
                       ? teacherActivities.filter(
                           (t) => t.teacherCode === user.username
                         )
@@ -669,7 +707,7 @@ const TeacherActivities: React.FC = () => {
               >
                 <ActivityChart
                   data={
-                    user?.userType === "teacher" && selectedTeacher
+                    user?.userType === "teacher" && !isAdminTeacher && selectedTeacher
                       ? activityChartData.filter(
                           (d) => d.teacherCode === user.username
                         )
@@ -696,14 +734,14 @@ const TeacherActivities: React.FC = () => {
               >
                 <ActivityTrends
                   activities={
-                    user?.userType === "teacher"
+                    user?.userType === "teacher" && !isAdminTeacher
                       ? teacherActivities.filter(
                           (t) => t.teacherCode === user.username
                         )
                       : teacherActivities
                   }
                   chartData={
-                    user?.userType === "teacher" && selectedTeacher
+                    user?.userType === "teacher" && !isAdminTeacher && selectedTeacher
                       ? activityChartData.filter(
                           (d) => d.teacherCode === user.username
                         )
