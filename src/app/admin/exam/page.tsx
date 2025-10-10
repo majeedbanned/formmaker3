@@ -63,11 +63,48 @@ function StudentsPageContent() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
   const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
 
   // Fetch teacher's classes when component mounts
   useEffect(() => {
     async function fetchTeacherClasses() {
-      if (user && user.userType === "teacher" && user.username) {
+      if (user && user.userType === "teacher" && !isAdminTeacher && user.username) {
         try {
           const response = await fetch(
             `/api/formbuilder/teacher-classes?teacherCode=${user.username}`,
@@ -109,7 +146,7 @@ function StudentsPageContent() {
     if (!isLoading && user) {
       fetchTeacherClasses();
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, isAdminTeacher]);
 
   // Update the student teachers useEffect to directly use the teacherCodes from the API response
   useEffect(() => {
@@ -296,7 +333,7 @@ function StudentsPageContent() {
                   sortField: "studentCode",
                   sortOrder: "asc" as "asc" | "desc",
                   filterQuery:
-                    user?.userType === "teacher" && teacherClasses.length > 0
+                    user?.userType === "teacher" && !isAdminTeacher && teacherClasses.length > 0
                       ? {
                           //  schoolCode: "2295566177"
                           // Filter students where the classcode is in the teacher's classes
@@ -314,7 +351,7 @@ function StudentsPageContent() {
               },
             ]
           : []),
-        ...(user?.userType !== "student" && user?.userType !== "teacher"
+        ...(user?.userType !== "student" && (user?.userType !== "teacher" || isAdminTeacher)
           ? [
               {
                 name: "groups",
@@ -359,7 +396,7 @@ function StudentsPageContent() {
                   sortField: "classCode",
                   sortOrder: "asc" as "asc" | "desc",
                   filterQuery:
-                    user?.userType === "teacher" && teacherClasses.length > 0
+                    user?.userType === "teacher" && !isAdminTeacher && teacherClasses.length > 0
                       ? {
                           schoolCode: user?.schoolCode || "",
                           classCode: { $in: teacherClasses },
@@ -833,7 +870,7 @@ function StudentsPageContent() {
   const pageTitle = () => {
     if (user?.userType === "student") {
       return "آزمون‌های دریافتی از معلمان";
-    } else if (user?.userType === "teacher") {
+    } else if (user?.userType === "teacher" && !isAdminTeacher) {
       return "آزمون‌های کلاس ها";
     } else {
       return "آزمون‌ها";
@@ -845,7 +882,7 @@ function StudentsPageContent() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle()}</h1>
 
-        {user?.userType === "teacher" && (
+        {user?.userType === "teacher" && !isAdminTeacher && (
           <div className="bg-blue-50 text-right border border-blue-200 rounded-md p-3 mb-4">
             <p className="text-sm text-blue-700">
               <span className="font-bold ml-1">توجه:</span>
@@ -960,7 +997,7 @@ function StudentsPageContent() {
             ]}
             initialFilter={{
               schoolCode: user?.schoolCode || "",
-              ...(user?.userType === "teacher"
+              ...(user?.userType === "teacher" && !isAdminTeacher
                 ? {
                     "examcreator": user.username,
                   }
