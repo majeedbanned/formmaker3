@@ -2,9 +2,46 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import AgendaView from "./components/AgendaView";
+import { useState, useEffect } from "react";
 
 export default function AgendaPage() {
   const { user, isLoading } = useAuth();
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -55,6 +92,7 @@ export default function AgendaPage() {
         schoolCode={user.schoolCode}
         userType={user.userType}
         teacherCode={user.username}
+        isAdminTeacher={isAdminTeacher}
       />
     </div>
   );

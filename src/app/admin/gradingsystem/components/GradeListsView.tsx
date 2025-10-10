@@ -42,6 +42,7 @@ interface GradeListsViewProps {
   userCode?: string;
   schoolCode: string;
   onEditGradeList: (gradeListData: any) => void;
+  isAdminTeacher?: boolean;
 }
 
 export function GradeListsView({
@@ -49,6 +50,7 @@ export function GradeListsView({
   userCode,
   schoolCode,
   onEditGradeList,
+  isAdminTeacher = false,
 }: GradeListsViewProps) {
   const router = useRouter();
   const [gradeLists, setGradeLists] = useState<any[]>([]);
@@ -66,7 +68,7 @@ export function GradeListsView({
 
   useEffect(() => {
     fetchGradeLists();
-  }, [userType, userCode, schoolCode]);
+  }, [userType, userCode, schoolCode, isAdminTeacher]);
 
   useEffect(() => {
     // Extract unique filter options from grade lists
@@ -91,9 +93,10 @@ export function GradeListsView({
     try {
       setLoading(true);
 
+      // Admin teachers don't pass teacherCode to see all grade lists
       const params = new URLSearchParams({
         schoolCode,
-        ...(userType === "teacher" && userCode && { teacherCode: userCode }),
+        ...(userType === "teacher" && !isAdminTeacher && userCode && { teacherCode: userCode }),
       });
 
       const response = await fetch(`/api/gradingsystem/grade-lists?${params}`);

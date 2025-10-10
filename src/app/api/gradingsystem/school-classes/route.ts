@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only teachers can access this endpoint
+    // School admins and teachers (including admin teachers) can access this endpoint
     if (user.userType !== "teacher" && user.userType !== "school") {
       return NextResponse.json(
         { error: "Access denied" },

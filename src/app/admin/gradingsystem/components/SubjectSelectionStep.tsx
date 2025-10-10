@@ -20,6 +20,7 @@ interface SubjectSelectionStepProps {
   userCode: string;
   userType: "teacher" | "school";
   schoolCode: string;
+  isAdminTeacher?: boolean;
 }
 
 export function SubjectSelectionStep({
@@ -29,6 +30,7 @@ export function SubjectSelectionStep({
   userCode,
   userType,
   schoolCode,
+  isAdminTeacher = false,
 }: SubjectSelectionStepProps) {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,15 +41,16 @@ export function SubjectSelectionStep({
     if (selectedClass) {
       fetchClassSubjects();
     }
-  }, [selectedClass, userCode, userType, schoolCode]);
+  }, [selectedClass, userCode, userType, schoolCode, isAdminTeacher]);
 
   const fetchClassSubjects = async () => {
     try {
       setLoading(true);
 
       // Different API endpoints based on user type
+      // Admin teachers use school endpoint to see all subjects
       const apiUrl =
-        userType === "school"
+        userType === "school" || isAdminTeacher
           ? `/api/gradingsystem/class-all-subjects?classCode=${selectedClass.data.classCode}&schoolCode=${schoolCode}`
           : `/api/gradingsystem/class-subjects?classCode=${selectedClass.data.classCode}&teacherCode=${userCode}&schoolCode=${schoolCode}`;
 

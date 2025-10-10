@@ -109,6 +109,7 @@ interface AgendaViewProps {
   schoolCode: string;
   userType: string;
   teacherCode?: string;
+  isAdminTeacher?: boolean;
 }
 
 interface DayWithEvents {
@@ -220,6 +221,7 @@ export default function AgendaView({
   schoolCode,
   userType,
   teacherCode,
+  isAdminTeacher = false,
 }: AgendaViewProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -273,7 +275,8 @@ export default function AgendaView({
       // Construct API endpoint based on user type
       let endpoint = "/api/events/events";
 
-      if (userType === "teacher" && teacherCode) {
+      // Admin teachers see all events like school users
+      if (userType === "teacher" && !isAdminTeacher && teacherCode) {
         endpoint = `/api/events/teacher/${teacherCode}`;
       } else if (userType === "student") {
         endpoint = "/api/events/student";
@@ -741,6 +744,11 @@ export default function AgendaView({
 
   // Get available classes for the selected teacher
   const availableClasses = useMemo(() => {
+    // Admin teachers and school users see all classes
+    if (userType === "school" || isAdminTeacher) {
+      return classes;
+    }
+
     const teacherToUse = selectedTeacher || teacherCode || "";
     if (!teacherToUse || !teacherClasses[teacherToUse]) {
       return [];
@@ -758,14 +766,14 @@ export default function AgendaView({
       );
       return classCodes.includes(classCode);
     });
-  }, [classes, teacherClasses, selectedTeacher, teacherCode]);
+  }, [classes, teacherClasses, selectedTeacher, teacherCode, userType, isAdminTeacher]);
 
   // Get available courses for the selected teacher and class
   const availableCourses = useMemo(() => {
     const teacherToUse = selectedTeacher || teacherCode || "";
     const selectedClass = formData.classCode;
 
-    if (!teacherToUse || !selectedClass) {
+    if (!selectedClass) {
       return [];
     }
 
@@ -781,6 +789,26 @@ export default function AgendaView({
 
     const classMajor = getDataProperty(selectedClassData, "major", "");
     const classGrade = getDataProperty(selectedClassData, "Grade", "");
+
+    // Admin teachers and school users see all courses for the class
+    if (userType === "school" || isAdminTeacher) {
+      return courses.filter((course) => {
+        const courseData = course.data || course;
+        const matchesMajor =
+          !classMajor ||
+          !getDataProperty(courseData, "major", "") ||
+          getDataProperty(courseData, "major", "") === classMajor;
+        const matchesGrade =
+          !classGrade ||
+          !getDataProperty(courseData, "Grade", "") ||
+          getDataProperty(courseData, "Grade", "") === classGrade;
+        return matchesMajor && matchesGrade;
+      });
+    }
+
+    if (!teacherToUse) {
+      return [];
+    }
 
     // If the teacher has specific courses in this class
     if (teacherClasses[teacherToUse]) {
@@ -843,6 +871,8 @@ export default function AgendaView({
     selectedTeacher,
     teacherCode,
     formData.classCode,
+    userType,
+    isAdminTeacher,
   ]);
   const toEnglishDigits = (str: string) =>
     str

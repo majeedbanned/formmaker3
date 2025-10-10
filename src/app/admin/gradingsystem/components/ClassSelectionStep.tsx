@@ -19,6 +19,7 @@ interface ClassSelectionStepProps {
   userCode: string;
   userType: "teacher" | "school";
   schoolCode: string;
+  isAdminTeacher?: boolean;
 }
 
 export function ClassSelectionStep({
@@ -27,6 +28,7 @@ export function ClassSelectionStep({
   userCode,
   userType,
   schoolCode,
+  isAdminTeacher = false,
 }: ClassSelectionStepProps) {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,15 +37,16 @@ export function ClassSelectionStep({
 
   useEffect(() => {
     fetchClasses();
-  }, [userCode, userType, schoolCode]);
+  }, [userCode, userType, schoolCode, isAdminTeacher]);
 
   const fetchClasses = async () => {
     try {
       setLoading(true);
 
       // Different API endpoints based on user type
+      // Admin teachers use school endpoint to see all classes
       const apiUrl =
-        userType === "school"
+        userType === "school" || isAdminTeacher
           ? `/api/gradingsystem/school-classes?schoolCode=${schoolCode}`
           : `/api/gradingsystem/teacher-classes?teacherCode=${userCode}&schoolCode=${schoolCode}`;
 

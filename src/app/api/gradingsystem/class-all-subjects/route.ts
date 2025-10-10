@@ -9,14 +9,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only school admins can access this endpoint (all subjects for a class)
-    if (user.userType !== "school") {
-      return NextResponse.json(
-        { error: "Access denied - Only school admins can view all class subjects" },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const classCode = searchParams.get("classCode");
     const schoolCode = searchParams.get("schoolCode");
@@ -41,6 +33,25 @@ export async function GET(request: NextRequest) {
     
     // Connect to the domain-specific database
     const connection = await connectToDatabase(domain);
+
+    // Check if teacher has admin access
+    let isAdminTeacher = false;
+    if (user.userType === "teacher" && user.username) {
+      const teachersCollection = connection.collection("teachers");
+      const currentTeacher = await teachersCollection.findOne({
+        "data.schoolCode": schoolCode,
+        "data.teacherCode": user.username
+      });
+      isAdminTeacher = currentTeacher?.data?.adminAccess === true;
+    }
+
+    // Only school admins and admin teachers can access this endpoint (all subjects for a class)
+    if (user.userType !== "school" && !isAdminTeacher) {
+      return NextResponse.json(
+        { error: "Access denied - Only school admins can view all class subjects" },
+        { status: 403 }
+      );
+    }
     
     // Find the specific class
     const classData = await connection

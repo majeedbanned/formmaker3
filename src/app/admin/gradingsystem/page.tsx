@@ -94,6 +94,43 @@ export default function GradingSystemPage() {
   });
   const [showWizard, setShowWizard] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
 
   // Keyboard shortcut for help panel (F1)
   useEffect(() => {
@@ -249,6 +286,7 @@ export default function GradingSystemPage() {
           userCode={user.userType === "teacher" ? user.username : undefined}
           schoolCode={user.schoolCode}
           onEditGradeList={startEditGrading}
+          isAdminTeacher={isAdminTeacher}
         />
 
         <HelpPanel
@@ -335,6 +373,7 @@ export default function GradingSystemPage() {
               userCode={user.username}
               userType={user.userType}
               schoolCode={user.schoolCode}
+              isAdminTeacher={isAdminTeacher}
             />
           )}
 
@@ -348,6 +387,7 @@ export default function GradingSystemPage() {
               userCode={user.username}
               userType={user.userType}
               schoolCode={user.schoolCode}
+              isAdminTeacher={isAdminTeacher}
             />
           )}
 
