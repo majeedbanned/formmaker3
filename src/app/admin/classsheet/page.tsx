@@ -46,15 +46,56 @@ export default function ClassSheetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
   const { user, isLoading } = useAuth();
 
-  // Get schoolCode and teacherCode from authenticated user
-  // If user is a teacher, use their ID as teacherCode
-  // If user is a school admin, they'll see all classes for the school
+  // Get schoolCode from authenticated user
   const schoolCode = user?.schoolCode;
-  const teacherCode = user?.userType === "teacher" ? user.username : undefined;
 
   console.log("user", user);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading, schoolCode]);
+
+  // Determine teacherCode based on user type and admin access
+  // Teachers with adminAccess should not have their teacherCode passed (so they see everything like school users)
+  const teacherCode = 
+    user?.userType === "teacher" && !isAdminTeacher ? user.username : undefined;
+
   useEffect(() => {
     const fetchClassData = async () => {
       if (isLoading) return; // Wait for auth to complete
@@ -118,7 +159,7 @@ export default function ClassSheetPage() {
     };
 
     fetchClassData();
-  }, [schoolCode, teacherCode, isLoading]);
+  }, [schoolCode, teacherCode, isLoading, isAdminTeacher]);
 
   // Help keyboard shortcut
   useEffect(() => {
@@ -190,8 +231,10 @@ export default function ClassSheetPage() {
           کلاسی یافت نشد
         </h3>
         <p className="text-yellow-600">
-          {user.userType === "teacher"
+          {user.userType === "teacher" && !isAdminTeacher
             ? "هیچ کلاسی برای شما یافت نشد."
+            : user.userType === "teacher" && isAdminTeacher
+            ? "هیچ کلاسی در مدرسه یافت نشد."
             : "هیچ کلاسی در مدرسه یافت نشد."}
         </p>
       </div>

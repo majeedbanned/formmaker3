@@ -189,6 +189,19 @@ export default function Home({
     },
 
     {
+      name: "adminAccess",
+      title: "دسترسی مدیریتی",
+      type: "checkbox",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      defaultValue: true,
+    },
+
+    {
       name: "birthDate",
       title: "تاریخ تولد",
       type: "datepicker",

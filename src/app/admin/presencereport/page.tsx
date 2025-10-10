@@ -48,10 +48,48 @@ export default function PresenceReportPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
   const { user, isLoading } = useAuth();
 
   // Get schoolCode from authenticated user
   const schoolCode = user?.schoolCode;
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading, schoolCode]);
 
   useEffect(() => {
     const fetchClassData = async () => {
@@ -118,8 +156,12 @@ export default function PresenceReportPage() {
   useEffect(() => {
     if (!user || !classDocuments.length) return;
 
-    // For teacher users, filter to only show their classes
-    if (user.userType === "teacher" && user.username) {
+    // For teacher users with adminAccess, show all classes (like school users)
+    if (user.userType === "teacher" && isAdminTeacher) {
+      setFilteredClassDocuments(classDocuments);
+    }
+    // For regular teacher users, filter to only show their classes
+    else if (user.userType === "teacher" && user.username) {
       const teacherClasses = classDocuments.filter((doc) =>
         doc.data.teachers.some(
           (teacher) => teacher.teacherCode === user.username
@@ -144,7 +186,7 @@ export default function PresenceReportPage() {
     else {
       setFilteredClassDocuments(classDocuments);
     }
-  }, [user, classDocuments]);
+  }, [user, classDocuments, isAdminTeacher]);
 
   if (isLoading || loading) {
     return (
@@ -194,8 +236,10 @@ export default function PresenceReportPage() {
           کلاسی یافت نشد
         </h3>
         <p className="text-yellow-600">
-          {user.userType === "teacher"
+          {user.userType === "teacher" && !isAdminTeacher
             ? "هیچ کلاسی برای شما یافت نشد."
+            : user.userType === "teacher" && isAdminTeacher
+            ? "هیچ کلاسی در مدرسه یافت نشد."
             : user.userType === "student"
             ? "شما در هیچ کلاسی ثبت نشده‌اید."
             : "هیچ کلاسی در مدرسه یافت نشد."}
@@ -204,8 +248,10 @@ export default function PresenceReportPage() {
     );
   }
 
-  // Pass teacherCode only if user is a teacher
-  const teacherCode = user.userType === "teacher" ? user.username : undefined;
+  // Pass teacherCode only if user is a teacher without adminAccess
+  // Teachers with adminAccess should not have their teacherCode passed (so they see everything like school users)
+  const teacherCode = 
+    user.userType === "teacher" && !isAdminTeacher ? user.username : undefined;
 
   return (
     <div className="p-4">
