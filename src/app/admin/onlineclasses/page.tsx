@@ -48,11 +48,48 @@ function StudentsPageContent() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   // Add state for student's teachers
   const [studentTeachers, setStudentTeachers] = useState<string[]>([]);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
 
   // Fetch teacher's classes when component mounts
   useEffect(() => {
     async function fetchTeacherClasses() {
-      if (user && user.userType === "teacher" && user.username) {
+      if (user && user.userType === "teacher" && !isAdminTeacher && user.username) {
         try {
           const response = await fetch(
             `/api/formbuilder/teacher-classes?teacherCode=${user.username}`,
@@ -94,7 +131,7 @@ function StudentsPageContent() {
     if (!isLoading && user) {
       fetchTeacherClasses();
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, isAdminTeacher]);
 
   // Update the student teachers useEffect to directly use the teacherCodes from the API response
   useEffect(() => {
@@ -230,9 +267,9 @@ function StudentsPageContent() {
                   valueField: "studentCode",
                   sortField: "studentCode",
                   sortOrder: "asc" as const,
-                  // For teachers, filter students who are in their classes
+                  // For regular teachers (not admin), filter students who are in their classes
                   filterQuery:
-                    user?.userType === "teacher" && teacherClasses.length > 0
+                    user?.userType === "teacher" && !isAdminTeacher && teacherClasses.length > 0
                       ? {
                           // Filter students where the classcode is in the teacher's classes
                           "classCode.value": { $in: teacherClasses },
@@ -248,7 +285,7 @@ function StudentsPageContent() {
               },
             ]
           : []),
-        ...(user?.userType !== "student" && user?.userType !== "teacher"
+        ...(user?.userType !== "student" && (user?.userType !== "teacher" || isAdminTeacher)
           ? [
               {
                 name: "groups",
@@ -292,7 +329,7 @@ function StudentsPageContent() {
                   sortField: "classCode",
                   sortOrder: "asc" as const,
                   filterQuery:
-                    user?.userType === "teacher" && teacherClasses.length > 0
+                    user?.userType === "teacher" && !isAdminTeacher && teacherClasses.length > 0
                       ? {
                           schoolCode: user?.schoolCode || "",
                           classCode: { $in: teacherClasses },
