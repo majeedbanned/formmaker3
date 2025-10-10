@@ -125,6 +125,7 @@ interface GradingSelectionStepProps {
   schoolCode: string;
   selectedGradings: SelectedGrading[];
   onGradingsSelect: (gradings: SelectedGrading[]) => void;
+  isAdminTeacher?: boolean;
 }
 
 type SortField =
@@ -144,6 +145,7 @@ export function GradingSelectionStep({
   schoolCode,
   selectedGradings,
   onGradingsSelect,
+  isAdminTeacher = false,
 }: GradingSelectionStepProps) {
   const [gradeLists, setGradeLists] = useState<GradeListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,7 +177,7 @@ export function GradingSelectionStep({
 
   useEffect(() => {
     fetchGradeLists();
-  }, [userType, userCode, schoolCode]);
+  }, [userType, userCode, schoolCode, isAdminTeacher]);
 
   useEffect(() => {
     // Extract unique filter options from grade lists
@@ -204,9 +206,10 @@ export function GradingSelectionStep({
     try {
       setLoading(true);
 
+      // Admin teachers don't pass teacherCode to see all grade lists
       const params = new URLSearchParams({
         schoolCode,
-        ...(userType === "teacher" && userCode && { teacherCode: userCode }),
+        ...(userType === "teacher" && !isAdminTeacher && userCode && { teacherCode: userCode }),
       });
 
       const response = await fetch(`/api/gradingsystem/grade-lists?${params}`);

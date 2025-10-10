@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -82,6 +82,7 @@ const STEPS = [
 export default function ReportCardCreatorPage() {
   const { user ,isLoading} = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
   const [reportData, setReportData] = useState<ReportCardData>({
     selectedGradings: [],
     reportTitle: "کارنامه دانش‌آموز",
@@ -94,6 +95,42 @@ export default function ReportCardCreatorPage() {
     schoolInfo: true,
     customFooter: "",
   });
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${user.schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading]);
 
   const nextStep = () => {
     if (currentStep < STEPS.length) {
@@ -261,6 +298,7 @@ export default function ReportCardCreatorPage() {
                 onGradingsSelect={(gradings) =>
                   setReportData({ ...reportData, selectedGradings: gradings })
                 }
+                isAdminTeacher={isAdminTeacher}
               />
             )}
 
