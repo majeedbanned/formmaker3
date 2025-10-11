@@ -116,9 +116,14 @@ export async function GET(request: NextRequest) {
     console.log("Connected to database:", dbName);
 
     try {
+      // Calculate today's date
+      const today = new Date();
+      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
       // Get today's Persian day name
       const todayPersianDay = getPersianDayName();
       console.log("Today's Persian day:", todayPersianDay);
+      console.log("Today's date:", date);
 
       // Find all classes where this teacher teaches
       const classes = await db.collection('classes').find({
@@ -152,6 +157,42 @@ export async function GET(request: NextRequest) {
           });
 
           for (const slot of todaySlots) {
+            // Get attendance statistics for this class/course/timeSlot today
+            const absentStudents: string[] = [];
+            const delayedStudents: string[] = [];
+
+            // Query classsheet records for today
+            const classheetRecords = await db.collection('classsheet').find({
+              classCode: classData.classCode,
+              courseCode: teacherCourse.courseCode,
+              teacherCode: decoded.username,
+              schoolCode: decoded.schoolCode,
+              date: date,
+              timeSlot: slot.timeSlot
+            }).toArray();
+
+            // Build a map of student presence status
+            const presenceMap = new Map();
+            classheetRecords.forEach((record: any) => {
+              if (record.presenceStatus) {
+                presenceMap.set(record.studentCode, record.presenceStatus);
+              }
+            });
+
+            // Check each student's presence status
+            if (classData.students && Array.isArray(classData.students)) {
+              classData.students.forEach((student: any) => {
+                const status = presenceMap.get(student.studentCode);
+                const studentName = `${student.studentName || ''} ${student.studentlname || ''}`.trim();
+                
+                if (status === 'absent') {
+                  absentStudents.push(studentName);
+                } else if (status === 'delayed') {
+                  delayedStudents.push(studentName);
+                }
+              });
+            }
+
             todaySchedule.push({
               classCode: classData.classCode,
               className: classData.className,
@@ -161,7 +202,9 @@ export async function GET(request: NextRequest) {
               day: slot.day,
               major: classData.major,
               grade: classData.Grade,
-              studentCount: classData.students?.length || 0
+              studentCount: classData.students?.length || 0,
+              absentStudents: absentStudents,
+              delayedStudents: delayedStudents
             });
           }
         }
