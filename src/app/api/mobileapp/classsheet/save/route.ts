@@ -3,6 +3,11 @@ import { MongoClient } from 'mongodb';
 import path from 'path';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
+import dayjs from 'dayjs';
+import jalaliday from 'jalaliday';
+
+// Initialize dayjs for Jalali dates
+dayjs.extend(jalaliday);
 
 // Load database configuration
 const getDatabaseConfig = () => {
@@ -38,9 +43,9 @@ interface JWTPayload {
   exp?: number;
 }
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    console.log("Mobile classsheet students request received");
+    console.log("Mobile classsheet save request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -64,35 +69,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Mobile classsheet students request for user:", decoded.userType, decoded.username);
+    console.log("Mobile save request for user:", decoded.userType, decoded.username);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
       return NextResponse.json(
-        { success: false, message: 'فقط معلمان می‌توانند لیست دانش‌آموزان را مشاهده کنند' },
+        { success: false, message: 'فقط معلمان می‌توانند اطلاعات را ثبت کنند' },
         { status: 403 }
       );
     }
 
-    // Get classCode, courseCode, and timeSlot from query parameters
-    const { searchParams } = new URL(request.url);
-    const classCode = searchParams.get('classCode');
-    const courseCode = searchParams.get('courseCode');
-    const timeSlot = searchParams.get('timeSlot');
+    // Get request body
+    const body = await request.json();
+    const { 
+      classCode, 
+      studentCode, 
+      courseCode, 
+      timeSlot, 
+      note, 
+      grades, 
+      presenceStatus, 
+      descriptiveStatus, 
+      assessments 
+    } = body;
 
-    if (!classCode || !courseCode || !timeSlot) {
+    // Validate required fields
+    if (!classCode || !studentCode || !courseCode || !timeSlot) {
       return NextResponse.json(
-        { success: false, message: 'کد کلاس، کد درس و زمان الزامی است' },
+        { success: false, message: 'تمام فیلدهای الزامی را پر کنید' },
         { status: 400 }
       );
     }
 
     // Calculate today's date on the server side to ensure consistency
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const date = `${year}-${month}-${day}`;
+    const now = new Date();
+    const date = dayjs(now).format('YYYY-MM-DD'); // Gregorian date for database key
+    const persianDate = dayjs(now).locale('fa').format('YYYY/MM/DD'); // Persian date with Persian digits: ۱۴۰۴/۰۷/۱۹
+    const persianMonthName = dayjs(now).locale('fa').format('MMMM'); // Persian month name: مهر
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -124,7 +137,7 @@ export async function GET(request: NextRequest) {
     console.log("Connected to database:", dbName);
 
     try {
-      // Find the class
+      // Verify teacher teaches this class
       const classDoc = await db.collection('classes').findOne({
         'data.classCode': classCode,
         'data.schoolCode': decoded.schoolCode
@@ -138,7 +151,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Verify teacher teaches this class with this course
       const teacherTeachesClass = classDoc.data.teachers.some(
         (t: any) => t.teacherCode === decoded.username && t.courseCode === courseCode
       );
@@ -151,64 +163,59 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Get students from the class data
-      const students = classDoc.data.students || [];
-
-      // Sort by studentlname (family name) then by studentName
-      const sortedStudents = students.sort((a: any, b: any) => {
-        const lnameCompare = (a.studentlname || '').localeCompare(b.studentlname || '', 'fa');
-        if (lnameCompare !== 0) return lnameCompare;
-        return (a.studentName || '').localeCompare(b.studentName || '', 'fa');
-      });
-
-      // Get all classsheet data for each student
-      const studentsWithData = await Promise.all(
-        sortedStudents.map(async (student: any) => {
-          const classsheetRecord = await db.collection('classsheet').findOne({
-            classCode: classCode,
-            studentCode: student.studentCode,
-            teacherCode: decoded.username,
-            courseCode: courseCode,
-            schoolCode: decoded.schoolCode,
-            date: date,
-            timeSlot: timeSlot
-          });
-
-          return {
-            studentCode: student.studentCode || '',
-            studentName: student.studentName || '',
-            studentlname: student.studentlname || '',
-            phone: student.phone || '',
-            presenceStatus: classsheetRecord?.presenceStatus || null,
-            note: classsheetRecord?.note || '',
-            grades: classsheetRecord?.grades || [],
-            descriptiveStatus: classsheetRecord?.descriptiveStatus || '',
-            assessments: classsheetRecord?.assessments || []
-          };
-        })
+      // Create or update the cell data
+      const result = await db.collection('classsheet').updateOne(
+        {
+          classCode: classCode,
+          studentCode: studentCode,
+          teacherCode: decoded.username,
+          courseCode: courseCode,
+          schoolCode: decoded.schoolCode,
+          date: date,
+          timeSlot: timeSlot,
+        },
+        {
+          $set: {
+            note: note || '',
+            grades: grades || [],
+            presenceStatus: presenceStatus || null,
+            descriptiveStatus: descriptiveStatus || '',
+            assessments: assessments || [],
+            persianDate: persianDate,
+            persianMonth: persianMonthName,
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+          },
+        },
+        { upsert: true }
       );
 
-      console.log("Found students:", studentsWithData.length);
+      await client.close();
+
+      console.log("Save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
 
       return NextResponse.json({
         success: true,
-        students: studentsWithData
+        message: 'اطلاعات با موفقیت ثبت شد',
+        upserted: result.upsertedCount > 0,
+        modified: result.modifiedCount > 0,
       });
 
     } catch (dbError) {
       console.error('Database error:', dbError);
+      await client.close();
       return NextResponse.json(
         { success: false, message: 'خطا در اتصال به پایگاه داده' },
         { status: 500 }
       );
-    } finally {
-      await client.close();
     }
 
   } catch (error) {
-    console.error('Error fetching class students:', error);
+    console.error('Error saving classsheet data:', error);
     return NextResponse.json(
-      { success: false, message: 'خطا در دریافت لیست دانش‌آموزان' },
+      { success: false, message: 'خطا در ثبت اطلاعات' },
       { status: 500 }
     );
   }
