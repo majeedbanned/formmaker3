@@ -76,7 +76,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check if a specific date is requested
+    const { searchParams } = new URL(request.url);
+    const requestedDate = searchParams.get('date'); // Expected format: YYYY-MM-DD
+
     console.log("Mobile classsheet request for user:", decoded.userType, decoded.username);
+    console.log("Requested date parameter:", requestedDate);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -116,14 +121,33 @@ export async function GET(request: NextRequest) {
     console.log("Connected to database:", dbName);
 
     try {
-      // Calculate today's date
-      const today = new Date();
-      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // Use requested date or today's date
+      let targetDate: Date;
+      let date: string;
       
-      // Get today's Persian day name
-      const todayPersianDay = getPersianDayName();
-      console.log("Today's Persian day:", todayPersianDay);
-      console.log("Today's date:", date);
+      if (requestedDate) {
+        // Parse the requested date (YYYY-MM-DD) - parse as local date to avoid timezone issues
+        const [year, month, day] = requestedDate.split('-').map(Number);
+        targetDate = new Date(year, month - 1, day);
+        date = requestedDate;
+      } else {
+        // Use today
+        targetDate = new Date();
+        date = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+      }
+      
+      // Get Persian day name for the target date
+      const getPersianDayNameForDate = (d: Date): string => {
+        const days = ['یکشنبه', 'دوشنبه', 'سه شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+        const jsDay = d.getDay();
+        const dayIndex = jsDay === 6 ? 6 : jsDay;
+        return days[dayIndex];
+      };
+      
+      const targetPersianDay = getPersianDayNameForDate(targetDate);
+      console.log("Target date:", date, "Persian day:", targetPersianDay);
+      console.log("Date object created:", targetDate.toString());
+      console.log("Day of week (JS):", targetDate.getDay());
 
       // Find all classes where this teacher teaches
       const classes = await db.collection('classes').find({
@@ -139,16 +163,24 @@ export async function GET(request: NextRequest) {
       for (const classDoc of classes) {
         const classData = classDoc.data;
         
+        console.log(`Processing class: ${classData.classCode} - ${classData.className}`);
+        
         // Find teacher's courses in this class
         const teacherCourses = classData.teachers.filter(
           (t: any) => t.teacherCode === decoded.username
         );
 
+        console.log(`Teacher courses in this class: ${teacherCourses.length}`);
+
         for (const teacherCourse of teacherCourses) {
-          // Filter schedule for today
-          const todaySlots = teacherCourse.weeklySchedule.filter(
-            (slot: any) => slot.day === todayPersianDay
+          console.log(`Checking course ${teacherCourse.courseCode}, weekly schedule:`, teacherCourse.weeklySchedule);
+          
+          // Filter schedule for target day
+          const daySlots = teacherCourse.weeklySchedule.filter(
+            (slot: any) => slot.day === targetPersianDay
           );
+
+          console.log(`Slots matching ${targetPersianDay}:`, daySlots.length, daySlots);
 
           // Get course information
           const courseDoc = await db.collection('courses').findOne({
@@ -156,7 +188,7 @@ export async function GET(request: NextRequest) {
             'data.courseCode': teacherCourse.courseCode
           });
 
-          for (const slot of todaySlots) {
+          for (const slot of daySlots) {
             // Get attendance statistics for this class/course/timeSlot today
             const absentStudents: string[] = [];
             const delayedStudents: string[] = [];
@@ -193,7 +225,7 @@ export async function GET(request: NextRequest) {
               });
             }
 
-            todaySchedule.push({
+            const scheduleItem = {
               classCode: classData.classCode,
               className: classData.className,
               courseCode: teacherCourse.courseCode,
@@ -205,7 +237,10 @@ export async function GET(request: NextRequest) {
               studentCount: classData.students?.length || 0,
               absentStudents: absentStudents,
               delayedStudents: delayedStudents
-            });
+            };
+            
+            console.log(`Adding schedule item:`, scheduleItem);
+            todaySchedule.push(scheduleItem);
           }
         }
       }
@@ -217,12 +252,14 @@ export async function GET(request: NextRequest) {
         return slotA - slotB;
       });
 
-      console.log("Today's schedule count:", todaySchedule.length);
+      console.log("Final schedule count:", todaySchedule.length);
+      console.log("Final schedule items:", JSON.stringify(todaySchedule, null, 2));
 
       return NextResponse.json({
         success: true,
         schedule: todaySchedule,
-        todayDay: todayPersianDay,
+        todayDay: targetPersianDay,
+        selectedDate: date,
         teacherCode: decoded.username
       });
 
