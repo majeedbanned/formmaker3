@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
     const classCode = searchParams.get('classCode');
     const courseCode = searchParams.get('courseCode');
     const timeSlot = searchParams.get('timeSlot');
+    const requestedDate = searchParams.get('date'); // Optional: specific date (YYYY-MM-DD)
 
     if (!classCode || !courseCode || !timeSlot) {
       return NextResponse.json(
@@ -87,12 +88,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calculate today's date on the server side to ensure consistency
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const date = `${year}-${month}-${day}`;
+      // Use requested date or calculate today's date
+      let date: string;
+      if (requestedDate) {
+        date = requestedDate;
+        console.log("Using requested date:", date);
+      } else {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        date = `${year}-${month}-${day}`;
+        console.log("Using today's date:", date);
+      }
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();

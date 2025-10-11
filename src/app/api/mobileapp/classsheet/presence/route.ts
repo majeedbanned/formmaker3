@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { classCode, studentCode, courseCode, timeSlot, presenceStatus } = body;
+    const { classCode, studentCode, courseCode, timeSlot, presenceStatus, date: requestedDate } = body;
 
     // Validate required fields
     if (!classCode || !studentCode || !courseCode || !timeSlot || !presenceStatus) {
@@ -165,18 +165,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate today's date on the server side to ensure consistency
-    const now = new Date();
-    const date = dayjs(now).format('YYYY-MM-DD'); // Gregorian date for database key
+    // Use requested date or calculate today's date
+    let date: string;
+    let workingDate: Date;
+    const now = new Date(); // For timestamps
+    
+    if (requestedDate) {
+      date = requestedDate;
+      const [year, month, day] = requestedDate.split('-').map(Number);
+      workingDate = new Date(year, month - 1, day);
+      console.log("Using requested date for presence:", date);
+    } else {
+      workingDate = new Date();
+      date = dayjs(workingDate).format('YYYY-MM-DD');
+      console.log("Using today's date for presence:", date);
+    }
     
     // Get Persian date with Persian digits
     const [jYear, jMonth, jDay] = gregorian_to_jalali(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      now.getDate()
+      workingDate.getFullYear(),
+      workingDate.getMonth() + 1,
+      workingDate.getDate()
     );
-    const persianDate = formatJalaliDate(now); // Persian date with Persian digits: ۱۴۰۴/۰۷/۱۹
-    const persianMonthName = getPersianMonthName(jMonth); // Persian month name: مهر
+    const persianDate = formatJalaliDate(workingDate); // Persian date with Persian digits
+    const persianMonthName = getPersianMonthName(jMonth); // Persian month name
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();

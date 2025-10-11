@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { classCode, courseCode, timeSlot, comment } = body;
+    const { classCode, courseCode, timeSlot, comment, date: requestedDate } = body;
 
     if (!classCode || !courseCode || !timeSlot) {
       return NextResponse.json(
@@ -221,9 +221,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate today's date on the server side
-    const now = new Date();
-    const date = dayjs(now).format('YYYY-MM-DD');
+    // Use requested date or calculate today's date
+    let date: string;
+    const now = new Date(); // For timestamps
+    
+    if (requestedDate) {
+      date = requestedDate;
+      console.log("Using requested date for comment:", date);
+    } else {
+      date = dayjs(now).format('YYYY-MM-DD');
+      console.log("Using today's date for comment:", date);
+    }
 
     const dbConfig: DatabaseConfig = getDatabaseConfig();
     const domainConfig = dbConfig[decoded.domain];

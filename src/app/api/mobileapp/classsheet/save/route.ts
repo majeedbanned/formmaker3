@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       grades, 
       presenceStatus, 
       descriptiveStatus, 
-      assessments 
+      assessments,
+      date: requestedDate
     } = body;
 
     // Validate required fields
@@ -101,11 +102,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate today's date on the server side to ensure consistency
-    const now = new Date();
-    const date = dayjs(now).format('YYYY-MM-DD'); // Gregorian date for database key
-    const persianDate = dayjs(now).locale('fa').format('YYYY/MM/DD'); // Persian date with Persian digits: ۱۴۰۴/۰۷/۱۹
-    const persianMonthName = dayjs(now).locale('fa').format('MMMM'); // Persian month name: مهر
+    // Use requested date or calculate today's date
+    let date: string;
+    let workingDate: Date;
+    
+    if (requestedDate) {
+      date = requestedDate;
+      const [year, month, day] = requestedDate.split('-').map(Number);
+      workingDate = new Date(year, month - 1, day);
+      console.log("Using requested date for save:", date);
+    } else {
+      workingDate = new Date();
+      date = dayjs(workingDate).format('YYYY-MM-DD');
+      console.log("Using today's date for save:", date);
+    }
+    
+    const persianDate = dayjs(workingDate).locale('fa').format('YYYY/MM/DD'); // Persian date with Persian digits
+    const persianMonthName = dayjs(workingDate).locale('fa').format('MMMM'); // Persian month name
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();

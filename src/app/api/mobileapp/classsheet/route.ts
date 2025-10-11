@@ -126,9 +126,8 @@ export async function GET(request: NextRequest) {
       let date: string;
       
       if (requestedDate) {
-        // Parse the requested date (YYYY-MM-DD) - parse as local date to avoid timezone issues
-        const [year, month, day] = requestedDate.split('-').map(Number);
-        targetDate = new Date(year, month - 1, day);
+        // Parse the requested date (YYYY-MM-DD)
+        targetDate = new Date(requestedDate);
         date = requestedDate;
       } else {
         // Use today
@@ -146,8 +145,6 @@ export async function GET(request: NextRequest) {
       
       const targetPersianDay = getPersianDayNameForDate(targetDate);
       console.log("Target date:", date, "Persian day:", targetPersianDay);
-      console.log("Date object created:", targetDate.toString());
-      console.log("Day of week (JS):", targetDate.getDay());
 
       // Find all classes where this teacher teaches
       const classes = await db.collection('classes').find({
