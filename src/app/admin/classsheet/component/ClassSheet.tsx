@@ -31,9 +31,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 // Import required chart libraries
 import {
@@ -330,6 +344,7 @@ const ClassSheet = ({
   const [selectedOption, setSelectedOption] = useState<
     (CourseOption & { classIndex: number }) | undefined
   >(undefined);
+  const [courseSelectOpen, setCourseSelectOpen] = useState(false);
   const [startDate, setStartDate] = useState<Value>(defaultStart);
   const [endDate, setEndDate] = useState<Value>(defaultEnd);
 
@@ -2214,28 +2229,63 @@ const ClassSheet = ({
           >
             انتخاب معلم-درس:
           </label>
-          <select
-            id="course-select"
-            value={selectedOption?.value}
-            onChange={handleSelectChange}
-            className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-          >
-            {courseOptions.map((option) => {
-              // Debug the option to see what's being displayed
-              console.log(
-                `Rendering option: ${option.value}, label: ${
-                  option.label
-                }, course: ${option.courseCode} -> ${
-                  coursesInfo[option.courseCode] || "not found"
-                }`
-              );
-              return (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              );
-            })}
-          </select>
+          <Popover open={courseSelectOpen} onOpenChange={setCourseSelectOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={courseSelectOpen}
+                className="w-full justify-between text-sm h-auto py-2 px-3"
+              >
+                {selectedOption
+                  ? selectedOption.label
+                  : "انتخاب معلم-درس..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0" align="start">
+              <Command>
+                <CommandInput
+                  placeholder="جستجوی معلم یا درس..."
+                  className="h-9"
+                />
+                <CommandList>
+                  <CommandEmpty>موردی یافت نشد.</CommandEmpty>
+                  <CommandGroup>
+                    {courseOptions.map((option) => (
+                      <CommandItem
+                        key={option.value}
+                        value={option.label}
+                        keywords={[
+                          option.className || "",
+                          option.courseCode,
+                          option.teacherCode,
+                          coursesInfo[option.courseCode] || "",
+                          teachersInfo[option.teacherCode] || "",
+                        ]}
+                        onSelect={() => {
+                          setSelectedOption(option);
+                          handleSelectChange({
+                            target: { value: option.value },
+                          } as React.ChangeEvent<HTMLSelectElement>);
+                          setCourseSelectOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={`ml-2 h-4 w-4 ${
+                            selectedOption?.value === option.value
+                              ? "opacity-100"
+                              : "opacity-0"
+                          }`}
+                        />
+                        {option.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Date Range Section */}
