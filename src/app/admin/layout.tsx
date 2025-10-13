@@ -14,6 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import type { Metadata } from "next";
 import { vazirmatn } from "@/lib/fonts";
 import "./../globals.css";
@@ -35,9 +36,12 @@ export default function RootLayout({
           {/* <AppSidebar /> */}
           <SidebarInset>
             <header
-              style={{ justifyContent: "end" }}
+              style={{ justifyContent: "space-between" }}
               className=" flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12"
             >
+                 <div className="flex items-center gap-2 px-4">
+                <FeedbackButton variant="inline" />
+              </div>
               <div
                 style={{ direction: "rtl" }}
                 className="flex items-center gap-2 px-4 "
@@ -60,6 +64,7 @@ export default function RootLayout({
                   </BreadcrumbList>
                 </Breadcrumb>
               </div>
+           
             </header>
             <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
               {/* <div className="grid auto-rows-min gap-4 md:grid-cols-3">

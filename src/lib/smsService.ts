@@ -268,5 +268,22 @@ export const smsApi = {
       Password: credentials.password,
       MessageID: messageId
     }) as Promise<string | null>;
+  },
+  
+  // Send administrative SMS with hardcoded credentials (for system notifications)
+  sendAdminSMS: async (fromNumber: string, toNumbers: string[], content: string): Promise<string[] | null> => {
+    const adminCredentials: SmsCredentials = {
+      username: 'majeedbanned',
+      password: '6323905'
+    };
+    
+    return makeSoapRequest('SendSMS', {
+      fromNum: fromNumber,
+      toNum: toNumbers,
+      Content: content,
+      Type: '1', // 1 for normal SMS
+      Username: adminCredentials.username,
+      Password: adminCredentials.password
+    }) as Promise<string[] | null>;
   }
 }; 
