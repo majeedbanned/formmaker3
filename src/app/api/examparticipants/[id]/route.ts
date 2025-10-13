@@ -70,11 +70,29 @@ export async function GET(
     const participantsWithUserInfo = await Promise.all(
       participants.map(async (participant) => {
         try {
-          const userInfo = await usersCollection.findOne({ _id: new ObjectId(participant.userId) });
+          // Try to find by ObjectId first
+          let userInfo = null;
+          try {
+            userInfo = await usersCollection.findOne({ _id: new ObjectId(participant.userId) });
+          } catch {
+            // If userId is not a valid ObjectId, try to find by studentCode
+            userInfo = await usersCollection.findOne({ 
+              "data.studentCode": participant.userId,
+              "data.schoolCode": schoolCode
+            });
+          }
+          
+          // Extract name and family from the data object
+          let fullName = participant.userId;
+          if (userInfo && userInfo.data) {
+            const firstName = userInfo.data.studentName || "";
+            const lastName = userInfo.data.studentFamily || "";
+            fullName = `${firstName} ${lastName}`.trim() || participant.userId;
+          }
           
           return {
             ...participant,
-            userName: userInfo ? (userInfo.studentName || userInfo.studentFamily) : participant.userId
+            userName: fullName
           };
         } catch (error) {
           console.error(`Error fetching user info for ${participant.userId}:`, error);
