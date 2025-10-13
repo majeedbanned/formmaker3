@@ -21,15 +21,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { Survey } from "../../surveys/types/survey";
 
 export default function SurveyWidget() {
-  const { user } = useAuth();
+  const { user, isLoading: userLoading } = useAuth();
   const { surveys, loading, error } = useSurveys();
+
+  // Don't render surveys until user data is loaded to prevent flash of unauthorized content
+  const isInitializing = userLoading || !user;
 
   // Filter surveys based on user type
   const availableSurveys = surveys.filter((survey) => {
-    if (user?.userType === "student") {
+    // If user is not loaded yet, return empty array
+    if (!user) {
+      return false;
+    }
+    
+    if (user.userType === "student") {
       // Students see surveys they can participate in
       return survey.status === "active" && survey.canParticipate;
-    } else if (user?.userType === "teacher") {
+    } else if (user.userType === "teacher") {
       // Teachers see surveys they can participate in (not created by them)
       return (
         survey.status === "active" &&
@@ -72,7 +80,8 @@ export default function SurveyWidget() {
     return new Date(date).toLocaleDateString("fa-IR");
   };
 
-  if (loading) {
+  // Show loading state while user or surveys are loading
+  if (loading || isInitializing) {
     return (
       <Card className="w-full">
         <CardHeader className="pb-4">
@@ -111,6 +120,11 @@ export default function SurveyWidget() {
     );
   }
 
+  // Safety check - this should never happen due to isInitializing check above
+  if (!user) {
+    return null;
+  }
+
   if (recentSurveys.length === 0) {
     return (
       <Card className="w-full">
@@ -120,7 +134,7 @@ export default function SurveyWidget() {
               <FileText className="h-5 w-5 ml-2 text-blue-600" />
               نظرسنجی‌های در دسترس
             </CardTitle>
-            {user?.userType !== "student" && (
+            {user.userType !== "student" && (
               <Link href="/admin/surveys/create">
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
                   <Plus className="h-4 w-4 ml-1" />
@@ -139,7 +153,7 @@ export default function SurveyWidget() {
               نظرسنجی‌ای در دسترس نیست
             </h3>
             <p className="text-gray-600 mb-4">
-              {user?.userType === "student"
+              {user.userType === "student"
                 ? "در حال حاضر نظرسنجی‌ای برای شما تعریف نشده است"
                 : "نظرسنجی‌ای برای شرکت در دسترس نیست"}
             </p>

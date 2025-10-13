@@ -38,16 +38,20 @@ import { surveysHelpSections } from "./SurveysHelpContent";
 
 export default function SurveysPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: userLoading } = useAuth();
   const { surveys, loading, error, deleteSurvey, duplicateSurvey } =
     useSurveys();
   const [searchTerm, setSearchTerm] = useState("");
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const [isAdminTeacher, setIsAdminTeacher] = useState(false);
 
+  // Don't render surveys until user data is loaded to prevent flash of unauthorized content
+  const isInitializing = userLoading || !user;
+
   // Check if teacher has adminAccess
   useEffect(() => {
     const checkTeacherAdminAccess = async () => {
+      if (userLoading) return; // Wait for user to load
       if (!user || user.userType !== "teacher" || !user.username) {
         setIsAdminTeacher(false);
         return;
@@ -79,7 +83,7 @@ export default function SurveysPage() {
     };
 
     checkTeacherAdminAccess();
-  }, [user]);
+  }, [user, userLoading]);
 
   // Keyboard shortcut for help panel (F1)
   useEffect(() => {
@@ -102,13 +106,14 @@ export default function SurveysPage() {
 
   // For regular teachers (not admin), separate created surveys from participable surveys
   // Admin teachers see all surveys like school users
+  // Only filter if user is loaded
   const createdSurveys =
-    user?.userType === "teacher" && !isAdminTeacher
+    user && user.userType === "teacher" && !isAdminTeacher
       ? filteredSurveys.filter((survey) => survey.creatorId === user.id)
       : filteredSurveys;
 
   const participableSurveys =
-    user?.userType === "teacher" && !isAdminTeacher
+    user && user.userType === "teacher" && !isAdminTeacher
       ? filteredSurveys.filter(
           (survey) => survey.creatorId !== user.id && survey.status === "active"
         )
@@ -123,7 +128,7 @@ export default function SurveysPage() {
   };
 
   const handleViewResponses = (surveyId: string) => {
-    if (user?.userType === "student") {
+    if (user && user.userType === "student") {
       router.push(`/admin/surveys/answer/${surveyId}`);
     } else {
       router.push(`/admin/surveys/responses/${surveyId}`);
@@ -201,7 +206,8 @@ export default function SurveysPage() {
     return user?.userType === "student" ? "پاسخ دادن" : "شرکت در نظرسنجی";
   };
 
-  if (loading) {
+  // Show loading state while user or surveys are loading
+  if (loading || isInitializing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="flex h-screen items-center justify-center">
@@ -242,6 +248,11 @@ export default function SurveysPage() {
     );
   }
 
+  // Safety check - this should never happen due to isInitializing check above
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br">
       <div className="container mx-auto px-4 py-8" dir="rtl">
@@ -253,9 +264,9 @@ export default function SurveysPage() {
                 نظرسنجی‌ها
               </h1>
               <p className="text-lg text-gray-600">
-                {user?.userType === "student"
+                {user.userType === "student"
                   ? "نظرسنجی‌های در دسترس برای شما"
-                  : user?.userType === "teacher" && !isAdminTeacher
+                  : user.userType === "teacher" && !isAdminTeacher
                   ? "نظرسنجی‌های خود را مدیریت کنید"
                   : "نظرسنجی‌های مدرسه را مدیریت کنید"}
               </p>
@@ -270,7 +281,7 @@ export default function SurveysPage() {
                 <HelpCircle className="h-4 w-4" />
                 راهنما
               </Button>
-              {user?.userType !== "student" && (
+              {user.userType !== "student" && (
                 <Button
                   onClick={handleCreateSurvey}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
@@ -356,7 +367,7 @@ export default function SurveysPage() {
         </div>
 
         {/* Surveys Grid */}
-        {user?.userType === "teacher" && !isAdminTeacher ? (
+        {user.userType === "teacher" && !isAdminTeacher ? (
           <div className="space-y-12">
             {/* Created Surveys Section */}
             <div>
@@ -626,7 +637,7 @@ export default function SurveysPage() {
               </div>
             )}
           </div>
-        ) : user?.userType === "student" ? (
+        ) : user.userType === "student" ? (
           // Student view - only participable surveys
           filteredSurveys.length === 0 ? (
             <Card className="border-2 border-dashed border-blue-300 hover:border-blue-400 transition-colors duration-300">

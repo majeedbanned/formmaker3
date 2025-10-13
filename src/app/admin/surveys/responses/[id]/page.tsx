@@ -117,6 +117,81 @@ export default function SurveyResponsesPage() {
     return new Date(date).toLocaleDateString("fa-IR");
   };
 
+  const handleDownloadReport = () => {
+    if (!survey || !responses || responses.length === 0) {
+      alert("هیچ پاسخی برای دانلود وجود ندارد");
+      return;
+    }
+
+    try {
+      // Prepare CSV data
+      const headers = ["شماره", "تاریخ پاسخ", "نوع کاربر", "نام کاربر"];
+      
+      // Add question headers
+      survey.questions.forEach((q, index) => {
+        headers.push(`سوال ${index + 1}: ${q.text}`);
+      });
+
+      let csv = headers.join(",") + "\n";
+
+      // Add response rows
+      responses.forEach((response, responseIndex) => {
+        const row = [
+          responseIndex + 1,
+          formatDate(response.createdAt || new Date()),
+          response.responderType || "نامشخص",
+          response.responderName || response.responderId || "ناشناس",
+        ];
+
+        // Add answers for each question
+        survey.questions.forEach((question, qIndex) => {
+          const answer = response.responses.find(
+            (r) => r.questionId === (question.id || qIndex)
+          );
+
+          if (!answer || answer.answer === null || answer.answer === undefined) {
+            row.push("");
+          } else if (Array.isArray(answer.answer)) {
+            row.push(`"${answer.answer.join(", ")}"`);
+          } else if (typeof answer.answer === "object") {
+            row.push(`"${JSON.stringify(answer.answer)}"`);
+          } else {
+            const answerStr = String(answer.answer);
+            // Escape quotes and wrap in quotes if contains comma
+            row.push(answerStr.includes(",") ? `"${answerStr.replace(/"/g, '""')}"` : answerStr);
+          }
+        });
+
+        csv += row.join(",") + "\n";
+      });
+
+      // Add statistics summary at the end
+      csv += "\n\nخلاصه آماری\n";
+      csv += `کل پاسخ‌ها,${statistics?.totalResponses || 0}\n`;
+      csv += `مخاطبان هدف,${statistics?.totalTargets || 0}\n`;
+      csv += `نرخ مشارکت,${Math.round(statistics?.participationRate || 0)}%\n`;
+      csv += `میانگین تکمیل,${Math.round(statistics?.avgCompletionRate || 0)}%\n`;
+
+      // Create and download the file
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `survey-report-${survey.title}-${Date.now()}.csv`);
+      link.style.visibility = "hidden";
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("خطا در ایجاد گزارش. لطفاً دوباره تلاش کنید.");
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
@@ -286,7 +361,9 @@ export default function SurveyResponsesPage() {
               <Button
                 variant="outline"
                 size="lg"
-                className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 hover:bg-green-100"
+                onClick={handleDownloadReport}
+                disabled={!responses || responses.length === 0}
+                className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="h-5 w-5 ml-2" />
                 دانلود گزارش
