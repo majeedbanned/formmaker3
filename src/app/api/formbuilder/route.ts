@@ -155,6 +155,43 @@ export async function GET(request: NextRequest) {
 // Create a new form
 export async function POST(request: NextRequest) {
   try {
+    // Get current authenticated user
+    const user = await getCurrentUser();
+    
+    // Check authorization: Only school admins and admin teachers can create forms
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', errorFa: 'دسترسی غیرمجاز' },
+        { status: 401 }
+      );
+    }
+    
+    // Check if user is authorized to create forms
+    let isAuthorized = false;
+    if (user.userType === 'school') {
+      isAuthorized = true;
+    } else if (user.userType === 'teacher') {
+      // Check if teacher has admin access
+      const domain = request.headers.get('x-domain') || 'localhost:3000';
+      const connection = await connectToDatabase(domain);
+      const teachersCollection = connection.collection('teachers');
+      const teacherData = await teachersCollection.findOne({
+        'data.teacherCode': user.username,
+        'data.schoolCode': user.schoolCode
+      });
+      
+      if (teacherData && teacherData.data && teacherData.data.adminAccess === true) {
+        isAuthorized = true;
+      }
+    }
+    
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have permission to create forms', errorFa: 'شما اجازه ایجاد فرم را ندارید' },
+        { status: 403 }
+      );
+    }
+    
     // Parse request body
     const formData = await request.json();
     

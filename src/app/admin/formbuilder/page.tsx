@@ -166,11 +166,14 @@ export default function FormBuilderPage() {
     );
   }
 
+  // Check if user can create forms (only school admins and admin teachers)
+  const canCreateForms = user?.userType === "school" || (user?.userType === "teacher" && isAdminTeacher);
+
   return (
     <div className="container mx-auto  py-8 rtl">
       <PageHeader
         title="فرم ساز"
-        subtitle="ایجاد و ویرایش فرم‌های آموزشی"
+        subtitle={canCreateForms ? "ایجاد و ویرایش فرم‌های آموزشی" : "مشاهده و تکمیل فرم‌های آموزشی"}
         icon={<AcademicCapIcon className="w-6 h-6" />}
         gradient={true}
       />
@@ -186,13 +189,15 @@ export default function FormBuilderPage() {
             <HelpCircle className="h-4 w-4" />
             راهنما
           </Button>
-          <Button
-            onClick={handleCreateForm}
-            className="flex items-center gap-2"
-          >
-            <PlusCircle className="h-4 w-4 ml-2" />
-            ایجاد فرم جدید
-          </Button>
+          {canCreateForms && (
+            <Button
+              onClick={handleCreateForm}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4 ml-2" />
+              ایجاد فرم جدید
+            </Button>
+          )}
         </div>
       </div>
 
@@ -201,41 +206,54 @@ export default function FormBuilderPage() {
         onValueChange={setActiveTab}
         className="w-full text-right"
       >
-        <TabsList className="grid w-full grid-cols-3 ">
-          <TabsTrigger value="preview" disabled={!editingForm}>
-            پیش‌نمایش
-          </TabsTrigger>
-          <TabsTrigger value="editor" disabled={!editingForm}>
-            ویرایشگر فرم
-          </TabsTrigger>
-          <TabsTrigger value="list">فرم‌های من</TabsTrigger>
-        </TabsList>
+        {canCreateForms ? (
+          <TabsList className="grid w-full grid-cols-3 ">
+            <TabsTrigger value="preview" disabled={!editingForm}>
+              پیش‌نمایش
+            </TabsTrigger>
+            <TabsTrigger value="editor" disabled={!editingForm}>
+              ویرایشگر فرم
+            </TabsTrigger>
+            <TabsTrigger value="list">فرم‌های من</TabsTrigger>
+          </TabsList>
+        ) : (
+          <TabsList className="grid w-full grid-cols-1 ">
+            <TabsTrigger value="list">فرم‌های موجود</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="list" className="mt-6">
           <FormBuilderList
             onEdit={handleEditForm}
             onPreview={handlePreviewForm}
+            canManageForms={canCreateForms}
+            userType={user?.userType}
+            isAdminTeacher={isAdminTeacher}
           />
         </TabsContent>
 
-        <TabsContent value="editor" className="mt-6">
-          {editingForm && (
-            <FormBuilderEditor
-              form={editingForm}
-              onSave={handleSaveForm}
-              onCancel={handleCancelEdit}
-            />
-          )}
-        </TabsContent>
+        {canCreateForms && (
+          <>
+            <TabsContent value="editor" className="mt-6">
+              {editingForm && (
+                <FormBuilderEditor
+                  form={editingForm}
+                  onSave={handleSaveForm}
+                  onCancel={handleCancelEdit}
+                />
+              )}
+            </TabsContent>
 
-        <TabsContent value="preview" className="mt-6">
-          {editingForm && (
-            <FormPreview
-              form={editingForm}
-              onBack={() => setActiveTab("editor")}
-            />
-          )}
-        </TabsContent>
+            <TabsContent value="preview" className="mt-6">
+              {editingForm && (
+                <FormPreview
+                  form={editingForm}
+                  onBack={() => setActiveTab("editor")}
+                />
+              )}
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       <HelpPanel

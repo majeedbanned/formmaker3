@@ -161,11 +161,17 @@ export interface FormField {
 interface FormBuilderListProps {
   onEdit: (form: FormSchema) => void;
   onPreview: (form: FormSchema) => void;
+  canManageForms?: boolean;
+  userType?: string;
+  isAdminTeacher?: boolean;
 }
 
 export default function FormBuilderList({
   onEdit,
   onPreview,
+  canManageForms = false,
+  userType,
+  isAdminTeacher = false,
 }: FormBuilderListProps) {
   const [forms, setForms] = useState<FormSchema[]>([]);
   const [loading, setLoading] = useState(true);
@@ -795,8 +801,8 @@ export default function FormBuilderList({
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
-                            {/* Show only "مشاهده مستقل فرم" for students */}
-                            {user?.userType === "student" ? (
+                            {/* Show only "مشاهده مستقل فرم" for students and non-admin teachers */}
+                            {!canManageForms ? (
                               <DropdownMenuItem asChild>
                                 <Link
                                   className="flex items-center cursor-pointer hover:bg-gray-50"
@@ -804,11 +810,11 @@ export default function FormBuilderList({
                                   href={`/admin/formbuilder/view?id=${form._id}`}
                                 >
                                   <ExternalLink className="h-4 w-4 ml-2 text-green-500" />
-                                  <span>مشاهده مستقل فرم</span>
+                                  <span>تکمیل فرم</span>
                                 </Link>
                               </DropdownMenuItem>
                             ) : (
-                              // Show all options for teachers and school admins
+                              // Show all options for school admins and admin teachers
                               <>
                                 <DropdownMenuItem
                                   onClick={() => onEdit(form)}

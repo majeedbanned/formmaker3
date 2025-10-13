@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { logger } from '@/lib/logger';
+import { getCurrentUser } from '@/app/api/chatbot7/config/route';
 
 // Get a specific form by ID
 export async function GET(
@@ -68,10 +69,47 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const formData = await request.json();
+    
+    // Get current authenticated user
+    const user = await getCurrentUser();
+    
+    // Check authorization: Only school admins and admin teachers can update forms
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', errorFa: 'دسترسی غیرمجاز' },
+        { status: 401 }
+      );
+    }
     
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
+    
+    // Check if user is authorized to update forms
+    let isAuthorized = false;
+    if (user.userType === 'school') {
+      isAuthorized = true;
+    } else if (user.userType === 'teacher') {
+      // Check if teacher has admin access
+      const connection = await connectToDatabase(domain);
+      const teachersCollection = connection.collection('teachers');
+      const teacherData = await teachersCollection.findOne({
+        'data.teacherCode': user.username,
+        'data.schoolCode': user.schoolCode
+      });
+      
+      if (teacherData && teacherData.data && teacherData.data.adminAccess === true) {
+        isAuthorized = true;
+      }
+    }
+    
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have permission to update forms', errorFa: 'شما اجازه ویرایش فرم را ندارید' },
+        { status: 403 }
+      );
+    }
+    
+    const formData = await request.json();
     
     if (!id) {
       logger.warn(`Missing form ID in update request for domain: ${domain}`);
@@ -174,8 +212,44 @@ export async function DELETE(
   try {
     const id = params.id;
     
+    // Get current authenticated user
+    const user = await getCurrentUser();
+    
+    // Check authorization: Only school admins and admin teachers can delete forms
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', errorFa: 'دسترسی غیرمجاز' },
+        { status: 401 }
+      );
+    }
+    
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
+    
+    // Check if user is authorized to delete forms
+    let isAuthorized = false;
+    if (user.userType === 'school') {
+      isAuthorized = true;
+    } else if (user.userType === 'teacher') {
+      // Check if teacher has admin access
+      const connection = await connectToDatabase(domain);
+      const teachersCollection = connection.collection('teachers');
+      const teacherData = await teachersCollection.findOne({
+        'data.teacherCode': user.username,
+        'data.schoolCode': user.schoolCode
+      });
+      
+      if (teacherData && teacherData.data && teacherData.data.adminAccess === true) {
+        isAuthorized = true;
+      }
+    }
+    
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have permission to delete forms', errorFa: 'شما اجازه حذف فرم را ندارید' },
+        { status: 403 }
+      );
+    }
     
     if (!id) {
       logger.warn(`Missing form ID in delete request for domain: ${domain}`);
