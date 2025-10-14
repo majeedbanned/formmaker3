@@ -244,6 +244,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hideSchoolCode, setHideSchoolCode] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -254,6 +255,15 @@ function LoginForm() {
       password: "",
     },
   });
+
+  // Check for sc query parameter and populate schoolCode field
+  useEffect(() => {
+    const scParam = searchParams.get("sc");
+    if (scParam) {
+      form.setValue("schoolCode", scParam);
+      setHideSchoolCode(true);
+    }
+  }, [searchParams, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -404,33 +414,35 @@ function LoginForm() {
                   />
 
                   {/* School code field */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <FormField
-                      control={form.control}
-                      name="schoolCode"
-                      render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-white font-semibold">
-                            کد مدرسه
-                          </FormLabel>
-                          <FormControl>
-                            <EnhancedInput
-                              icon={<School className="h-4 w-4" />}
-                              dir="ltr"
-                              className="text-center h-12"
-                              placeholder="کد مدرسه خود را وارد کنید"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-red-300" />
-                        </FormItem>
-                      )}
-                    />
-                  </motion.div>
+                  {!hideSchoolCode && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      <FormField
+                        control={form.control}
+                        name="schoolCode"
+                        render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <FormLabel className="text-white font-semibold">
+                              کد مدرسه
+                            </FormLabel>
+                            <FormControl>
+                              <EnhancedInput
+                                icon={<School className="h-4 w-4" />}
+                                dir="ltr"
+                                className="text-center h-12"
+                                placeholder="کد مدرسه خود را وارد کنید"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-red-300" />
+                          </FormItem>
+                        )}
+                      />
+                    </motion.div>
+                  )}
 
                   {/* Username field */}
                   <motion.div

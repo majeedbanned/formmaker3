@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if record exists  edfef
+      // Check if record exists
       const existingRecord = await db.collection('classsheet').findOne({
         classCode: classCode,
         studentCode: studentCode,
