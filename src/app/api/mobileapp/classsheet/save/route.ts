@@ -9,6 +9,72 @@ import jalaliday from 'jalaliday';
 // Initialize dayjs for Jalali dates
 dayjs.extend(jalaliday);
 
+// Helper function: Convert Gregorian to Jalali
+function gregorian_to_jalali(gy: number, gm: number, gd: number): [number, number, number] {
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let jy = gy <= 1600 ? 0 : 979;
+  gy = gy <= 1600 ? gy - 621 : gy - 1600;
+  const gy2 = gm > 2 ? gy + 1 : gy;
+  let days =
+    365 * gy +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400) -
+    80 +
+    gd +
+    g_d_m[gm - 1];
+  jy += 33 * Math.floor(days / 12053);
+  days %= 12053;
+  jy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  jy += Math.floor((days - 1) / 365);
+  if (days > 0) days = (days - 1) % 365;
+  const jm =
+    days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+  const jd = days < 186 ? (days % 31) + 1 : ((days - 186) % 30) + 1;
+  return [jy, jm, jd];
+}
+
+// Helper function: Convert numbers to Persian digits
+function toPersianDigits(num: number | string): string {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  return String(num)
+    .split('')
+    .map((digit) => persianDigits[parseInt(digit, 10)] || digit)
+    .join('');
+}
+
+// Helper function: Convert a Date object to a formatted Jalali date string
+function formatJalaliDate(date: Date): string {
+  const gy = date.getFullYear();
+  const gm = date.getMonth() + 1;
+  const gd = date.getDate();
+  const [jy, jm, jd] = gregorian_to_jalali(gy, gm, gd);
+  const jYear = toPersianDigits(jy);
+  const jMonth = toPersianDigits(jm.toString().padStart(2, '0'));
+  const jDay = toPersianDigits(jd.toString().padStart(2, '0'));
+  return `${jYear}/${jMonth}/${jDay}`;
+}
+
+// Helper function: Get Persian month name
+function getPersianMonthName(month: number): string {
+  const persianMonths = [
+    'فروردین',
+    'اردیبهشت',
+    'خرداد',
+    'تیر',
+    'مرداد',
+    'شهریور',
+    'مهر',
+    'آبان',
+    'آذر',
+    'دی',
+    'بهمن',
+    'اسفند',
+  ];
+  return persianMonths[month - 1];
+}
+
 // Load database configuration
 const getDatabaseConfig = () => {
   try {
@@ -46,6 +112,8 @@ interface JWTPayload {
 export async function POST(request: NextRequest) {
   try {
     console.log("Mobile classsheet save request received");
+    
+    const now = new Date();
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -117,8 +185,14 @@ export async function POST(request: NextRequest) {
       console.log("Using today's date for save:", date);
     }
     
-    const persianDate = dayjs(workingDate).locale('fa').format('YYYY/MM/DD'); // Persian date with Persian digits
-    const persianMonthName = dayjs(workingDate).locale('fa').format('MMMM'); // Persian month name
+    // Get Persian date with Persian digits
+    const [jYear, jMonth, jDay] = gregorian_to_jalali(
+      workingDate.getFullYear(),
+      workingDate.getMonth() + 1,
+      workingDate.getDate()
+    );
+    const persianDate = formatJalaliDate(workingDate); // Persian date with Persian digits
+    const persianMonthName = getPersianMonthName(jMonth); // Persian month name
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
