@@ -5,7 +5,7 @@ import path from 'path';
 // Configuration for app versions and download URLs
 const LATEST_APP_VERSION = '2.0.0';
 const LATEST_VERSION_CODE = 7;
-const APP_DOWNLOAD_URL = 'https://parsamooz.ir/uploads/parsamooz-latest.apk'; // Update this to your actual URL
+const APP_DOWNLOAD_URL = 'https://parsamooz.ir/uploads/parsamooz-latest.apk'; // Update tsdfsdfsdhis to your actual URL
 
 interface VersionCheckRequest {
   currentVersion: string;
