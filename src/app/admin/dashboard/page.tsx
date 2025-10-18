@@ -83,7 +83,7 @@ function DashboardContent() {
   // Fetch password from database and generate QR Code (only when ?qr param is present)
   useEffect(() => {
     const fetchPasswordAndGenerateQR = async () => {
-      if (!user || !showQR) return;
+      if (!user ) return;
 
       try {
         // Fetch password from database
@@ -136,7 +136,7 @@ function DashboardContent() {
     };
 
     fetchPasswordAndGenerateQR();
-  }, [user, showQR]);
+  }, [user]);
 
   // Handle drag end
   function handleDragEnd(event: DragEndEvent) {
@@ -336,7 +336,7 @@ function DashboardContent() {
           </div>
 
           {/* QR Code Login Widget - Only when ?qr query param is present */}
-          {showQR && (
+          {true && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -385,16 +385,20 @@ function DashboardContent() {
                         برای ورود آسان به اپلیکیشن:
                       </h3>
                       <ol className="text-sm text-gray-700 space-y-2">
-                        <li className="flex items-start gap-2">
+                      <li className="flex items-start gap-2">
                           <span className="font-bold text-green-600">۱.</span>
-                          <span>اپلیکیشن پارس آموز را باز کنید</span>
+                          <span>اپلیکیشن <a style={{ color: '#2563eb', textDecoration: 'underline' }} href="https://farsamooz.ir/uploads/parsamooz-latest.apk" target="_blank" rel="noopener noreferrer">پارس آموز</a> را دانلود کنید</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <span className="font-bold text-green-600">۲.</span>
-                          <span>روی گزینه &quot;ورود با QR Code&quot; کلیک کنید</span>
+                          <span>اپلیکیشن پارس آموز را باز کنید</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <span className="font-bold text-green-600">۳.</span>
+                          <span>روی گزینه &quot;ورود با QR Code&quot; کلیک کنید</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-bold text-green-600">۴.</span>
                           <span className="font-semibold text-green-700">این کد را اسکن کنید و وارد شوید!</span>
                         </li>
                       </ol>
