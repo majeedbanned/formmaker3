@@ -28,6 +28,9 @@ import {
   Shield,
   Key,
   User,
+  Smartphone,
+  Download,
+  Zap,
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -45,16 +48,16 @@ const formSchema = z.object({
   }),
 });
 
-// Floating particles component
+// Simplified floating particles
 const FloatingParticles = () => {
   const [particles] = useState(() =>
-    Array.from({ length: 50 }, (_, i) => ({
+    Array.from({ length: 20 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: Math.random() * 4 + 2,
-      duration: Math.random() * 20 + 10,
-      delay: Math.random() * 5,
+      size: Math.random() * 3 + 1,
+      duration: Math.random() * 15 + 10,
+      delay: Math.random() * 3,
     }))
   );
 
@@ -63,7 +66,7 @@ const FloatingParticles = () => {
       {particles.map((particle) => (
         <motion.div
           key={particle.id}
-          className="absolute w-2 h-2 bg-white/10 rounded-full"
+          className="absolute bg-white/10 rounded-full"
           style={{
             left: `${particle.x}%`,
             top: `${particle.y}%`,
@@ -71,9 +74,8 @@ const FloatingParticles = () => {
             height: particle.size,
           }}
           animate={{
-            y: [0, -30, 0],
-            opacity: [0.1, 0.8, 0.1],
-            scale: [1, 1.2, 1],
+            y: [0, -20, 0],
+            opacity: [0.2, 0.6, 0.2],
           }}
           transition={{
             duration: particle.duration,
@@ -86,49 +88,7 @@ const FloatingParticles = () => {
   );
 };
 
-// Geometric shapes for background
-const GeometricShapes = () => {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <motion.div
-        className="absolute top-20 left-10 w-32 h-32 border-2 border-white/10 rounded-full"
-        animate={{
-          rotate: 360,
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-      <motion.div
-        className="absolute top-40 right-20 w-24 h-24 border-2 border-white/10 rotate-45"
-        animate={{
-          rotate: [45, 405],
-          y: [0, -20, 0],
-        }}
-        transition={{
-          duration: 15,
-          repeat: Infinity,
-        }}
-      />
-      <motion.div
-        className="absolute bottom-32 left-20 w-16 h-16 bg-white/5 rounded-lg"
-        animate={{
-          rotate: [0, 180, 360],
-          x: [0, 20, 0],
-        }}
-        transition={{
-          duration: 12,
-          repeat: Infinity,
-        }}
-      />
-    </div>
-  );
-};
-
-// Enhanced UserType box component with more animations
+// Simplified UserType box component
 const UserTypeBox = ({
   label,
   icon,
@@ -141,65 +101,40 @@ const UserTypeBox = ({
   onClick: () => void;
 }) => (
   <motion.div
-    whileHover={{
-      y: -8,
-      rotateY: 5,
-      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    }}
-    whileTap={{ scale: 0.95 }}
+    whileHover={{ y: -4, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
     onClick={onClick}
-    className={`relative cursor-pointer rounded-2xl p-6 overflow-hidden transition-all duration-500 group ${
+    className={`relative cursor-pointer rounded-xl p-5 transition-all duration-300 ${
       selected
-        ? "bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-600 shadow-2xl shadow-purple-500/20 border-purple-400 text-white"
-        : "bg-white/80 backdrop-blur-sm border-gray-200 hover:border-purple-300 hover:shadow-xl hover:bg-white/90"
-    } border-2 flex flex-col items-center justify-center gap-3`}
+        ? "bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/30 text-white"
+        : "bg-white/90 backdrop-blur-sm hover:bg-white hover:shadow-lg"
+    } border-2 ${
+      selected ? "border-purple-400" : "border-white/50 hover:border-purple-300"
+    } flex flex-col items-center justify-center gap-2`}
   >
-    {/* Animated background gradient */}
-    <div
-      className={`absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-        selected ? "opacity-100" : ""
-      }`}
-    />
-
-    {/* Icon with enhanced animations */}
+    {/* Icon */}
     <motion.div
-      className={`text-4xl z-10 ${
-        selected ? "text-white" : "text-purple-600 group-hover:text-purple-700"
+      className={`text-3xl ${
+        selected ? "text-white" : "text-purple-600"
       }`}
-      animate={selected ? { scale: [1, 1.2, 1], rotate: [0, 5, 0] } : {}}
-      transition={{ duration: 2, repeat: Infinity }}
+      animate={selected ? { scale: [1, 1.1, 1] } : {}}
+      transition={{ duration: 1.5, repeat: Infinity }}
     >
       {icon}
     </motion.div>
 
-    <div className="text-lg font-semibold mt-2 z-10 relative">{label}</div>
+    <div className="text-base font-semibold">{label}</div>
 
-    {/* Enhanced selection indicator */}
+    {/* Selection indicator */}
     {selected && (
       <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        className="absolute top-3 right-3 z-10"
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="absolute top-2 right-2"
       >
-        <div className="relative">
-          <CheckCircle2 className="h-6 w-6 text-white" />
-          <motion.div
-            className="absolute inset-0 bg-white/30 rounded-full"
-            animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-        </div>
+        <CheckCircle2 className="h-5 w-5 text-white" />
       </motion.div>
     )}
-
-    {/* Hover sparkle effect */}
-    <motion.div
-      className="absolute top-2 left-2 text-yellow-300 opacity-0 group-hover:opacity-100"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 3, repeat: Infinity }}
-    >
-      <Sparkles className="h-4 w-4" />
-    </motion.div>
   </motion.div>
 );
 
@@ -236,6 +171,151 @@ const EnhancedInput = ({
         </button>
       )}
     </div>
+  );
+};
+
+// Enhanced Download Button Component
+const DownloadButton = () => {
+  const [isHovering, setIsHovering] = useState(false);
+
+  return (
+    <motion.a
+      href="https://farsamooz.ir/uploads/parsamooz-latest.apk"
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.1 }}
+      className="relative group"
+    >
+      <motion.div
+        whileHover={{ scale: 1.05, y: -5 }}
+        whileTap={{ scale: 0.98 }}
+        className="relative overflow-hidden rounded-2xl"
+      >
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-100" />
+        
+        {/* Animated shine effect */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          animate={{
+            x: isHovering ? ['-100%', '200%'] : '-100%',
+          }}
+          transition={{
+            duration: 0.8,
+            ease: "easeInOut",
+          }}
+        />
+
+        {/* Glowing border effect */}
+        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-green-300 via-emerald-300 to-teal-300 blur-xl" />
+
+        {/* Button content */}
+        <div className="relative bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 px-8 py-5 rounded-2xl border-2 border-white/20 shadow-2xl backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            {/* Animated phone icon */}
+            <motion.div
+              animate={{
+                rotate: isHovering ? [0, -10, 10, 0] : 0,
+                scale: isHovering ? [1, 1.1, 1] : 1,
+              }}
+              transition={{ duration: 0.5 }}
+              className="relative"
+            >
+              <div className="absolute inset-0 bg-white/30 rounded-full blur-md" />
+              <div className="relative bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                <Smartphone className="h-7 w-7 text-white" />
+              </div>
+              
+              {/* Floating download icon */}
+              <motion.div
+                className="absolute -top-1 -right-1"
+                animate={{
+                  y: isHovering ? [-2, -6, -2] : 0,
+                  opacity: isHovering ? [1, 0.7, 1] : 1,
+                }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <Download className="h-4 w-4 text-yellow-300 drop-shadow-lg" />
+              </motion.div>
+            </motion.div>
+
+            {/* Text content */}
+            <div className="flex flex-col items-start text-right flex-1">
+              <motion.div
+                className="text-white font-bold text-lg flex items-center gap-2"
+                animate={{
+                  x: isHovering ? [0, 5, 0] : 0,
+                }}
+                transition={{ duration: 0.5 }}
+              >
+                <Zap className="h-5 w-5 text-yellow-300" />
+                دانلود اپلیکیشن اندروید
+              </motion.div>
+              <motion.p
+                className="text-green-100 text-sm font-medium"
+                animate={{
+                  opacity: isHovering ? [0.8, 1, 0.8] : 1,
+                }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                نصب سریع و آسان • رایگان
+              </motion.p>
+            </div>
+
+            {/* Arrow icon */}
+            <motion.div
+              animate={{
+                x: isHovering ? [0, 5, 0] : 0,
+              }}
+              transition={{ duration: 0.6, repeat: Infinity }}
+            >
+              <Download className="h-6 w-6 text-white" />
+            </motion.div>
+          </div>
+
+          {/* Pulsing particles */}
+          {isHovering && (
+            <>
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-yellow-300 rounded-full"
+                  initial={{
+                    x: "50%",
+                    y: "50%",
+                    opacity: 1,
+                  }}
+                  animate={{
+                    x: `${50 + Math.cos((i * Math.PI * 2) / 6) * 50}%`,
+                    y: `${50 + Math.sin((i * Math.PI * 2) / 6) * 50}%`,
+                    opacity: 0,
+                    scale: [1, 2, 0],
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: i * 0.1,
+                  }}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Floating text hint */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isHovering ? 1 : 0 }}
+        className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-white/80 text-xs whitespace-nowrap bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full"
+      >
+        کلیک کنید تا دانلود شود
+      </motion.div>
+    </motion.a>
   );
 };
 
@@ -297,36 +377,25 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Enhanced animated background */}
+      {/* Simplified animated background */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-purple-300 via-blue-300 to-indigo-300"
+        className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-400 to-blue-400"
         animate={{
           background: [
-            "linear-gradient(135deg, #C4B5FD 0%, #93C5FD 50%, #A5B4FC 100%)",
-            "linear-gradient(135deg, #DDD6FE 0%, #BFDBFE 50%, #C7D2FE 100%)",
-            "linear-gradient(135deg, #C4B5FD 0%, #93C5FD 50%, #A5B4FC 100%)",
+            "linear-gradient(135deg, #C084FC 0%, #A78BFA 50%, #93C5FD 100%)",
+            "linear-gradient(135deg, #A78BFA 0%, #93C5FD 50%, #C084FC 100%)",
+            "linear-gradient(135deg, #C084FC 0%, #A78BFA 50%, #93C5FD 100%)",
           ],
         }}
         transition={{
-          duration: 10,
+          duration: 8,
           repeat: Infinity,
-          ease: "linear",
+          ease: "easeInOut",
         }}
       />
 
       {/* Floating particles */}
       <FloatingParticles />
-
-      {/* Geometric shapes */}
-      <GeometricShapes />
-
-      {/* Top decorative element */}
-      <motion.div
-        className="absolute top-0 left-0 w-full h-80 bg-gradient-to-br from-white/10 to-transparent rounded-b-[60px] backdrop-blur-sm"
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 1 }}
-      />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -334,44 +403,50 @@ function LoginForm() {
         transition={{ duration: 0.8 }}
         className="z-10 w-full max-w-md relative px-4"
       >
-        {/* Enhanced header */}
-        <div className="text-center text-white mb-12">
+        {/* Clean header */}
+        <div className="text-center text-white mb-2">
           {/* <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-6"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-white/15 backdrop-blur-md rounded-2xl mb-5 shadow-xl"
           >
-            <Shield className="h-10 w-10 text-white" />
+            <Shield className="h-8 w-8 text-white" />
           </motion.div> */}
 
-          {/* <motion.h1
-            initial={{ opacity: 0, y: -20 }}
+          <motion.h1
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent"
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-3xl font-bold mb-2 text-white drop-shadow-lg"
           >
-            ورود به پنل مدیریت
-          </motion.h1> */}
+            پارس آموز
+          </motion.h1>
 
-          {/* <motion.p
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-lg text-purple-100 font-light"
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="text-base text-white/90 font-light"
           >
-            سیستم مدیریت هوشمند آموزش
-          </motion.p> */}
+            سیستم مدیریت هوشمند آموزشی
+          </motion.p>
         </div>
 
-        {/* Enhanced form card */}
+        {/* Clean form card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
         >
-          <Card className="backdrop-blur-lg bg-white/10 border-white/20 border-2 shadow-2xl rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
+          <Card className="backdrop-blur-xl bg-white/95 border-white/30 border shadow-2xl rounded-2xl overflow-hidden">
+            <CardContent className="pl-7 pr-7">
+
+            <div className="mt-0">
+          <DownloadButton />
+        </div>
+
+
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
@@ -382,8 +457,8 @@ function LoginForm() {
                     control={form.control}
                     name="userType"
                     render={({ field }) => (
-                      <FormItem className="space-y-6">
-                        <FormLabel className="text-center block text-xl font-semibold text-white">
+                      <FormItem className="space-y-4">
+                        <FormLabel className="text-center block text-lg font-semibold text-gray-700">
                           انتخاب نوع کاربر
                         </FormLabel>
                         <FormControl>
@@ -424,8 +499,8 @@ function LoginForm() {
                         control={form.control}
                         name="schoolCode"
                         render={({ field }) => (
-                          <FormItem className="space-y-0">
-                            <FormLabel className="text-white font-semibold">
+                          <FormItem className="space-y-2">
+                            <FormLabel className="text-gray-700 font-medium text-sm">
                               کد مدرسه
                             </FormLabel>
                             <FormControl>
@@ -454,8 +529,8 @@ function LoginForm() {
                       control={form.control}
                       name="username"
                       render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-white font-semibold">
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-gray-700 font-medium text-sm">
                             نام کاربری
                           </FormLabel>
                           <FormControl>
@@ -483,8 +558,8 @@ function LoginForm() {
                       control={form.control}
                       name="password"
                       render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-white font-semibold">
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-gray-700 font-medium text-sm">
                             رمز عبور
                           </FormLabel>
                           <FormControl>
@@ -517,26 +592,26 @@ function LoginForm() {
                     )}
                   </AnimatePresence>
 
-                  {/* Enhanced submit button */}
+                  {/* Clean submit button */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
+                    className="pt-2"
                   >
                     <Button
                       type="submit"
-                      className="w-full h-14 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-lg font-semibold rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 border-0 text-white"
+                      className="w-full h-12 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-0 text-white"
                       disabled={isLoading}
                     >
                       <motion.div
                         className="flex items-center justify-center gap-2"
-                        whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
                         {isLoading ? (
                           <>
                             <motion.div
-                              className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                              className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                               animate={{ rotate: 360 }}
                               transition={{ duration: 1, repeat: Infinity }}
                             />
@@ -544,7 +619,7 @@ function LoginForm() {
                           </>
                         ) : (
                           <>
-                            <Shield className="h-5 w-5" />
+                            <Shield className="h-4 w-4" />
                             ورود به سیستم
                           </>
                         )}
@@ -557,17 +632,16 @@ function LoginForm() {
           </Card>
         </motion.div>
 
+        {/* Download Button */}
+       
         {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="mt-8 text-center text-sm text-purple-600/80"
+          transition={{ delay: 1.2 }}
+          className="mt-12 text-center text-sm text-white/70"
         >
           <p>با ورود به سیستم، شما قوانین و مقررات سایت را پذیرفته‌اید</p>
-          {/* <p className="mt-2 text-xs text-purple-600/60">
-            نسخه ۱.۲ - طراحی شده با ❤️
-          </p> */}
         </motion.div>
       </motion.div>
     </div>

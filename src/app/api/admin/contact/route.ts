@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         contactInfo: {
           phone: "۰۲۱-۸۸۸۸۷۷۷۷",
           phoneDesc: "دوشنبه تا پنجشنبه (۸ صبح تا ۵ بعدازظهر)",
-          email: "info@parsamooz.ir",
+          email: "info@farsamooz.ir",
           emailDesc: "برای دریافت پاسخ سریع با ما تماس بگیرید",
           address: "تهران، خیابان ولیعصر، برج پارسا، طبقه ۱۲",
           postalCode: "۱۴۵۶۷۸۹۳۰۲",
