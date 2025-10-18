@@ -438,8 +438,9 @@ export default function FormPreview({
         break;
 
       case "date":
-        fieldSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-          message: "لطفا یک تاریخ معتبر در فرمت YYYY-MM-DD وارد کنید",
+        // Accept Persian date format with slashes (YYYY/MM/DD) and both English and Persian numerals
+        fieldSchema = z.string().regex(/^[\d۰-۹]{4}\/[\d۰-۹]{2}\/[\d۰-۹]{2}$/, {
+          message: "لطفا یک تاریخ معتبر انتخاب کنید",
         });
         break;
 

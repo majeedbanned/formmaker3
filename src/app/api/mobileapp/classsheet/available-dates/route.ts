@@ -163,12 +163,17 @@ export async function GET(request: NextRequest) {
 
       console.log("Teacher teaches on days:", Array.from(teacherDays));
 
-      // Generate dates for the next 5 months (150 days), but only include days where teacher has classes
-      const availableDates: any[] = [];
+      // Generate dates: 60 days back + today + 150 days forward, but only include days where teacher has classes
+      const pastDates: any[] = [];
+      const currentAndFutureDates: any[] = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to start of day
       
-      for (let i = 0; i < 150; i++) {
+      // Generate all dates
+      for (let i = -60; i <= 150; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
+        date.setHours(0, 0, 0, 0); // Normalize to start of day
         
         const persianDay = getPersianDayNameForDate(date);
         
@@ -177,22 +182,38 @@ export async function GET(request: NextRequest) {
           const gregorianDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           const persianDate = formatJalaliDate(date);
           
-          availableDates.push({
+          const dateObj = {
             date: gregorianDate,
             persianDate: persianDate,
             persianDay: persianDay,
-            isToday: i === 0
-          });
+            isToday: date.getTime() === today.getTime(),
+            isPast: date.getTime() < today.getTime()
+          };
+          
+          // Split into past vs current/future
+          if (date.getTime() < today.getTime()) {
+            pastDates.push(dateObj);
+          } else {
+            currentAndFutureDates.push(dateObj);
+          }
         }
       }
+      
+      // Sort past dates: most recent first (reverse chronological)
+      pastDates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Sort current/future dates: ascending order (chronological)
+      currentAndFutureDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       await client.close();
 
-      console.log("Available dates count:", availableDates.length);
+      console.log("Past dates count:", pastDates.length);
+      console.log("Current/Future dates count:", currentAndFutureDates.length);
 
       return NextResponse.json({
         success: true,
-        dates: availableDates,
+        pastDates: pastDates,
+        currentAndFutureDates: currentAndFutureDates,
         teacherDays: Array.from(teacherDays)
       });
 
