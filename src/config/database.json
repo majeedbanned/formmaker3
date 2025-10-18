@@ -412,8 +412,30 @@
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/zeynabieh?authSource=admin",
         "description": "zeynabieh.farsamooz.ir"
       }
+,
+      "dastgheib1.farsamooz.ir": {
+        "schoolCode":"44332608",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahiddastgheib1?authSource=admin",
+        "description": "dastgheib1.farsamooz.ir"
+      }
+      ,
+      
+      "helli.farsamooz.ir": {
+        "schoolCode":"95118050",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/helli?authSource=admin",
+        "description": "helli.farsamooz.ir"
+      }
+      ,
+      "mazloom.farsamooz.ir": {
+        "schoolCode":"95103316",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/mazloom?authSource=admin",
+        "description": "mazloom.farsamooz.ir"
+      }
 
 
+
+   
+      
 
 
   

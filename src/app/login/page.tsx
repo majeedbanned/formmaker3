@@ -32,6 +32,7 @@ import {
   Download,
   Zap,
 } from "lucide-react";
+import databaseConfig from "@/config/database.json";
 
 const formSchema = z.object({
   userType: z.enum(["school", "teacher", "student"], {
@@ -336,11 +337,26 @@ function LoginForm() {
     },
   });
 
-  // Check for sc query parameter and populate schoolCode field
+  // Check for sc query parameter OR hostname and populate schoolCode field
   useEffect(() => {
     const scParam = searchParams.get("sc");
     if (scParam) {
       form.setValue("schoolCode", scParam);
+      setHideSchoolCode(true);
+      return;
+    }
+
+    // Check hostname in database.json
+    const hostname = window.location.hostname;
+    const domain = hostname.includes(':') ? hostname : `${hostname}${window.location.port ? ':' + window.location.port : ''}`;
+    
+    // Search for schoolCode in database config
+    const dbConfig = databaseConfig as Record<string, { schoolCode?: string }>;
+    const config = dbConfig[hostname] || dbConfig[domain];
+    
+    if (config && config.schoolCode) {
+      console.log('Auto-filling schoolCode from database.json:', config.schoolCode);
+      form.setValue("schoolCode", config.schoolCode);
       setHideSchoolCode(true);
     }
   }, [searchParams, form]);
