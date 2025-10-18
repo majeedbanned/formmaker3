@@ -1,0 +1,18 @@
+{
+  "android": {
+    "version": "2.0.0",
+    "versionCode": 7,
+    "downloadUrl": "https://farsamooz.ir/uploads/parsamooz-latest.apk",
+    "forceUpdate": false,
+    "releaseNotes": "نسخه 2.0.0:\n• بهبود عملکرد برنامه\n• رفع مشکلات گزارش شده\n• افزودن قابلیت‌های جدید\n• بهینه‌سازی رابط کاربری"
+  },
+  "ios": {
+    "version": "2.0.0",
+    "versionCode": 7,
+    "downloadUrl": "https://apps.apple.com/app/your-app-id",
+    "forceUpdate": false,
+    "releaseNotes": "نسخه 2.0.0:\n• بهبود عملکرد برنامه\n• رفع مشکلات گزارش شده\n• افزودن قابلیت‌های جدید\n• بهینه‌سازی رابط کاربری"
+  },
+  "lastUpdated": "2025-10-18T21:12:00.000Z"
+}
+

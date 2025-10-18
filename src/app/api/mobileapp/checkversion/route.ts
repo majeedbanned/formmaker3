@@ -2,10 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-// Configuration for app versions and download URLs
-const LATEST_APP_VERSION = '2.0.1';
-const LATEST_VERSION_CODE = 8;
-const APP_DOWNLOAD_URL = 'https://parsamooz.ir/uploads/parsamooz-latest.apk'; // Update tsdfsdfsdhis to your actual URL
+// Path to version config file
+const VERSION_CONFIG_PATH = path.join(process.cwd(), 'public', 'mobile-version.json');
+
+// Interface for version config
+interface PlatformVersion {
+  version: string;
+  versionCode: number;
+  downloadUrl: string;
+  forceUpdate: boolean;
+  releaseNotes: string;
+}
+
+interface VersionConfig {
+  android: PlatformVersion;
+  ios: PlatformVersion;
+  lastUpdated: string;
+}
+
+// Function to read version config from file
+function getVersionConfig(): VersionConfig {
+  try {
+    const fileContent = fs.readFileSync(VERSION_CONFIG_PATH, 'utf-8');
+    return JSON.parse(fileContent);
+  } catch (error) {
+    console.error('Error reading version config:', error);
+    // Fallback to default values
+    return {
+      android: {
+        version: '2.0.0',
+        versionCode: 7,
+        downloadUrl: 'https://farsamooz.ir/uploads/parsamooz-latest.apk',
+        forceUpdate: false,
+        releaseNotes: 'نسخه جدید در دسترس است'
+      },
+      ios: {
+        version: '2.0.0',
+        versionCode: 7,
+        downloadUrl: 'https://apps.apple.com/app/your-app-id',
+        forceUpdate: false,
+        releaseNotes: 'نسخه جدید در دسترس است'
+      },
+      lastUpdated: new Date().toISOString()
+    };
+  }
+}
 
 interface VersionCheckRequest {
   currentVersion: string;
@@ -47,29 +88,24 @@ export async function POST(request: NextRequest) {
       platform
     });
 
-    // Check if update is available by comparing version codes
-    const updateAvailable = versionCode < LATEST_VERSION_CODE;
-    console.log('updateAvailable', versionCode);
-    console.log('LATEST_VERSION_CODE', LATEST_VERSION_CODE);
+    // Read version config from file
+    const versionConfig = getVersionConfig();
+    const platformConfig = versionConfig[platform];
 
-    // Determine download URL based on platform
-    let downloadUrl = APP_DOWNLOAD_URL;
-    
-    // For Android, use APK download URL
-    // For iOS, you might want to use App Store link
-    if (platform === 'ios') {
-      // Replace with your App Store link when available
-      downloadUrl = 'https://apps.apple.com/app/your-app-id';
-    }
+    // Check if update is available by comparing version codes
+    const updateAvailable = versionCode < platformConfig.versionCode;
+    console.log('Current versionCode:', versionCode);
+    console.log('Latest versionCode:', platformConfig.versionCode);
+    console.log('Update available:', updateAvailable);
 
     const response: VersionCheckResponse = {
       success: true,
       updateAvailable,
-      latestVersion: LATEST_APP_VERSION,
-      latestVersionCode: LATEST_VERSION_CODE,
-      downloadUrl: updateAvailable ? downloadUrl : undefined,
-      releaseNotes: updateAvailable ? getReleaseNotes() : undefined,
-      forceUpdate: false, // Set to true if this is a critical update
+      latestVersion: platformConfig.version,
+      latestVersionCode: platformConfig.versionCode,
+      downloadUrl: updateAvailable ? platformConfig.downloadUrl : undefined,
+      releaseNotes: updateAvailable ? platformConfig.releaseNotes : undefined,
+      forceUpdate: updateAvailable ? platformConfig.forceUpdate : false,
       message: updateAvailable 
         ? 'نسخه جدید در دسترس است' 
         : 'شما از آخرین نسخه استفاده می‌کنید'
@@ -90,23 +126,33 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get release notes for the latest version
-function getReleaseNotes(): string {
-  return `نسخه ${LATEST_APP_VERSION}:
-• بهبود عملکرد برنامه
-• رفع مشکلات گزارش شده
-• افزودن قابلیت‌های جدید
-• بهینه‌سازی رابط کاربری`;
-}
-
 // Handle GET request for simple version check
 export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    success: true,
-    latestVersion: LATEST_APP_VERSION,
-    latestVersionCode: LATEST_VERSION_CODE,
-    message: 'آخرین نسخه موجود'
-  });
+  try {
+    const versionConfig = getVersionConfig();
+    
+    return NextResponse.json({
+      success: true,
+      android: {
+        version: versionConfig.android.version,
+        versionCode: versionConfig.android.versionCode,
+        downloadUrl: versionConfig.android.downloadUrl
+      },
+      ios: {
+        version: versionConfig.ios.version,
+        versionCode: versionConfig.ios.versionCode,
+        downloadUrl: versionConfig.ios.downloadUrl
+      },
+      lastUpdated: versionConfig.lastUpdated,
+      message: 'آخرین نسخه موجود'
+    });
+  } catch (error) {
+    console.error('Error getting version info:', error);
+    return NextResponse.json(
+      { success: false, message: 'خطا در دریافت اطلاعات نسخه' },
+      { status: 500 }
+    );
+  }
 }
 
 // Handle OPTIONS request for CORS
