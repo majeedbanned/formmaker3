@@ -11,7 +11,7 @@ import StudentSearchWidget from "../components/StudentSearchWidget";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
 import OnboardingStatus from "@/components/OnboardingStatus";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
@@ -35,7 +35,12 @@ import {
   Palette,
   Grid3X3,
   Sparkles,
+  QrCode,
+  X,
+  Smartphone,
 } from "lucide-react";
+import QRCode from "qrcode";
+import { useSearchParams } from "next/navigation";
 
 // Widget component mapping
 const WIDGET_COMPONENTS = {
@@ -57,10 +62,15 @@ export default function Dashboard() {
     resetToDefault,
   } = useDashboardLayout();
 
+  const searchParams = useSearchParams();
+  const showQR = searchParams.get('qr') !== null;
+
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [isWidgetSelectorOpen, setIsWidgetSelectorOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isOnboardingMinimized, setIsOnboardingMinimized] = useState(false);
+  const [qrCodeDataURL, setQRCodeDataURL] = useState<string>("");
+  const [hasPassword, setHasPassword] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -69,6 +79,64 @@ export default function Dashboard() {
       },
     })
   );
+
+  // Fetch password from database and generate QR Code (only when ?qr param is present)
+  useEffect(() => {
+    const fetchPasswordAndGenerateQR = async () => {
+      if (!user || !showQR) return;
+
+      try {
+        // Fetch password from database
+        const response = await fetch('/api/user/password');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          console.error('Failed to fetch password:', data.message);
+          return;
+        }
+
+        const password = data.password;
+        setHasPassword(!!password);
+        
+        const currentDomain = (user as any).domain || window.location.hostname;
+        
+        const qrData = JSON.stringify({
+          domain: currentDomain,
+          userType: user.userType,
+          role: user.role,
+          username: user.username,
+          schoolCode: user.schoolCode,
+          password: password,
+        });
+
+        console.log('Generating QR code with data:', {
+          domain: currentDomain,
+          userType: user.userType,
+          username: user.username,
+          schoolCode: user.schoolCode,
+          hasPassword: !!password,
+          passwordLength: password?.length || 0,
+        });
+
+        // Generate QR code
+        const url = await QRCode.toDataURL(qrData, {
+          width: 500,
+          margin: 2,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+
+        console.log('QR Code generated successfully');
+        setQRCodeDataURL(url);
+      } catch (err) {
+        console.error("Error generating QR code:", err);
+      }
+    };
+
+    fetchPasswordAndGenerateQR();
+  }, [user, showQR]);
 
   // Handle drag end
   function handleDragEnd(event: DragEndEvent) {
@@ -266,6 +334,114 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* QR Code Login Widget - Only when ?qr query param is present */}
+          {showQR && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-lg p-6 mb-6 border-2 border-green-200"
+            >
+            <div className="flex items-start gap-6">
+              {/* QR Code Display */}
+              <div className="flex-shrink-0">
+                <div className="bg-white rounded-xl p-4 shadow-md border-2 border-green-300">
+                  {qrCodeDataURL ? (
+                    <motion.img
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      src={qrCodeDataURL}
+                      alt="QR Code for Quick Login"
+                      className="w-48 h-48 rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center bg-gray-100 rounded-lg">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-green-600 border-t-transparent mx-auto mb-2"></div>
+                        <p className="text-xs text-gray-500">در حال ایجاد QR...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Information and Instructions */}
+              <div className="flex-1 text-right">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md">
+                    <QrCode className="h-5 w-5" />
+                    <span className="font-bold">ورود سریع به اپلیکیشن</span>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 border border-green-200">
+                  <div className="flex items-start gap-3">
+                    <Smartphone className="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800 mb-3 text-base">
+                        برای ورود آسان به اپلیکیشن:
+                      </h3>
+                      <ol className="text-sm text-gray-700 space-y-2">
+                        <li className="flex items-start gap-2">
+                          <span className="font-bold text-green-600">۱.</span>
+                          <span>اپلیکیشن پارس آموز را باز کنید</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-bold text-green-600">۲.</span>
+                          <span>روی گزینه &quot;ورود با QR Code&quot; کلیک کنید</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-bold text-green-600">۳.</span>
+                          <span className="font-semibold text-green-700">این کد را اسکن کنید و وارد شوید!</span>
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Info Display */}
+                {/* <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-green-200">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-gray-500 mb-1">🌐 دامنه</p>
+                      <p className="font-semibold text-gray-800">
+                        {(user as any)?.domain || window.location.hostname}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">👤 کاربر</p>
+                      <p className="font-semibold text-gray-800">
+                        {user?.userType}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">🔑 نام کاربری</p>
+                      <p className="font-semibold text-gray-800">
+                        {user?.username}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">🔐 رمز عبور</p>
+                      <p className={`font-semibold ${hasPassword ? 'text-green-700' : 'text-red-600'}`}>
+                        {hasPassword ? '✓ در QR موجود' : '✗ موجود نیست'}
+                      </p>
+                    </div>
+                  </div>
+                </div> */}
+
+                {/* Security Warning */}
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs text-amber-800 text-center font-semibold">
+                    ⚠️ این QR Code شامل اطلاعات کامل ورود شماست (شامل رمز عبور). از اشتراک‌گذاری آن خودداری کنید!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          )}
 
           {/* Student Search for School Users */}
           {user.userType === "school" && (

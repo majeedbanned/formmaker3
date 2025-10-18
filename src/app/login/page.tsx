@@ -364,6 +364,9 @@ function LoginForm() {
         throw new Error(data.message || "خطا در ورود به سیستم");
       }
 
+      // Save password to localStorage for QR code generation
+      localStorage.setItem("userPassword", values.password);
+
       // Redirect to the original requested URL or default to dashboard
       const from = searchParams.get("from") || "/admin/dashboard";
       router.push(from);
