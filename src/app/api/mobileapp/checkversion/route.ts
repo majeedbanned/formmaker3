@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
 
     // Check if update is available by comparing version codes
     const updateAvailable = versionCode < LATEST_VERSION_CODE;
+    console.log('updateAvailable', versionCode);
+    console.log('LATEST_VERSION_CODE', LATEST_VERSION_CODE);
 
     // Determine download URL based on platform
     let downloadUrl = APP_DOWNLOAD_URL;
