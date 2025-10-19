@@ -420,7 +420,7 @@
 
       "dastgheib1.farsamooz.ir": {
         "schoolCode":"44332608",
-        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahiddastgheib1?authSource=admin",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/dastgheib1?authSource=admin",
         "description": "dastgheib1.farsamooz.ir"
       }
       ,
