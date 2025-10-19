@@ -413,6 +413,11 @@
         "description": "zeynabieh.farsamooz.ir"
       }
 ,
+
+
+
+
+
       "dastgheib1.farsamooz.ir": {
         "schoolCode":"44332608",
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahiddastgheib1?authSource=admin",
@@ -433,8 +438,40 @@
       }
 
 
-
+,
    
+      "nafiseh.farsamooz.ir": {
+        "schoolCode":"95118412",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/nafiseh?authSource=admin",
+        "description": "nafiseh.farsamooz.ir"
+      }
+
+  ,
+      "ehsan1.farsamooz.ir": {
+        "schoolCode":"95012284",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ehsan1?authSource=admin",
+        "description": "ehsan1.farsamooz.ir"
+      }
+      ,
+      "ehsan2 .farsamooz.ir": {
+        "schoolCode":"95092921",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ehsan2?authSource=admin",
+        "description": "ehsan2.farsamooz.ir"
+      }
+
+      ,
+      "bahonar.farsamooz.ir": {
+        "schoolCode":"95115685",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bahonar?authSource=admin",
+        "description": "bahonar.farsamooz.ir"
+      }
+
+      ,
+      "asef.farsamooz.ir": {
+        "schoolCode":"95142672",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/asef?authSource=admin",
+        "description": "asef.farsamooz.ir"
+      }
       
 
 
