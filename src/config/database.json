@@ -473,8 +473,26 @@
         "description": "asef.farsamooz.ir"
       }
       
+   ,
+      "amir.farsamooz.ir": {
+        "schoolCode":"96039866",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/amir?authSource=admin",
+        "description": "amir.farsamooz.ir"
+      }
+      ,
 
-
+      "shahedkhatam.farsamooz.ir": {
+        "schoolCode":"95098006",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahedkhatam?authSource=admin",
+        "shahedkhatam": "shahidkhateem.farsamooz.ir"
+      }
   
+,
+      "faraz.farsamooz.ir": {
+        "schoolCode":"95141192",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/faraz?authSource=admin",
+        "description": "faraz.farsamooz.ir"
+      }
+
   
 } 
