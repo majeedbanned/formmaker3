@@ -453,12 +453,12 @@
         "description": "ehsan1.farsamooz.ir"
       }
       ,
-      "ehsan2 .farsamooz.ir": {
+      "ehsan2.farsamooz.ir": {
         "schoolCode":"95092921",
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ehsan2?authSource=admin",
         "description": "ehsan2.farsamooz.ir"
       }
-
+      
       ,
       "bahonar.farsamooz.ir": {
         "schoolCode":"95115685",
