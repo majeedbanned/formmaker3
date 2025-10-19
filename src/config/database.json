@@ -486,7 +486,6 @@
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shahedkhatam?authSource=admin",
         "shahedkhatam": "shahidkhateem.farsamooz.ir"
       }
-  
 ,
       "faraz.farsamooz.ir": {
         "schoolCode":"95141192",
