@@ -65,6 +65,13 @@ export async function Get(request: NextRequest) {
 }
 
 
+// CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body: LoginRequest = await request.json();
@@ -74,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (!role || !domain || !schoolCode || !userCode || !password) {
       return NextResponse.json(
         { success: false, message: 'همه فیلدها الزامی هستند' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
     console.log("role", role);
@@ -91,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (!domainConfig) {
       return NextResponse.json(
         { success: false, message: 'دامنه مدرسه یافت نشد' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -99,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (domainConfig.schoolCode !== schoolCode) {
       return NextResponse.json(
         { success: false, message: 'کد مدرسه با دامنه مطابقت ندارد' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -201,7 +208,7 @@ export async function POST(request: NextRequest) {
           await client.close();
           return NextResponse.json(
             { success: false, message: 'نقش کاربری نامعتبر است' },
-            { status: 400 }
+            { status: 400, headers: corsHeaders }
           );
       }
 
@@ -210,7 +217,7 @@ export async function POST(request: NextRequest) {
       if (!authenticatedUser) {
         return NextResponse.json(
           { success: false, message: 'اطلاعات ورود نامعتبر است' },
-          { status: 401 }
+          { status: 401, headers: corsHeaders }
         );
       }
 
@@ -232,14 +239,14 @@ export async function POST(request: NextRequest) {
         message: 'ورود موفق',
         token,
         user: authenticatedUser
-      });
+      }, { headers: corsHeaders });
 
     } catch (dbError) {
       await client.close();
       console.error('Database error:', dbError);
       return NextResponse.json(
         { success: false, message: 'خطا در اتصال به پایگاه داده' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -247,7 +254,7 @@ export async function POST(request: NextRequest) {
     console.error('Login API error:', error);
     return NextResponse.json(
       { success: false, message: 'خطای سرور داخلی' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -256,10 +263,6 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS,GET',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: corsHeaders,
   });
 }
