@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ModuleConfig } from "@/types/modules";
 import { usePublicAuth } from "@/hooks/usePublicAuth";
 import { toast } from "sonner";
-import { Cog6ToothIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { Cog6ToothIcon, PlusIcon, XMarkIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import DynamicModule from "./DynamicModule";
 import ModuleManager from "./ModuleManager";
 
@@ -21,6 +21,8 @@ const DynamicHomePage: React.FC<DynamicHomePageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showModuleManager, setShowModuleManager] = useState(false);
+  const [showMobileAppPanel, setShowMobileAppPanel] = useState(true);
+  const [mobileAppPanelMinimized, setMobileAppPanelMinimized] = useState(false);
 
   // Check if user is school admin
   const isSchoolAdmin = isAuthenticated && user?.userType === "school";
@@ -277,6 +279,122 @@ const DynamicHomePage: React.FC<DynamicHomePageProps> = ({
           onSaveModules={handleSaveModules}
         />
       )}
+
+      {/* Mobile App Download Panel */}
+      {!mobileAppPanelMinimized && showMobileAppPanel && (
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 animate-slide-in-right">
+          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-l-2xl shadow-2xl max-w-sm">
+            <div className="p-6 relative">
+              {/* Close Button */}
+              <button
+                onClick={() => setMobileAppPanelMinimized(true)}
+                className="absolute top-3 left-3 p-1 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="بستن پنل"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+
+              {/* Header */}
+              <div className="flex items-center mb-4 mt-2">
+                <DevicePhoneMobileIcon className="h-8 w-8 ml-3" />
+                <div>
+                  <h3 className="text-xl font-bold">اپلیکیشن موبایل</h3>
+                  <p className="text-sm text-white/80">دانلود نسخه اندروید و iOS</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-white/90 mb-6">
+                برای تجربه بهتر و دسترسی سریع‌تر، اپلیکیشن موبایل را دانلود کنید
+              </p>
+
+              {/* Download Links */}
+              <div className="space-y-3">
+                {/* Android Download */}
+                <a
+                  href="https://farsamooz.ir/uploads/parsamooz-latest.apk"
+                  className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all transform hover:scale-105 group"
+                  download
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center ml-3">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.6,9.48l-7.36-4.24c-0.5-0.29-1.12-0.29-1.62,0L1.25,9.48C0.76,9.77,0.44,10.29,0.44,10.86v8.49 c0,0.57,0.32,1.09,0.81,1.38l7.36,4.24c0.25,0.15,0.53,0.22,0.81,0.22s0.56-0.07,0.81-0.22l7.36-4.24 c0.5-0.29,0.81-0.81,0.81-1.38v-8.49C18.4,10.29,18.09,9.77,17.6,9.48z M17.24,18.9l-6.8,3.92c-0.16,0.09-0.36,0.09-0.52,0 l-6.8-3.92c-0.16-0.09-0.26-0.26-0.26-0.44V11.3l7.37,4.25c0.25,0.15,0.53,0.22,0.81,0.22s0.56-0.07,0.81-0.22l7.37-4.25v7.17 C17.5,18.64,17.4,18.81,17.24,18.9z M7.85,6.35l5.3,3.05v6.12c0,0.22,0.18,0.4,0.4,0.4s0.4-0.18,0.4-0.4V9.77l5.3-3.05 c0.19-0.11,0.25-0.35,0.14-0.53c-0.11-0.19-0.35-0.25-0.53-0.14L13.55,9.1L8.24,6.05C8.06,5.94,7.82,6,7.71,6.18 S7.66,6.46,7.85,6.35z"/>
+                      </svg>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">اندروید</div>
+                      <div className="text-xs text-white/70">فایل APK</div>
+                    </div>
+                  </div>
+                  <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </a>
+
+                {/* iOS/PWA Link */}
+                <a
+                  href="https://wpa.farsamooz.ir"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all transform hover:scale-105 group"
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center ml-3">
+                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                      </svg>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">iOS / وب‌اپ</div>
+                      <div className="text-xs text-white/70">Progressive Web App</div>
+                    </div>
+                  </div>
+                  <svg className="w-5 h-5 transform group-hover:-translate-y-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Minimized Tab */}
+      {mobileAppPanelMinimized && (
+        <button
+          onClick={() => setMobileAppPanelMinimized(false)}
+          className="fixed right-0 top-1/2 -translate-y-1/2 z-50 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-l-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 group"
+          aria-label="باز کردن پنل دانلود اپلیکیشن"
+        >
+          <div className="py-6 px-2 flex flex-col items-center">
+            <DevicePhoneMobileIcon className="h-6 w-6 mb-2" />
+            <div className="writing-mode-vertical text-sm font-semibold whitespace-nowrap">
+              دانلود اپلیکیشن
+            </div>
+          </div>
+        </button>
+      )}
+
+      <style jsx>{`
+        @keyframes slide-in-right {
+          from {
+            transform: translateX(100%) translateY(-50%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0) translateY(-50%);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.5s ease-out;
+        }
+        .writing-mode-vertical {
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+        }
+      `}</style>
     </main>
   );
 };
