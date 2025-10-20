@@ -4,6 +4,13 @@ import * as jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 interface DatabaseConfig {
   [domain: string]: {
     uri: string;
@@ -51,7 +58,7 @@ export async function GET(request: NextRequest) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized - No token provided' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized - Invalid token' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -69,7 +76,7 @@ export async function GET(request: NextRequest) {
     if (user.userType !== 'school') {
       return NextResponse.json(
         { success: false, message: 'Access denied - Only school admins can view this report' },
-        { status: 403 }
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -82,7 +89,7 @@ export async function GET(request: NextRequest) {
     if (!domainConfig) {
       return NextResponse.json(
         { success: false, message: 'Database configuration not found for domain' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -193,7 +200,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: reportData,
-    });
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error('Error generating installation report:', error);
@@ -203,12 +210,20 @@ export async function GET(request: NextRequest) {
         message: 'Failed to generate installation report',
         error: error.message,
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   } finally {
     if (client) {
       await client.close();
     }
   }
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
 }
 
