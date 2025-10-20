@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   let client: MongoClient | null = null;
 
   try {
-    // Get authorization token
+    // Get authorization token   
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
