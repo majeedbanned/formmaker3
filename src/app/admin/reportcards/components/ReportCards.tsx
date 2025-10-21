@@ -1356,7 +1356,7 @@ const ReportCards = ({
 
     // If no students to export (shouldn't happen, but safety check)
     if (studentsToExport.length === 0) {
-      toast.error("هیچ کارنامه‌ای برای خروجی وجود ندارد");
+      console.error("No students to export");
       return;
     }
 
