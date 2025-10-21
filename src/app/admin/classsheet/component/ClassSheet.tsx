@@ -515,6 +515,21 @@ const ClassSheet = ({
   const [groupGrades, setGroupGrades] = useState<Record<string, { value: number; totalPoints: number; description: string }>>({});
   const [isSavingGroupGrades, setIsSavingGroupGrades] = useState(false);
 
+  // State for group notes entry
+  const [isGroupNotesModalOpen, setIsGroupNotesModalOpen] = useState(false);
+  const [groupNotes, setGroupNotes] = useState<Record<string, string>>({});
+  const [isSavingGroupNotes, setIsSavingGroupNotes] = useState(false);
+
+  // State for group assessments entry
+  const [isGroupAssessmentsModalOpen, setIsGroupAssessmentsModalOpen] = useState(false);
+  const [groupAssessments, setGroupAssessments] = useState<Record<string, { title: string; value: string }>>({});
+  const [isSavingGroupAssessments, setIsSavingGroupAssessments] = useState(false);
+
+  // State for group descriptive status entry
+  const [isGroupDescriptiveModalOpen, setIsGroupDescriptiveModalOpen] = useState(false);
+  const [groupDescriptiveStatus, setGroupDescriptiveStatus] = useState<Record<string, string>>({});
+  const [isSavingGroupDescriptive, setIsSavingGroupDescriptive] = useState(false);
+
   // Create a unique key for each cell
   const getCellKey = (studentCode: string, column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
@@ -1639,28 +1654,28 @@ const ClassSheet = ({
     };
 
     // Add menu options
-    menu.appendChild(
-      createMenuItem("وارد کردن دسته جمعی", () => {
-        // Reset bulk form fields
-        setBulkGrade({
-          value: 0,
-          description: "",
-          date: new Date().toISOString(),
-          totalPoints: 20,
-        });
-        setBulkPresenceStatus("");
-        setBulkDescriptiveStatus("");
-        setBulkAssessment({
-          title: "",
-          value: "",
-          date: new Date().toISOString(),
-        });
-        setBulkNote("");
+    // menu.appendChild(
+    //   createMenuItem("وارد کردن دسته جمعی", () => {
+    //     // Reset bulk form fields
+    //     setBulkGrade({
+    //       value: 0,
+    //       description: "",
+    //       date: new Date().toISOString(),
+    //       totalPoints: 20,
+    //     });
+    //     setBulkPresenceStatus("");
+    //     setBulkDescriptiveStatus("");
+    //     setBulkAssessment({
+    //       title: "",
+    //       value: "",
+    //       date: new Date().toISOString(),
+    //     });
+    //     setBulkNote("");
 
-        // Open the bulk modal
-        setIsBulkModalOpen(true);
-      })
-    );
+    //     // Open the bulk modal
+    //     setIsBulkModalOpen(true);
+    //   })
+    // );
 
     menu.appendChild(
       createMenuItem("یادداشت روزانه معلم", () => {
@@ -1689,6 +1704,42 @@ const ClassSheet = ({
         });
         setGroupGrades(initialGrades);
         setIsGroupGradeModalOpen(true);
+      })
+    );
+
+    menu.appendChild(
+      createMenuItem("افزودن یادداشت گروهی", () => {
+        // Initialize group notes for all students
+        const initialNotes: Record<string, string> = {};
+        students.forEach((student) => {
+          initialNotes[student.studentCode] = "";
+        });
+        setGroupNotes(initialNotes);
+        setIsGroupNotesModalOpen(true);
+      })
+    );
+
+    menu.appendChild(
+      createMenuItem("افزودن ارزیابی گروهی", () => {
+        // Initialize group assessments for all students
+        const initialAssessments: Record<string, { title: string; value: string }> = {};
+        students.forEach((student) => {
+          initialAssessments[student.studentCode] = { title: "", value: "" };
+        });
+        setGroupAssessments(initialAssessments);
+        setIsGroupAssessmentsModalOpen(true);
+      })
+    );
+
+    menu.appendChild(
+      createMenuItem("افزودن وضعیت توصیفی گروهی", () => {
+        // Initialize group descriptive status for all students
+        const initialDescriptive: Record<string, string> = {};
+        students.forEach((student) => {
+          initialDescriptive[student.studentCode] = "";
+        });
+        setGroupDescriptiveStatus(initialDescriptive);
+        setIsGroupDescriptiveModalOpen(true);
       })
     );
 
@@ -2303,6 +2354,433 @@ const ClassSheet = ({
       toast.error("خطا در ذخیره نمرات گروهی");
     } finally {
       setIsSavingGroupGrades(false);
+    }
+  };
+
+  // Save group notes for all students
+  const handleSaveGroupNotes = async () => {
+    if (!selectedColumn || !selectedOption) return;
+
+    // Validate that at least one note has been entered
+    const hasAnyNote = Object.values(groupNotes).some((note) => note.trim() !== "");
+    if (!hasAnyNote) {
+      toast.error("لطفاً حداقل یک یادداشت وارد کنید");
+      return;
+    }
+
+    setIsSavingGroupNotes(true);
+    try {
+      // Create an array of promises for each student with a note
+      const savePromises = students
+        .filter((student) => {
+          const note = groupNotes[student.studentCode];
+          return note && note.trim() !== "";
+        })
+        .map(async (student) => {
+          // Get existing cell data for this student and column
+          const existingCell = getCellContent(student.studentCode, selectedColumn);
+
+          // Ensure consistent date format for saving
+          const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+          // Get Persian date components
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const [_jYear, jMonth, _jDay] = gregorian_to_jalali(
+            selectedColumn.date.getFullYear(),
+            selectedColumn.date.getMonth() + 1,
+            selectedColumn.date.getDate()
+          );
+
+          // Get Persian month name
+          const persianMonth = getPersianMonthName(jMonth);
+
+          // Format Persian date
+          const persianDate = formatJalaliDate(selectedColumn.date);
+
+          // Get the note for this student
+          const studentNote = groupNotes[student.studentCode];
+
+          // Prepare cell data
+          const cellData = {
+            classCode: selectedClassDocument.data.classCode,
+            studentCode: student.studentCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+            date: formattedDate,
+            timeSlot: selectedColumn.timeSlot,
+            note: studentNote.trim(),
+            grades: existingCell?.grades || [],
+            presenceStatus: existingCell?.presenceStatus || null,
+            descriptiveStatus: existingCell?.descriptiveStatus || "",
+            assessments: existingCell?.assessments || [],
+            persianDate: persianDate,
+            persianMonth: persianMonth,
+          };
+
+          // Save the data
+          const response = await fetch("/api/classsheet/save", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cellData),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to save data for student ${student.studentCode}`);
+          }
+
+          // Update local state with a consistent cell key
+          const cellKey = getCellKey(student.studentCode, selectedColumn);
+          setCellsData((prev) => ({
+            ...prev,
+            [cellKey]: cellData,
+          }));
+
+          return { success: true, studentCode: student.studentCode };
+        });
+
+      // Wait for all saves to complete
+      await Promise.all(savePromises);
+
+      toast.success("یادداشت‌های گروهی با موفقیت ذخیره شد");
+      setIsGroupNotesModalOpen(false);
+
+      // Reset group notes
+      setGroupNotes({});
+
+      // Reload the cell data after saving
+      if (selectedOption) {
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: selectedClassDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to reload cell data");
+        }
+
+        const data = await response.json();
+
+        // Convert array of cell data to a dictionary for easier access
+        const cellsDataMap: Record<string, CellData> = {};
+        data.forEach((cell: CellData) => {
+          const key = formatCellKeyFromDB(cell);
+          cellsDataMap[key] = {
+            ...cell,
+            grades: cell.grades || [],
+            presenceStatus: cell.presenceStatus || null,
+            note: cell.note || "",
+            descriptiveStatus: cell.descriptiveStatus || "",
+            assessments: cell.assessments || [],
+          };
+        });
+
+        setCellsData(cellsDataMap);
+      }
+    } catch (error) {
+      console.error("Error saving group notes:", error);
+      toast.error("خطا در ذخیره یادداشت‌های گروهی");
+    } finally {
+      setIsSavingGroupNotes(false);
+    }
+  };
+
+  // Save group assessments for all students
+  const handleSaveGroupAssessments = async () => {
+    if (!selectedColumn || !selectedOption) return;
+
+    // Validate that at least one assessment has been entered
+    const hasAnyAssessment = Object.values(groupAssessments).some(
+      (assessment) => assessment.title !== "" && assessment.value !== ""
+    );
+    if (!hasAnyAssessment) {
+      toast.error("لطفاً حداقل یک ارزیابی وارد کنید");
+      return;
+    }
+
+    setIsSavingGroupAssessments(true);
+    try {
+      // Create an array of promises for each student with an assessment
+      const savePromises = students
+        .filter((student) => {
+          const assessment = groupAssessments[student.studentCode];
+          return assessment && assessment.title !== "" && assessment.value !== "";
+        })
+        .map(async (student) => {
+          // Get existing cell data for this student and column
+          const existingCell = getCellContent(student.studentCode, selectedColumn);
+
+          // Ensure consistent date format for saving
+          const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+          // Get Persian date components
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const [_jYear, jMonth, _jDay] = gregorian_to_jalali(
+            selectedColumn.date.getFullYear(),
+            selectedColumn.date.getMonth() + 1,
+            selectedColumn.date.getDate()
+          );
+
+          // Get Persian month name
+          const persianMonth = getPersianMonthName(jMonth);
+
+          // Format Persian date
+          const persianDate = formatJalaliDate(selectedColumn.date);
+
+          // Get the assessment for this student
+          const studentAssessment = groupAssessments[student.studentCode];
+          const weight = getAssessmentWeight(studentAssessment.value);
+
+          // Prepare cell data
+          const cellData = {
+            classCode: selectedClassDocument.data.classCode,
+            studentCode: student.studentCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+            date: formattedDate,
+            timeSlot: selectedColumn.timeSlot,
+            note: existingCell?.note || "",
+            grades: existingCell?.grades || [],
+            presenceStatus: existingCell?.presenceStatus || null,
+            descriptiveStatus: existingCell?.descriptiveStatus || "",
+            assessments: [
+              ...(existingCell?.assessments || []),
+              {
+                title: studentAssessment.title,
+                value: studentAssessment.value,
+                date: new Date().toISOString(),
+                weight: weight,
+              },
+            ],
+            persianDate: persianDate,
+            persianMonth: persianMonth,
+          };
+
+          // Save the data
+          const response = await fetch("/api/classsheet/save", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cellData),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to save data for student ${student.studentCode}`);
+          }
+
+          // Update local state with a consistent cell key
+          const cellKey = getCellKey(student.studentCode, selectedColumn);
+          setCellsData((prev) => ({
+            ...prev,
+            [cellKey]: cellData,
+          }));
+
+          return { success: true, studentCode: student.studentCode };
+        });
+
+      // Wait for all saves to complete
+      await Promise.all(savePromises);
+
+      toast.success("ارزیابی‌های گروهی با موفقیت ذخیره شد");
+      setIsGroupAssessmentsModalOpen(false);
+
+      // Reset group assessments
+      setGroupAssessments({});
+
+      // Reload the cell data after saving
+      if (selectedOption) {
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: selectedClassDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to reload cell data");
+        }
+
+        const data = await response.json();
+
+        // Convert array of cell data to a dictionary for easier access
+        const cellsDataMap: Record<string, CellData> = {};
+        data.forEach((cell: CellData) => {
+          const key = formatCellKeyFromDB(cell);
+          cellsDataMap[key] = {
+            ...cell,
+            grades: cell.grades || [],
+            presenceStatus: cell.presenceStatus || null,
+            note: cell.note || "",
+            descriptiveStatus: cell.descriptiveStatus || "",
+            assessments: cell.assessments || [],
+          };
+        });
+
+        setCellsData(cellsDataMap);
+      }
+    } catch (error) {
+      console.error("Error saving group assessments:", error);
+      toast.error("خطا در ذخیره ارزیابی‌های گروهی");
+    } finally {
+      setIsSavingGroupAssessments(false);
+    }
+  };
+
+  // Save group descriptive status for all students
+  const handleSaveGroupDescriptive = async () => {
+    if (!selectedColumn || !selectedOption) return;
+
+    // Validate that at least one descriptive status has been set
+    const hasAnyStatus = Object.values(groupDescriptiveStatus).some(
+      (status) => status.trim() !== ""
+    );
+    if (!hasAnyStatus) {
+      toast.error("لطفاً حداقل یک وضعیت توصیفی انتخاب کنید");
+      return;
+    }
+
+    setIsSavingGroupDescriptive(true);
+    try {
+      // Create an array of promises for each student with a descriptive status
+      const savePromises = students
+        .filter((student) => {
+          const status = groupDescriptiveStatus[student.studentCode];
+          return status && status.trim() !== "";
+        })
+        .map(async (student) => {
+          // Get existing cell data for this student and column
+          const existingCell = getCellContent(student.studentCode, selectedColumn);
+
+          // Ensure consistent date format for saving
+          const formattedDate = selectedColumn.date.toISOString().split("T")[0];
+
+          // Get Persian date components
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const [_jYear, jMonth, _jDay] = gregorian_to_jalali(
+            selectedColumn.date.getFullYear(),
+            selectedColumn.date.getMonth() + 1,
+            selectedColumn.date.getDate()
+          );
+
+          // Get Persian month name
+          const persianMonth = getPersianMonthName(jMonth);
+
+          // Format Persian date
+          const persianDate = formatJalaliDate(selectedColumn.date);
+
+          // Get the descriptive status for this student
+          const studentStatus = groupDescriptiveStatus[student.studentCode];
+
+          // Prepare cell data
+          const cellData = {
+            classCode: selectedClassDocument.data.classCode,
+            studentCode: student.studentCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+            date: formattedDate,
+            timeSlot: selectedColumn.timeSlot,
+            note: existingCell?.note || "",
+            grades: existingCell?.grades || [],
+            presenceStatus: existingCell?.presenceStatus || null,
+            descriptiveStatus: studentStatus.trim(),
+            assessments: existingCell?.assessments || [],
+            persianDate: persianDate,
+            persianMonth: persianMonth,
+          };
+
+          // Save the data
+          const response = await fetch("/api/classsheet/save", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cellData),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to save data for student ${student.studentCode}`);
+          }
+
+          // Update local state with a consistent cell key
+          const cellKey = getCellKey(student.studentCode, selectedColumn);
+          setCellsData((prev) => ({
+            ...prev,
+            [cellKey]: cellData,
+          }));
+
+          return { success: true, studentCode: student.studentCode };
+        });
+
+      // Wait for all saves to complete
+      await Promise.all(savePromises);
+
+      toast.success("وضعیت‌های توصیفی با موفقیت ذخیره شد");
+      setIsGroupDescriptiveModalOpen(false);
+
+      // Reset group descriptive status
+      setGroupDescriptiveStatus({});
+
+      // Reload the cell data after saving
+      if (selectedOption) {
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: selectedClassDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to reload cell data");
+        }
+
+        const data = await response.json();
+
+        // Convert array of cell data to a dictionary for easier access
+        const cellsDataMap: Record<string, CellData> = {};
+        data.forEach((cell: CellData) => {
+          const key = formatCellKeyFromDB(cell);
+          cellsDataMap[key] = {
+            ...cell,
+            grades: cell.grades || [],
+            presenceStatus: cell.presenceStatus || null,
+            note: cell.note || "",
+            descriptiveStatus: cell.descriptiveStatus || "",
+            assessments: cell.assessments || [],
+          };
+        });
+
+        setCellsData(cellsDataMap);
+      }
+    } catch (error) {
+      console.error("Error saving group descriptive status:", error);
+      toast.error("خطا در ذخیره وضعیت‌های توصیفی");
+    } finally {
+      setIsSavingGroupDescriptive(false);
     }
   };
 
@@ -4493,6 +4971,595 @@ const ClassSheet = ({
               variant="outline"
               onClick={() => setIsGroupGradeModalOpen(false)}
               disabled={isSavingGroupGrades}
+            >
+              انصراف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Notes Entry Modal */}
+      <Dialog open={isGroupNotesModalOpen} onOpenChange={setIsGroupNotesModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0" dir="rtl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="text-xl font-bold">
+              افزودن یادداشت گروهی{" "}
+              {selectedColumn && (
+                <>
+                  برای تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800">
+                💡 برای ورود سریع یادداشت‌ها، از کلید Tab برای رفتن به فیلد بعدی استفاده کنید. 
+                یادداشت‌های خالی ذخیره نخواهند شد.
+              </p>
+            </div>
+
+            {/* Set default note for all */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <h3 className="text-md font-bold mb-3">تنظیم یادداشت پیش‌فرض</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">یادداشت پیش‌فرض برای همه:</Label>
+                  <Textarea
+                    placeholder="متن یادداشت..."
+                    rows={2}
+                    onChange={(e) => {
+                      const defaultNote = e.target.value;
+                      const newNotes = { ...groupNotes };
+                      Object.keys(newNotes).forEach((key) => {
+                        newNotes[key] = defaultNote;
+                      });
+                      setGroupNotes(newNotes);
+                    }}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newNotes = { ...groupNotes };
+                      Object.keys(newNotes).forEach((key) => {
+                        newNotes[key] = "";
+                      });
+                      setGroupNotes(newNotes);
+                    }}
+                    className="w-full"
+                  >
+                    پاک کردن همه یادداشت‌ها
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Students Grid */}
+            <div className="border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th className="p-3 text-right border-b w-8">#</th>
+                    <th className="p-3 text-right border-b w-64">نام دانش‌آموز</th>
+                    <th className="p-3 text-right border-b">یادداشت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, index) => {
+                    const note = groupNotes[student.studentCode] || "";
+                    
+                    return (
+                      <tr
+                        key={student.studentCode}
+                        className={`border-b hover:bg-gray-50 ${
+                          note.trim() !== "" ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <td className="p-2 text-center text-sm text-gray-600">
+                          {index + 1}
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                              {student.studentName.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">
+                                {student.studentName} {student.studentlname}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {student.studentCode}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <Textarea
+                            value={note}
+                            onChange={(e) => {
+                              const newNotes = { ...groupNotes };
+                              newNotes[student.studentCode] = e.target.value;
+                              setGroupNotes(newNotes);
+                            }}
+                            className="w-full min-h-[60px]"
+                            placeholder="یادداشت برای این دانش‌آموز..."
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                تعداد یادداشت‌های وارد شده:{" "}
+                <span className="font-bold">
+                  {Object.values(groupNotes).filter((n) => n.trim() !== "").length}
+                </span>{" "}
+                از {students.length} دانش‌آموز
+              </p>
+            </div>
+          </div>
+
+          {/* Fixed Footer */}
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50 sm:justify-start">
+            <Button
+              type="button"
+              onClick={handleSaveGroupNotes}
+              disabled={isSavingGroupNotes}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSavingGroupNotes ? (
+                <>
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-r-transparent rounded-full mr-2"></span>
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره یادداشت‌ها"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsGroupNotesModalOpen(false)}
+              disabled={isSavingGroupNotes}
+            >
+              انصراف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Assessments Entry Modal */}
+      <Dialog open={isGroupAssessmentsModalOpen} onOpenChange={setIsGroupAssessmentsModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0" dir="rtl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="text-xl font-bold">
+              افزودن ارزیابی گروهی{" "}
+              {selectedColumn && (
+                <>
+                  برای تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Instructions */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-purple-800">
+                💡 برای ورود سریع ارزیابی‌ها، از کلید Tab برای رفتن به فیلد بعدی استفاده کنید. 
+                ارزیابی‌های ناقص ذخیره نخواهند شد.
+              </p>
+            </div>
+
+            {/* Set default assessment for all */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <h3 className="text-md font-bold mb-3">تنظیم ارزیابی پیش‌فرض</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-xs">عنوان ارزیابی:</Label>
+                  <Select
+                    onValueChange={(value) => {
+                      const newAssessments = { ...groupAssessments };
+                      Object.keys(newAssessments).forEach((key) => {
+                        newAssessments[key].title = value;
+                      });
+                      setGroupAssessments(newAssessments);
+                    }}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="انتخاب عنوان" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assessmentTitles.map((title) => (
+                        <SelectItem key={title} value={title}>
+                          {title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">مقدار ارزیابی:</Label>
+                  <Select
+                    onValueChange={(value) => {
+                      const newAssessments = { ...groupAssessments };
+                      Object.keys(newAssessments).forEach((key) => {
+                        newAssessments[key].value = value;
+                      });
+                      setGroupAssessments(newAssessments);
+                    }}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="انتخاب مقدار" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assessmentValues.map((valueObj) => (
+                        <SelectItem key={valueObj.value} value={valueObj.value}>
+                          {valueObj.value}{" "}
+                          {valueObj.weight !== 0 && (
+                            <span className="text-xs text-gray-600">
+                              ({valueObj.weight > 0 ? "+" : ""}
+                              {valueObj.weight})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newAssessments = { ...groupAssessments };
+                      Object.keys(newAssessments).forEach((key) => {
+                        newAssessments[key] = { title: "", value: "" };
+                      });
+                      setGroupAssessments(newAssessments);
+                    }}
+                    className="w-full"
+                  >
+                    پاک کردن همه ارزیابی‌ها
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Students Grid */}
+            <div className="border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th className="p-3 text-right border-b w-8">#</th>
+                    <th className="p-3 text-right border-b w-64">نام دانش‌آموز</th>
+                    <th className="p-3 text-right border-b">عنوان ارزیابی</th>
+                    <th className="p-3 text-right border-b">مقدار</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, index) => {
+                    const assessment = groupAssessments[student.studentCode] || {
+                      title: "",
+                      value: "",
+                    };
+                    
+                    return (
+                      <tr
+                        key={student.studentCode}
+                        className={`border-b hover:bg-gray-50 ${
+                          assessment.title !== "" && assessment.value !== "" ? "bg-purple-50" : ""
+                        }`}
+                      >
+                        <td className="p-2 text-center text-sm text-gray-600">
+                          {index + 1}
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                              {student.studentName.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">
+                                {student.studentName} {student.studentlname}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {student.studentCode}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <Select
+                            value={assessment.title}
+                            onValueChange={(value) => {
+                              const newAssessments = { ...groupAssessments };
+                              newAssessments[student.studentCode].title = value;
+                              setGroupAssessments(newAssessments);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="انتخاب عنوان" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {assessmentTitles.map((title) => (
+                                <SelectItem key={title} value={title}>
+                                  {title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-2">
+                          <Select
+                            value={assessment.value}
+                            onValueChange={(value) => {
+                              const newAssessments = { ...groupAssessments };
+                              newAssessments[student.studentCode].value = value;
+                              setGroupAssessments(newAssessments);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="انتخاب مقدار" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {assessmentValues.map((valueObj) => (
+                                <SelectItem key={valueObj.value} value={valueObj.value}>
+                                  {valueObj.value}{" "}
+                                  {valueObj.weight !== 0 && (
+                                    <span className="text-xs text-gray-600">
+                                      ({valueObj.weight > 0 ? "+" : ""}
+                                      {valueObj.weight})
+                                    </span>
+                                  )}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm text-purple-800">
+                تعداد ارزیابی‌های وارد شده:{" "}
+                <span className="font-bold">
+                  {Object.values(groupAssessments).filter((a) => a.title !== "" && a.value !== "").length}
+                </span>{" "}
+                از {students.length} دانش‌آموز
+              </p>
+            </div>
+          </div>
+
+          {/* Fixed Footer */}
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50 sm:justify-start">
+            <Button
+              type="button"
+              onClick={handleSaveGroupAssessments}
+              disabled={isSavingGroupAssessments}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isSavingGroupAssessments ? (
+                <>
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-r-transparent rounded-full mr-2"></span>
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره ارزیابی‌ها"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsGroupAssessmentsModalOpen(false)}
+              disabled={isSavingGroupAssessments}
+            >
+              انصراف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Descriptive Status Entry Modal */}
+      <Dialog open={isGroupDescriptiveModalOpen} onOpenChange={setIsGroupDescriptiveModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0" dir="rtl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle className="text-xl font-bold">
+              افزودن وضعیت توصیفی گروهی{" "}
+              {selectedColumn && (
+                <>
+                  برای تاریخ{" "}
+                  <span className="text-blue-600">
+                    {selectedColumn.formattedDate} ({selectedColumn.day} - زنگ{" "}
+                    {selectedColumn.timeSlot})
+                  </span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Instructions */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-amber-800">
+                💡 برای ورود سریع وضعیت‌ها، از کلید Tab برای رفتن به فیلد بعدی استفاده کنید. 
+                وضعیت‌های خالی ذخیره نخواهند شد.
+              </p>
+            </div>
+
+            {/* Set default status for all */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <h3 className="text-md font-bold mb-3">تنظیم وضعیت پیش‌فرض</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">وضعیت توصیفی برای همه:</Label>
+                  <Select
+                    onValueChange={(value) => {
+                      const newStatuses = { ...groupDescriptiveStatus };
+                      Object.keys(newStatuses).forEach((key) => {
+                        newStatuses[key] = value;
+                      });
+                      setGroupDescriptiveStatus(newStatuses);
+                    }}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="انتخاب وضعیت" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="خیلی خوب">خیلی خوب</SelectItem>
+                      <SelectItem value="خوب">خوب</SelectItem>
+                      <SelectItem value="قابل قبول">قابل قبول</SelectItem>
+                      <SelectItem value="نیازمند تلاش بیشتر">نیازمند تلاش بیشتر</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newStatuses = { ...groupDescriptiveStatus };
+                      Object.keys(newStatuses).forEach((key) => {
+                        newStatuses[key] = "";
+                      });
+                      setGroupDescriptiveStatus(newStatuses);
+                    }}
+                    className="w-full"
+                  >
+                    پاک کردن همه وضعیت‌ها
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Students Grid */}
+            <div className="border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th className="p-3 text-right border-b w-8">#</th>
+                    <th className="p-3 text-right border-b w-64">نام دانش‌آموز</th>
+                    <th className="p-3 text-right border-b">وضعیت توصیفی</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, index) => {
+                    const status = groupDescriptiveStatus[student.studentCode] || "";
+                    
+                    return (
+                      <tr
+                        key={student.studentCode}
+                        className={`border-b hover:bg-gray-50 ${
+                          status.trim() !== "" ? "bg-amber-50" : ""
+                        }`}
+                      >
+                        <td className="p-2 text-center text-sm text-gray-600">
+                          {index + 1}
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                              {student.studentName.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">
+                                {student.studentName} {student.studentlname}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {student.studentCode}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <Select
+                            value={status}
+                            onValueChange={(value) => {
+                              const newStatuses = { ...groupDescriptiveStatus };
+                              newStatuses[student.studentCode] = value;
+                              setGroupDescriptiveStatus(newStatuses);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="انتخاب وضعیت" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value=" ">بدون وضعیت</SelectItem>
+                              <SelectItem value="خیلی خوب">خیلی خوب</SelectItem>
+                              <SelectItem value="خوب">خوب</SelectItem>
+                              <SelectItem value="قابل قبول">قابل قبول</SelectItem>
+                              <SelectItem value="نیازمند تلاش بیشتر">نیازمند تلاش بیشتر</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                تعداد وضعیت‌های وارد شده:{" "}
+                <span className="font-bold">
+                  {Object.values(groupDescriptiveStatus).filter((s) => s.trim() !== "").length}
+                </span>{" "}
+                از {students.length} دانش‌آموز
+              </p>
+            </div>
+          </div>
+
+          {/* Fixed Footer */}
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50 sm:justify-start">
+            <Button
+              type="button"
+              onClick={handleSaveGroupDescriptive}
+              disabled={isSavingGroupDescriptive}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isSavingGroupDescriptive ? (
+                <>
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-r-transparent rounded-full mr-2"></span>
+                  در حال ذخیره...
+                </>
+              ) : (
+                "ذخیره وضعیت‌ها"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsGroupDescriptiveModalOpen(false)}
+              disabled={isSavingGroupDescriptive}
             >
               انصراف
             </Button>
