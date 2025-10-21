@@ -1257,6 +1257,11 @@ const ClassSheet = ({
       return;
     }
 
+    if (!selectedOption?.teacherCode) {
+      toast.error("لطفاً ابتدا معلم-درس را انتخاب کنید");
+      return;
+    }
+
     try {
       const response = await fetch("/api/assessments", {
         method: "POST",
@@ -1265,7 +1270,7 @@ const ClassSheet = ({
         },
         body: JSON.stringify({
           schoolCode,
-          teacherCode,
+          teacherCode: selectedOption.teacherCode,
           type: "title",
           value: customAssessmentTitle.trim(),
         }),
@@ -1296,6 +1301,11 @@ const ClassSheet = ({
       return;
     }
 
+    if (!selectedOption?.teacherCode) {
+      toast.error("لطفاً ابتدا معلم-درس را انتخاب کنید");
+      return;
+    }
+
     try {
       const response = await fetch("/api/assessments", {
         method: "POST",
@@ -1304,7 +1314,7 @@ const ClassSheet = ({
         },
         body: JSON.stringify({
           schoolCode,
-          teacherCode,
+          teacherCode: selectedOption.teacherCode,
           type: "value",
           value: customAssessmentValue.trim(),
           weight: customAssessmentWeight,
