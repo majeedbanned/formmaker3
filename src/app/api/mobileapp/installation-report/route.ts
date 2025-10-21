@@ -140,11 +140,28 @@ export async function GET(request: NextRequest) {
           teacherName: t.data.teacherName,
           pushTokens: t.data.pushTokens,
           lastTokenUpdate: t.data.lastTokenUpdate,
-        }));
+          hasApp: true,
+        }))
+        .sort((a, b) => {
+          // Sort by latest installation (most recent first)
+          const aDate = a.lastTokenUpdate ? new Date(a.lastTokenUpdate).getTime() : 0;
+          const bDate = b.lastTokenUpdate ? new Date(b.lastTokenUpdate).getTime() : 0;
+          return bDate - aDate;
+        });
 
-      const teachersWithoutApp = allTeachers.filter(
-        t => !t.data?.pushTokens || !Array.isArray(t.data.pushTokens) || t.data.pushTokens.length === 0
-      );
+      const teachersWithoutApp = allTeachers
+        .filter(t => !t.data?.pushTokens || !Array.isArray(t.data.pushTokens) || t.data.pushTokens.length === 0)
+        .map(t => ({
+          teacherCode: t.data.teacherCode,
+          teacherName: t.data.teacherName,
+          pushTokens: [],
+          lastTokenUpdate: null,
+          hasApp: false,
+        }))
+        .sort((a, b) => {
+          // Sort alphabetically by name
+          return (a.teacherName || '').localeCompare(b.teacherName || '', 'fa');
+        });
 
       // Process students data
       const studentsWithApp = allStudents
@@ -156,11 +173,32 @@ export async function GET(request: NextRequest) {
           classCode: s.data.classCode,
           pushTokens: s.data.pushTokens,
           lastTokenUpdate: s.data.lastTokenUpdate,
-        }));
+          hasApp: true,
+        }))
+        .sort((a, b) => {
+          // Sort by latest installation (most recent first)
+          const aDate = a.lastTokenUpdate ? new Date(a.lastTokenUpdate).getTime() : 0;
+          const bDate = b.lastTokenUpdate ? new Date(b.lastTokenUpdate).getTime() : 0;
+          return bDate - aDate;
+        });
 
-      const studentsWithoutApp = allStudents.filter(
-        s => !s.data?.pushTokens || !Array.isArray(s.data.pushTokens) || s.data.pushTokens.length === 0
-      );
+      const studentsWithoutApp = allStudents
+        .filter(s => !s.data?.pushTokens || !Array.isArray(s.data.pushTokens) || s.data.pushTokens.length === 0)
+        .map(s => ({
+          studentCode: s.data.studentCode,
+          studentName: s.data.studentName,
+          studentFamily: s.data.studentFamily,
+          classCode: s.data.classCode,
+          pushTokens: [],
+          lastTokenUpdate: null,
+          hasApp: false,
+        }))
+        .sort((a, b) => {
+          // Sort alphabetically by full name
+          const aName = `${a.studentName || ''} ${a.studentFamily || ''}`.trim();
+          const bName = `${b.studentName || ''} ${b.studentFamily || ''}`.trim();
+          return aName.localeCompare(bName, 'fa');
+        });
 
       // Calculate statistics
       const totalTeachers = allTeachers.length;
@@ -184,6 +222,12 @@ export async function GET(request: NextRequest) {
         overallInstallationRate: overallInstallationRate.toFixed(2) + '%',
       });
 
+      // Combine teachers (installed first, then not installed)
+      const allTeachersData = [...teachersWithApp, ...teachersWithoutApp];
+      
+      // Combine students (installed first, then not installed)
+      const allStudentsData = [...studentsWithApp, ...studentsWithoutApp];
+
       // Prepare response
       const reportData = {
         totalTeachers,
@@ -192,8 +236,8 @@ export async function GET(request: NextRequest) {
         totalStudents,
         studentsWithApp: studentsWithAppCount,
         studentsWithoutApp: studentsWithoutApp.length,
-        teachers: teachersWithApp,
-        students: studentsWithApp,
+        teachers: allTeachersData,
+        students: allStudentsData,
         installationRate: {
           teachers: parseFloat(teacherInstallationRate.toFixed(1)),
           students: parseFloat(studentInstallationRate.toFixed(1)),

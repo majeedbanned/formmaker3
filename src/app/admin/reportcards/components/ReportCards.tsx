@@ -1341,6 +1341,25 @@ const ReportCards = ({
   const exportToExcel = async () => {
     if (studentReportCards.length === 0) return;
 
+    // Filter students based on selection and user role
+    // Students should only export their own report card
+    const studentsToExport =
+      user?.userType === "student"
+        ? studentReportCards.filter(
+            (student) => student.studentCode === user.username
+          )
+        : selectedStudent === "all"
+        ? studentReportCards
+        : studentReportCards.filter(
+            (student) => student.studentCode === selectedStudent
+          );
+
+    // If no students to export (shouldn't happen, but safety check)
+    if (studentsToExport.length === 0) {
+      toast.error("هیچ کارنامه‌ای برای خروجی وجود ندارد");
+      return;
+    }
+
     // Create a new workbook
     const workbook = new Excel.Workbook();
     const worksheet = workbook.addWorksheet("کارنامه تحصیلی");
@@ -1359,7 +1378,7 @@ const ReportCards = ({
     titleCell.alignment = { horizontal: "center" };
 
     // For each student, create a separate worksheet
-    for (const student of studentReportCards) {
+    for (const student of studentsToExport) {
       const studentSheet = workbook.addWorksheet(`${student.studentName}`);
       studentSheet.views = [{ rightToLeft: true }];
 
@@ -1562,7 +1581,7 @@ const ReportCards = ({
       });
     }
 
-    // Create summary sheet with all students
+    // Create summary sheet with filtered students
     const summarySheet = workbook.addWorksheet("خلاصه کارنامه");
     summarySheet.views = [{ rightToLeft: true }];
 
@@ -1582,9 +1601,9 @@ const ReportCards = ({
       { header: "نام دانش‌آموز", key: "studentName", width: 25 },
     ];
 
-    // Add a column for each course
+    // Add a column for each course (from filtered students only)
     const allCourses = new Set<string>();
-    studentReportCards.forEach((student) => {
+    studentsToExport.forEach((student) => {
       Object.values(student.courses).forEach((course) => {
         allCourses.add(course.courseName);
       });
@@ -1617,8 +1636,8 @@ const ReportCards = ({
       fgColor: { argb: "FFE7E6E6" },
     };
 
-    // Add student data
-    const summaryData = studentReportCards.map((student) => {
+    // Add student data (filtered students only)
+    const summaryData = studentsToExport.map((student) => {
       const rowData: Record<string, string | number | null> = {
         studentCode: student.studentCode,
         studentName: student.studentName,
