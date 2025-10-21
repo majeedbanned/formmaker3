@@ -274,7 +274,7 @@ export default function Home() {
             <style>
               @page {
                 size: A4;
-                margin: 2cm;
+                margin: 1cm 1.5cm;
               }
               
               * {
@@ -287,7 +287,7 @@ export default function Home() {
                 font-family: 'Vazir', 'Tahoma', sans-serif;
                 direction: rtl;
                 text-align: right;
-                line-height: 1.6;
+                line-height: 1.3;
                 color: #333;
                 background: white;
               }
@@ -295,47 +295,47 @@ export default function Home() {
               .print-container {
                 max-width: 100%;
                 margin: 0 auto;
-                padding: 20px;
+                padding: 10px;
               }
               
               .header {
                 text-align: center;
-                margin-bottom: 20px;
-                border-bottom: 3px solid #2563eb;
-                padding-bottom: 15px;
+                margin-bottom: 10px;
+                border-bottom: 2px solid #2563eb;
+                padding-bottom: 8px;
                 page-break-after: avoid;
               }
               
               .school-name {
-                font-size: 20px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #1e40af;
-                margin-bottom: 8px;
-              }
-              
-              .class-title {
-                font-size: 18px;
-                font-weight: 600;
-                color: #374151;
                 margin-bottom: 4px;
               }
               
+              .class-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 3px;
+              }
+              
               .class-info {
-                font-size: 14px;
+                font-size: 10px;
                 color: #6b7280;
-                margin-bottom: 8px;
+                margin-bottom: 3px;
               }
               
               .print-date {
-                font-size: 12px;
+                font-size: 9px;
                 color: #9ca3af;
               }
               
               .students-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 20px;
-                font-size: 14px;
+                margin-top: 8px;
+                font-size: 10px;
                 page-break-inside: avoid;
               }
               
@@ -343,19 +343,21 @@ export default function Home() {
                 background-color: #f3f4f6;
                 color: #374151;
                 font-weight: 600;
-                padding: 8px 4px;
+                padding: 4px 2px;
                 text-align: center;
                 border: 1px solid #d1d5db;
-                font-size: 10px;
+                font-size: 9px;
                 writing-mode: horizontal-tb;
                 text-orientation: mixed;
+                line-height: 1.2;
               }
               
               .students-table td {
-                padding: 6px 4px;
+                padding: 3px 2px;
                 border: 1px solid #d1d5db;
                 text-align: center;
                 font-size: 10px;
+                line-height: 2.3;
               }
               
               .students-table tr:nth-child(even) {
@@ -377,19 +379,20 @@ export default function Home() {
               }
               
               .footer {
-                margin-top: 40px;
+                margin-top: 15px;
                 text-align: center;
-                border-top: 2px solid #e5e7eb;
-                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 8px;
                 color: #6b7280;
-                font-size: 12px;
+                font-size: 9px;
+                line-height: 1.3;
               }
               
               .no-students {
                 text-align: center;
-                padding: 40px;
+                padding: 20px;
                 color: #6b7280;
-                font-size: 16px;
+                font-size: 12px;
               }
               
               @media print {
@@ -404,12 +407,13 @@ export default function Home() {
                 
                 .header {
                   page-break-after: avoid;
-                  margin-bottom: 15px;
+                  margin-bottom: 6px;
+                  padding-bottom: 5px;
                 }
                 
                 .students-table {
                   page-break-inside: auto;
-                  margin-top: 10px;
+                  margin-top: 5px;
                 }
                 
                 .students-table thead {
@@ -420,8 +424,18 @@ export default function Home() {
                   page-break-inside: avoid;
                 }
                 
+                .students-table th {
+                  padding: 3px 2px;
+                }
+                
+                .students-table td {
+                  padding: 2px 1px;
+                }
+                
                 .footer {
                   page-break-before: avoid;
+                  margin-top: 10px;
+                  padding-top: 5px;
                 }
               }
             </style>
@@ -443,22 +457,22 @@ export default function Home() {
                 <table class="students-table">
                   <thead>
                     <tr>
-                      <th style="width: 30px;">ردیف</th>
-                      <th style="width: 100px;">نام خانوادگی</th>
-                      <th style="width: 80px;">نام</th>
-                      <th style="width: 60px;">کد دانش آموز</th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
-                      <th style="width: 45px;"></th>
+                      <th style="width: 25px;">ردیف</th>
+                      <th style="width: 90px;">نام خانوادگی</th>
+                      <th style="width: 70px;">نام</th>
+                      <th style="width: 55px;">کد</th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
+                      <th style="width: 35px;"></th>
                     </tr>
                   </thead>
                   <tbody>

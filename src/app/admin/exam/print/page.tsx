@@ -1256,14 +1256,14 @@ function PrintExamContent() {
               </div>
               <div className="mb-2">
                 <span className="font-semibold ml-2">زمان شروع:</span>
-                {examData?.data.dateTime.startDate
-                  ? formatPersianDate(examData.data.dateTime.startDate)
+                {examData?.data?.dateTime?.startDate
+                  ? formatPersianDate(examData.data?.dateTime?.startDate)
                   : ""}
               </div>
               <div className="mb-2">
                 <span className="font-semibold ml-2">زمان پایان:</span>
-                {examData?.data.dateTime.endDate
-                  ? formatPersianDate(examData.data.dateTime.endDate)
+                {examData?.data?.dateTime?.endDate
+                  ? formatPersianDate(examData.data?.dateTime?.endDate)
                   : ""}
               </div>
             </div>
@@ -1283,12 +1283,12 @@ function PrintExamContent() {
             </div>
           </div>
 
-          {examData?.data.settings.preexammessage && (
+          {examData?.data?.settings?.preexammessage && (
             <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
               <div className="font-semibold mb-1">پیام آزمون:</div>
               <div
                 dangerouslySetInnerHTML={renderHTML(
-                  examData.data.settings.preexammessage
+                  examData.data?.settings?.preexammessage
                 )}
               />
             </div>
