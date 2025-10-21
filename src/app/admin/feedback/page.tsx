@@ -319,13 +319,13 @@ export default function FeedbackPage() {
                       <div className="text-gray-500 text-xs mb-1">ارسال‌کننده</div>
                       <div className="font-medium flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {feedback.submittedBy.name}
+                        {feedback.submittedBy?.name}
                       </div>
                     </div>
                     <div>
                       <div className="text-gray-500 text-xs mb-1">نوع کاربر</div>
                       <div className="font-medium">
-                        {feedback.submittedBy.userType === "school" ? "مدیر" : "معلم"}
+                        {feedback.submittedBy?.userType === "school" ? "مدیر" : "معلم"}
                       </div>
                     </div>
                     <div>

@@ -31,10 +31,42 @@ import {
   X,
   CheckCircle2,
   Loader2,
+  List,
+  Send,
+  Clock,
+  AlertCircle,
+  MessageCircle,
+  ArrowLeft,
 } from "lucide-react";
 
 interface FeedbackButtonProps {
   variant?: "floating" | "inline";
+}
+
+interface Feedback {
+  _id: string;
+  type: 'bug' | 'suggestion';
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  phone?: string;
+  submittedBy: {
+    name: string;
+    userType: string;
+    schoolCode: string;
+    domain: string;
+  };
+  comments?: Array<{
+    text: string;
+    authorName?: string;
+    adminName?: string; // For backward compatibility
+    authorType?: string;
+    isAdminComment: boolean;
+    createdAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
@@ -42,6 +74,16 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  
+  // View mode: 'create' or 'list' or 'detail'
+  const [viewMode, setViewMode] = useState<'create' | 'list' | 'detail'>('create');
+  
+  // My Feedbacks
+  const [myFeedbacks, setMyFeedbacks] = useState<Feedback[]>([]);
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+  const [loadingFeedbacks, setLoadingFeedbacks] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
   
   // Form fields
   const [type, setType] = useState<"bug" | "suggestion">("suggestion");
@@ -183,9 +225,128 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !submittingComment) {
       setIsOpen(false);
       setShowThankYou(false);
+      setViewMode('create');
+      setSelectedFeedback(null);
+      setNewComment('');
+    }
+  };
+
+  const fetchMyFeedbacks = async () => {
+    setLoadingFeedbacks(true);
+    try {
+      const response = await fetch('/api/feedback/my-feedbacks');
+      const data = await response.json();
+      
+      if (data.success) {
+        setMyFeedbacks(data.data);
+      } else {
+        toast.error(data.message || 'خطا در دریافت بازخوردها');
+      }
+    } catch (error) {
+      console.error('Error fetching feedbacks:', error);
+      toast.error('خطا در دریافت بازخوردها');
+    } finally {
+      setLoadingFeedbacks(false);
+    }
+  };
+
+  const handleViewMyFeedbacks = () => {
+    setViewMode('list');
+    fetchMyFeedbacks();
+  };
+
+  const handleViewFeedbackDetail = (feedback: Feedback) => {
+    setSelectedFeedback(feedback);
+    setViewMode('detail');
+  };
+
+  const handleBackToList = () => {
+    setViewMode('list');
+    setSelectedFeedback(null);
+    setNewComment('');
+  };
+
+  const handleBackToCreate = () => {
+    setViewMode('create');
+    setSelectedFeedback(null);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !selectedFeedback) {
+      toast.error('لطفاً متن نظر را وارد کنید');
+      return;
+    }
+
+    setSubmittingComment(true);
+    try {
+      const response = await fetch('/api/feedback/add-comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          feedbackId: selectedFeedback._id,
+          comment: newComment,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('نظر شما با موفقیت ثبت شد');
+        setSelectedFeedback(data.data);
+        setNewComment('');
+        // Refresh the list
+        fetchMyFeedbacks();
+      } else {
+        toast.error(data.message || 'خطا در ثبت نظر');
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('خطا در ثبت نظر');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'open': return 'باز';
+      case 'in-progress': return 'در حال بررسی';
+      case 'resolved': return 'حل شده';
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-blue-100 text-blue-800';
+      case 'in-progress': return 'bg-purple-100 text-purple-800';
+      case 'resolved': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'بحرانی';
+      case 'high': return 'بالا';
+      case 'medium': return 'متوسط';
+      case 'low': return 'کم';
+      default: return priority;
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -209,7 +370,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
 
       {/* Feedback Dialog */}
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto" dir="rtl">
           {showThankYou ? (
             // Thank You Message
             <div className="text-center py-12">
@@ -230,13 +391,254 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
                 </p>
               </div>
             </div>
-          ) : (
+          ) : viewMode === 'list' ? (
+            // My Feedbacks List View
             <>
               <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                    <List className="h-6 w-6 text-blue-600" />
+                    بازخوردهای من
+                  </DialogTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBackToCreate}
+                  >
+                    <MessageSquarePlus className="h-4 w-4 ml-2" />
+                    ثبت بازخورد جدید
+                  </Button>
+                </div>
+                <DialogDescription>
+                  مشاهده و پیگیری بازخوردهای ارسالی شما
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-4">
+                {loadingFeedbacks ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
+                ) : myFeedbacks.length === 0 ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">شما هنوز بازخوردی ثبت نکرده‌اید</p>
+                    <Button onClick={handleBackToCreate}>
+                      <MessageSquarePlus className="h-4 w-4 ml-2" />
+                      ثبت اولین بازخورد
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myFeedbacks.map((feedback) => (
+                      <div
+                        key={feedback._id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => handleViewFeedbackDetail(feedback)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {feedback.type === 'bug' ? (
+                              <Bug className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Lightbulb className="h-5 w-5 text-yellow-600" />
+                            )}
+                            <h3 className="font-bold text-gray-900">{feedback.title}</h3>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <Badge className={getStatusColor(feedback.status)}>
+                            {getStatusLabel(feedback.status)}
+                          </Badge>
+                          <Badge className={getPriorityColor(feedback.priority)}>
+                            {getPriorityLabel(feedback.priority)}
+                          </Badge>
+                        </div>
+
+                        <p className="text-gray-600 text-sm line-clamp-2 mb-2">
+                          {feedback.description}
+                        </p>
+
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {new Date(feedback.createdAt).toLocaleDateString('fa-IR')}
+                            </span>
+                            {feedback.comments && feedback.comments.length > 0 && (
+                              <span className="flex items-center gap-1 text-blue-600">
+                                <MessageCircle className="h-3 w-3" />
+                                {feedback.comments.length} نظر
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-blue-600 hover:text-blue-700">
+                            مشاهده جزئیات ←
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : viewMode === 'detail' && selectedFeedback ? (
+            // Feedback Detail View
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 mb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToList}
+                  >
+                    <ArrowLeft className="h-4 w-4 ml-2" />
+                    بازگشت
+                  </Button>
+                </div>
                 <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                  <MessageSquarePlus className="h-6 w-6 text-blue-600" />
-                  گزارش مشکل یا پیشنهاد
+                  {selectedFeedback.type === 'bug' ? (
+                    <Bug className="h-6 w-6 text-red-600" />
+                  ) : (
+                    <Lightbulb className="h-6 w-6 text-yellow-600" />
+                  )}
+                  {selectedFeedback.title}
                 </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {/* Badges */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={getStatusColor(selectedFeedback.status)}>
+                    {getStatusLabel(selectedFeedback.status)}
+                  </Badge>
+                  <Badge className={getPriorityColor(selectedFeedback.priority)}>
+                    {getPriorityLabel(selectedFeedback.priority)}
+                  </Badge>
+                  <Badge variant="outline">
+                    {selectedFeedback.type === 'bug' ? 'مشکل' : 'پیشنهاد'}
+                  </Badge>
+                </div>
+
+                {/* Description */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2">توضیحات:</h4>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {selectedFeedback.description}
+                  </p>
+                </div>
+
+                {/* Submission Info */}
+                <div className="text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                      ارسال شده در {new Date(selectedFeedback.createdAt).toLocaleDateString('fa-IR')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* All Comments (Admin and User) */}
+                {selectedFeedback.comments && selectedFeedback.comments.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-indigo-600" />
+                      گفتگو
+                    </h4>
+                    <div className="space-y-3">
+                      {/* Sort comments chronologically */}
+                      {[...selectedFeedback.comments]
+                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                        .map((comment, idx) => (
+                          <div 
+                            key={idx} 
+                            className={
+                              comment.isAdminComment
+                                ? "bg-blue-50 border border-blue-200 rounded-lg p-4"
+                                : "bg-green-50 border border-green-200 rounded-lg p-4"
+                            }
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className={
+                                  comment.isAdminComment
+                                    ? "font-semibold text-blue-900"
+                                    : "font-semibold text-green-900"
+                                }>
+                                  {comment.authorName || comment.adminName || 'ناشناس'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ({comment.authorType || (comment.isAdminComment ? 'پشتیبانی' : 'کاربر')})
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-600">
+                                {new Date(comment.createdAt).toLocaleDateString('fa-IR')} 
+                                {' '}
+                                {new Date(comment.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-gray-700 whitespace-pre-wrap">{comment.text}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Comment Form */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3">افزودن نظر</h4>
+                  <div className="space-y-3">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="نظر یا سوال خود را بنویسید..."
+                      rows={4}
+                      maxLength={1000}
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">
+                        {newComment.length}/1000
+                      </span>
+                      <Button
+                        onClick={handleAddComment}
+                        disabled={submittingComment || !newComment.trim()}
+                      >
+                        {submittingComment ? (
+                          <>
+                            <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                            در حال ارسال...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4 ml-2" />
+                            ارسال نظر
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Create New Feedback View
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                    <MessageSquarePlus className="h-6 w-6 text-blue-600" />
+                    گزارش مشکل یا پیشنهاد
+                  </DialogTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewMyFeedbacks}
+                  >
+                    <List className="h-4 w-4 ml-2" />
+                    بازخوردهای من
+                  </Button>
+                </div>
                 <DialogDescription>
                   نظرات و پیشنهادات شما به ما در بهبود سیستم کمک می‌کند
                 </DialogDescription>
