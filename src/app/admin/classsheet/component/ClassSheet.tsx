@@ -4017,7 +4017,7 @@ const ClassSheet = ({
                   </div>
                 </div>
 
-                {/* Detailed Grades */}
+                {/* Detailed Gradex  s */}
                 {monthlyReportData.allGrades.length > 0 && (
                   <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
                     <h3 className="text-lg font-bold mb-3">نمرات جزئی</h3>
