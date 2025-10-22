@@ -89,9 +89,29 @@ export default function OnlineExamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
+  const [serverDateTime, setServerDateTime] = useState<string>("");
+  const [serverDate, setServerDate] = useState<string>("");
+  const [serverTime, setServerTime] = useState<string>("");
 
   // Add user authentication
   const { user, isLoading: authLoading } = useAuth();
+
+  // Fetch server time
+  const fetchServerTime = async () => {
+    try {
+      const response = await fetch('/api/server-time');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setServerDateTime(data.serverTime.persian);
+          setServerDate(data.serverTime.persianDate);
+          setServerTime(data.serverTime.persianTime);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching server time:', error);
+    }
+  };
 
   /* ── Tick each second   (pause when tab hidden) ──────────────────────── */
   useEffect(() => {
@@ -108,6 +128,13 @@ export default function OnlineExamPage() {
       stop();
       document.removeEventListener("visibilitychange", () => {});
     };
+  }, []);
+
+  // Update server time every minute
+  useEffect(() => {
+    fetchServerTime(); // Initial fetch
+    const interval = setInterval(fetchServerTime, 60000); // Update every minute
+    return () => clearInterval(interval);
   }, []);
 
   /* ── Fetch exams ───────────────────────────────────────────────────── */
@@ -258,6 +285,38 @@ export default function OnlineExamPage() {
   /* ── Render table ──────────────────────────────────────────────────── */
   return (
     <div className="container mx-auto max-w-7xl p-4" dir="rtl">
+      {/* Server DateTime Display - Compact */}
+      {serverDate && serverTime && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 mb-4 shadow-sm">
+          <div className="flex items-center justify-center space-x-4 space-x-reverse">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className="bg-blue-100 p-2 rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-blue-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-blue-800">زمان سرور</p>
+                <p className="text-xs text-blue-600">{serverDate}</p>
+              </div>
+            </div>
+            <div className="bg-white px-3 py-1 rounded-lg border border-blue-200">
+              <p className="text-sm font-mono font-bold text-blue-700">{serverTime}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* User Role Info Card */}
       {user && (
         <Card className="mb-6 shadow-sm border-l-4 border-l-blue-500">

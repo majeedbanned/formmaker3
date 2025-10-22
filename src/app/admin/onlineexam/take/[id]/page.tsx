@@ -251,6 +251,7 @@ export default function ExamPage({
   const [persianEntryDateTime, setPersianEntryDateTime] = useState<
     string | null
   >(null);
+  const [serverDateTime, setServerDateTime] = useState<string>("");
 
   // For separate pages mode
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
@@ -272,6 +273,28 @@ export default function ExamPage({
       .toString()
       .padStart(2, "0")}`;
   };
+
+  // Fetch server time
+  const fetchServerTime = async () => {
+    try {
+      const response = await fetch('/api/server-time');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setServerDateTime(data.serverTime.persian);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching server time:', error);
+    }
+  };
+
+  // Update server time every minute
+  useEffect(() => {
+    fetchServerTime(); // Initial fetch
+    const interval = setInterval(fetchServerTime, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   // Calculate remaining time based on entry time and exam duration
   const calculateRemainingTime = (entryTime: Date, durationMinutes: number) => {
@@ -868,6 +891,30 @@ export default function ExamPage({
 
     return (
       <div className="container mx-auto pb-10 rtl" dir="rtl">
+        {/* Server DateTime Display */}
+        {serverDateTime && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-center">
+            <div className="flex items-center justify-center space-x-2 space-x-reverse">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-gray-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span className="text-sm font-medium text-gray-700">
+                زمان سرور: {serverDateTime}
+              </span>
+            </div>
+          </div>
+        )}
+        
         <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
           <CardHeader className="bg-gradient-to-l from-blue-100/80 to-blue-50 flex flex-row justify-between items-center border-b border-blue-100">
             <div className="flex items-center">
@@ -1207,6 +1254,30 @@ export default function ExamPage({
 
     return (
       <div className="container mx-auto pb-10 rtl" dir="rtl">
+        {/* Server DateTime Display */}
+        {serverDateTime && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-center">
+            <div className="flex items-center justify-center space-x-2 space-x-reverse">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-gray-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span className="text-sm font-medium text-gray-700">
+                زمان سرور: {serverDateTime}
+              </span>
+            </div>
+          </div>
+        )}
+        
         <Card className="shadow-xl mb-6 border-blue-200 overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50">
           <CardHeader className="bg-gradient-to-l from-blue-100/80 to-blue-50 flex flex-row justify-between items-center border-b border-blue-100">
             <div className="flex items-center">
