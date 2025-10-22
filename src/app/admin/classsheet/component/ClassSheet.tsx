@@ -1664,28 +1664,28 @@ const ClassSheet = ({
     };
 
     // Add menu options
-    // menu.appendChild(
-    //   createMenuItem("وارد کردن دسته جمعی", () => {
-    //     // Reset bulk form fields
-    //     setBulkGrade({
-    //       value: 0,
-    //       description: "",
-    //       date: new Date().toISOString(),
-    //       totalPoints: 20,
-    //     });
-    //     setBulkPresenceStatus("");
-    //     setBulkDescriptiveStatus("");
-    //     setBulkAssessment({
-    //       title: "",
-    //       value: "",
-    //       date: new Date().toISOString(),
-    //     });
-    //     setBulkNote("");
+    menu.appendChild(
+      createMenuItem("وارد کردن دسته جمعی", () => {
+        // Reset bulk form fields
+        setBulkGrade({
+          value: 0,
+          description: "",
+          date: new Date().toISOString(),
+          totalPoints: 20,
+        });
+        setBulkPresenceStatus("");
+        setBulkDescriptiveStatus("");
+        setBulkAssessment({
+          title: "",
+          value: "",
+          date: new Date().toISOString(),
+        });
+        setBulkNote("");
 
-    //     // Open the bulk modal
-    //     setIsBulkModalOpen(true);
-    //   })
-    // );
+        // Open the bulk modal
+        setIsBulkModalOpen(true);
+      })
+    );
 
     menu.appendChild(
       createMenuItem("یادداشت روزانه معلم", () => {
@@ -4413,7 +4413,7 @@ const ClassSheet = ({
             </div>
 
             {/* Descriptive Status */}
-            <div>
+            <div style={{ display: "none" }}>
               <Label htmlFor="bulkDescriptiveStatus" className="block mb-2">
                 وضعیت توصیفی (همه دانش آموزان)
               </Label>
@@ -4438,7 +4438,7 @@ const ClassSheet = ({
             </div>
 
             {/* Bulk Grade */}
-            <div className="border p-4 rounded-md bg-blue-50">
+            <div style={{ display: "none" }} className="border p-4 rounded-md bg-blue-50">
               <h3 className="font-bold mb-3">
                 افزودن نمره برای همه دانش آموزان
               </h3>
@@ -4497,7 +4497,7 @@ const ClassSheet = ({
             </div>
 
             {/* Bulk Assessment */}
-            <div className="border p-4 rounded-md bg-green-50">
+            <div style={{ display: "none" }} className="border p-4 rounded-md bg-green-50">
               <h3 className="font-bold mb-3">
                 افزودن ارزیابی برای همه دانش آموزان
               </h3>
@@ -4556,7 +4556,7 @@ const ClassSheet = ({
             </div>
 
             {/* Note */}
-            <div>
+            <div style={{ display: "none" }}>
               <Label htmlFor="bulkNote" className="block mb-2">
                 یادداشت (برای همه دانش آموزان)
               </Label>
