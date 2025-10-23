@@ -1,8 +1,8 @@
 {
 
   "localhost:3000": {
-    "schoolCode":"95012284",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/files?authSource=admin",
+    "schoolCode":"95121357",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/harati?authSource=admin",
     "description": "Local development database"
   },
 
