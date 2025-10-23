@@ -25,19 +25,25 @@ export async function GET(request: NextRequest) {
       schoolCode: user.schoolCode,
     });
 
-    // Default values if no preferences found
+    // Default values if no preferences found: ENABLED (true)
+    // Only disabled if explicitly set to false
     const notificationSettings = preferences?.notifications || {
-      sendOnAbsence: false,
-      sendOnGrade: false,
-      sendOnEvent: false,
+      sendOnAbsence: true,  // Default: enabled
+      sendOnGrade: true,    // Default: enabled
+      sendOnEvent: true,    // Default: enabled
     };
 
     // If specific type requested, return just that
     if (eventType) {
-      const isEnabled = eventType === 'absence' ? notificationSettings.sendOnAbsence :
-                       eventType === 'grade' ? notificationSettings.sendOnGrade :
-                       eventType === 'event' ? notificationSettings.sendOnEvent :
-                       false;
+      let isEnabled = true; // Default to enabled
+      
+      if (eventType === 'absence') {
+        isEnabled = notificationSettings.sendOnAbsence !== false;
+      } else if (eventType === 'grade') {
+        isEnabled = notificationSettings.sendOnGrade !== false;
+      } else if (eventType === 'event') {
+        isEnabled = notificationSettings.sendOnEvent !== false;
+      }
 
       return NextResponse.json({
         enabled: isEnabled,

@@ -5,6 +5,13 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import dayjs from 'dayjs';
 import jalaliday from 'jalaliday';
+import { logger } from "@/lib/logger";
+import { 
+  sendAbsenceNotification, 
+  sendGradeNotification, 
+  sendAssessmentNotification,
+  sendNoteNotification 
+} from "@/lib/notifications/autoSendHelper";
 
 // Initialize dayjs for Jalali dates
 dayjs.extend(jalaliday);
@@ -250,6 +257,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Get existing record before update (for change detection)
+      const existingRecord = await db.collection('classsheet').findOne({
+        classCode: classCode,
+        studentCode: studentCode,
+        teacherCode: decoded.username,
+        courseCode: courseCode,
+        schoolCode: decoded.schoolCode,
+        date: date,
+        timeSlot: timeSlot,
+      });
+
       // Create or update the cell data
       const result = await db.collection('classsheet').updateOne(
         {
@@ -279,9 +297,34 @@ export async function POST(request: NextRequest) {
         { upsert: true }
       );
 
-      await client.close();
-
       console.log("Save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
+
+      // Send automatic notifications (async, don't wait)
+      // Use domain based on schoolCode
+      const notificationDomain = decoded.domain || 'localhost:3000';
+      sendAutoNotificationsForMobileClasssheet({
+        domain: notificationDomain,
+        schoolCode: decoded.schoolCode,
+        studentCode,
+        teacherCode: decoded.username,
+        courseCode,
+        classCode,
+        presenceStatus,
+        grades,
+        assessments,
+        note,
+        descriptiveStatus,
+        existingRecord,
+        db,
+        date,
+        timeSlot,
+        persianDate,
+        persianMonth: persianMonthName
+      }).catch(error => {
+        console.error('Error sending auto-notifications:', error);
+      });
+
+      await client.close();
 
       return NextResponse.json({
         success: true,
@@ -305,6 +348,206 @@ export async function POST(request: NextRequest) {
       { success: false, message: 'خطا در ثبت اطلاعات' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Send automatic notifications based on classsheet changes (mobile app version)
+ */
+async function sendAutoNotificationsForMobileClasssheet(params: {
+  domain: string;
+  schoolCode: string;
+  studentCode: string;
+  teacherCode: string;
+  courseCode: string;
+  classCode: string;
+  presenceStatus: any;
+  grades: any;
+  assessments: any;
+  note: any;
+  descriptiveStatus: any;
+  existingRecord: any;
+  db: any;
+  date: string;
+  timeSlot: string;
+  persianDate: string;
+  persianMonth: string;
+}) {
+  const {
+    domain,
+    schoolCode,
+    studentCode,
+    teacherCode,
+    courseCode,
+    classCode,
+    presenceStatus,
+    grades,
+    assessments,
+    note,
+    descriptiveStatus,
+    existingRecord,
+    db,
+    date,
+    timeSlot,
+    persianDate,
+    persianMonth
+  } = params;
+
+  try {
+    // Get student info for notification messages
+    const student = await db.collection('students').findOne({
+      'data.studentCode': studentCode,
+      'data.schoolCode': schoolCode
+    });
+
+    if (!student) {
+      console.warn(`[AutoNotif] Student ${studentCode} not found`);
+      return;
+    }
+
+    const studentName = `${student.data.studentName || ''} ${student.data.studentFamily || ''}`.trim();
+    
+    // Get course name
+    const course = await db.collection('courses').findOne({
+      'data.courseCode': courseCode,
+      'data.schoolCode': schoolCode
+    });
+    const courseName = course?.data?.courseName || courseCode;
+
+    // Get teacher name
+    const teacher = await db.collection('teachers').findOne({
+      'data.teacherCode': teacherCode,
+      'data.schoolCode': schoolCode
+    });
+    const teacherName = teacher?.data?.teacherName || undefined;
+
+    // Get class name
+    const classDoc = await db.collection('classes').findOne({
+      'data.classCode': classCode,
+      'data.schoolCode': schoolCode
+    });
+    const className = classDoc?.data?.className || undefined;
+
+    // 1. Check for absence/delay changes
+    if (presenceStatus && (!existingRecord || existingRecord.presenceStatus !== presenceStatus)) {
+      if (presenceStatus === 'absent' || presenceStatus === 'late') {
+        logger.info(`[AutoNotif] Presence status changed to ${presenceStatus}, sending notification`);
+        await sendAbsenceNotification(
+          studentCode,
+          schoolCode,
+          domain,
+          presenceStatus,
+          studentName,
+          courseName,
+          teacherCode,
+          classCode,
+          teacherName,
+          className,
+          persianDate,
+          timeSlot
+        );
+      }
+    }
+
+    // 2. Check for new grades
+    if (grades && Array.isArray(grades) && grades.length > 0) {
+      const hasNewGrades = !existingRecord || 
+        !existingRecord.grades || 
+        grades.length > existingRecord.grades.length ||
+        JSON.stringify(grades) !== JSON.stringify(existingRecord.grades);
+
+      if (hasNewGrades) {
+        logger.info(`[AutoNotif] Grades changed, sending notification`);
+        const gradeInfo = grades.map((g: any) => `${g.title}: ${g.value}`).join(', ');
+        await sendGradeNotification(
+          studentCode,
+          schoolCode,
+          domain,
+          studentName,
+          courseName,
+          gradeInfo,
+          teacherCode,
+          classCode,
+          teacherName,
+          className,
+          persianDate
+        );
+      }
+    }
+
+    // 3. Check for new assessments
+    if (assessments && Array.isArray(assessments) && assessments.length > 0) {
+      const hasNewAssessments = !existingRecord || 
+        !existingRecord.assessments || 
+        assessments.length > existingRecord.assessments.length ||
+        JSON.stringify(assessments) !== JSON.stringify(existingRecord.assessments);
+
+      if (hasNewAssessments) {
+        logger.info(`[AutoNotif] Assessments changed, sending notification`);
+        const assessmentInfo = assessments
+          .map((a: any) => {
+            const title = a.title || 'ارزیابی';
+            const value = a.value || a.assessment;
+            return value ? `${title}: ${value}` : title;
+          })
+          .join('\n📋 ');
+        await sendAssessmentNotification(
+          studentCode,
+          schoolCode,
+          domain,
+          studentName,
+          courseName,
+          assessmentInfo,
+          teacherCode,
+          classCode,
+          teacherName,
+          className,
+          persianDate
+        );
+      }
+    }
+
+    // 4. Check for new notes
+    if (note && (!existingRecord || existingRecord.note !== note)) {
+      logger.info(`[AutoNotif] Note changed, sending notification`);
+      await sendNoteNotification(
+        studentCode,
+        schoolCode,
+        domain,
+        studentName,
+        courseName,
+        'note',
+        teacherCode,
+        classCode,
+        teacherName,
+        className,
+        persianDate,
+        note
+      );
+    }
+
+    // 5. Check for new descriptive status
+    if (descriptiveStatus && (!existingRecord || existingRecord.descriptiveStatus !== descriptiveStatus)) {
+      logger.info(`[AutoNotif] Descriptive status changed, sending notification`);
+      await sendNoteNotification(
+        studentCode,
+        schoolCode,
+        domain,
+        studentName,
+        courseName,
+        'descriptive',
+        teacherCode,
+        classCode,
+        teacherName,
+        className,
+        persianDate,
+        descriptiveStatus
+      );
+    }
+
+  } catch (error) {
+    console.error('[AutoNotif] Error in sendAutoNotificationsForMobileClasssheet:', error);
+    // Don't throw - notification failures shouldn't stop the save
   }
 }
 
