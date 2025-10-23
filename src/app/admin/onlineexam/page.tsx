@@ -11,8 +11,11 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+
 import {
   Table,
   TableBody,
@@ -39,11 +42,26 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 
+
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
 /* ───── Day.js config ──────────────────────────────────────────────────── */
-dayjs.extend(jalaliday);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(customParseFormat);  // <- before jalaliday
+dayjs.extend(jalaliday);          // <- after customParseFormat
 dayjs.extend(relativeTime);
 dayjs.extend(isBetween);
 dayjs.locale("fa");
+
+
+
+
+const DEFAULT_TZ = "Asia/Tehran";
+// Optional: force all Day.js instances to default to this TZ
+dayjs.tz.setDefault(DEFAULT_TZ);
 
 /* ───── Types ──────────────────────────────────────────────────────────── */
 interface ExamDateTime {
@@ -88,7 +106,8 @@ export default function OnlineExamPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(dayjs());
+
+  const [currentTime, setCurrentTime] = useState(dayjs.tz(undefined, DEFAULT_TZ));
   const [serverDateTime, setServerDateTime] = useState<string>("");
   const [serverDate, setServerDate] = useState<string>("");
   const [serverTime, setServerTime] = useState<string>("");
@@ -131,11 +150,28 @@ export default function OnlineExamPage() {
   }, []);
 
   // Update server time every minute
-  useEffect(() => {
-    fetchServerTime(); // Initial fetch
-    const interval = setInterval(fetchServerTime, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
+// Replace the whole “Tick each second” effect with this:
+
+useEffect(() => {
+  let timer: NodeJS.Timeout | null = null;
+
+  const tick = () => setCurrentTime(dayjs.tz(undefined, DEFAULT_TZ));
+  const handleVisibility = () => {
+    if (document.hidden) {
+      if (timer) { clearInterval(timer); timer = null; }
+    } else {
+      tick(); // instant resync
+      timer = setInterval(tick, 1000);
+    }
+  };
+
+  handleVisibility();
+  document.addEventListener("visibilitychange", handleVisibility);
+  return () => {
+    if (timer) clearInterval(timer);
+    document.removeEventListener("visibilitychange", handleVisibility);
+  };
+}, []);
 
   /* ── Fetch exams ───────────────────────────────────────────────────── */
   useEffect(() => {
@@ -195,10 +231,40 @@ export default function OnlineExamPage() {
   }, [authLoading, user?.id, user?.userType]); // Use specific user properties instead of whole user object
 
   /* ── Jalali parsing helper & memoised exams ────────────────────────── */
-  const parseJalaliDate = useCallback(
-    (p?: string) => (p ? dayjs(toEN(p.trim()), { jalali: true } as any) : null),
-    []
-  );
+  // const parseJalaliDate = useCallback(
+  //   (p?: string) => (p ? dayjs(toEN(p.trim()), { jalali: true } as any) : null),
+  //   []
+  // );
+
+
+  const parseJalaliDate = useCallback((p?: string) => {
+    if (!p) return null;
+  
+    // Convert Persian digits → Latin, then extract parts
+    const s = toEN(p.trim()); // e.g. "1404/07/30 23:51"
+    const m = s.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})$/);
+    if (!m) return null;
+  
+    const jy = parseInt(m[1], 10);
+    const jm = parseInt(m[2], 10);
+    const jd = parseInt(m[3], 10);
+    const hh = parseInt(m[4], 10);
+    const mi = parseInt(m[5], 10);
+  
+    // Build a Dayjs in Tehran TZ, switch to Jalali calendar for setting,
+    // then (optionally) switch back to Gregorian; the instant is correct either way.
+    const d = dayjs
+      .tz(undefined, DEFAULT_TZ)              // TZ-aware base
+      .calendar("jalali")                     // work in Jalali
+      .year(jy).month(jm - 1).date(jd)        // normal setters, but in Jalali calendar
+      .hour(hh).minute(mi).second(0).millisecond(0)
+      .calendar("gregory");                   // optional: return to Gregorian view
+  
+    return d.isValid() ? d : null;
+  }, []);
+  
+  
+
 
   const parsedExams = useMemo(
     () =>
@@ -210,19 +276,36 @@ export default function OnlineExamPage() {
     [exams, parseJalaliDate]
   );
 
-  /* ── Active & status helpers ───────────────────────────────────────── */
-  const isExamActive = (start: dayjs.Dayjs | null, end: dayjs.Dayjs | null) =>
-    !!start && !!end && currentTime.isBetween(start, end, "minute", "[]"); // inclusive
+// ✅ Inclusive, second-level active window
+const isExamActive = (start: dayjs.Dayjs | null, end: dayjs.Dayjs | null) =>
+  !!start?.isValid() &&
+  !!end?.isValid() &&
+  !currentTime.isBefore(start, "second") &&   // currentTime >= start
+  !currentTime.isAfter(end, "second");  
+/* Latin-digit → Persian-digit converter (3 → ۳) */
+const toFA = (s: string) => s.replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[+d]);
 
-  const getTimeStatus = (
-    start: dayjs.Dayjs | null,
-    end: dayjs.Dayjs | null
-  ) => {
-    if (!start || !end) return "زمان نامشخص";
-    if (currentTime.isBefore(start)) return `شروع در ${start.fromNow(true)}`;
-    if (currentTime.isAfter(end)) return `پایان یافته ${end.fromNow(true)} قبل`;
-    return `در حال برگزاری، پایان در ${end.fromNow(true)}`;
-  };
+const getTimeStatus = (start: dayjs.Dayjs | null, end: dayjs.Dayjs | null) => {
+  if (!start?.isValid() || !end?.isValid()) return "زمان نامشخص";
+  if (currentTime.isBefore(start, "second"))
+    return `شروع در ${toFA(start.from(currentTime, true))} دیگر`;
+  if (currentTime.isAfter(end, "second"))
+    return `پایان یافته ${toFA(end.from(currentTime, true))} قبل`;
+  return `در حال برگزاری، پایان در ${toFA(currentTime.to(end, true))}`;
+};
+
+  // const getTimeStatus = (
+  //   start: dayjs.Dayjs | null,
+  //   end: dayjs.Dayjs | null
+  // ) => {
+  //  // // console.log("start", start, "end", end, "currentTime", currentTime);
+  //   if (!start || !end) return "زمان نامشخص";
+   
+
+  //   if (currentTime.isBefore(start)) return `شروع در ${start.fromNow(true)}`;
+  //   if (currentTime.isAfter(end)) return `پایان یافته ${end.fromNow(true)} قبل`;
+  //   return `در حال برگزاری، پایان در ${end.fromNow(true)}`;
+  // };
 
   /* ── Helper functions for user role display ──────────────────────── */
   const userRoleInfo = useMemo(() => {
@@ -379,7 +462,8 @@ export default function OnlineExamPage() {
                 <TableBody>
                   {parsedExams.map(({ _id, data, start, end }) => {
                     const active = isExamActive(start, end);
-                    const upcoming = !!start && currentTime.isBefore(start);
+                    const upcoming =
+                    !!start?.isValid() && currentTime.isBefore(start, "second");
                     const userFinished = examStatus[_id]?.isFinished || false;
                     const canShowResults =
                       userFinished &&
