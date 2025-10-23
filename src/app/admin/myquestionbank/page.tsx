@@ -651,7 +651,7 @@ function QuestionBankContent(): React.ReactElement {
     if (filters.type) queryParams.append("type", filters.type);
 
     // Update URL and trigger data fetch
-    router.push(`/admin/questionbank?${queryParams.toString()}`);
+    router.push(`/admin/myquestionbank?${queryParams.toString()}`);
   };
 
   // Reset filters
@@ -666,7 +666,7 @@ function QuestionBankContent(): React.ReactElement {
       type: "",
     });
 
-    router.push("/admin/questionbank");
+    router.push("/admin/myquestionbank");
   };
 
   // Handle filter changes
@@ -701,7 +701,7 @@ function QuestionBankContent(): React.ReactElement {
   const handlePageChange = (newPage: number) => {
     const queryParams = new URLSearchParams(searchParams.toString());
     queryParams.set("page", newPage.toString());
-    router.push(`/admin/questionbank?${queryParams.toString()}`);
+    router.push(`/admin/myquestionbank?${queryParams.toString()}`);
   };
 
   // Generate pagination items
