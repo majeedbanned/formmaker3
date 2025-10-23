@@ -9,12 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Settings, AlertCircle, Key } from "lucide-react";
+import { Save, Settings, AlertCircle, Key, Bell } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 
 interface PreferencesData {
   allowStudentsToChangeProfile: boolean;
+  notifications?: {
+    sendOnAbsence: boolean;
+    sendOnGrade: boolean;
+    sendOnEvent: boolean;
+  };
 }
 
 interface PasswordChangeData {
@@ -26,6 +31,11 @@ export default function PreferencesPage() {
   const { user, isLoading } = useAuth();
   const [preferences, setPreferences] = useState<PreferencesData>({
     allowStudentsToChangeProfile: false,
+    notifications: {
+      sendOnAbsence: false,
+      sendOnGrade: false,
+      sendOnEvent: false,
+    },
   });
   const [passwordData, setPasswordData] = useState<PasswordChangeData>({
     newPassword: "",
@@ -60,10 +70,24 @@ export default function PreferencesPage() {
 
         if (response.ok) {
           const data = await response.json();
-          setPreferences(data.preferences || { allowStudentsToChangeProfile: false });
+          setPreferences(data.preferences || { 
+            allowStudentsToChangeProfile: false,
+            notifications: {
+              sendOnAbsence: false,
+              sendOnGrade: false,
+              sendOnEvent: false,
+            }
+          });
         } else {
           // If no preferences found, use defaults
-          setPreferences({ allowStudentsToChangeProfile: false });
+          setPreferences({ 
+            allowStudentsToChangeProfile: false,
+            notifications: {
+              sendOnAbsence: false,
+              sendOnGrade: false,
+              sendOnEvent: false,
+            }
+          });
         }
       } catch (err) {
         console.error("Error fetching preferences:", err);
@@ -116,6 +140,17 @@ export default function PreferencesPage() {
     setPreferences(prev => ({
       ...prev,
       allowStudentsToChangeProfile: checked,
+    }));
+  };
+
+  // Handle notification checkbox change
+  const handleNotificationChange = (field: 'sendOnAbsence' | 'sendOnGrade' | 'sendOnEvent', checked: boolean) => {
+    setPreferences(prev => ({
+      ...prev,
+      notifications: {
+        ...prev.notifications,
+        [field]: checked,
+      } as NonNullable<typeof prev.notifications>,
     }));
   };
 
@@ -250,10 +285,14 @@ export default function PreferencesPage() {
 
       <div className="max-w-4xl mx-auto">
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general" className="flex items-center space-x-2 space-x-reverse">
               <Settings className="h-4 w-4" />
               <span>تنظیمات عمومی</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center space-x-2 space-x-reverse">
+              <Bell className="h-4 w-4" />
+              <span>تنظیمات اعلان</span>
             </TabsTrigger>
             <TabsTrigger value="password" className="flex items-center space-x-2 space-x-reverse">
               <Key className="h-4 w-4" />
@@ -333,6 +372,153 @@ export default function PreferencesPage() {
                         : "bg-red-100 text-red-800"
                     }`}>
                       {preferences.allowStudentsToChangeProfile ? "فعال" : "غیرفعال"}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-6 space-y-6">
+            {/* Notification Preferences Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg font-bold text-gray-800">
+                  <Bell className="h-5 w-5 ml-2 text-blue-600" />
+                  تنظیمات ارسال خودکار اعلان
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Absence Notification */}
+                <div className="flex items-start space-x-3 space-x-reverse">
+                  <Checkbox
+                    id="sendOnAbsence"
+                    checked={preferences.notifications?.sendOnAbsence || false}
+                    onCheckedChange={(checked) => handleNotificationChange('sendOnAbsence', checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="sendOnAbsence"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      ارسال اعلان پس از ثبت غیبت یا تأخیر
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      با فعال کردن این گزینه، زمانی که معلم برای دانش‌آموزی غیبت یا تأخیر ثبت کند، 
+                      به صورت خودکار اعلان به دستگاه‌های دانش‌آموز ارسال می‌شود.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t my-4"></div>
+
+                {/* Grade Notification */}
+                <div className="flex items-start space-x-3 space-x-reverse">
+                  <Checkbox
+                    id="sendOnGrade"
+                    checked={preferences.notifications?.sendOnGrade || false}
+                    onCheckedChange={(checked) => handleNotificationChange('sendOnGrade', checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="sendOnGrade"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      ارسال اعلان پس از ثبت نمره یا ارزیابی
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      با فعال کردن این گزینه، هنگام ثبت نمره یا ارزیابی برای دانش‌آموز،
+                      به صورت خودکار اعلان به دستگاه‌های دانش‌آموز و اولیا ارسال می‌شود.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t my-4"></div>
+
+                {/* Event Notification */}
+                <div className="flex items-start space-x-3 space-x-reverse">
+                  <Checkbox
+                    id="sendOnEvent"
+                    checked={preferences.notifications?.sendOnEvent || false}
+                    onCheckedChange={(checked) => handleNotificationChange('sendOnEvent', checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="sendOnEvent"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      ارسال اعلان هنگام تعریف رویداد
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      با فعال کردن این گزینه، زمانی که رویداد جدیدی تعریف می‌شود (مانند جلسه، امتحان، یا مراسم)،
+                      به صورت خودکار اعلان به دانش‌آموزان و معلمان مربوطه ارسال می‌شود.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Information Alert */}
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>توجه:</strong> این تنظیمات مربوط به ارسال خودکار اعلان‌ها است.
+                    شما همچنان می‌توانید از طریق بخش "ارسال اعلان گروهی" اعلان دستی ارسال کنید.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Save Button */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {saving ? "در حال ذخیره..." : "ذخیره تنظیمات"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Current Notification Settings Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-bold text-gray-800">
+                  خلاصه تنظیمات اعلان‌های خودکار
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">اعلان غیبت و تأخیر:</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      preferences.notifications?.sendOnAbsence
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}>
+                      {preferences.notifications?.sendOnAbsence ? "فعال" : "غیرفعال"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">اعلان ثبت نمره:</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      preferences.notifications?.sendOnGrade
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}>
+                      {preferences.notifications?.sendOnGrade ? "فعال" : "غیرفعال"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium">اعلان تعریف رویداد:</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      preferences.notifications?.sendOnEvent
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}>
+                      {preferences.notifications?.sendOnEvent ? "فعال" : "غیرفعال"}
                     </span>
                   </div>
                 </div>

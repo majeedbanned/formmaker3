@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
       const defaultPreferences = {
         schoolCode: user.schoolCode,
         allowStudentsToChangeProfile: false,
+        notifications: {
+          sendOnAbsence: false,
+          sendOnGrade: false,
+          sendOnEvent: false,
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -50,6 +55,11 @@ export async function GET(request: NextRequest) {
       success: true,
       preferences: {
         allowStudentsToChangeProfile: preferences.allowStudentsToChangeProfile,
+        notifications: preferences.notifications || {
+          sendOnAbsence: false,
+          sendOnGrade: false,
+          sendOnEvent: false,
+        },
       },
     });
 
@@ -97,9 +107,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate preferences data
-    const validPreferences = {
+    const validPreferences: any = {
       allowStudentsToChangeProfile: Boolean(preferences.allowStudentsToChangeProfile),
     };
+
+    // Add notification settings if provided
+    if (preferences.notifications) {
+      validPreferences.notifications = {
+        sendOnAbsence: Boolean(preferences.notifications.sendOnAbsence),
+        sendOnGrade: Boolean(preferences.notifications.sendOnGrade),
+        sendOnEvent: Boolean(preferences.notifications.sendOnEvent),
+      };
+    }
 
     // Update or create preferences
     const result = await connection.collection("preferences").updateOne(
