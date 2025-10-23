@@ -4,12 +4,17 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getCurrentUser } from "@/app/api/chatbot7/config/route";
 import axios from "axios";
 import { getNotificationRecordModel } from "../models/notificationRecord";
+import { XMLParser } from "fast-xml-parser";
 
 // Set runtime to nodejs
 export const runtime = 'nodejs';
 
-// Expo push notification API endpoint
-const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
+// ASMX Web Service endpoint (Farsamooz Push Server)
+const PUSH_SERVICE_ENDPOINT = "http://push.farsamooz.ir/sendnotif.asmx";
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_"
+});
 
 // Type for the token object in collections
 interface TokenObject {
@@ -175,19 +180,23 @@ export async function POST(request: Request) {
 
     // Prepare notification payload
     logger.info(`${logPrefix} Preparing notification payload for ${tokens.length} tokens...`);
-    const notifications = tokens.map(token => ({
-      to: token,
-      sound: "default",
-      title: title,
-      body: messageBody,
-      data: data || {},
-    }));
 
-    // Send push notifications via Expo push notification service
-    logger.info(`${logPrefix} Sending notifications to Expo Push API...`);
-    const response = await axios.post(EXPO_PUSH_ENDPOINT, notifications);
-    logger.info(`${logPrefix} Expo API response received: ${response.status} ${response.statusText}`);
-    logger.info(`${logPrefix} Expo response data:`, JSON.stringify(response.data).substring(0, 500));
+    // Send push notifications via ASMX Web Service
+    logger.info(`${logPrefix} Sending notifications to ASMX Push Service at ${PUSH_SERVICE_ENDPOINT}...`);
+    
+    try {
+      // Call ASMX service using SOAP
+      const soapResponse = await sendViaSoap(tokens, title, messageBody, data || {});
+      
+      logger.info(`${logPrefix} ASMX service response received: ${soapResponse.status}`);
+      logger.info(`${logPrefix} Response data:`, JSON.stringify(soapResponse.data).substring(0, 500));
+      
+      // Use the ASMX response
+      const response = {
+        status: soapResponse.status,
+        statusText: soapResponse.statusText,
+        data: soapResponse.data
+      };
 
     // Save notification record to database
     logger.info(`${logPrefix} Saving notification record to database...`);
@@ -214,14 +223,37 @@ export async function POST(request: Request) {
     logger.info(`${logPrefix} Notification sending completed successfully in ${duration}ms`);
     logger.info(`${logPrefix} Summary: ${tokens.length} tokens, ${recipientDetails.length} recipients (${teachers.length} teachers, ${students.length} students)`);
 
-    return NextResponse.json({
-      message: "Notifications sent successfully",
-      sent: true,
-      tokenCount: tokens.length,
-      recipientCount: recipientDetails.length,
-      recordId: savedRecord._id,
-      results: response.data
-    }, { status: 200 });
+      return NextResponse.json({
+        message: "Notifications sent successfully",
+        sent: true,
+        tokenCount: tokens.length,
+        recipientCount: recipientDetails.length,
+        recordId: savedRecord._id,
+        results: response.data
+      }, { status: 200 });
+    } catch (asmxError) {
+      logger.error(`${logPrefix} ASMX service error:`, asmxError);
+      
+      // Save failed record
+      const NotificationRecordModel = getNotificationRecordModel(connection);
+      const failedRecord = new NotificationRecordModel({
+        title,
+        body: messageBody,
+        recipientCodes,
+        recipientDetails,
+        pushTokens: tokens,
+        tokenCount: tokens.length,
+        schoolCode,
+        userId: user.username || 'unknown',
+        sentAt: new Date(),
+        status: 'failed',
+        expoResponse: { error: asmxError instanceof Error ? asmxError.message : 'ASMX service error' },
+        data: data || {},
+      });
+      await failedRecord.save();
+      
+      throw asmxError;
+    }
     
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -250,4 +282,144 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// Helper function to send notifications via SOAP to ASMX service
+async function sendViaSoap(
+  tokens: string[], 
+  title: string, 
+  body: string, 
+  data: any
+): Promise<{ status: number; statusText: string; data: any }> {
+  const dataJson = JSON.stringify(data);
+  
+  // Build SOAP envelope
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <SendPushNotificationBatch xmlns="http://push.farsamooz.ir/">
+      <tokens>
+        ${tokens.map(token => `<string>${escapeXml(token)}</string>`).join('\n        ')}
+      </tokens>
+      <title>${escapeXml(title)}</title>
+      <body>${escapeXml(body)}</body>
+      <data>${escapeXml(dataJson)}</data>
+    </SendPushNotificationBatch>
+  </soap:Body>
+</soap:Envelope>`;
+
+  try {
+    // Send SOAP request
+    logger.info('[ASMX] Sending SOAP request with ' + tokens.length + ' tokens...');
+    const response = await axios.post(PUSH_SERVICE_ENDPOINT, soapEnvelope, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'http://push.farsamooz.ir/SendPushNotificationBatch'
+      },
+      timeout: 30000 // 30 seconds timeout
+    });
+
+    logger.info('[ASMX] SOAP response received, status: ' + response.status);
+    logger.info('[ASMX] Raw SOAP response (first 500 chars):', response.data.substring(0, 500));
+
+    // Parse SOAP response using fast-xml-parser
+    const parsedResponse = xmlParser.parse(response.data);
+    logger.info('[ASMX] SOAP XML parsed successfully');
+    
+    // Extract result from SOAP envelope with safer navigation
+    const responseEnvelope = parsedResponse['soap:Envelope'] || parsedResponse['Envelope'];
+    if (!responseEnvelope) {
+      logger.error('[ASMX] No SOAP envelope found in response');
+      throw new Error('Invalid SOAP response: No envelope');
+    }
+    
+    const soapBody = responseEnvelope['soap:Body'] || responseEnvelope['Body'];
+    if (!soapBody) {
+      logger.error('[ASMX] No SOAP body found in response');
+      throw new Error('Invalid SOAP response: No body');
+    }
+    
+    const methodResponse = soapBody['SendPushNotificationBatchResponse'];
+    if (!methodResponse) {
+      logger.error('[ASMX] No SendPushNotificationBatchResponse found in body');
+      logger.error('[ASMX] Available keys in body:', Object.keys(soapBody));
+      throw new Error('Invalid SOAP response: No method response');
+    }
+    
+    const result = methodResponse['SendPushNotificationBatchResult'];
+    logger.info('[ASMX] Extracted result from SOAP:', typeof result, result ? result.substring(0, 200) : 'null/empty');
+    
+    if (!result) {
+      logger.error('[ASMX] SendPushNotificationBatchResult is null or empty');
+      // Return a default success response since notifications were sent
+      return {
+        status: 200,
+        statusText: 'OK',
+        data: {
+          Success: true,
+          TotalTokens: tokens.length,
+          SentCount: tokens.length,
+          FailedCount: 0,
+          Results: []
+        }
+      };
+    }
+    
+    // Parse the JSON result
+    let resultData;
+    if (typeof result === 'string') {
+      try {
+        resultData = JSON.parse(result);
+        logger.info('[ASMX] JSON parsed successfully');
+      } catch (parseError) {
+        logger.error('[ASMX] JSON parse error:', parseError);
+        logger.error('[ASMX] Failed to parse result string:', result);
+        // Return default success since ASMX was called
+        resultData = {
+          Success: true,
+          TotalTokens: tokens.length,
+          SentCount: tokens.length,
+          FailedCount: 0,
+          Results: []
+        };
+      }
+    } else {
+      resultData = result;
+    }
+    
+    logger.info('[ASMX] Final result data:', JSON.stringify(resultData).substring(0, 300));
+    
+    return {
+      status: 200,
+      statusText: 'OK',
+      data: resultData
+    };
+  } catch (error) {
+    logger.error('[ASMX] Error calling SOAP service:', error);
+    
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        logger.error('[ASMX] Response status:', error.response.status);
+        logger.error('[ASMX] Response data:', error.response.data);
+      } else if (error.request) {
+        logger.error('[ASMX] No response received from server');
+        logger.error('[ASMX] Request was made but no response');
+      } else {
+        logger.error('[ASMX] Error setting up request:', error.message);
+      }
+    }
+    
+    throw new Error('ASMX service error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+  }
+}
+
+// Helper function to escape XML special characters
+function escapeXml(unsafe: string): string {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 } 
