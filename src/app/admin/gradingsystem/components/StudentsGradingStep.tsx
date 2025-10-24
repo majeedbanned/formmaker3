@@ -56,7 +56,12 @@ export function StudentsGradingStep({
     [key: string]: HTMLInputElement | HTMLTextAreaElement | null;
   }>({});
 
-  const students = selectedClass?.data?.students || [];
+  // Sort students by family name (studentlname)
+  const students = (selectedClass?.data?.students || []).slice().sort((a: any, b: any) => {
+    const nameA = (a.studentlname || '').toLowerCase();
+    const nameB = (b.studentlname || '').toLowerCase();
+    return nameA.localeCompare(nameB, 'fa');
+  });
 
   useEffect(() => {
     // Focus first empty input only on mount or when students change

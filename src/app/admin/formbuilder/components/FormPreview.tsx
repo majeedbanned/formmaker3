@@ -466,6 +466,8 @@ export default function FormPreview({
                 })
               : z.array(z.string()).optional()
           );
+          // Mark this as a checkbox group so we don't override it later
+          (fieldSchema as any)._isCheckboxGroup = true;
         } else {
           // Single checkbox - boolean
           fieldSchema = z.preprocess(
@@ -475,7 +477,11 @@ export default function FormPreview({
               if (Array.isArray(val)) return val.length > 0;
               return false;
             },
-            z.boolean().optional()
+            field.required
+              ? z.boolean().refine((val) => val === true, {
+                  message: "این فیلد الزامی است",
+                })
+              : z.boolean().optional()
           );
         }
         break;
@@ -522,7 +528,15 @@ export default function FormPreview({
 
     // Add required validation
     if (field.required) {
-      if (["checkbox", "switch"].includes(field.type)) {
+      // Skip checkbox groups as they already have required validation
+      const isCheckboxGroup = (fieldSchema as any)._isCheckboxGroup;
+      
+      if (field.type === "checkbox" && !isCheckboxGroup) {
+        // Only handle single checkbox here (checkbox groups are already handled)
+        fieldSchema = z.boolean().refine((val) => val === true, {
+          message: "این فیلد الزامی است",
+        });
+      } else if (field.type === "switch") {
         fieldSchema = z.boolean().refine((val) => val === true, {
           message: "این فیلد الزامی است",
         });
@@ -1226,7 +1240,7 @@ export default function FormPreview({
             control={methods.control}
             name={field.name}
             render={({ field: formField }) => (
-              <FormItem className="space-y-3">
+              <FormItem className="space-y-3 ">
                 <FormLabel>{field.label}</FormLabel>
                 <FormControl>
                   <RadioGroup
@@ -1238,7 +1252,7 @@ export default function FormPreview({
                     {field.options?.map((option) => (
                       <FormItem
                         key={option.value}
-                        className="flex items-center space-x-3 space-x-reverse space-y-0"
+                        className="flex items-center space-x-3 space-x-reverse flex-start rtl space-y-0"
                       >
                         <FormControl>
                           <RadioGroupItem value={option.value} />

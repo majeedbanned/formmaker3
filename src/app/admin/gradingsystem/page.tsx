@@ -18,6 +18,8 @@ import {
   FileText,
   Save,
   HelpCircle,
+  Info,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ClassSelectionStep } from "./components/ClassSelectionStep";
@@ -29,6 +31,7 @@ import { GradeListsView } from "./components/GradeListsView";
 import HelpPanel from "@/components/ui/HelpPanel";
 import { gradingSystemHelpSections } from "./GradingSystemHelpContent";
 import PageHeader from "@/components/PageHeader";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface GradingData {
   selectedClass: any | null;
@@ -261,6 +264,23 @@ export default function GradingSystemPage() {
           icon={<FileText className="w-6 h-6" />}
           gradient={true}
         />
+        
+        {/* Important Notice */}
+        <Alert className="mb-6 border-blue-200 bg-blue-50">
+          <Info className="h-5 w-5 text-blue-600" />
+          <AlertTitle className="text-blue-900 font-semibold">توجه مهم</AlertTitle>
+          <AlertDescription className="text-blue-800">
+            <div className="space-y-2">
+              <p>
+                • نمرات ثبت شده در این بخش <strong>در دفتر کلاسی نمایش داده نمی‌شوند</strong> و مخصوص کارنامه‌های شخصی‌سازی شده هستند.
+              </p>
+              <p>
+                • اگر می‌خواهید نمرات را در <strong>دفتر کلاسی</strong> ثبت کنید، لطفاً به بخش دفتر کلاسی مراجعه کرده و از گزینه <strong>افزودن نمره گروهی</strong> استفاده نمایید.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Button

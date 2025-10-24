@@ -140,6 +140,16 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
       return;
     }
 
+    if (!phone.trim()) {
+      toast.error("لطفاً شماره تماس را وارد کنید");
+      return;
+    }
+
+    if (phone.trim().length !== 11) {
+      toast.error("شماره تماس باید 11 رقم باشد");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -169,7 +179,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
 
       // Send SMS notifications using admin credentials
       try {
-        // Send thank you SMS to user if phone number provided
+        // Send thank you SMS to user (phone is now mandatory)
         if (phone && phone.trim() && phone.length === 11) {
           await fetch('/api/sms/admin-send', {
             method: 'POST',
@@ -179,7 +189,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
             body: JSON.stringify({
               fromNumber: '9998762911',
               toNumbers: [phone],
-              message: `سلام ${user?.name || ''}، بازخورد شما با موفقیت ثبت شد. از همکاری شما سپاسگزاریم. تیم پشتیبانی پارسا موز`,
+              message: `سلام ${user?.name || ''}، بازخورد شما با موفقیت ثبت شد. پس از بررسی از طریق پیامک یا تماس پاسخ خواهیم داد. تیم پشتیبانی پارسا موز`,
             }),
           });
         }
@@ -753,7 +763,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
                 {/* Phone Number */}
                 <div className="space-y-2">
                   <Label htmlFor="phone">
-                    شماره تماس (اختیاری)
+                    شماره تماس <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="phone"
@@ -766,7 +776,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
                     className="text-left"
                   />
                   <div className="text-xs text-gray-500">
-                    در صورت نیاز به پیگیری، با شما تماس خواهیم گرفت
+                    برای اطلاع از پاسخ و پیگیری بازخورد شما، شماره تماس الزامی است
                   </div>
                 </div>
 
@@ -867,7 +877,7 @@ export function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !title.trim() || !description.trim()}
+                  disabled={isSubmitting || !title.trim() || !description.trim() || !phone.trim() || phone.trim().length !== 11}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   {isSubmitting ? (

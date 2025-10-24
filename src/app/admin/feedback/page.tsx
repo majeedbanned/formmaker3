@@ -176,7 +176,7 @@ export default function FeedbackPage() {
     <div className="container mx-auto px-4 py-8" dir="rtl">
       <PageHeader
         title="بازخوردها و پیشنهادات"
-        subtitle="مدیریت گزارشات مشکلات و پیشنهادات کاربران"
+        subtitle="مدیریت گزارش ها مشکلات و پیشنهادات کاربران"
         icon={<MessageSquarePlus className="w-6 h-6" />}
         gradient={true}
       />
