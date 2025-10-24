@@ -510,7 +510,7 @@
 
     
       "shberenji.farsamooz.ir": {
-        "schoolCode":"95109805",
+        "schoolCode":"95109809",
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shberenji?authSource=admin",
         "description": "shberenji.farsamooz.ir"
       }

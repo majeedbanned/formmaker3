@@ -15,6 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import AnnouncementButton from "@/components/AnnouncementButton";
 import type { Metadata } from "next";
 import { vazirmatn } from "@/lib/fonts";
 import "./../globals.css";
@@ -40,6 +41,7 @@ export default function RootLayout({
               className=" flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12"
             >
                  <div className="flex items-center gap-2 px-4">
+                <AnnouncementButton variant="inline" />
                 <FeedbackButton variant="inline" />
               </div>
               <div
