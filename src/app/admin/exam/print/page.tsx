@@ -212,7 +212,7 @@ function PrintExamContent() {
   );
   const [showAnswers, setShowAnswers] = useState(false);
   const [printTemplate, setPrintTemplate] = useState<
-    "regular" | "compact" | "dense"
+    "regular" | "compact" | "dense" | "booklet"
   >("regular");
   const [isAnswerSheetMode, setIsAnswerSheetMode] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
@@ -793,7 +793,7 @@ function PrintExamContent() {
                 value={printTemplate}
                 onChange={(e) =>
                   setPrintTemplate(
-                    e.target.value as "regular" | "compact" | "dense"
+                    e.target.value as "regular" | "compact" | "dense" | "booklet"
                   )
                 }
                 className="text-sm border border-gray-300 rounded py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -801,6 +801,7 @@ function PrintExamContent() {
                 <option value="regular">معمولی</option>
                 <option value="compact">فشرده</option>
                 <option value="dense">خیلی فشرده</option>
+                <option value="booklet">دفترچه آزمون</option>
               </select>
             </div>
 
@@ -1295,6 +1296,126 @@ function PrintExamContent() {
           )}
         </div>
 
+        {/* Booklet Cover Page */}
+        {printTemplate === "booklet" && (
+          <div className="booklet-cover-page print-only" style={{ pageBreakAfter: 'always' }}>
+            <div className="cover-content">
+              {/* School Logo and Name */}
+              <div className="cover-header">
+                {schoolData?.data?.schoolLogo && (
+                  <div className="cover-logo">
+                    <img
+                      src={schoolData.data.schoolLogo}
+                      alt={schoolData.data.schoolName}
+                      className="logo-image"
+                    />
+                  </div>
+                )}
+                <h1 className="school-name">{schoolData?.data?.schoolName || "مدرسه"}</h1>
+                {schoolData?.data?.address && (
+                  <p className="school-address">{schoolData.data.address}</p>
+                )}
+              </div>
+
+              {/* Exam Title */}
+              <div className="cover-title-section">
+                <div className="cover-title-border">
+                  <h2 className="exam-title">{examData?.data?.examName || "آزمون"}</h2>
+                </div>
+              </div>
+
+              {/* Exam Details */}
+              <div className="cover-details">
+                <div className="detail-row">
+                  <span className="detail-label">تعداد سوالات:</span>
+                  <span className="detail-value">{toPersianNumber(examQuestions.length)} سوال</span>
+                </div>
+                
+                {examData?.data?.dateTime?.startDate && (
+                  <div className="detail-row">
+                    <span className="detail-label">تاریخ برگزاری:</span>
+                    <span className="detail-value">
+                      {new Date(examData.data.dateTime.startDate).toLocaleDateString(
+                        "fa-IR"
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                <div className="detail-row">
+                  <span className="detail-label">مجموع نمرات:</span>
+                  <span className="detail-value">
+                    {toPersianNumber(
+                      examQuestions.reduce((sum, q) => sum + q.score, 0)
+                    )}{" "}
+                    نمره
+                  </span>
+                </div>
+
+                {examData?.data?.dateTime?.startDate &&
+                  examData?.data?.dateTime?.endDate && (
+                    <div className="detail-row">
+                      <span className="detail-label">مدت زمان:</span>
+                      <span className="detail-value">
+                        {toPersianNumber(
+                          Math.round(
+                            (new Date(examData.data.dateTime.endDate).getTime() -
+                              new Date(
+                                examData.data.dateTime.startDate
+                              ).getTime()) /
+                              60000
+                          )
+                        )}{" "}
+                        دقیقه
+                      </span>
+                    </div>
+                  )}
+              </div>
+
+              {/* Student Info Box */}
+              <div className="student-info-box">
+                <div className="info-field">
+                  <span className="field-label">نام و نام خانوادگی:</span>
+                  <span className="field-line"></span>
+                </div>
+                <div className="info-field">
+                  <span className="field-label">کلاس:</span>
+                  <span className="field-line short"></span>
+                  <span className="field-label mr-8">کد دانش‌آموزی:</span>
+                  <span className="field-line short"></span>
+                </div>
+                <div className="info-field">
+                  <span className="field-label">تاریخ:</span>
+                  <span className="field-line short"></span>
+                  <span className="field-label mr-8">نمره:</span>
+                  <span className="field-line short"></span>
+                </div>
+              </div>
+
+              {/* Pre-exam Message */}
+              {examData?.data?.settings?.preexammessage && (
+                <div className="cover-message">
+                  <div className="message-title">توجه:</div>
+                  <div
+                    className="message-content"
+                    dangerouslySetInnerHTML={renderHTML(
+                      examData.data?.settings?.preexammessage
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="cover-footer">
+                <p>موفق و پیروز باشید</p>
+                {schoolData?.data?.phone && (
+                  <p className="phone">تلفن: {schoolData.data.phone}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {examQuestions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             هیچ سوالی برای این آزمون ثبت نشده است.
@@ -1354,7 +1475,11 @@ function PrintExamContent() {
                 {item.question.type?.includes("تستی") && (
                   <div
                     className={`grid ${
-                      printTemplate === "dense" ? "grid-cols-3" : "grid-cols-2"
+                      printTemplate === "booklet" 
+                        ? "grid-cols-4" 
+                        : printTemplate === "dense" 
+                        ? "grid-cols-3" 
+                        : "grid-cols-2"
                     } gap-4 options-container`}
                   >
                     {item.question.option1 && (
@@ -1521,6 +1646,9 @@ function PrintExamContent() {
             ${printTemplate === "dense"
               ? "font-size: 9pt; line-height: 1.2;"
               : ""}
+            ${printTemplate === "booklet"
+              ? "font-size: 8pt; line-height: 1.1;"
+              : ""}
           }
 
           .non-printable {
@@ -1549,11 +1677,19 @@ function PrintExamContent() {
               ? "20px"
               : printTemplate === "compact"
               ? "12px"
+              : printTemplate === "dense"
+              ? "8px"
+              : printTemplate === "booklet"
+              ? "4px"
               : "8px"};
             padding: ${printTemplate === "regular"
               ? "16px"
               : printTemplate === "compact"
               ? "10px"
+              : printTemplate === "dense"
+              ? "6px"
+              : printTemplate === "booklet"
+              ? "3px"
               : "6px"} !important;
           }
 
@@ -1562,6 +1698,10 @@ function PrintExamContent() {
               ? "30px"
               : printTemplate === "compact"
               ? "20px"
+              : printTemplate === "dense"
+              ? "15px"
+              : printTemplate === "booklet"
+              ? "10px"
               : "15px"};
           }
 
@@ -1573,6 +1713,10 @@ function PrintExamContent() {
               ? "10px auto"
               : printTemplate === "compact"
               ? "5px auto"
+              : printTemplate === "dense"
+              ? "3px auto"
+              : printTemplate === "booklet"
+              ? "2px auto"
               : "3px auto"};
           }
 
@@ -1581,6 +1725,10 @@ function PrintExamContent() {
               ? "1rem"
               : printTemplate === "compact"
               ? "0.5rem"
+              : printTemplate === "dense"
+              ? "0.25rem"
+              : printTemplate === "booklet"
+              ? "0.15rem"
               : "0.25rem"} !important;
           }
 
@@ -1589,6 +1737,10 @@ function PrintExamContent() {
               ? "0.75rem"
               : printTemplate === "compact"
               ? "0.5rem"
+              : printTemplate === "dense"
+              ? "0.25rem"
+              : printTemplate === "booklet"
+              ? "0.15rem"
               : "0.25rem"} !important;
           }
 
@@ -1613,6 +1765,10 @@ function PrintExamContent() {
               ? "8pt"
               : printTemplate === "compact"
               ? "7pt"
+              : printTemplate === "dense"
+              ? "6pt"
+              : printTemplate === "booklet"
+              ? "5pt"
               : "6pt"};
             color: #22c55e;
             font-weight: bold;
@@ -1635,6 +1791,10 @@ function PrintExamContent() {
               ? "1.5cm"
               : printTemplate === "compact"
               ? "1cm"
+              : printTemplate === "dense"
+              ? "0.7cm"
+              : printTemplate === "booklet"
+              ? "0.5cm"
               : "0.7cm"};
           }
 
@@ -1648,6 +1808,10 @@ function PrintExamContent() {
               ? "8rem"
               : printTemplate === "compact"
               ? "5rem"
+              : printTemplate === "dense"
+              ? "3rem"
+              : printTemplate === "booklet"
+              ? "2rem"
               : "3rem"} !important;
           }
 
@@ -1656,6 +1820,17 @@ function PrintExamContent() {
             ? `
           .options-container {
             grid-template-columns: 1fr 1fr 1fr !important;
+          }`
+            : ""}
+          ${printTemplate === "booklet"
+            ? `
+          .options-container {
+            grid-template-columns: 1fr 1fr 1fr 1fr !important;
+          }
+          
+          /* Hide print-header for booklet (using cover page instead) */
+          .print-header {
+            display: none !important;
           }`
             : ""}
 
@@ -1713,6 +1888,371 @@ function PrintExamContent() {
 
           .print-template-dense .print-header {
             margin-bottom: 15px;
+          }
+
+          .print-template-booklet .question-item {
+            padding: 3px;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            line-height: 1.1;
+          }
+
+          .print-template-booklet .options-container {
+            gap: 0.15rem;
+          }
+
+          .print-template-booklet .options-container > div {
+            padding: 0.15rem;
+          }
+
+          .print-template-booklet .print-header {
+            display: none;
+          }
+        }
+
+        /* Booklet Cover Page Styles */
+        @media print {
+          .booklet-cover-page {
+            height: auto;
+            max-height: 100%;
+            background: white;
+            padding: 1cm 1.5cm;
+            page-break-inside: avoid;
+          }
+
+          .cover-content {
+            width: 100%;
+          }
+
+          .cover-header {
+            text-align: center;
+            margin-bottom: 1cm;
+            padding-bottom: 0.5cm;
+            border-bottom: 2px double #333;
+          }
+
+          .cover-logo {
+            margin-bottom: 0.5cm;
+          }
+
+          .cover-logo .logo-image {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 0 auto;
+          }
+
+          .school-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 0.3cm;
+            font-family: 'IRANSans', 'Tahoma', sans-serif;
+          }
+
+          .school-address {
+            font-size: 9pt;
+            color: #555;
+            margin-top: 0.2cm;
+          }
+
+          .cover-title-section {
+            text-align: center;
+            margin: 1cm 0;
+          }
+
+          .cover-title-border {
+            border: 3px double #2563eb;
+            border-radius: 8px;
+            padding: 0.8cm 0.6cm;
+            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+          }
+
+          .exam-title {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #1e40af;
+            font-family: 'IRANSans', 'Tahoma', sans-serif;
+          }
+
+          .cover-details {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 0.5cm;
+            margin: 0.8cm 0;
+          }
+
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25cm 0.3cm;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 10pt;
+          }
+
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+
+          .detail-label {
+            font-weight: bold;
+            color: #475569;
+          }
+
+          .detail-value {
+            color: #1e293b;
+            font-weight: 600;
+          }
+
+          .student-info-box {
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 6px;
+            padding: 0.6cm;
+            margin: 0.8cm 0;
+          }
+
+          .info-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.35cm;
+            font-size: 10pt;
+          }
+
+          .info-field:last-child {
+            margin-bottom: 0;
+          }
+
+          .field-label {
+            font-weight: bold;
+            color: #1e40af;
+            margin-left: 0.3cm;
+            white-space: nowrap;
+          }
+
+          .field-line {
+            flex: 1;
+            border-bottom: 1.5px dotted #94a3b8;
+            min-width: 3cm;
+            height: 1px;
+          }
+
+          .field-line.short {
+            flex: 0 0 2.5cm;
+          }
+
+          .cover-message {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 6px;
+            padding: 0.5cm;
+            margin: 0.6cm 0;
+          }
+
+          .message-title {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 0.2cm;
+          }
+
+          .message-content {
+            font-size: 9pt;
+            color: #78350f;
+            line-height: 1.4;
+          }
+
+          .cover-footer {
+            text-align: center;
+            margin-top: 1cm;
+            padding-top: 0.5cm;
+            border-top: 2px solid #e2e8f0;
+          }
+
+          .cover-footer p {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #16a34a;
+            margin-bottom: 0.2cm;
+          }
+
+          .cover-footer .phone {
+            font-size: 9pt;
+            color: #64748b;
+            font-weight: normal;
+            margin-top: 0.2cm;
+          }
+        }
+
+        @media screen {
+          .booklet-cover-page {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+
+          .cover-content {
+            max-width: 800px;
+            margin: 0 auto;
+          }
+
+          .cover-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 3px double #333;
+          }
+
+          .cover-logo {
+            margin-bottom: 2rem;
+          }
+
+          .cover-logo .logo-image {
+            max-width: 150px;
+            max-height: 150px;
+            margin: 0 auto;
+            display: block;
+          }
+
+          .school-name {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+          }
+
+          .school-address {
+            font-size: 0.95rem;
+            color: #555;
+            margin-top: 0.5rem;
+          }
+
+          .cover-title-section {
+            text-align: center;
+            margin: 3rem 0;
+          }
+
+          .cover-title-border {
+            border: 4px double #2563eb;
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+
+          .exam-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1e40af;
+          }
+
+          .cover-details {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+          }
+
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+          }
+
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+
+          .detail-label {
+            font-weight: bold;
+            color: #475569;
+          }
+
+          .detail-value {
+            color: #1e293b;
+            font-weight: 600;
+          }
+
+          .student-info-box {
+            background: white;
+            border: 3px solid #3b82f6;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+          }
+
+          .info-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+          }
+
+          .info-field:last-child {
+            margin-bottom: 0;
+          }
+
+          .field-label {
+            font-weight: bold;
+            color: #1e40af;
+            margin-left: 0.75rem;
+            white-space: nowrap;
+          }
+
+          .field-line {
+            flex: 1;
+            border-bottom: 2px dotted #94a3b8;
+            min-width: 150px;
+            height: 1px;
+          }
+
+          .field-line.short {
+            flex: 0 0 120px;
+          }
+
+          .cover-message {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+          }
+
+          .message-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 0.5rem;
+          }
+
+          .message-content {
+            color: #78350f;
+            line-height: 1.6;
+          }
+
+          .cover-footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e2e8f0;
+          }
+
+          .cover-footer p {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #16a34a;
+            margin-bottom: 0.5rem;
+          }
+
+          .cover-footer .phone {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: normal;
+            margin-top: 0.5rem;
           }
         }
 
