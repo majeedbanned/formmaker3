@@ -27,6 +27,8 @@ import {
   Clock,
   Info,
   CheckCircle2,
+  Copy,
+  Building2,
 } from "lucide-react";
 import { FormSubmissionViewer } from "./FormSubmissionViewer";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +75,8 @@ import {
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 // Define types for classes and teachers
 interface ClassData {
@@ -189,6 +193,10 @@ export default function FormBuilderList({
   const [loadingData, setLoadingData] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [copyFormDialogOpen, setCopyFormDialogOpen] = useState(false);
+  const [formToCopy, setFormToCopy] = useState<FormSchema | null>(null);
+  const [destinationDomain, setDestinationDomain] = useState("");
+  const [copyingForm, setCopyingForm] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -468,6 +476,51 @@ export default function FormBuilderList({
       // If multipleInstances is enabled, disable oneTimeFillOnly
       oneTimeFillOnly: checked ? false : selectedForm.oneTimeFillOnly,
     });
+  };
+
+  const handleCopyFormClick = (form: FormSchema) => {
+    setFormToCopy(form);
+    setDestinationDomain("");
+    setCopyFormDialogOpen(true);
+  };
+
+  const handleCopyFormConfirm = async () => {
+    if (!formToCopy || !destinationDomain.trim()) {
+      toast.error("لطفاً دامنه مقصد را وارد کنید");
+      return;
+    }
+
+    setCopyingForm(true);
+    try {
+      const response = await fetch("/api/formbuilder/copy-form", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          formId: formToCopy._id,
+          destinationDomain: destinationDomain.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "خطا در کپی کردن فرم");
+      }
+
+      toast.success("فرم با موفقیت کپی شد");
+      setCopyFormDialogOpen(false);
+      setDestinationDomain("");
+      setFormToCopy(null);
+    } catch (error) {
+      console.error("Error copying form:", error);
+      toast.error(
+        error instanceof Error ? error.message : "خطا در کپی کردن فرم"
+      );
+    } finally {
+      setCopyingForm(false);
+    }
   };
 
   // Show date in readable format - directly used in the UI
@@ -888,6 +941,21 @@ export default function FormBuilderList({
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />
+                                
+                                {/* Copy Form - Only for school users */}
+                                {userType === "school" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => handleCopyFormClick(form)}
+                                      className="cursor-pointer hover:bg-purple-50"
+                                    >
+                                      <Copy className="h-4 w-4 ml-2 text-purple-500" />
+                                      <span>کپی فرم به مدرسه دیگر</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(form._id!)}
                                   className="text-red-600 hover:text-red-700 cursor-pointer hover:bg-red-50"
@@ -1412,6 +1480,89 @@ export default function FormBuilderList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Copy Form Dialog */}
+      <Dialog open={copyFormDialogOpen} onOpenChange={setCopyFormDialogOpen}>
+        <DialogContent dir="rtl" className="sm:max-w-[500px] rounded-xl">
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-purple-400 to-pink-500"></div>
+          <DialogHeader className="pb-4 border-b border-gray-100">
+            <DialogTitle className="text-xl font-bold flex items-center">
+              <Copy className="h-5 w-5 mr-2 text-purple-500" />
+              کپی فرم به مدرسه دیگر
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              فرم را به دامنه مدرسه دیگر کپی کنید
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {formToCopy && (
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">فرم انتخاب شده:</p>
+                <p className="font-semibold text-purple-900">{formToCopy.title}</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="destination-domain" className="flex items-center text-sm font-medium">
+                <Building2 className="h-4 w-4 ml-2 text-purple-500" />
+                دامنه مدرسه مقصد
+              </Label>
+              <Input
+                id="destination-domain"
+                type="text"
+                value={destinationDomain}
+                onChange={(e) => setDestinationDomain(e.target.value)}
+                placeholder="مثال: school.farsamooz.ir"
+                className="text-right"
+                dir="ltr"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                دامنه باید دقیقاً مانند نمونه بالا وارد شود
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-800 space-y-1">
+                  <p>• فقط ساختار فرم کپی می‌شود (بدون داده‌های ثبت شده)</p>
+                  <p>• تنظیمات و فیلدهای فرم حفظ می‌شوند</p>
+                  <p>• دامنه مقصد باید در سیستم تعریف شده باشد</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-gray-100 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setCopyFormDialogOpen(false)}
+              disabled={copyingForm}
+              className="rounded-xl"
+            >
+              انصراف
+            </Button>
+            <Button
+              onClick={handleCopyFormConfirm}
+              disabled={copyingForm || !destinationDomain.trim()}
+              className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+            >
+              {copyingForm ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2" />
+                  در حال کپی...
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 ml-2" />
+                  کپی فرم
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
