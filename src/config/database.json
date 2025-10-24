@@ -1,8 +1,8 @@
 {
 
   "localhost:3000": {
-    "schoolCode":"95121357",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/harati?authSource=admin",
+    "schoolCode":"44338801",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ge?authSource=admin",
     "description": "Local development database"
   },
 
@@ -492,6 +492,29 @@
         "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/faraz?authSource=admin",
         "description": "faraz.farsamooz.ir"
       }
+
+      ,
+      "payam.farsamooz.ir": {
+        "schoolCode":"95105120",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/payam?authSource=admin",
+        "description": "payam.farsamooz.ir"
+      }
+      ,
+
+     
+      "elmozendegi.farsamooz.ir": {
+        "schoolCode":"95112760",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/elmozendegi?authSource=admin",
+        "description": "elmozendegi.farsamooz.ir"
+      },
+
+    
+      "shberenji.farsamooz.ir": {
+        "schoolCode":"95109805",
+        "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/shberenji?authSource=admin",
+        "description": "shberenji.farsamooz.ir"
+      }
+
 
   
 } 

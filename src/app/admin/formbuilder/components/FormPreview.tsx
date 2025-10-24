@@ -1153,7 +1153,7 @@ export default function FormPreview({
                           return (
                             <FormItem
                               key={option.value}
-                              className="flex flex-row-reverse items-start space-x-3 space-x-reverse space-y-0"
+                              className="flex flex-row-reverse items-start justify-end space-x-3 space-x-reverse space-y-0"
                             >
                               <FormLabel className="font-normal cursor-pointer mr-2">
                                 {option.label}
