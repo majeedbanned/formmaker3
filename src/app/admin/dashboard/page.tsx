@@ -11,6 +11,7 @@ import StudentSearchWidget from "../components/StudentSearchWidget";
 import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
 import OnboardingStatus from "@/components/OnboardingStatus";
+import AnnouncementProvider from "@/components/AnnouncementProvider";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -582,17 +583,20 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-lg font-medium text-gray-700">
-            در حال بارگذاری...
-          </p>
+    <>
+      <AnnouncementProvider />
+      <Suspense fallback={
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+            <p className="mt-4 text-lg font-medium text-gray-700">
+              در حال بارگذاری...
+            </p>
+          </div>
         </div>
-      </div>
-    }>
-      <DashboardContent />
-    </Suspense>
+      }>
+        <DashboardContent />
+      </Suspense>
+    </>
   );
 }
