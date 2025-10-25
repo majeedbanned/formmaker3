@@ -46,6 +46,32 @@ export default function ScanAnswerSheetModal({
   const [progress, setProgress] = useState(0);
   const [selectedResult, setSelectedResult] = useState<ScanResult | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Fetch previous scan results on mount
+  React.useEffect(() => {
+    if (isOpen && examId) {
+      fetchScanHistory();
+    }
+  }, [isOpen, examId]);
+
+  const fetchScanHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(`/api/scan/history?examId=${examId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.results) {
+          setResults(data.results);
+          console.log(`📋 Loaded ${data.results.length} previous scan results`);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching scan history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -127,6 +153,8 @@ export default function ScanAnswerSheetModal({
   };
 
   const clearAllResults = () => {
+    // Only clear from view, doesn't delete from database
+    // Results will reload when modal reopens
     setResults([]);
     setSelectedFiles([]);
     setError(null);
@@ -139,7 +167,7 @@ export default function ScanAnswerSheetModal({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center">
             <CheckCircleIcon className="w-5 h-5 ml-2 text-green-600" />
-            <h3 className="font-bold text-green-800">اسکن با موفقیت انجام شد</h3>
+            <h3 className="font-bold text-green-800">نتایج اسکن پاسخ‌برگ‌ها</h3>
           </div>
           <Button
             variant="outline"
@@ -148,27 +176,49 @@ export default function ScanAnswerSheetModal({
             className="text-red-600 border-red-200 hover:bg-red-50"
           >
             <XMarkIcon className="w-4 h-4 ml-1" />
-            پاک کردن همه
+            پاک کردن از نمایش
           </Button>
         </div>
         <p className="mb-2 text-green-700">
-          {results.length} پاسخ‌برگ با موفقیت اسکن و ثبت شد.
+          {results.length} پاسخ‌برگ (شامل نتایج قبلی و جدید)
         </p>
+        <div className="text-xs text-gray-600 mb-2 flex items-center gap-1">
+          <span>💡</span>
+          <span>نتایج همیشه در پایگاه داده ذخیره می‌شوند و با بازکردن مجدد بارگذاری می‌گردند</span>
+        </div>
         <div className="max-h-60 overflow-y-auto bg-white rounded border p-2">
-          {results.map((result, index) => (
+          {results.map((result: any, index) => (
             <div
               key={index}
               className="py-2 px-3 text-sm border-b last:border-0 hover:bg-blue-50 transition-colors"
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium">
-                  {result.qRCodeData || `پاسخ‌برگ ${index + 1}`}
-                </span>
+                <div className="flex-1">
+                  <span className="font-medium">
+                    {result.qRCodeData || result.studentCode || `پاسخ‌برگ ${index + 1}`}
+                  </span>
+                  {result.scannedAt && (
+                    <span className="text-xs text-gray-500 mr-2">
+                      ({new Date(result.scannedAt).toLocaleDateString('fa-IR', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })})
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-green-600 flex items-center">
                     <CheckCircleIcon className="h-4 w-4 inline mr-1" />
                     {result.rightAnswers?.length || 0} صحیح
                   </span>
+                  {result.score !== undefined && result.maxScore && (
+                    <span className="text-blue-600 text-xs">
+                      ({result.score}/{result.maxScore})
+                    </span>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -180,9 +230,11 @@ export default function ScanAnswerSheetModal({
                   </Button>
                 </div>
               </div>
-              <div className="mt-1 text-xs text-gray-500">
-                {result.originalFilename}
-              </div>
+              {result.originalFilename && (
+                <div className="mt-1 text-xs text-gray-500">
+                  📄 {result.originalFilename}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -407,6 +459,14 @@ export default function ScanAnswerSheetModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
+          {/* Loading History Indicator */}
+          {isLoadingHistory && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center">
+              <Spinner className="w-5 h-5 ml-2" />
+              <p>در حال بارگذاری نتایج قبلی...</p>
+            </div>
+          )}
+
           {/* Show Upload UI when in list view */}
           {viewMode === "list" && (
             <>
@@ -432,11 +492,20 @@ export default function ScanAnswerSheetModal({
                 {selectedFiles.length === 0 ? (
                   <div>
                     <DocumentArrowUpIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600 mb-2">
-                      {results.length > 0
-                        ? "پاسخ‌برگ‌های بیشتری برای اسکن اضافه کنید"
-                        : "فایل‌های تصویر پاسخ‌برگ را اینجا بکشید و رها کنید"}
-                    </p>
+                    {results.length > 0 ? (
+                      <>
+                        <p className="text-gray-700 mb-2 font-medium">
+                          ✅ {results.length} پاسخ‌برگ قبلی بارگذاری شد
+                        </p>
+                        <p className="text-gray-600 mb-2">
+                          برای اسکن پاسخ‌برگ‌های جدید، فایل‌ها را اینجا بکشید
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-600 mb-2">
+                        فایل‌های تصویر پاسخ‌برگ را اینجا بکشید و رها کنید
+                      </p>
+                    )}
                     <p className="text-gray-500 text-sm mb-4">یا</p>
                     <Button
                       type="button"
@@ -445,7 +514,7 @@ export default function ScanAnswerSheetModal({
                         document.getElementById("fileUpload")?.click()
                       }
                     >
-                      {results.length > 0 ? "افزودن فایل‌های بیشتر" : "انتخاب فایل‌ها"}
+                      {results.length > 0 ? "اسکن پاسخ‌برگ‌های جدید" : "انتخاب فایل‌ها"}
                     </Button>
                   </div>
                 ) : (
@@ -520,7 +589,7 @@ export default function ScanAnswerSheetModal({
               بستن
             </Button>
 
-            {viewMode === "list" && (
+            {viewMode === "list" && selectedFiles.length > 0 && (
               <Button
                 type="button"
                 className="bg-blue-600 hover:bg-blue-700"
@@ -532,10 +601,11 @@ export default function ScanAnswerSheetModal({
                     <Spinner className="w-4 h-4 ml-2" />
                     در حال پردازش...
                   </>
-                ) : results.length > 0 ? (
-                  "اسکن و افزودن پاسخ‌برگ‌های جدید"
                 ) : (
-                  "اسکن پاسخ‌برگ‌ها"
+                  <>
+                    <DocumentArrowUpIcon className="w-4 h-4 ml-2" />
+                    اسکن {selectedFiles.length} پاسخ‌برگ جدید
+                  </>
                 )}
               </Button>
             )}
