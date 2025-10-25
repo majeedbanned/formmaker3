@@ -28,15 +28,22 @@ export async function GET(request: NextRequest) {
     const examStudentsInfoCollection = connection.collection("examstudentsinfo");
 
     // Fetch all scanned results for this exam
+    // Note: schoolCode might be empty string in some records, so we check both
     const scannedRecords = await examStudentsInfoCollection
       .find({
         examId: examId,
-        schoolCode: schoolCode,
+        $or: [
+          { schoolCode: schoolCode },
+          { schoolCode: "" },
+          { schoolCode: { $exists: false } }
+        ],
         gradingStatus: "scanned",
         scanResult: { $exists: true },
       })
       .sort({ gradingTime: -1 })
       .toArray();
+
+    console.log(`📋 [API] Found ${scannedRecords.length} scanned records for exam ${examId}`);
 
     // Extract scan results
     const results = scannedRecords.map((record: any) => ({

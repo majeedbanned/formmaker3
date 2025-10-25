@@ -58,18 +58,30 @@ export default function ScanAnswerSheetModal({
   const fetchScanHistory = async () => {
     setIsLoadingHistory(true);
     try {
+      console.log(`📋 [ScanModal] Fetching scan history for examId: ${examId}`);
       const response = await fetch(`/api/scan/history?examId=${examId}`);
+      console.log(`📋 [ScanModal] Response status:`, response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log(`📋 [ScanModal] Response data:`, data);
+        
         if (data.success && data.results) {
+          console.log(`📋 [ScanModal] Setting ${data.results.length} results to state`);
           setResults(data.results);
-          console.log(`📋 Loaded ${data.results.length} previous scan results`);
+          console.log(`📋 [ScanModal] Results state updated, length:`, data.results.length);
+        } else {
+          console.log(`📋 [ScanModal] No results in response or success=false`);
         }
+      } else {
+        const errorData = await response.json();
+        console.error(`📋 [ScanModal] API error:`, errorData);
       }
     } catch (error) {
-      console.error("Error fetching scan history:", error);
+      console.error("📋 [ScanModal] Error fetching scan history:", error);
     } finally {
       setIsLoadingHistory(false);
+      console.log(`📋 [ScanModal] Loading finished, current results count:`, results.length);
     }
   };
 
@@ -162,29 +174,33 @@ export default function ScanAnswerSheetModal({
   };
 
   const renderResultsList = () => {
+    console.log(`📋 [ScanModal] renderResultsList called, results.length:`, results.length);
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+      <div className="bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center">
-            <CheckCircleIcon className="w-5 h-5 ml-2 text-green-600" />
-            <h3 className="font-bold text-green-800">نتایج اسکن پاسخ‌برگ‌ها</h3>
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="w-6 h-6 text-green-600" />
+            <div>
+              <h3 className="font-bold text-green-800">نتایج اسکن پاسخ‌برگ‌ها</h3>
+              <p className="text-xs text-green-600">
+                {results.length} پاسخ‌برگ در مجموع
+              </p>
+            </div>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={clearAllResults}
             className="text-red-600 border-red-200 hover:bg-red-50"
+            title="این فقط از نمایش پاک می‌کند، نتایج در دیتابیس باقی می‌مانند"
           >
             <XMarkIcon className="w-4 h-4 ml-1" />
-            پاک کردن از نمایش
+            پنهان کردن لیست
           </Button>
         </div>
-        <p className="mb-2 text-green-700">
-          {results.length} پاسخ‌برگ (شامل نتایج قبلی و جدید)
-        </p>
-        <div className="text-xs text-gray-600 mb-2 flex items-center gap-1">
-          <span>💡</span>
-          <span>نتایج همیشه در پایگاه داده ذخیره می‌شوند و با بازکردن مجدد بارگذاری می‌گردند</span>
+        <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-3 text-xs text-blue-700 flex items-center gap-2">
+          <span>ℹ️</span>
+          <span>تمام نتایج در پایگاه داده ذخیره شده و با بازگشایی مجدد نمایش داده می‌شوند</span>
         </div>
         <div className="max-h-60 overflow-y-auto bg-white rounded border p-2">
           {results.map((result: any, index) => (
@@ -448,6 +464,9 @@ export default function ScanAnswerSheetModal({
     );
   };
 
+  // Debug log in render
+  console.log(`📋 [ScanModal] Rendering - results.length: ${results.length}, viewMode: ${viewMode}, isLoadingHistory: ${isLoadingHistory}`);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl" dir="rtl">
@@ -455,6 +474,11 @@ export default function ScanAnswerSheetModal({
           <DialogTitle className="text-xl font-bold flex items-center">
             <DocumentArrowUpIcon className="w-6 h-6 ml-2 text-blue-600" />
             اسکن پاسخ‌برگ‌های آزمون
+            {results.length > 0 && (
+              <span className="mr-2 text-sm font-normal text-green-600">
+                ({results.length} نتیجه)
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -572,7 +596,8 @@ export default function ScanAnswerSheetModal({
                 </div>
               )}
 
-              {results.length > 0 && viewMode === "list" && renderResultsList()}
+              {/* Always show results list when there are results */}
+              {results.length > 0 && renderResultsList()}
             </>
           )}
 
