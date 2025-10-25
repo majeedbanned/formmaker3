@@ -230,8 +230,22 @@ export function FieldEditor({
       ["select", "checkbox", "radio"].includes(editedField.type) &&
       (!editedField.options || editedField.options.length === 0)
     ) {
-      setValidationError("You must add at least one option");
+      setValidationError("حداقل یک گزینه باید اضافه شود");
       return;
+    }
+
+    // Validate that all options have both label and value filled
+    if (
+      ["select", "checkbox", "radio"].includes(editedField.type) &&
+      editedField.options
+    ) {
+      const hasEmptyOptions = editedField.options.some(
+        (option) => !option.label.trim() || !option.value.trim()
+      );
+      if (hasEmptyOptions) {
+        setValidationError("تمام گزینه‌ها باید دارای برچسب و مقدار باشند");
+        return;
+      }
     }
 
     // Nested options validation for select
@@ -246,7 +260,7 @@ export function FieldEditor({
       );
 
       if (!parentFieldExists) {
-        setValidationError("Parent field for nested options does not exist");
+        setValidationError("فیلد والد برای گزینه‌های تو در تو وجود ندارد");
         return;
       }
 
@@ -257,9 +271,27 @@ export function FieldEditor({
 
       if (hasNoMappings) {
         setValidationError(
-          "You must define at least one mapping for nested options"
+          "باید حداقل یک نگاشت برای گزینه‌های تو در تو تعریف شود"
         );
         return;
+      }
+
+      // Validate that all nested options have both label and value filled
+      if (editedField.nestedOptions.mapping) {
+        for (const parentValue in editedField.nestedOptions.mapping) {
+          const childOptions = editedField.nestedOptions.mapping[parentValue];
+          if (childOptions && childOptions.length > 0) {
+            const hasEmptyNestedOptions = childOptions.some(
+              (option) => !option.label.trim() || !option.value.trim()
+            );
+            if (hasEmptyNestedOptions) {
+              setValidationError(
+                "تمام گزینه‌های تو در تو باید دارای برچسب و مقدار باشند"
+              );
+              return;
+            }
+          }
+        }
       }
     }
 
@@ -270,9 +302,30 @@ export function FieldEditor({
         editedField.condition.equals === undefined)
     ) {
       setValidationError(
-        "Conditional fields must have both field and value specified"
+        "فیلدهای شرطی باید هم فیلد و هم مقدار مشخص شده باشند"
       );
       return;
+    }
+
+    // Validate nested fields within groups (for select fields with options)
+    if (editedField.type === "group" && editedField.fields) {
+      for (const nestedField of editedField.fields) {
+        if (
+          nestedField.type === "select" &&
+          nestedField.options &&
+          nestedField.options.length > 0
+        ) {
+          const hasEmptyNestedOptions = nestedField.options.some(
+            (option) => !option.label.trim() || !option.value.trim()
+          );
+          if (hasEmptyNestedOptions) {
+            setValidationError(
+              `فیلد تو در تو "${nestedField.label}" دارای گزینه‌هایی با برچسب یا مقدار خالی است`
+            );
+            return;
+          }
+        }
+      }
     }
 
     // All valid, save the field
@@ -450,7 +503,12 @@ export function FieldEditor({
             {["select", "radio", "checkbox"].includes(editedField.type) && (
               <div className="space-y-4 border p-4 rounded-md">
                 <div className="flex justify-between items-center">
-                  <Label>گزینه‌ها</Label>
+                  <div>
+                    <Label>گزینه‌ها</Label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      هر گزینه باید دارای برچسب و مقدار باشد (*)
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -465,20 +523,22 @@ export function FieldEditor({
                 {(editedField.options || []).map((option, index) => (
                   <div key={index} className="flex gap-2 items-center">
                     <Input
-                      placeholder="برچسب"
+                      placeholder="برچسب *"
                       value={option.label}
                       onChange={(e) =>
                         handleOptionChange(index, "label", e.target.value)
                       }
-                      className="flex-1"
+                      className={`flex-1 ${!option.label.trim() ? 'border-red-300' : ''}`}
+                      required
                     />
                     <Input
-                      placeholder="مقدار"
+                      placeholder="مقدار *"
                       value={option.value}
                       onChange={(e) =>
                         handleOptionChange(index, "value", e.target.value)
                       }
-                      className="flex-1"
+                      className={`flex-1 ${!option.value.trim() ? 'border-red-300' : ''}`}
+                      required
                     />
                     <Button
                       type="button"
@@ -1061,9 +1121,10 @@ export function FieldEditor({
                                           className="flex gap-2 items-center mb-1"
                                         >
                                           <Input
-                                            placeholder="برچسب"
+                                            placeholder="برچسب *"
                                             value={option.label}
-                                            className="flex-1 h-7 text-xs"
+                                            className={`flex-1 h-7 text-xs ${!option.label.trim() ? 'border-red-300' : ''}`}
+                                            required
                                             onChange={(e) => {
                                               const newFields = [
                                                 ...(editedField.fields || []),
@@ -1083,9 +1144,10 @@ export function FieldEditor({
                                             }}
                                           />
                                           <Input
-                                            placeholder="مقدار"
+                                            placeholder="مقدار *"
                                             value={option.value}
-                                            className="flex-1 h-7 text-xs"
+                                            className={`flex-1 h-7 text-xs ${!option.value.trim() ? 'border-red-300' : ''}`}
+                                            required
                                             onChange={(e) => {
                                               const newFields = [
                                                 ...(editedField.fields || []),
@@ -1254,7 +1316,7 @@ export function FieldEditor({
                                       className="flex gap-2 items-center"
                                     >
                                       <Input
-                                        placeholder="برچسب"
+                                        placeholder="برچسب *"
                                         value={childOption.label}
                                         onChange={(e) =>
                                           handleMappingOptionChange(
@@ -1264,10 +1326,11 @@ export function FieldEditor({
                                             e.target.value
                                           )
                                         }
-                                        className="flex-1"
+                                        className={`flex-1 ${!childOption.label.trim() ? 'border-red-300' : ''}`}
+                                        required
                                       />
                                       <Input
-                                        placeholder="مقدار"
+                                        placeholder="مقدار *"
                                         value={childOption.value}
                                         onChange={(e) =>
                                           handleMappingOptionChange(
@@ -1277,7 +1340,8 @@ export function FieldEditor({
                                             e.target.value
                                           )
                                         }
-                                        className="flex-1"
+                                        className={`flex-1 ${!childOption.value.trim() ? 'border-red-300' : ''}`}
+                                        required
                                       />
                                       <Button
                                         type="button"
