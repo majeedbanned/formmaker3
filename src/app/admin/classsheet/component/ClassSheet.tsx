@@ -3192,28 +3192,31 @@ const ClassSheet = ({
                   {allColumns.map((col, index) => {
                     // Special handling for monthly grade columns
                     if (col.day === "monthly") {
-                      // Get all cells for this student in this month
-                      const monthCells = columns
-                        .filter((regCol) => {
-                          // Get Jalali month for regular column
-                          const regDate = gregorian_to_jalali(
-                            regCol.date.getFullYear(),
-                            regCol.date.getMonth() + 1,
-                            regCol.date.getDate()
-                          );
-                          // Get Jalali month for summary column
-                          const summaryDate = gregorian_to_jalali(
-                            col.date.getFullYear(),
-                            col.date.getMonth() + 1,
-                            col.date.getDate()
-                          );
-                          // Compare months
-                          return regDate[1] === summaryDate[1];
-                        })
-                        .map((monthCol) =>
-                          getCellContent(student.studentCode, monthCol)
-                        )
-                        .filter((cell) => cell !== null) as CellData[];
+                      // Get Jalali month and year for the summary column
+                      const summaryDate = gregorian_to_jalali(
+                        col.date.getFullYear(),
+                        col.date.getMonth() + 1,
+                        col.date.getDate()
+                      );
+                      const summaryMonth = summaryDate[1];
+                      const summaryYear = summaryDate[0];
+                      
+                      // Get all cells for this student in this month from cellsData (not just visible columns)
+                      const monthCells = Object.values(cellsData).filter((cell) => {
+                        // Only cells for this student
+                        if (cell.studentCode !== student.studentCode) return false;
+                        
+                        // Get Jalali date for this cell
+                        const cellDate = new Date(cell.date);
+                        const cellJalaliDate = gregorian_to_jalali(
+                          cellDate.getFullYear(),
+                          cellDate.getMonth() + 1,
+                          cellDate.getDate()
+                        );
+                        
+                        // Compare month and year
+                        return cellJalaliDate[1] === summaryMonth && cellJalaliDate[0] === summaryYear;
+                      });
 
                       // Calculate monthly grade if there are any grades
                       const allGrades = monthCells.flatMap(
