@@ -362,7 +362,7 @@ final_image_color[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]] = 
 
 resized_image = cv2.resize(final_image_color, (1000, 1436))
 random_number = random.randint(1000000000, 9999999999)
-final_image_path = f'../public/upload/corrects/{qr_code_data}.jpg'
+final_image_path = f'../public/uploads/corrects/{qr_code_data}.jpg'
 cv2.imwrite(final_image_path, resized_image)
 
 json_result = generate_json_output(qr_code_data)

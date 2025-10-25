@@ -1,8 +1,8 @@
 {
 
   "localhost:3000": {
-    "schoolCode":"44338408",
-    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/be?authSource=admin",
+    "schoolCode":"95121357",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/harati?authSource=admin",
     "description": "Local development database"
   },
 
@@ -529,7 +529,12 @@
          }
 
 
-
+         ,
+         "rafsanjani.farsamooz.ir": {
+           "schoolCode":"96085889",
+           "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/rafsanjani?authSource=admin",
+           "description": "rafsanjani.farsamooz.ir"
+         }
 
 
   

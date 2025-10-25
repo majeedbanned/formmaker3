@@ -80,7 +80,6 @@ export default function ScanAnswerSheetModal({
 
     setIsUploading(true);
     setError(null);
-    setResults([]);
     setProgress(0);
 
     try {
@@ -102,9 +101,12 @@ export default function ScanAnswerSheetModal({
       }
 
       const data = await response.json();
-      setResults(data.results);
+      // Append new results to existing results instead of replacing
+      setResults((prevResults) => [...prevResults, ...data.results]);
       setViewMode("list");
       setSelectedResult(null);
+      // Clear selected files after successful upload
+      setSelectedFiles([]);
     } catch (err) {
       console.error("Error scanning answer sheets:", err);
       setError(err instanceof Error ? err.message : "خطا در اسکن پاسخ‌برگ‌ها");
@@ -124,12 +126,30 @@ export default function ScanAnswerSheetModal({
     setSelectedResult(null);
   };
 
+  const clearAllResults = () => {
+    setResults([]);
+    setSelectedFiles([]);
+    setError(null);
+    setViewMode("list");
+  };
+
   const renderResultsList = () => {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex items-center mb-3">
-          <CheckCircleIcon className="w-5 h-5 ml-2 text-green-600" />
-          <h3 className="font-bold text-green-800">اسکن با موفقیت انجام شد</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <CheckCircleIcon className="w-5 h-5 ml-2 text-green-600" />
+            <h3 className="font-bold text-green-800">اسکن با موفقیت انجام شد</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearAllResults}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            <XMarkIcon className="w-4 h-4 ml-1" />
+            پاک کردن همه
+          </Button>
         </div>
         <p className="mb-2 text-green-700">
           {results.length} پاسخ‌برگ با موفقیت اسکن و ثبت شد.
@@ -387,12 +407,12 @@ export default function ScanAnswerSheetModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Show Upload UI when no results or detail view */}
-          {(results.length === 0 || viewMode === "list") && (
+          {/* Show Upload UI when in list view */}
+          {viewMode === "list" && (
             <>
               {/* File upload area */}
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center ${
+                className={`border-2 border-dashed rounded-lg p-6 text-center ${
                   selectedFiles.length > 0
                     ? "border-blue-300 bg-blue-50"
                     : "border-gray-300"
@@ -413,7 +433,9 @@ export default function ScanAnswerSheetModal({
                   <div>
                     <DocumentArrowUpIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                     <p className="text-gray-600 mb-2">
-                      فایل‌های تصویر پاسخ‌برگ را اینجا بکشید و رها کنید
+                      {results.length > 0
+                        ? "پاسخ‌برگ‌های بیشتری برای اسکن اضافه کنید"
+                        : "فایل‌های تصویر پاسخ‌برگ را اینجا بکشید و رها کنید"}
                     </p>
                     <p className="text-gray-500 text-sm mb-4">یا</p>
                     <Button
@@ -423,7 +445,7 @@ export default function ScanAnswerSheetModal({
                         document.getElementById("fileUpload")?.click()
                       }
                     >
-                      انتخاب فایل‌ها
+                      {results.length > 0 ? "افزودن فایل‌های بیشتر" : "انتخاب فایل‌ها"}
                     </Button>
                   </div>
                 ) : (
@@ -510,6 +532,8 @@ export default function ScanAnswerSheetModal({
                     <Spinner className="w-4 h-4 ml-2" />
                     در حال پردازش...
                   </>
+                ) : results.length > 0 ? (
+                  "اسکن و افزودن پاسخ‌برگ‌های جدید"
                 ) : (
                   "اسکن پاسخ‌برگ‌ها"
                 )}
