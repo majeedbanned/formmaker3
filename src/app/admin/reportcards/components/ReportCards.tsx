@@ -701,13 +701,53 @@ const ReportCards = ({
   // Add state for filtered documents based on user type
   const [filteredClassDocuments, setFilteredClassDocuments] =
     useState<ClassDocument[]>(classDocuments);
+  
+  // Add state for admin teacher check
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (authLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+          console.log("Teacher has admin access");
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, authLoading, schoolCode]);
 
   // Filter class documents based on user type
   useEffect(() => {
     if (authLoading || !user) return;
 
-    if (user.userType === "teacher") {
-      // For teachers: Only show classes they teach
+    if (user.userType === "teacher" && !isAdminTeacher) {
+      // For regular teachers: Only show classes they teach
       const teacherClasses = classDocuments.filter((doc) =>
         doc.data.teachers.some(
           (teacher) => teacher.teacherCode === user.username
@@ -719,6 +759,9 @@ const ReportCards = ({
       if (teacherClasses.length === 1 && !selectedClass) {
         setTimeout(() => setSelectedClass(teacherClasses[0].data.classCode), 0);
       }
+    } else if (user.userType === "teacher" && isAdminTeacher) {
+      // For admin teachers: Show all classes like school admins
+      setFilteredClassDocuments(classDocuments);
     } else if (user.userType === "student") {
       // For students: Only show classes they are in
       const studentClasses = classDocuments.filter((doc) =>
@@ -741,7 +784,7 @@ const ReportCards = ({
       // For school admins: Show all classes
       setFilteredClassDocuments(classDocuments);
     }
-  }, [user, authLoading, classDocuments, selectedClass]);
+  }, [user, authLoading, classDocuments, selectedClass, isAdminTeacher]);
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -983,8 +1026,8 @@ const ReportCards = ({
         // Get all teacher-course pairs for this class
         let teacherCourses = selectedClassData.teachers;
 
-        // If user is a teacher, filter to only their courses
-        if (user?.userType === "teacher") {
+        // If user is a regular teacher (not admin teacher), filter to only their courses
+        if (user?.userType === "teacher" && !isAdminTeacher) {
           teacherCourses = teacherCourses.filter(
             (tc) => tc.teacherCode === user.username
           );
@@ -1311,6 +1354,7 @@ const ReportCards = ({
     coursesInfo,
     calculateFinalScore,
     user,
+    isAdminTeacher,
   ]);
 
   // Function to get color class based on grade
