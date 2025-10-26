@@ -64,10 +64,13 @@ export async function POST(request: Request) {
     }
     
     // Get questions for this exam from the database
+    // IMPORTANT: Sort by createdAt descending to match the order in print page
     const examQuestionsCollection = connection.collection('examquestions');
     const questions = await examQuestionsCollection.find({ 
       examId: examId 
-    }).toArray();
+    })
+    .sort({ createdAt: -1 })
+    .toArray();
 
     if (!questions || questions.length === 0) {
       return NextResponse.json(
