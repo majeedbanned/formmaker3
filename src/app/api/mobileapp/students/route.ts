@@ -155,18 +155,25 @@ export async function GET(request: NextRequest) {
         .toArray();
 
       // Transform data
-      const transformedStudents: Student[] = students.map(student => ({
-        id: student._id.toString(),
-        studentName: student.data.studentName,
-        studentFamily: student.data.studentFamily,
-        studentCode: student.data.studentCode,
-        classCode: student.data.classCode,
-        schoolCode: student.data.schoolCode,
-        phone: student.data.phone,
-        isActive: student.data.isActive,
-        addedAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
-        lastUpdated: student.updatedAt ? new Date(student.updatedAt).toISOString() : new Date().toISOString(),
-      }));
+      const transformedStudents: Student[] = students.map(student => {
+        // Check if student has installed the app by checking pushTokens
+        const pushTokens = student.data?.pushTokens || [];
+        const hasActiveTokens = pushTokens.some((token: any) => token.active === true);
+        
+        return {
+          id: student._id.toString(),
+          studentName: student.data.studentName,
+          studentFamily: student.data.studentFamily,
+          studentCode: student.data.studentCode,
+          classCode: student.data.classCode,
+          schoolCode: student.data.schoolCode,
+          phone: student.data.phone,
+          isActive: student.data.isActive,
+          hasInstalledApp: hasActiveTokens,
+          addedAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
+          lastUpdated: student.updatedAt ? new Date(student.updatedAt).toISOString() : new Date().toISOString(),
+        };
+      });
 
       // Get unique class codes for filter options
       const classCodes = await db.collection('students')

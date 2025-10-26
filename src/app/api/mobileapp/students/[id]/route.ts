@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
-import path from 'path';
-import fs from 'fs';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from "next/server";
+import { MongoClient, ObjectId } from "mongodb";
+import path from "path";
+import fs from "fs";
+import jwt from "jsonwebtoken";
 
 // Load database configuration
 const getDatabaseConfig = () => {
@@ -38,19 +38,6 @@ interface JWTPayload {
   exp?: number;
 }
 
-interface Student {
-  id: string;
-  studentName: string;
-  studentFamily: string;
-  studentCode: string;
-  classCode: { label: string; value: string }[];
-  schoolCode: string;
-  phone?: string;
-  isActive: boolean;
-  addedAt: string;
-  lastUpdated: string;
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -78,15 +65,15 @@ export async function GET(
       );
     }
 
-    // Check if user is school/admin
-    if (decoded.role !== 'school' && decoded.userType !== 'school') {
+    const { id } = params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
       return NextResponse.json(
-        { success: false, message: 'دسترسی غیرمجاز - فقط مدیران مدرسه می‌توانند جزئیات دانش‌آموزان را مشاهده کنند' },
-        { status: 403 }
+        { success: false, message: "شناسه دانش‌آموز نامعتبر است" },
+        { status: 400 }
       );
     }
-
-    const studentId = params.id;
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -116,42 +103,77 @@ export async function GET(
     const db = client.db(dbName);
 
     try {
-      // Find the specific student
-      const student = await db.collection('students').findOne({
-        _id: new (require('mongodb').ObjectId)(studentId),
+      const student = await db.collection("students").findOne({
+        _id: new ObjectId(id),
         'data.schoolCode': decoded.schoolCode,
-        'data.isActive': true
       });
 
       if (!student) {
         await client.close();
         return NextResponse.json(
-          { success: false, message: 'دانش‌آموز یافت نشد' },
+          { success: false, message: "دانش‌آموز یافت نشد" },
           { status: 404 }
         );
       }
 
-      // Transform data
-      const transformedStudent: Student = {
+      // Transform the data
+      // Check if student has installed the app by checking pushTokens
+      const pushTokens = student.data?.pushTokens || [];
+      const activeTokens = pushTokens.filter((token: any) => token.active === true);
+      const hasInstalledApp = activeTokens.length > 0;
+      
+      const transformedStudent = {
         id: student._id.toString(),
-        studentName: student.data.studentName,
-        studentFamily: student.data.studentFamily,
-        studentCode: student.data.studentCode,
-        classCode: student.data.classCode,
-        schoolCode: student.data.schoolCode,
-        phone: student.data.phone,
-        isActive: student.data.isActive,
-        addedAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
-        lastUpdated: student.updatedAt ? new Date(student.updatedAt).toISOString() : new Date().toISOString(),
+        studentCode: student.data?.studentCode || "",
+        studentName: student.data?.studentName || "",
+        studentFamily: student.data?.studentFamily || "",
+        phone: student.data?.phone || "",
+        codemelli: student.data?.codemelli || "",
+        birthDate: student.data?.birthDate || "",
+        birthplace: student.data?.birthplace || student.data?.["birthplace "] || "",
+        IDserial: student.data?.IDserial || "",
+        address: student.data?.address || "",
+        postalcode: student.data?.postalcode || "",
+        schoolCode: student.data?.schoolCode || "",
+        classCode: student.data?.classCode || [],
+        groups: student.data?.groups || [],
+        infos: student.data?.infos || [],
+        isActive: student.data?.isActive ?? true,
+        avatar: student.data?.avatar || null,
+        phones: student.data?.phones || [],
+        fatherEducation: student.data?.fatherEducation || "",
+        fatherJob: student.data?.fatherJob || "",
+        fatherWorkPlace: student.data?.fatherWorkPlace || "",
+        motherEducation: student.data?.motherEducation || "",
+        motherJob: student.data?.motherJob || "",
+        createdAt: student.createdAt || "",
+        updatedAt: student.updatedAt || student.data?.updatedAt || "",
+        updatedBy: student.data?.updatedBy || "",
+        hasInstalledApp,
+        appInstallInfo: {
+          installed: hasInstalledApp,
+          devicesCount: activeTokens.length,
+          lastTokenUpdate: student.data?.lastTokenUpdate ? new Date(student.data.lastTokenUpdate).toISOString() : "",
+          devices: activeTokens.map((token: any) => ({
+            deviceName: token.deviceInfo?.deviceName || "Unknown",
+            deviceType: token.deviceInfo?.deviceType || "Unknown",
+            platform: token.deviceInfo?.platform || "Unknown",
+            osName: token.deviceInfo?.osName || "",
+            osVersion: token.deviceInfo?.osVersion || "",
+            brand: token.deviceInfo?.brand || "",
+            modelName: token.deviceInfo?.modelName || "",
+            lastUpdated: token.lastUpdated ? new Date(token.lastUpdated).toISOString() : "",
+            registeredAt: token.registeredAt ? new Date(token.registeredAt).toISOString() : "",
+          }))
+        }
       };
 
       await client.close();
 
       return NextResponse.json({
         success: true,
-        data: transformedStudent
+        data: transformedStudent,
       });
-
     } catch (dbError) {
       await client.close();
       console.error('Database error:', dbError);
@@ -160,11 +182,14 @@ export async function GET(
         { status: 500 }
       );
     }
-
   } catch (error) {
-    console.error('Student details API error:', error);
+    console.error("Error fetching student details:", error);
     return NextResponse.json(
-      { success: false, message: 'خطای سرور داخلی' },
+      { 
+        success: false, 
+        message: "خطا در دریافت اطلاعات دانش‌آموز",
+        error: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
