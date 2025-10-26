@@ -1782,34 +1782,100 @@ export default function FormPreview({
 
   // Render step progress indicator
   const renderStepProgress = () => {
+    // For many steps (>5), use a compact indicator
+    const isCompactMode = steps.length > 5;
+
+    if (isCompactMode) {
+      // Compact mode: Show only current step number and navigation dots
+      return (
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm text-gray-600">
+              گام {currentStep + 1} از {steps.length}
+            </div>
+            <div className="flex items-center gap-1">
+              {steps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    index === currentStep
+                      ? "w-8 bg-blue-600"
+                      : index < currentStep
+                      ? "w-2 bg-blue-400"
+                      : "w-2 bg-gray-300"
+                  }`}
+                  title={step.title}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="text-center">
+            <h3 className="font-medium text-lg text-gray-800">
+              {steps[currentStep].title}
+            </h3>
+            {steps[currentStep].description && (
+              <p className="text-gray-600 text-sm mt-1">
+                {steps[currentStep].description}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Standard mode: Show all steps with connectors (for 5 or fewer steps)
     return (
       <div className="mb-6">
-        <div className="flex justify-between items-center">
-          {steps
-            .map((step, index) => (
-              <div key={step.id} className="flex items-center w-full ">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    index === currentStep
-                      ? "bg-primary text-primary-foreground"
-                      : index < currentStep
-                      ? "bg-primary/20 text-primary"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  {index + 1}
-                </div>
-                {index < steps.length - 1 && (
+        {/* Desktop view */}
+        <div className="hidden md:block">
+          <div className="flex justify-between items-center">
+            {steps
+              .map((step, index) => (
+                <div key={step.id} className="flex items-center w-full">
                   <div
-                    className={`h-1 w-full mx-0 ${
-                      index < currentStep ? "bg-primary" : "bg-gray-200"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-200 ${
+                      index === currentStep
+                        ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110"
+                        : index < currentStep
+                        ? "bg-primary/20 text-primary"
+                        : "bg-gray-200 text-gray-500"
                     }`}
-                  ></div>
-                )}
-              </div>
-            ))
-            .reverse()}
+                  >
+                    {index + 1}
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`h-1 w-full mx-0 transition-all duration-300 ${
+                        index < currentStep ? "bg-primary" : "bg-gray-200"
+                      }`}
+                    ></div>
+                  )}
+                </div>
+              ))
+              .reverse()}
+          </div>
         </div>
+
+        {/* Mobile view */}
+        <div className="md:hidden">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            {steps.map((step, index) => (
+              <div
+                key={step.id}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200 ${
+                  index === currentStep
+                    ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                    : index < currentStep
+                    ? "bg-primary/20 text-primary"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                {index + 1}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-4 text-center">
           <h3 className="font-medium text-lg">{steps[currentStep].title}</h3>
           {steps[currentStep].description && (

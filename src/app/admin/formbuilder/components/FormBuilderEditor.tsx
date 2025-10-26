@@ -72,32 +72,34 @@ function SortableStepTab({
     <div
       ref={setNodeRef}
       style={style}
-      className={`inline-flex items-center gap-1 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
+      className={`inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md border cursor-pointer transition-all duration-200 ${
         isActive
-          ? "bg-white text-blue-600 border-blue-200 shadow-sm"
-          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+          ? "bg-white text-blue-600 border-blue-300 shadow-md ring-2 ring-blue-100"
+          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
       }`}
       onClick={onSelect}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing hover:text-blue-500"
+        className="cursor-grab active:cursor-grabbing hover:text-blue-500 flex-shrink-0"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-3 w-3 sm:h-4 sm:w-4" />
       </div>
-      <span className="text-sm font-medium">{step.title}</span>
+      <span className="text-xs sm:text-sm font-medium truncate max-w-[100px] sm:max-w-[150px]">
+        {step.title}
+      </span>
       {canDelete && (
         <Button
           variant="ghost"
           size="sm"
-          className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+          className="h-4 w-4 sm:h-5 sm:w-5 p-0 hover:bg-red-50 hover:text-red-600 flex-shrink-0"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
         >
-          <X className="h-3 w-3" />
+          <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
         </Button>
       )}
     </div>
@@ -544,12 +546,18 @@ export default function FormBuilderEditor({
               {formState.isMultiStep && (
                 <div className="mb-6">
                   <Tabs value={activeStep || ""} onValueChange={setActiveStep}>
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
                       <h3 className="text-lg font-medium">گام‌های فرم</h3>
-                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
                         <GripVertical className="h-3 w-3" />
-                        برای تغییر ترتیب بکشید
-                      </span>
+                        <span className="hidden sm:inline">برای تغییر ترتیب بکشید</span>
+                        <span className="sm:hidden">بکشید برای ترتیب</span>
+                        {formState.steps && formState.steps.length > 5 && (
+                          <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            {formState.steps.length} گام
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <DndContext
@@ -561,7 +569,7 @@ export default function FormBuilderEditor({
                         items={formState.steps?.map((step) => step.id) || []}
                         strategy={horizontalListSortingStrategy}
                       >
-                        <div className="mb-4 flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="mb-4 flex flex-wrap gap-1.5 sm:gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 max-h-[200px] overflow-y-auto">
                           {formState.steps?.map((step) => (
                             <SortableStepTab
                               key={step.id}
@@ -576,20 +584,22 @@ export default function FormBuilderEditor({
                       </SortableContext>
                     </DndContext>
 
-                    <div className="mb-4 p-4 border rounded-md">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="mb-4 p-3 sm:p-4 border rounded-md bg-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         <div>
-                          <Label htmlFor="new-step-title">عنوان گام جدید</Label>
+                          <Label htmlFor="new-step-title" className="text-xs sm:text-sm">
+                            عنوان گام جدید
+                          </Label>
                           <Input
                             id="new-step-title"
                             value={newStepTitle}
                             onChange={(e) => setNewStepTitle(e.target.value)}
                             placeholder="عنوان گام"
-                            className="mb-2"
+                            className="mb-2 text-sm"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="new-step-description">
+                          <Label htmlFor="new-step-description" className="text-xs sm:text-sm">
                             توضیحات (اختیاری)
                           </Label>
                           <Input
@@ -599,7 +609,7 @@ export default function FormBuilderEditor({
                               setNewStepDescription(e.target.value)
                             }
                             placeholder="توضیح کوتاه"
-                            className="mb-2"
+                            className="mb-2 text-sm"
                           />
                         </div>
                       </div>
@@ -607,7 +617,7 @@ export default function FormBuilderEditor({
                         onClick={addNewStep}
                         disabled={!newStepTitle.trim()}
                         size="sm"
-                        className="mt-2"
+                        className="mt-2 w-full sm:w-auto"
                       >
                         <PlusCircle className="h-4 w-4 ml-2" />
                         افزودن گام جدید
@@ -621,10 +631,10 @@ export default function FormBuilderEditor({
                         value={step.id}
                         className="border-0 p-0"
                       >
-                        <div className="mb-4 p-4 border rounded-md">
-                          <div className="grid grid-cols-2 gap-4">
+                        <div className="mb-4 p-3 sm:p-4 border rounded-md bg-white">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
-                              <Label htmlFor={`step-title-${step.id}`}>
+                              <Label htmlFor={`step-title-${step.id}`} className="text-xs sm:text-sm">
                                 عنوان گام
                               </Label>
                               <Input
@@ -633,11 +643,11 @@ export default function FormBuilderEditor({
                                 onChange={(e) =>
                                   updateStepTitle(step.id, e.target.value)
                                 }
-                                className="mb-2"
+                                className="mb-2 text-sm"
                               />
                             </div>
                             <div>
-                              <Label htmlFor={`step-desc-${step.id}`}>
+                              <Label htmlFor={`step-desc-${step.id}`} className="text-xs sm:text-sm">
                                 توضیحات
                               </Label>
                               <Textarea
@@ -654,7 +664,8 @@ export default function FormBuilderEditor({
                                   }));
                                 }}
                                 placeholder="توضیحات این گام"
-                                className="mb-2"
+                                className="mb-2 text-sm"
+                                rows={2}
                               />
                             </div>
                           </div>

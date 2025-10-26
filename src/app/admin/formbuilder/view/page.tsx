@@ -10,6 +10,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import "./rtl.css";
 
 // Define the proper type for form entry
@@ -28,6 +29,7 @@ function FormViewWrapper() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const formId = searchParams.get("id");
+  const { user } = useAuth();
 
   const [form, setForm] = useState<FormSchema | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,16 +110,6 @@ function FormViewWrapper() {
         }
 
         setForm(data);
-
-        // If form is editable, check for existing entries
-        if (data.isEditable) {
-          fetchExistingEntry(data._id);
-        }
-
-        // If form has oneTimeFillOnly enabled, check if user has already submitted
-        if (data.oneTimeFillOnly) {
-          checkUserSubmission(data._id);
-        }
       } catch (err) {
         // Handle AbortController timeout
         const error = err as Error;
@@ -142,13 +134,36 @@ function FormViewWrapper() {
     };
   }, [formId]);
 
+  // Separate effect to fetch user-specific data after user is loaded
+  useEffect(() => {
+    if (!form || !form._id || !user) return;
+
+    // If form is editable, check for existing entries for this user
+    if (form.isEditable) {
+      fetchExistingEntry(form._id);
+    }
+
+    // If form has oneTimeFillOnly enabled, check if user has already submitted
+    if (form.oneTimeFillOnly) {
+      checkUserSubmission(form._id);
+    }
+  }, [form, user]);
+
   // Function to fetch existing entry for the current user
   const fetchExistingEntry = async (formId: string) => {
     try {
       setLoadingEntry(true);
 
+      // Only fetch if user is authenticated
+      if (!user || !user.username) {
+        console.log("No authenticated user, skipping existing entry fetch");
+        setLoadingEntry(false);
+        return;
+      }
+
+      // Add userId parameter to filter by current user
       const response = await fetch(
-        `/api/formbuilder/submissions?formId=${formId}&limit=1`,
+        `/api/formbuilder/submissions?formId=${formId}&userId=${user.username}&limit=1`,
         {
           headers: {
             "x-domain": window.location.host,
@@ -164,10 +179,10 @@ function FormViewWrapper() {
       const data = await response.json();
 
       if (data && data.submissions && data.submissions.length > 0) {
-        console.log("Found existing entry:", data.submissions[0]);
+        console.log("Found existing entry for current user:", data.submissions[0]);
         setExistingEntry(data.submissions[0]);
       } else {
-        console.log("No existing entries found");
+        console.log("No existing entries found for current user");
       }
     } catch (error) {
       console.error("Error fetching existing entries:", error);
@@ -181,8 +196,16 @@ function FormViewWrapper() {
     try {
       setCheckingSubmission(true);
 
+      // Only check if user is authenticated
+      if (!user || !user.username) {
+        console.log("No authenticated user, skipping submission check");
+        setCheckingSubmission(false);
+        return;
+      }
+
+      // Add userId parameter to filter by current user
       const response = await fetch(
-        `/api/formbuilder/submissions?formId=${formId}&limit=1`,
+        `/api/formbuilder/submissions?formId=${formId}&userId=${user.username}&limit=1`,
         {
           headers: {
             "x-domain": window.location.host,
@@ -198,10 +221,10 @@ function FormViewWrapper() {
       const data = await response.json();
 
       if (data && data.submissions && data.submissions.length > 0) {
-        console.log("User has already submitted this form");
+        console.log("Current user has already submitted this form");
         setUserAlreadySubmitted(true);
       } else {
-        console.log("User has not submitted this form yet");
+        console.log("Current user has not submitted this form yet");
         setUserAlreadySubmitted(false);
       }
     } catch (error) {
