@@ -27,9 +27,19 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Eye, Download, FileDown } from "lucide-react";
+import { Eye, Download, FileDown, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FormSubmissionViewerProps {
   formId: string;
@@ -84,6 +94,11 @@ export function FormSubmissionViewer({
     null
   );
   const [submissionDialogOpen, setSubmissionDialogOpen] = useState(false);
+  const [deletingSubmission, setDeletingSubmission] = useState<Submission | null>(
+    null
+  );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch submissions when dialog opens or page changes
   useEffect(() => {
@@ -124,6 +139,46 @@ export function FormSubmissionViewer({
   const handleViewSubmission = (submission: Submission) => {
     setViewingSubmission(submission);
     setSubmissionDialogOpen(true);
+  };
+
+  const handleDeleteClick = (submission: Submission) => {
+    setDeletingSubmission(submission);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingSubmission) return;
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+
+      const response = await fetch(
+        `/api/formbuilder/submissions/${deletingSubmission._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete submission");
+      }
+
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setDeletingSubmission(null);
+
+      // Refresh the submissions list
+      await fetchSubmissions(pagination.page);
+    } catch (err) {
+      console.error("Error deleting submission:", err);
+      setError(err instanceof Error ? err.message : "خطا در حذف پاسخ");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleExportToExcel = async () => {
@@ -590,14 +645,26 @@ export function FormSubmissionViewer({
                       </TableCell>
                       <TableCell>{formatDate(submission.createdAt)}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewSubmission(submission)}
-                        >
-                          <Eye className="h-4 w-4 ml-1" />
-                          مشاهده
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewSubmission(submission)}
+                            className="hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <Eye className="h-4 w-4 ml-1" />
+                            مشاهده
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(submission)}
+                            className="hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 ml-1" />
+                            حذف
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -660,6 +727,68 @@ export function FormSubmissionViewer({
       </Dialog>
 
       {renderSubmissionDetails()}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-red-600">
+              <Trash2 className="h-5 w-5 ml-2" />
+              تایید حذف پاسخ
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              <div className="space-y-3 mt-4">
+                <p className="text-gray-700">
+                  آیا از حذف این پاسخ اطمینان دارید؟ این عملیات قابل بازگشت نیست.
+                </p>
+                {deletingSubmission && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      <strong>کد کاربری:</strong>{" "}
+                      {deletingSubmission.username || deletingSubmission.submittedBy}
+                    </p>
+                    {deletingSubmission.userName && (
+                      <p className="text-sm text-red-800">
+                        <strong>نام:</strong> {deletingSubmission.userName}{" "}
+                        {deletingSubmission.userFamily || ""}
+                      </p>
+                    )}
+                    <p className="text-sm text-red-800">
+                      <strong>تاریخ ارسال:</strong>{" "}
+                      {formatDate(deletingSubmission.createdAt)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="bg-gray-100 hover:bg-gray-200"
+            >
+              انصراف
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <span className="animate-spin ml-2">⏳</span>
+                  در حال حذف...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 ml-2" />
+                  حذف پاسخ
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

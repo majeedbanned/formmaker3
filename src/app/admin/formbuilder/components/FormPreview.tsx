@@ -400,7 +400,8 @@ export default function FormPreview({
     switch (field.type) {
       case "text":
       case "textarea":
-        fieldSchema = z.string();
+        // Start with optional string (allows empty string and undefined)
+        fieldSchema = z.union([z.string(), z.undefined()]);
 
         // Add regex validation only for text fields
         if (field.validation?.regex) {
@@ -417,9 +418,12 @@ export default function FormPreview({
                 ? field.validation.validationMessage
                 : "فرمت نامعتبر";
 
-            fieldSchema = z.string().regex(regex, {
-              message: validationMessage,
-            });
+            // For regex validation, allow empty string or validate if not empty
+            fieldSchema = z.union([
+              z.string().regex(regex, { message: validationMessage }),
+              z.literal(""),
+              z.undefined(),
+            ]);
           } catch (e) {
             console.error("Invalid regex pattern", e);
           }
@@ -427,7 +431,12 @@ export default function FormPreview({
         break;
 
       case "email":
-        fieldSchema = z.string().email("ایمیل نامعتبر است");
+        // Make email optional by default, validate if not empty
+        fieldSchema = z.union([
+          z.string().email("ایمیل نامعتبر است"),
+          z.literal(""),
+          z.undefined(),
+        ]);
         break;
 
       case "number":
@@ -439,14 +448,20 @@ export default function FormPreview({
 
       case "date":
         // Accept Persian date format with slashes (YYYY/MM/DD) and both English and Persian numerals
-        fieldSchema = z.string().regex(/^[\d۰-۹]{4}\/[\d۰-۹]{2}\/[\d۰-۹]{2}$/, {
-          message: "لطفا یک تاریخ معتبر انتخاب کنید",
-        });
+        // Make it optional by default, validate if not empty
+        fieldSchema = z.union([
+          z.string().regex(/^[\d۰-۹]{4}\/[\d۰-۹]{2}\/[\d۰-۹]{2}$/, {
+            message: "لطفا یک تاریخ معتبر انتخاب کنید",
+          }),
+          z.literal(""),
+          z.undefined(),
+        ]);
         break;
 
       case "select":
       case "radio":
-        fieldSchema = z.string();
+        // Make select and radio optional by default
+        fieldSchema = z.union([z.string(), z.literal(""), z.undefined()]);
         break;
 
       case "checkbox":
@@ -540,11 +555,43 @@ export default function FormPreview({
         fieldSchema = z.boolean().refine((val) => val === true, {
           message: "این فیلد الزامی است",
         });
-      } else if (
-        ["text", "textarea", "email", "select", "radio", "date"].includes(
-          field.type
-        )
-      ) {
+      } else if (field.type === "email") {
+        // Keep email validation for required email fields
+        fieldSchema = z.string().email("ایمیل نامعتبر است").min(1, { 
+          message: "این فیلد الزامی است" 
+        });
+      } else if (field.type === "date") {
+        // Keep date format validation for required date fields
+        fieldSchema = z.string().regex(/^[\d۰-۹]{4}\/[\d۰-۹]{2}\/[\d۰-۹]{2}$/, {
+          message: "لطفا یک تاریخ معتبر انتخاب کنید",
+        }).min(1, { message: "این فیلد الزامی است" });
+      } else if (["text", "textarea"].includes(field.type)) {
+        // For text/textarea with regex validation, keep the regex
+        if (field.validation?.regex) {
+          try {
+            const regexPattern =
+              typeof field.validation.regex === "string"
+                ? field.validation.regex
+                : String(field.validation.regex);
+            const regex = new RegExp(regexPattern);
+            const validationMessage =
+              typeof field.validation.validationMessage === "string"
+                ? field.validation.validationMessage
+                : "فرمت نامعتبر";
+            
+            fieldSchema = z.string().min(1, { 
+              message: "این فیلد الزامی است" 
+            }).regex(regex, {
+              message: validationMessage,
+            });
+          } catch (e) {
+            // If regex is invalid, just use required validation
+            fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
+          }
+        } else {
+          fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
+        }
+      } else if (["select", "radio"].includes(field.type)) {
         fieldSchema = z.string().min(1, { message: "این فیلد الزامی است" });
       } else if (field.type === "number") {
         fieldSchema = z.number({ required_error: "این فیلد الزامی است" });

@@ -19,12 +19,15 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { FieldItem } from "./FieldItem";
 import { FieldTypeSelector } from "./FieldTypeSelector";
 import { FieldEditor } from "./FieldEditor";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Save, X, PlusCircle, FileSymlink, Layers } from "lucide-react";
+import { Save, X, PlusCircle, FileSymlink, Layers, GripVertical } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +37,71 @@ interface FormBuilderEditorProps {
   form: FormSchema;
   onSave: (form: FormSchema) => void;
   onCancel: () => void;
+}
+
+// Sortable Step Tab Component
+function SortableStepTab({
+  step,
+  isActive,
+  canDelete,
+  onSelect,
+  onDelete,
+}: {
+  step: FormStep;
+  isActive: boolean;
+  canDelete: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: step.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`inline-flex items-center gap-1 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
+        isActive
+          ? "bg-white text-blue-600 border-blue-200 shadow-sm"
+          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+      }`}
+      onClick={onSelect}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing hover:text-blue-500"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <span className="text-sm font-medium">{step.title}</span>
+      {canDelete && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export default function FormBuilderEditor({
@@ -67,19 +135,41 @@ export default function FormBuilderEditor({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setFormState((form) => {
-        const oldIndex = form.fields.findIndex(
-          (field) => `field-${field.name}` === active.id
-        );
-        const newIndex = form.fields.findIndex(
-          (field) => `field-${field.name}` === over.id
-        );
+      // Check if we're dragging a step (step IDs start with "step_")
+      if (
+        typeof active.id === "string" &&
+        active.id.startsWith("step_") &&
+        typeof over.id === "string" &&
+        over.id.startsWith("step_")
+      ) {
+        // Reorder steps
+        setFormState((form) => {
+          if (!form.steps) return form;
 
-        return {
-          ...form,
-          fields: arrayMove(form.fields, oldIndex, newIndex),
-        };
-      });
+          const oldIndex = form.steps.findIndex((step) => step.id === active.id);
+          const newIndex = form.steps.findIndex((step) => step.id === over.id);
+
+          return {
+            ...form,
+            steps: arrayMove(form.steps, oldIndex, newIndex),
+          };
+        });
+      } else {
+        // Reorder fields
+        setFormState((form) => {
+          const oldIndex = form.fields.findIndex(
+            (field) => `field-${field.name}` === active.id
+          );
+          const newIndex = form.fields.findIndex(
+            (field) => `field-${field.name}` === over.id
+          );
+
+          return {
+            ...form,
+            fields: arrayMove(form.fields, oldIndex, newIndex),
+          };
+        });
+      }
     }
   };
 
@@ -456,32 +546,35 @@ export default function FormBuilderEditor({
                   <Tabs value={activeStep || ""} onValueChange={setActiveStep}>
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="text-lg font-medium">گام‌های فرم</h3>
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <GripVertical className="h-3 w-3" />
+                        برای تغییر ترتیب بکشید
+                      </span>
                     </div>
 
-                    <TabsList className="mb-4 overflow-auto">
-                      {formState.steps?.map((step) => (
-                        <TabsTrigger
-                          key={step.id}
-                          value={step.id}
-                          className="relative pr-8"
-                        >
-                          {step.title}
-                          {formState.steps!.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-1 top-1/2 transform -translate-y-1/2 p-0 h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteStep(step.id);
-                              }}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={formState.steps?.map((step) => step.id) || []}
+                        strategy={horizontalListSortingStrategy}
+                      >
+                        <div className="mb-4 flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                          {formState.steps?.map((step) => (
+                            <SortableStepTab
+                              key={step.id}
+                              step={step}
+                              isActive={activeStep === step.id}
+                              canDelete={formState.steps!.length > 1}
+                              onSelect={() => setActiveStep(step.id)}
+                              onDelete={() => deleteStep(step.id)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
 
                     <div className="mb-4 p-4 border rounded-md">
                       <div className="grid grid-cols-2 gap-2">
