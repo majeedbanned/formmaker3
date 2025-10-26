@@ -142,11 +142,17 @@ function gregorian_to_jalali(gy: number, gm: number, gd: number) {
 function calculateFinalScore(grades: GradeEntry[], assessments: AssessmentEntry[]): number | null {
   if (grades.length === 0) return null;
 
-  // Calculate average grade
-  const gradeAverage = grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
+  // Calculate base grade normalized to 20
+  // This handles grades with different totalPoints (e.g., 5/10, 16/20)
+  // by calculating the weighted average and converting to base 20
+  const totalValue = grades.reduce((sum, grade) => sum + grade.value, 0);
+  const totalPoints = grades.reduce((sum, grade) => sum + (grade.totalPoints || 20), 0);
+  
+  // Normalize to base 20: (achieved/possible) × 20
+  const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
 
-  // If no assessments, return the average grade
-  if (!assessments || assessments.length === 0) return gradeAverage;
+  // If no assessments, return the base grade
+  if (!assessments || assessments.length === 0) return baseGrade;
 
   // Calculate direct assessment adjustment
   const assessmentAdjustment = assessments.reduce((total, assessment) => {
@@ -155,7 +161,7 @@ function calculateFinalScore(grades: GradeEntry[], assessments: AssessmentEntry[
   }, 0);
 
   // Calculate final score with direct addition of assessment adjustment
-  let finalScore = gradeAverage + assessmentAdjustment;
+  let finalScore = baseGrade + assessmentAdjustment;
 
   // Cap at 20
   finalScore = Math.min(finalScore, 20);
@@ -431,9 +437,11 @@ export async function GET(request: NextRequest) {
           totalGrades += monthData.gradeCount;
           totalAssessments += monthData.assessmentCount;
 
-          // Calculate average grade if there are grades
+          // Calculate average grade if there are grades (normalized to base 20)
           if (monthData.grades.length > 0) {
-            monthData.averageGrade = monthData.grades.reduce((sum, grade) => sum + grade.value, 0) / monthData.grades.length;
+            const totalValue = monthData.grades.reduce((sum, grade) => sum + grade.value, 0);
+            const totalPoints = monthData.grades.reduce((sum, grade) => sum + (grade.totalPoints || 20), 0);
+            monthData.averageGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
           }
 
           // Calculate final score (grades adjusted by assessments)

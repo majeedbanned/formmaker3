@@ -518,12 +518,20 @@ const MonthlyGradeReport = ({
     (grades: GradeEntry[], assessments: AssessmentEntry[]): number | null => {
       if (grades.length === 0) return null;
 
-      // Calculate average grade
-      const gradeAverage =
-        grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
+      // Calculate base grade normalized to 20
+      // This handles grades with different totalPoints (e.g., 5/10, 16/20)
+      // by calculating the weighted average and converting to base 20
+      const totalValue = grades.reduce((sum, grade) => sum + grade.value, 0);
+      const totalPoints = grades.reduce(
+        (sum, grade) => sum + (grade.totalPoints || 20),
+        0
+      );
 
-      // If no assessments, return the average grade
-      if (!assessments || assessments.length === 0) return gradeAverage;
+      // Normalize to base 20: (achieved/possible) × 20
+      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+
+      // If no assessments, return the base grade
+      if (!assessments || assessments.length === 0) return baseGrade;
 
       // Calculate direct assessment adjustment (add/subtract directly)
       const assessmentAdjustment = assessments.reduce((total, assessment) => {
@@ -537,7 +545,7 @@ const MonthlyGradeReport = ({
       }, 0);
 
       // Calculate final score with direct addition of assessment adjustment
-      let finalScore = gradeAverage + assessmentAdjustment;
+      let finalScore = baseGrade + assessmentAdjustment;
 
       // Cap at 20
       finalScore = Math.min(finalScore, 20);
@@ -980,27 +988,36 @@ const MonthlyGradeReport = ({
     (grades: GradeEntry[], assessments: AssessmentEntry[]): string => {
       if (!grades || grades.length === 0) return "اطلاعاتی موجود نیست";
 
-      // Calculate the raw grade average
-      const gradeAverage =
-        grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length;
+      // Calculate the base grade (normalized to 20)
+      const totalValue = grades.reduce((sum, grade) => sum + grade.value, 0);
+      const totalPoints = grades.reduce(
+        (sum, grade) => sum + (grade.totalPoints || 20),
+        0
+      );
+      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
 
       // Build the tooltip text
       let tooltip = "محاسبه نمره:\n\n";
 
-      // Show each individual grade
+      // Show each individual grade with its total points
       tooltip += "نمرات اصلی:\n";
       grades.forEach((grade, index) => {
-        tooltip += `${index + 1}. ${toPersianDigits(grade.value.toFixed(2))}`;
+        const gradeTotal = grade.totalPoints || 20;
+        tooltip += `${index + 1}. ${toPersianDigits(
+          grade.value.toFixed(2)
+        )}/${toPersianDigits(gradeTotal)}`;
         if (grade.description) {
           tooltip += ` (${grade.description})`;
         }
         tooltip += "\n";
       });
 
-      // Show raw average
-      tooltip += `\nمیانگین نمرات: ${toPersianDigits(
-        gradeAverage.toFixed(2)
+      // Show calculation breakdown
+      tooltip += `\nمجموع امتیازات: ${toPersianDigits(
+        totalValue.toFixed(2)
       )}\n`;
+      tooltip += `از کل: ${toPersianDigits(totalPoints)}\n`;
+      tooltip += `نمره پایه (از ۲۰): ${toPersianDigits(baseGrade.toFixed(2))}\n`;
 
       // If there are assessments, show how they affected the grade
       if (assessments && assessments.length > 0) {
@@ -1027,7 +1044,7 @@ const MonthlyGradeReport = ({
         }${toPersianDigits(assessmentAdjustmentTotal.toString())}\n`;
 
         // Calculate final score with direct addition
-        let finalScore = gradeAverage + assessmentAdjustmentTotal;
+        let finalScore = baseGrade + assessmentAdjustmentTotal;
         // Cap at 20
         finalScore = Math.min(finalScore, 20);
         // Ensure not negative
@@ -1035,15 +1052,15 @@ const MonthlyGradeReport = ({
 
         // Show calculation
         tooltip += `\nمحاسبه نهایی: ${toPersianDigits(
-          gradeAverage.toFixed(2)
+          baseGrade.toFixed(2)
         )} ${assessmentAdjustmentTotal >= 0 ? "+" : ""}${toPersianDigits(
           assessmentAdjustmentTotal.toString()
         )} = ${toPersianDigits(finalScore.toFixed(2))}`;
 
         // Add note if capped
-        if (gradeAverage + assessmentAdjustmentTotal > 20) {
+        if (baseGrade + assessmentAdjustmentTotal > 20) {
           tooltip += `\n(محدود شده به حداکثر نمره ۲۰)`;
-        } else if (gradeAverage + assessmentAdjustmentTotal < 0) {
+        } else if (baseGrade + assessmentAdjustmentTotal < 0) {
           tooltip += `\n(محدود شده به حداقل نمره ۰)`;
         }
       }
