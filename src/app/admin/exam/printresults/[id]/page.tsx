@@ -142,6 +142,7 @@ export default function PrintExamResults({
 
   const printRef = useRef<HTMLDivElement>(null);
   const id = params.id;
+  const [printTemplate, setPrintTemplate] = useState<"full" | "compact">("full");
 
   useEffect(() => {
     if (id) {
@@ -615,7 +616,29 @@ export default function PrintExamResults({
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex gap-2 border rounded-lg p-1 bg-gray-50">
+            <button
+              onClick={() => setPrintTemplate("full")}
+              className={`px-3 py-2 rounded text-sm transition-colors ${
+                printTemplate === "full"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              قالب کامل
+            </button>
+            <button
+              onClick={() => setPrintTemplate("compact")}
+              className={`px-3 py-2 rounded text-sm transition-colors ${
+                printTemplate === "compact"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              قالب فشرده (۲ نفر در صفحه)
+            </button>
+          </div>
           <Button
             variant="outline"
             onClick={() => router.back()}
@@ -703,10 +726,18 @@ export default function PrintExamResults({
         </div>
 
         {/* Individual student results - each on a separate page when printed */}
-        {rankedParticipants.map((participant) => (
+        {rankedParticipants.map((participant, index) => (
           <div
             key={participant._id}
-            className="student-report mb-12 page-break-after print-student"
+            className={`student-report mb-12 print-student ${
+              printTemplate === "compact" 
+                ? "print-compact-student" 
+                : "page-break-after"
+            } ${
+              printTemplate === "compact" && index % 2 === 1 
+                ? "page-break-after" 
+                : ""
+            }`}
           >
             <div className="border rounded-lg overflow-hidden shadow-sm print-no-shadow">
               {/* Student header */}
@@ -964,7 +995,7 @@ export default function PrintExamResults({
                 </div>
 
                 {/* Visual answer representation */}
-                {participant.visualAnswers && (
+                {printTemplate === "full" && participant.visualAnswers && (
                   <div className="mb-4 print-stats-row print-visual-answers">
                     <h4 className="mb-2 print-section-title">
                       نمایش پاسخ‌های سوالات
@@ -1033,38 +1064,40 @@ export default function PrintExamResults({
                 )}
 
                 {/* Performance chart (visual representation) */}
-                <div className="mt-4 print-stats-row">
-                  <h4 className="mb-2 print-section-title">نمودار عملکرد</h4>
-                  <div className="space-y-2 print-performance-chart">
-                    {Object.values(participant.categoryStats).map((stats) => (
-                      <div
-                        key={`chart-${stats.category}`}
-                        className="performance-bar"
-                      >
-                        <div className="flex justify-between mb-1 print-chart-header">
-                          <span className="text-sm">{stats.category}</span>
-                          <span className="text-sm">
-                            {toPersianDigits(stats.scorePercentage)}%
-                          </span>
+                {printTemplate === "full" && (
+                  <div className="mt-4 print-stats-row">
+                    <h4 className="mb-2 print-section-title">نمودار عملکرد</h4>
+                    <div className="space-y-2 print-performance-chart">
+                      {Object.values(participant.categoryStats).map((stats) => (
+                        <div
+                          key={`chart-${stats.category}`}
+                          className="performance-bar"
+                        >
+                          <div className="flex justify-between mb-1 print-chart-header">
+                            <span className="text-sm">{stats.category}</span>
+                            <span className="text-sm">
+                              {toPersianDigits(stats.scorePercentage)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
+                            <div
+                              className="h-2.5 rounded-full print-bar-progress"
+                              style={{
+                                width: `${stats.scorePercentage}%`,
+                                backgroundColor:
+                                  stats.scorePercentage > 70
+                                    ? "#22c55e" // green
+                                    : stats.scorePercentage > 40
+                                    ? "#f59e0b" // amber
+                                    : "#ef4444", // red
+                              }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
-                          <div
-                            className="h-2.5 rounded-full print-bar-progress"
-                            style={{
-                              width: `${stats.scorePercentage}%`,
-                              backgroundColor:
-                                stats.scorePercentage > 70
-                                  ? "#22c55e" // green
-                                  : stats.scorePercentage > 40
-                                  ? "#f59e0b" // amber
-                                  : "#ef4444", // red
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -1241,6 +1274,88 @@ export default function PrintExamResults({
           .print-student {
             max-height: 26.7cm !important; /* A4 height minus margins */
             overflow: hidden !important;
+          }
+
+          /* Compact template styles - 2 students per page */
+          .print-compact-student {
+            max-height: 13cm !important; /* Half page minus some margin */
+            overflow: hidden !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 0.3cm !important;
+          }
+
+          .print-compact-student .print-compact-header {
+            padding: 0.3cm !important;
+          }
+
+          .print-compact-student .print-compact-body {
+            padding: 0.2cm !important;
+          }
+
+          .print-compact-student .print-stats-row {
+            margin-bottom: 0.2cm !important;
+          }
+
+          .print-compact-student .print-section-title {
+            margin-bottom: 0.05cm !important;
+            font-size: 10pt !important;
+          }
+
+          .print-compact-student .print-grid-compact {
+            gap: 0.15cm !important;
+          }
+
+          .print-compact-student .print-stat-box {
+            padding: 0.08cm !important;
+          }
+
+          .print-compact-student .print-stat-box p {
+            font-size: 8pt !important;
+          }
+
+          .print-compact-student .print-stat-box .text-lg {
+            font-size: 12pt !important;
+          }
+
+          .print-compact-student .print-stat-box .text-xl {
+            font-size: 14pt !important;
+          }
+
+          .print-compact-student .print-table-compact {
+            font-size: 7.5pt !important;
+          }
+
+          .print-compact-student .print-table-cell {
+            padding: 0.05cm !important;
+          }
+
+          .print-compact-student .print-rank-badge {
+            width: 0.8cm !important;
+            height: 0.8cm !important;
+          }
+
+          .print-compact-student .print-rank-badge span {
+            font-size: 14pt !important;
+          }
+
+          .print-compact-student h3 {
+            font-size: 12pt !important;
+          }
+
+          .print-compact-student .text-xl {
+            font-size: 14pt !important;
+          }
+
+          .print-compact-student .text-lg {
+            font-size: 11pt !important;
+          }
+
+          .print-compact-student .text-sm {
+            font-size: 8pt !important;
+          }
+
+          .print-compact-student .text-xs {
+            font-size: 7pt !important;
           }
         }
 

@@ -296,7 +296,7 @@ export default function ScanAnswerSheetModal({
                     src={selectedResult.correctedImageUrl.replace(
                       "/../public",
                       ""
-                    )}
+                    )+"?v="+new Date().getTime()}
                     alt="Corrected Answer Sheet"
                     className="max-w-full object-contain max-h-[500px]"
                   />
