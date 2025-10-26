@@ -1204,9 +1204,21 @@ const ReportCards = ({
 
                 // If there are grades for this cell, calculate average for this month
                 if (cell.grades && cell.grades.length > 0) {
+                  // Calculate base grade normalized to 20
+                  // This handles grades with different totalPoints (e.g., 5/10, 16/20)
+                  // by calculating the weighted average and converting to base 20
+                  const totalValue = cell.grades.reduce(
+                    (sum, grade) => sum + grade.value,
+                    0
+                  );
+                  const totalPoints = cell.grades.reduce(
+                    (sum, grade) => sum + (grade.totalPoints || 20),
+                    0
+                  );
+                  
+                  // Normalize to base 20: (achieved/possible) × 20
                   const gradeAverage =
-                    cell.grades.reduce((sum, grade) => sum + grade.value, 0) /
-                    cell.grades.length;
+                    totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
 
                   // Store or update the monthly grade
                   const currentGrade =
