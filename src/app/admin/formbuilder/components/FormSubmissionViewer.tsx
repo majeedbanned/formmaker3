@@ -498,8 +498,11 @@ export function FormSubmissionViewer({
     }
 
     // Default: return as string with better styling
+    // Use whitespace-pre-wrap to preserve line breaks from textarea fields
     return (
-      <span className="text-gray-800 leading-relaxed">{String(value)}</span>
+      <span className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+        {String(value)}
+      </span>
     );
   };
 
