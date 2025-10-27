@@ -3146,7 +3146,7 @@ const ClassSheet = ({
                       {/* Student Avatar */}
                       <div className="relative flex-shrink-0">
                         <div className="w-8 h-8 rounded-full overflow-hidden shadow-md ring-1 ring-white">
-                          <img
+                          {/* <img
                             src={`/avatars/${student.studentCode}.jpg`}
                             alt={`${fullName} Avatar`}
                             className="w-full h-full object-cover"
@@ -3163,7 +3163,7 @@ const ClassSheet = ({
                                 )}</span>`;
                               }
                             }}
-                          />
+                          /> */}
                         </div>
                         {/* Activity status indicator */}
                         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border border-white shadow-sm"></div>
