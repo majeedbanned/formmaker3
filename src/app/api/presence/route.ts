@@ -42,7 +42,13 @@ export async function GET(request: NextRequest) {
 
       // Add optional filters if provided
       if (classCode) {
-        query.classCode = classCode;
+        // Handle multiple class codes (comma-separated)
+        const classCodes = classCode.split(",").map(code => code.trim()).filter(Boolean);
+        if (classCodes.length > 1) {
+          query.classCode = { $in: classCodes };
+        } else if (classCodes.length === 1) {
+          query.classCode = classCodes[0];
+        }
       }
 
       if (teacherCode) {

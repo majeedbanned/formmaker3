@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -451,7 +452,7 @@ const PresenceReport = ({
   `;
 
   // Component state
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedClass, setSelectedClass] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -697,8 +698,8 @@ const PresenceReport = ({
       });
 
       // Auto-select the first class if there's only one
-      if (options.length === 1 && !selectedClass) {
-        setTimeout(() => setSelectedClass(options[0].value), 0);
+      if (options.length === 1 && selectedClass.length === 0) {
+        setTimeout(() => setSelectedClass([options[0].value]), 0);
       }
     }
 
@@ -707,7 +708,7 @@ const PresenceReport = ({
 
   // Fetch presence data
   const fetchPresenceData = useCallback(async () => {
-    if (!selectedClass && !schoolCode) return;
+    if (selectedClass.length === 0 && !schoolCode) return;
 
     setLoading(true);
     try {
@@ -716,8 +717,8 @@ const PresenceReport = ({
         schoolCode,
       };
 
-      if (selectedClass) {
-        params.classCode = selectedClass;
+      if (selectedClass.length > 0) {
+        params.classCode = selectedClass.join(",");
       }
 
       if (teacherCode) {
@@ -1331,28 +1332,17 @@ const PresenceReport = ({
               >
                 کلاس
               </Label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger
-                  id="class-select"
-                  className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                >
-                  <SelectValue
-                    placeholder={
-                      teacherCode ? "همه کلاس‌های من" : "همه کلاس‌ها"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value=" ">
-                    {teacherCode ? "همه کلاس‌های من" : "همه کلاس‌ها"}
-                  </SelectItem>
-                  {getClassOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={getClassOptions()}
+                selected={selectedClass as unknown[]}
+                onChange={(values) => setSelectedClass(values as string[])}
+                placeholder={
+                  teacherCode ? "همه کلاس‌های من" : "همه کلاس‌ها"
+                }
+                emptyMessage="کلاسی یافت نشد"
+                searchPlaceholder="جستجوی کلاس..."
+                className="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
             </div>
 
             <div>
@@ -1554,12 +1544,15 @@ const PresenceReport = ({
                 <CardTitle className="text-xl text-gray-800 flex justify-between items-center">
                   <span>گزارش حضور و غیاب {formatDate(selectedDate)}</span>
                   <span className="text-sm font-normal text-gray-500">
-                    {selectedClass
-                      ? `کلاس: ${
-                          classDocuments.find(
-                            (doc) => doc.data.classCode === selectedClass
-                          )?.data.className || ""
-                        }`
+                    {selectedClass.length > 0
+                      ? `کلاس: ${selectedClass
+                          .map(
+                            (classCode) =>
+                              classDocuments.find(
+                                (doc) => doc.data.classCode === classCode
+                              )?.data.className || classCode
+                          )
+                          .join("، ")}`
                       : "همه کلاس‌ها"}
                   </span>
                 </CardTitle>
