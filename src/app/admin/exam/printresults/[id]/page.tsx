@@ -143,6 +143,8 @@ export default function PrintExamResults({
   const printRef = useRef<HTMLDivElement>(null);
   const id = params.id;
   const [printTemplate, setPrintTemplate] = useState<"full" | "compact">("full");
+  const [useNegativeMarking, setUseNegativeMarking] = useState(false);
+  const [wrongAnswersPerDeduction, setWrongAnswersPerDeduction] = useState(3); // n wrong answers = 1 point deduction
 
   useEffect(() => {
     if (id) {
@@ -525,6 +527,23 @@ export default function PrintExamResults({
     setRankedParticipants(ranked);
   };
 
+  // Calculate negative marking score for a participant
+  const calculateNegativeMarkingScore = (
+    correctCount: number,
+    wrongCount: number,
+    maxScorePerQuestion: number
+  ) => {
+    // Each correct answer gets full points
+    const correctPoints = correctCount * maxScorePerQuestion;
+    
+    // Each wrong answer deducts 1/3 of a point (or based on wrongAnswersPerDeduction)
+    const deductionPerWrong = maxScorePerQuestion / wrongAnswersPerDeduction;
+    const deductedPoints = wrongCount * deductionPerWrong;
+    
+    // Unanswered questions = 0 points (no deduction)
+    return Math.max(0, correctPoints - deductedPoints);
+  };
+
   const handlePrint = useReactToPrint({
     // Known issue with react-to-print types in Next.js environment
     contentRef: printRef,
@@ -616,7 +635,7 @@ export default function PrintExamResults({
             </p>
           )}
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <div className="flex gap-2 border rounded-lg p-1 bg-gray-50">
             <button
               onClick={() => setPrintTemplate("full")}
@@ -639,6 +658,34 @@ export default function PrintExamResults({
               قالب فشرده (۲ نفر در صفحه)
             </button>
           </div>
+          
+          {/* Negative Marking Controls */}
+          <div className="flex gap-2 items-center border rounded-lg p-2 bg-gray-50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useNegativeMarking}
+                onChange={(e) => setUseNegativeMarking(e.target.checked)}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm">نمره منفی</span>
+            </label>
+            {useNegativeMarking && (
+              <div className="flex items-center gap-2 mr-2 border-r pr-2">
+                <span className="text-sm">هر</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={wrongAnswersPerDeduction}
+                  onChange={(e) => setWrongAnswersPerDeduction(parseInt(e.target.value) || 3)}
+                  className="w-12 px-2 py-1 border rounded text-center text-sm"
+                />
+                <span className="text-sm">پاسخ اشتباه = ۱ نمره کسر</span>
+              </div>
+            )}
+          </div>
+          
           <Button
             variant="outline"
             onClick={() => router.back()}
@@ -665,6 +712,13 @@ export default function PrintExamResults({
             <div>
               <p className="text-xl">{examInfo.data.examName}</p>
               <p>کد آزمون: {toPersianDigits(examInfo.data.examCode)}</p>
+            </div>
+          )}
+          {useNegativeMarking && (
+            <div className="mt-3 p-2 bg-yellow-100 border border-yellow-400 rounded inline-block">
+              <p className="text-sm text-yellow-900">
+                <strong>⚠️ محاسبه با نمره منفی:</strong> هر {toPersianDigits(wrongAnswersPerDeduction)} پاسخ اشتباه = ۱ نمره کسر
+              </p>
             </div>
           )}
         </div>
@@ -762,22 +816,45 @@ export default function PrintExamResults({
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="text-xl">
-                      نمره: {toPersianDigits(participant.sumScore || 0)} از{" "}
-                      {toPersianDigits(participant.maxScore || 0)}
-                    </p>
-                    {participant.maxScore && (
-                      <p className="text-sm">
-                        (
-                        {toPersianDigits(
-                          Math.round(
-                            ((participant.sumScore || 0) /
-                              participant.maxScore) *
-                              100
-                          )
+                    {useNegativeMarking ? (
+                      <>
+                        <p className="text-xl">
+                          نمره (با احتساب منفی):{" "}
+                          {toPersianDigits(
+                            calculateNegativeMarkingScore(
+                              participant.correctAnswerCount || 0,
+                              participant.wrongAnswerCount || 0,
+                              participant.maxScore && participant.answers.length > 0
+                                ? participant.maxScore / participant.answers.length
+                                : 1
+                            ).toFixed(2)
+                          )}{" "}
+                          از {toPersianDigits(participant.maxScore || 0)}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          نمره اصلی: {toPersianDigits(participant.sumScore || 0)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xl">
+                          نمره: {toPersianDigits(participant.sumScore || 0)} از{" "}
+                          {toPersianDigits(participant.maxScore || 0)}
+                        </p>
+                        {participant.maxScore && (
+                          <p className="text-sm">
+                            (
+                            {toPersianDigits(
+                              Math.round(
+                                ((participant.sumScore || 0) /
+                                  participant.maxScore) *
+                                  100
+                              )
+                            )}
+                            %)
+                          </p>
                         )}
-                        %)
-                      </p>
+                      </>
                     )}
                   </div>
                 </div>
@@ -807,6 +884,20 @@ export default function PrintExamResults({
                       </p>
                     </div>
                   </div>
+                  {useNegativeMarking && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                      <p className="text-blue-900">
+                        <strong>روش محاسبه نمره منفی:</strong>
+                      </p>
+                      <ul className="text-blue-800 mr-4 mt-1 space-y-1">
+                        <li>• هر پاسخ صحیح: نمره کامل</li>
+                        <li>
+                          • هر {toPersianDigits(wrongAnswersPerDeduction)} پاسخ اشتباه: کسر ۱ نمره
+                        </li>
+                        <li>• پاسخ ندادن: ۰ نمره (بدون کسر)</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 {/* Difficulty Analysis */}
@@ -907,7 +998,7 @@ export default function PrintExamResults({
                           بدون پاسخ
                         </th>
                         <th className="border p-2 text-center print-table-cell">
-                          نمره
+                          {useNegativeMarking ? "نمره (منفی)" : "نمره"}
                         </th>
                         <th className="border p-2 text-center print-table-cell">
                           درصد
@@ -982,11 +1073,47 @@ export default function PrintExamResults({
                             {toPersianDigits(stats.unansweredCount)}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
-                            {toPersianDigits(stats.earnedScore)} از{" "}
-                            {toPersianDigits(stats.maxScore)}
+                            {useNegativeMarking ? (
+                              <>
+                                {toPersianDigits(
+                                  calculateNegativeMarkingScore(
+                                    stats.correctCount,
+                                    stats.wrongCount,
+                                    stats.totalQuestions > 0
+                                      ? stats.maxScore / stats.totalQuestions
+                                      : 1
+                                  ).toFixed(2)
+                                )}{" "}
+                                از {toPersianDigits(stats.maxScore)}
+                              </>
+                            ) : (
+                              <>
+                                {toPersianDigits(stats.earnedScore)} از{" "}
+                                {toPersianDigits(stats.maxScore)}
+                              </>
+                            )}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
-                            {toPersianDigits(stats.scorePercentage)}%
+                            {useNegativeMarking ? (
+                              <>
+                                {toPersianDigits(
+                                  Math.round(
+                                    (calculateNegativeMarkingScore(
+                                      stats.correctCount,
+                                      stats.wrongCount,
+                                      stats.totalQuestions > 0
+                                        ? stats.maxScore / stats.totalQuestions
+                                        : 1
+                                    ) /
+                                      stats.maxScore) *
+                                      100
+                                  )
+                                )}
+                                %
+                              </>
+                            ) : (
+                              <>{toPersianDigits(stats.scorePercentage)}%</>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1068,33 +1195,49 @@ export default function PrintExamResults({
                   <div className="mt-4 print-stats-row">
                     <h4 className="mb-2 print-section-title">نمودار عملکرد</h4>
                     <div className="space-y-2 print-performance-chart">
-                      {Object.values(participant.categoryStats).map((stats) => (
-                        <div
-                          key={`chart-${stats.category}`}
-                          className="performance-bar"
-                        >
-                          <div className="flex justify-between mb-1 print-chart-header">
-                            <span className="text-sm">{stats.category}</span>
-                            <span className="text-sm">
-                              {toPersianDigits(stats.scorePercentage)}%
-                            </span>
+                      {Object.values(participant.categoryStats).map((stats) => {
+                        const percentage = useNegativeMarking
+                          ? Math.round(
+                              (calculateNegativeMarkingScore(
+                                stats.correctCount,
+                                stats.wrongCount,
+                                stats.totalQuestions > 0
+                                  ? stats.maxScore / stats.totalQuestions
+                                  : 1
+                              ) /
+                                stats.maxScore) *
+                                100
+                            )
+                          : stats.scorePercentage;
+                        
+                        return (
+                          <div
+                            key={`chart-${stats.category}`}
+                            className="performance-bar"
+                          >
+                            <div className="flex justify-between mb-1 print-chart-header">
+                              <span className="text-sm">{stats.category}</span>
+                              <span className="text-sm">
+                                {toPersianDigits(percentage)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
+                              <div
+                                className="h-2.5 rounded-full print-bar-progress"
+                                style={{
+                                  width: `${percentage}%`,
+                                  backgroundColor:
+                                    percentage > 70
+                                      ? "#22c55e" // green
+                                      : percentage > 40
+                                      ? "#f59e0b" // amber
+                                      : "#ef4444", // red
+                                }}
+                              ></div>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 print-bar-bg">
-                            <div
-                              className="h-2.5 rounded-full print-bar-progress"
-                              style={{
-                                width: `${stats.scorePercentage}%`,
-                                backgroundColor:
-                                  stats.scorePercentage > 70
-                                    ? "#22c55e" // green
-                                    : stats.scorePercentage > 40
-                                    ? "#f59e0b" // amber
-                                    : "#ef4444", // red
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
