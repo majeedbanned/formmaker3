@@ -151,6 +151,9 @@ export default function PrintExamResults({
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showGradeEditor, setShowGradeEditor] = useState(false);
+  const [editedScores, setEditedScores] = useState<Record<string, number>>({});
+  const [isSavingScores, setIsSavingScores] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -243,6 +246,49 @@ export default function PrintExamResults({
     }
   };
 
+  const saveQuestionScores = async () => {
+    setIsSavingScores(true);
+    setSaveMessage(null);
+    try {
+      // Prepare updates array
+      const updates = Object.entries(editedScores).map(([questionId, newScore]) => ({
+        questionId,
+        newScore,
+      }));
+
+      const response = await fetch(`/api/exams/${id}/update-question-scores`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ updates }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSaveMessage({
+          type: 'success',
+          text: `نمرات ${result.updatedQuestions} سوال بروزرسانی و نتایج ${result.updatedParticipants} شرکت‌کننده محاسبه شد`,
+        });
+        
+        // Reload data to show updated results
+        await fetchData();
+        
+        setShowGradeEditor(false);
+        setTimeout(() => setSaveMessage(null), 5000);
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save scores');
+      }
+    } catch (error) {
+      console.error("Error saving question scores:", error);
+      setSaveMessage({ type: 'error', text: 'خطا در ذخیره نمرات' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setIsSavingScores(false);
+    }
+  };
+
   useEffect(() => {
     if (participants.length > 0 && questions.length > 0) {
       calculateRankedParticipants();
@@ -260,6 +306,17 @@ export default function PrintExamResults({
       setCategoryWeights(initialWeights);
     }
   }, [questions, settingsLoaded]);
+
+  // Initialize edited scores when questions are loaded
+  useEffect(() => {
+    if (questions.length > 0 && Object.keys(editedScores).length === 0) {
+      const scores: Record<string, number> = {};
+      questions.forEach(question => {
+        scores[question._id] = question.score;
+      });
+      setEditedScores(scores);
+    }
+  }, [questions]);
 
   const calculateRankedParticipants = () => {
     const ranked = [...participants]
@@ -799,6 +856,17 @@ export default function PrintExamResults({
               </button>
             )}
           </div>
+
+          {/* Edit Question Grades Button */}
+          <Button
+            onClick={() => setShowGradeEditor(true)}
+            className="flex items-center bg-purple-600 hover:bg-purple-700"
+          >
+            <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            ویرایش نمرات سوالات
+          </Button>
 
           {/* Save Settings Button */}
           <Button
@@ -1500,6 +1568,127 @@ export default function PrintExamResults({
                 className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
               >
                 تایید
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question Grade Editor Modal */}
+      {showGradeEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+            <h3 className="text-xl mb-4 border-b pb-2 flex items-center gap-2">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              ویرایش نمرات سوالات
+            </h3>
+            
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded">
+              <p className="text-sm text-yellow-900">
+                <strong>⚠️ توجه:</strong> تغییر نمرات سوالات، نتایج تمام شرکت‌کنندگان را بازمحاسبه می‌کند.
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+              <div className="grid grid-cols-12 gap-2 p-2 bg-gray-100 rounded font-bold text-sm sticky top-0">
+                <div className="col-span-1 text-center">#</div>
+                <div className="col-span-6">سوال</div>
+                <div className="col-span-2 text-center">دسته‌بندی</div>
+                <div className="col-span-2 text-center">نمره فعلی</div>
+                <div className="col-span-1 text-center">نمره جدید</div>
+              </div>
+              
+              {questions.map((question, index) => (
+                <div key={question._id} className="grid grid-cols-12 gap-2 p-2 border rounded hover:bg-gray-50 items-center">
+                  <div className="col-span-1 text-center text-sm text-gray-600">
+                    {toPersianDigits(index + 1)}
+                  </div>
+                  <div className="col-span-6 text-sm">
+                    <div
+                      className="line-clamp-2"
+                      dangerouslySetInnerHTML={{
+                        __html: question.question?.question || 'سوال بدون متن'
+                      }}
+                    />
+                  </div>
+                  <div className="col-span-2 text-center text-sm">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                      {question.category}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center font-medium">
+                    {toPersianDigits(question.score)}
+                  </div>
+                  <div className="col-span-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={editedScores[question._id] || question.score}
+                      onChange={(e) => {
+                        const newValue = parseFloat(e.target.value) || 0;
+                        setEditedScores(prev => ({
+                          ...prev,
+                          [question._id]: newValue
+                        }));
+                      }}
+                      className="w-full px-2 py-1 border rounded text-center focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 justify-end border-t pt-4">
+              <button
+                onClick={() => {
+                  // Reset to original scores
+                  const original: Record<string, number> = {};
+                  questions.forEach(q => {
+                    original[q._id] = q.score;
+                  });
+                  setEditedScores(original);
+                }}
+                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+              >
+                بازگشت به نمرات اصلی
+              </button>
+              <button
+                onClick={() => {
+                  setShowGradeEditor(false);
+                  // Reset to original scores on cancel
+                  const original: Record<string, number> = {};
+                  questions.forEach(q => {
+                    original[q._id] = q.score;
+                  });
+                  setEditedScores(original);
+                }}
+                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+                disabled={isSavingScores}
+              >
+                انصراف
+              </button>
+              <button
+                onClick={saveQuestionScores}
+                disabled={isSavingScores}
+                className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2"
+              >
+                {isSavingScores ? (
+                  <>
+                    <Spinner className="h-4 w-4" />
+                    در حال ذخیره...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    ذخیره و بازمحاسبه نتایج
+                  </>
+                )}
               </button>
             </div>
           </div>
