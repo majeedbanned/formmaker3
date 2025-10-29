@@ -145,10 +145,17 @@ export default function PrintExamResults({
   const [printTemplate, setPrintTemplate] = useState<"full" | "compact">("full");
   const [useNegativeMarking, setUseNegativeMarking] = useState(false);
   const [wrongAnswersPerDeduction, setWrongAnswersPerDeduction] = useState(3); // n wrong answers = 1 point deduction
+  const [useWeighting, setUseWeighting] = useState(false);
+  const [categoryWeights, setCategoryWeights] = useState<Record<string, number>>({});
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     if (id) {
       fetchData();
+      loadScoringSettings();
     }
   }, [id]);
 
@@ -186,11 +193,73 @@ export default function PrintExamResults({
     }
   };
 
+  const loadScoringSettings = async () => {
+    try {
+      const response = await fetch(`/api/exams/${id}/scoring-settings`);
+      if (response.ok) {
+        const settings = await response.json();
+        setUseNegativeMarking(settings.useNegativeMarking || false);
+        setWrongAnswersPerDeduction(settings.wrongAnswersPerDeduction || 3);
+        setUseWeighting(settings.useWeighting || false);
+        if (settings.categoryWeights && Object.keys(settings.categoryWeights).length > 0) {
+          setCategoryWeights(settings.categoryWeights);
+        }
+        setSettingsLoaded(true);
+      }
+    } catch (error) {
+      console.error("Error loading scoring settings:", error);
+    }
+  };
+
+  const saveScoringSettings = async () => {
+    setIsSavingSettings(true);
+    setSaveMessage(null);
+    try {
+      const response = await fetch(`/api/exams/${id}/scoring-settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          useNegativeMarking,
+          wrongAnswersPerDeduction,
+          useWeighting,
+          categoryWeights,
+        }),
+      });
+
+      if (response.ok) {
+        setSaveMessage({ type: 'success', text: 'تنظیمات با موفقیت ذخیره شد' });
+        setTimeout(() => setSaveMessage(null), 3000);
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      console.error("Error saving scoring settings:", error);
+      setSaveMessage({ type: 'error', text: 'خطا در ذخیره تنظیمات' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     if (participants.length > 0 && questions.length > 0) {
       calculateRankedParticipants();
     }
   }, [participants, questions]);
+
+  // Initialize category weights when questions are loaded (only if not loaded from DB)
+  useEffect(() => {
+    if (questions.length > 0 && Object.keys(categoryWeights).length === 0 && settingsLoaded) {
+      const initialWeights: Record<string, number> = {};
+      const categories = new Set(questions.map(q => q.category));
+      categories.forEach(category => {
+        initialWeights[category] = 1; // Default weight is 1
+      });
+      setCategoryWeights(initialWeights);
+    }
+  }, [questions, settingsLoaded]);
 
   const calculateRankedParticipants = () => {
     const ranked = [...participants]
@@ -544,6 +613,30 @@ export default function PrintExamResults({
     return Math.max(0, correctPoints - deductedPoints);
   };
 
+  // Calculate total weighted score for a participant
+  const calculateWeightedScore = (categoryStats: Record<string, CategoryStats>) => {
+    let totalWeightedScore = 0;
+    let totalWeightedMax = 0;
+
+    Object.entries(categoryStats).forEach(([category, stats]) => {
+      const weight = categoryWeights[category] || 1;
+      
+      // Get the score to use (negative marking or regular)
+      const score = useNegativeMarking
+        ? calculateNegativeMarkingScore(
+            stats.correctCount,
+            stats.wrongCount,
+            stats.totalQuestions > 0 ? stats.maxScore / stats.totalQuestions : 1
+          )
+        : stats.earnedScore;
+      
+      totalWeightedScore += score * weight;
+      totalWeightedMax += stats.maxScore * weight;
+    });
+
+    return { score: totalWeightedScore, maxScore: totalWeightedMax };
+  };
+
   const handlePrint = useReactToPrint({
     // Known issue with react-to-print types in Next.js environment
     contentRef: printRef,
@@ -685,6 +778,43 @@ export default function PrintExamResults({
               </div>
             )}
           </div>
+
+          {/* Weighting Controls */}
+          <div className="flex gap-2 items-center border rounded-lg p-2 bg-gray-50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useWeighting}
+                onChange={(e) => setUseWeighting(e.target.checked)}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm">ضریب دروس</span>
+            </label>
+            {useWeighting && (
+              <button
+                onClick={() => setShowWeightModal(true)}
+                className="mr-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+              >
+                تنظیم ضرایب
+              </button>
+            )}
+          </div>
+
+          {/* Save Settings Button */}
+          <Button
+            onClick={saveScoringSettings}
+            disabled={isSavingSettings}
+            className="flex items-center bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+          >
+            {isSavingSettings ? (
+              <Spinner className="h-4 w-4 ml-1" />
+            ) : (
+              <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            )}
+            {isSavingSettings ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}
+          </Button>
           
           <Button
             variant="outline"
@@ -702,6 +832,17 @@ export default function PrintExamResults({
             چاپ نتایج
           </Button>
         </div>
+        
+        {/* Save Message */}
+        {saveMessage && (
+          <div className={`mt-4 p-3 rounded-lg ${
+            saveMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-400' 
+              : 'bg-red-100 text-red-800 border border-red-400'
+          }`}>
+            {saveMessage.text}
+          </div>
+        )}
       </div>
 
       <div ref={printRef} className="print-container">
@@ -714,11 +855,22 @@ export default function PrintExamResults({
               <p>کد آزمون: {toPersianDigits(examInfo.data.examCode)}</p>
             </div>
           )}
-          {useNegativeMarking && (
-            <div className="mt-3 p-2 bg-yellow-100 border border-yellow-400 rounded inline-block">
-              <p className="text-sm text-yellow-900">
-                <strong>⚠️ محاسبه با نمره منفی:</strong> هر {toPersianDigits(wrongAnswersPerDeduction)} پاسخ اشتباه = ۱ نمره کسر
-              </p>
+          {(useNegativeMarking || useWeighting) && (
+            <div className="mt-3 space-y-2">
+              {useNegativeMarking && (
+                <div className="p-2 bg-yellow-100 border border-yellow-400 rounded inline-block">
+                  <p className="text-sm text-yellow-900">
+                    <strong>⚠️ محاسبه با نمره منفی:</strong> هر {toPersianDigits(wrongAnswersPerDeduction)} پاسخ اشتباه = ۱ نمره کسر
+                  </p>
+                </div>
+              )}
+              {useWeighting && (
+                <div className="p-2 bg-blue-100 border border-blue-400 rounded inline-block">
+                  <p className="text-sm text-blue-900">
+                    <strong>📊 محاسبه با ضریب دروس:</strong> نمرات دروس با ضرایب مختلف محاسبه شده‌اند
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -816,7 +968,35 @@ export default function PrintExamResults({
                     </div>
                   </div>
                   <div className="text-left">
-                    {useNegativeMarking ? (
+                    {useWeighting ? (
+                      <>
+                        {(() => {
+                          const weighted = calculateWeightedScore(participant.categoryStats);
+                          return (
+                            <>
+                              <p className="text-xl">
+                                نمره (با ضریب):{" "}
+                                {toPersianDigits(weighted.score.toFixed(2))} از{" "}
+                                {toPersianDigits(weighted.maxScore.toFixed(2))}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                نمره بدون ضریب: {toPersianDigits(participant.sumScore || 0)} از{" "}
+                                {toPersianDigits(participant.maxScore || 0)}
+                              </p>
+                              {weighted.maxScore > 0 && (
+                                <p className="text-sm">
+                                  (
+                                  {toPersianDigits(
+                                    Math.round((weighted.score / weighted.maxScore) * 100)
+                                  )}
+                                  %)
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : useNegativeMarking ? (
                       <>
                         <p className="text-xl">
                           نمره (با احتساب منفی):{" "}
@@ -979,6 +1159,11 @@ export default function PrintExamResults({
                         <th className="border p-2 text-right print-table-cell">
                           دسته‌بندی
                         </th>
+                        {useWeighting && (
+                          <th className="border p-2 text-center print-table-cell">
+                            ضریب
+                          </th>
+                        )}
                         <th className="border p-2 text-center print-table-cell">
                           رتبه
                         </th>
@@ -998,7 +1183,7 @@ export default function PrintExamResults({
                           بدون پاسخ
                         </th>
                         <th className="border p-2 text-center print-table-cell">
-                          {useNegativeMarking ? "نمره (منفی)" : "نمره"}
+                          {useWeighting ? "نمره (با ضریب)" : useNegativeMarking ? "نمره (منفی)" : "نمره"}
                         </th>
                         <th className="border p-2 text-center print-table-cell">
                           درصد
@@ -1006,11 +1191,30 @@ export default function PrintExamResults({
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.values(participant.categoryStats).map((stats) => (
-                        <tr key={stats.category} className="print-table-row">
-                          <td className="border p-2 print-table-cell">
-                            {stats.category}
-                          </td>
+                      {Object.values(participant.categoryStats).map((stats) => {
+                        const weight = categoryWeights[stats.category] || 1;
+                        const baseScore = useNegativeMarking
+                          ? calculateNegativeMarkingScore(
+                              stats.correctCount,
+                              stats.wrongCount,
+                              stats.totalQuestions > 0
+                                ? stats.maxScore / stats.totalQuestions
+                                : 1
+                            )
+                          : stats.earnedScore;
+                        const weightedScore = baseScore * weight;
+                        const weightedMaxScore = stats.maxScore * weight;
+                        
+                        return (
+                          <tr key={stats.category} className="print-table-row">
+                            <td className="border p-2 print-table-cell">
+                              {stats.category}
+                            </td>
+                            {useWeighting && (
+                              <td className="border p-2 text-center print-table-cell font-bold">
+                                {toPersianDigits(weight)}×
+                              </td>
+                            )}
                           <td className="border p-2 text-center print-table-cell">
                             {stats.rank ? (
                               <div className="inline-flex items-center">
@@ -1073,18 +1277,15 @@ export default function PrintExamResults({
                             {toPersianDigits(stats.unansweredCount)}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
-                            {useNegativeMarking ? (
+                            {useWeighting ? (
                               <>
-                                {toPersianDigits(
-                                  calculateNegativeMarkingScore(
-                                    stats.correctCount,
-                                    stats.wrongCount,
-                                    stats.totalQuestions > 0
-                                      ? stats.maxScore / stats.totalQuestions
-                                      : 1
-                                  ).toFixed(2)
-                                )}{" "}
-                                از {toPersianDigits(stats.maxScore)}
+                                {toPersianDigits(weightedScore.toFixed(2))} از{" "}
+                                {toPersianDigits(weightedMaxScore.toFixed(2))}
+                              </>
+                            ) : useNegativeMarking ? (
+                              <>
+                                {toPersianDigits(baseScore.toFixed(2))} از{" "}
+                                {toPersianDigits(stats.maxScore)}
                               </>
                             ) : (
                               <>
@@ -1094,20 +1295,17 @@ export default function PrintExamResults({
                             )}
                           </td>
                           <td className="border p-2 text-center print-table-cell">
-                            {useNegativeMarking ? (
+                            {useWeighting ? (
                               <>
                                 {toPersianDigits(
-                                  Math.round(
-                                    (calculateNegativeMarkingScore(
-                                      stats.correctCount,
-                                      stats.wrongCount,
-                                      stats.totalQuestions > 0
-                                        ? stats.maxScore / stats.totalQuestions
-                                        : 1
-                                    ) /
-                                      stats.maxScore) *
-                                      100
-                                  )
+                                  Math.round((weightedScore / weightedMaxScore) * 100)
+                                )}
+                                %
+                              </>
+                            ) : useNegativeMarking ? (
+                              <>
+                                {toPersianDigits(
+                                  Math.round((baseScore / stats.maxScore) * 100)
                                 )}
                                 %
                               </>
@@ -1116,7 +1314,8 @@ export default function PrintExamResults({
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1196,19 +1395,20 @@ export default function PrintExamResults({
                     <h4 className="mb-2 print-section-title">نمودار عملکرد</h4>
                     <div className="space-y-2 print-performance-chart">
                       {Object.values(participant.categoryStats).map((stats) => {
-                        const percentage = useNegativeMarking
-                          ? Math.round(
-                              (calculateNegativeMarkingScore(
-                                stats.correctCount,
-                                stats.wrongCount,
-                                stats.totalQuestions > 0
-                                  ? stats.maxScore / stats.totalQuestions
-                                  : 1
-                              ) /
-                                stats.maxScore) *
-                                100
+                        const weight = categoryWeights[stats.category] || 1;
+                        const baseScore = useNegativeMarking
+                          ? calculateNegativeMarkingScore(
+                              stats.correctCount,
+                              stats.wrongCount,
+                              stats.totalQuestions > 0
+                                ? stats.maxScore / stats.totalQuestions
+                                : 1
                             )
-                          : stats.scorePercentage;
+                          : stats.earnedScore;
+                        
+                        const percentage = useWeighting
+                          ? Math.round(((baseScore * weight) / (stats.maxScore * weight)) * 100)
+                          : Math.round((baseScore / stats.maxScore) * 100);
                         
                         return (
                           <div
@@ -1216,7 +1416,14 @@ export default function PrintExamResults({
                             className="performance-bar"
                           >
                             <div className="flex justify-between mb-1 print-chart-header">
-                              <span className="text-sm">{stats.category}</span>
+                              <span className="text-sm">
+                                {stats.category}
+                                {useWeighting && (
+                                  <span className="mr-1 text-blue-600">
+                                    ({toPersianDigits(weight)}×)
+                                  </span>
+                                )}
+                              </span>
                               <span className="text-sm">
                                 {toPersianDigits(percentage)}%
                               </span>
@@ -1246,6 +1453,58 @@ export default function PrintExamResults({
           </div>
         ))}
       </div>
+
+      {/* Weight Configuration Modal */}
+      {showWeightModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" dir="rtl">
+            <h3 className="text-xl mb-4 border-b pb-2">تنظیم ضرایب دروس</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {Object.keys(categoryWeights).sort().map((category) => (
+                <div key={category} className="flex items-center justify-between border-b pb-2">
+                  <label className="text-sm font-medium">{category}</label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.1"
+                    value={categoryWeights[category]}
+                    onChange={(e) => {
+                      const newValue = parseFloat(e.target.value) || 1;
+                      setCategoryWeights(prev => ({
+                        ...prev,
+                        [category]: newValue
+                      }));
+                    }}
+                    className="w-20 px-2 py-1 border rounded text-center"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  // Reset all weights to 1
+                  const resetWeights: Record<string, number> = {};
+                  Object.keys(categoryWeights).forEach(cat => {
+                    resetWeights[cat] = 1;
+                  });
+                  setCategoryWeights(resetWeights);
+                }}
+                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
+              >
+                بازنشانی به ۱
+              </button>
+              <button
+                onClick={() => setShowWeightModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              >
+                تایید
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         @font-face {
