@@ -161,6 +161,8 @@ export default function PrintExamResults({
   const [useWeighting, setUseWeighting] = useState(false);
   const [categoryWeights, setCategoryWeights] = useState<Record<string, number>>({});
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showScanImageModal, setShowScanImageModal] = useState(false);
+  const [currentScanImage, setCurrentScanImage] = useState<string>("");
 
   useEffect(() => {
     if (id) {
@@ -996,20 +998,38 @@ export default function PrintExamResults({
                       </p>
                     </div>
                   </div>
-                  {useNegativeMarking && (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
-                      <p className="text-blue-900">
-                        <strong>روش محاسبه نمره منفی:</strong>
-                      </p>
-                      <ul className="text-blue-800 mr-4 mt-1 space-y-1">
-                        <li>• هر پاسخ صحیح: نمره کامل</li>
-                        <li>
-                          • هر {toPersianDigits(wrongAnswersPerDeduction)} پاسخ اشتباه: کسر ۱ نمره
-                        </li>
-                        <li>• پاسخ ندادن: ۰ نمره (بدون کسر)</li>
-                      </ul>
-                    </div>
-                  )}
+                  {useNegativeMarking && (() => {
+                    // Calculate negative marking details
+                    const wrongCount = participant.wrongAnswerCount || 0;
+                    const correctCount = participant.correctAnswerCount || 0;
+                    const maxScorePerQuestion = participant.maxScore && participant.answers.length > 0
+                      ? participant.maxScore / participant.answers.length
+                      : 1;
+                    
+                    const deductionPerWrong = maxScorePerQuestion / wrongAnswersPerDeduction;
+                    const totalDeducted = wrongCount * deductionPerWrong;
+                    const correctPoints = correctCount * maxScorePerQuestion;
+                    const finalScore = correctPoints - totalDeducted;
+                    const isNegative = finalScore < 0;
+                    
+                    return (
+                      <div className={`mt-2 p-2 border rounded text-xs ${
+                        isNegative 
+                          ? 'bg-red-50 border-red-300' 
+                          : 'bg-blue-50 border-blue-200'
+                      }`}>
+                        <p className={`${isNegative ? 'text-red-900' : 'text-blue-900'}`}>
+                          <strong>نمره منفی:</strong> هر {toPersianDigits(wrongAnswersPerDeduction)} اشتباه = کسر ۱ نمره | 
+                          کسر شده: {toPersianDigits(totalDeducted.toFixed(2))} نمره
+                          {isNegative && (
+                            <span className="font-bold text-red-600 mr-2">
+                              | ⚠️ نمره نهایی منفی: {toPersianDigits(finalScore.toFixed(2))}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Difficulty Analysis */}
@@ -1342,13 +1362,16 @@ ${detailText ? `\n${detailText}` : ""}`}
                         {/* Show scan info if available */}
                         {participant.scanResult?.correctedImageUrl && (
                           <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                            <p><strong>اطلاعات اسکن:</strong></p>
-                            {participant.scanResult.originalFilename && (
-                              <p>نام فایل: {participant.scanResult.originalFilename}</p>
-                            )}
-                            {participant.scanResult.qRCodeData && (
-                              <p>کد QR: {participant.scanResult.qRCodeData}</p>
-                            )}
+                            <p className="mb-1"><strong>اطلاعات اسکن:</strong></p>
+                            <button
+                              onClick={() => {
+                                setCurrentScanImage(participant.scanResult?.correctedImageUrl || "");
+                                setShowScanImageModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 underline cursor-pointer no-print"
+                            >
+                              مشاهده تصویر اسکن شده پاسخ‌برگ
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1532,6 +1555,42 @@ ${detailText ? `\n${detailText}` : ""}`}
               >
                 تایید
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scan Image Modal */}
+      {showScanImageModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 no-print p-4"
+          onClick={() => setShowScanImageModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-4 max-w-6xl max-h-[90vh] w-full overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <h3 className="text-xl">تصویر اسکن شده پاسخ‌برگ</h3>
+              <button
+                onClick={() => setShowScanImageModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex justify-center items-center">
+              {currentScanImage ? (
+                <img 
+                  src={currentScanImage} 
+                  alt="تصویر اسکن شده پاسخ‌برگ"
+                  className="max-w-full h-auto rounded shadow-lg"
+                  style={{ maxHeight: 'calc(90vh - 120px)' }}
+                />
+              ) : (
+                <p className="text-gray-500">تصویری برای نمایش وجود ندارد</p>
+              )}
             </div>
           </div>
         </div>
