@@ -1027,7 +1027,7 @@ export default function PrintExamResults({
                             </span>
                           )}
                         </p>
-                      </div>
+                    </div>
                     );
                   })()}
                 </div>
@@ -1365,7 +1365,20 @@ ${detailText ? `\n${detailText}` : ""}`}
                             <p className="mb-1"><strong>اطلاعات اسکن:</strong></p>
                             <button
                               onClick={() => {
-                                setCurrentScanImage(participant.scanResult?.correctedImageUrl || "");
+                                const imageUrl = participant.scanResult?.correctedImageUrl || "";
+                                // Clean URL: remove /../, ../, public/, ensure it starts with /
+                                let cleanUrl = imageUrl
+                                  .replace(/^\/(\.\.\/)+/, '/') // Remove /../../ patterns at start
+                                  .replace(/^(\.\.\/)+/, '') // Remove ../ at start
+                                  .replace(/^\/public\//, '/') // Remove /public/ prefix
+                                  .replace(/^public\//, '/'); // Remove public/ prefix
+                                
+                                // Ensure it starts with /
+                                if (!cleanUrl.startsWith('/')) {
+                                  cleanUrl = '/' + cleanUrl;
+                                }
+                                
+                                setCurrentScanImage(cleanUrl);
                                 setShowScanImageModal(true);
                               }}
                               className="text-blue-600 hover:text-blue-800 underline cursor-pointer no-print"
@@ -1378,66 +1391,66 @@ ${detailText ? `\n${detailText}` : ""}`}
                     ) : participant.visualAnswers ? (
                       // Fallback to original display if no scanResult
                       <div>
-                        <div className="grid grid-cols-2 gap-4 print-answers-grid">
-                          {Object.entries(participant.visualAnswers).map(
-                            ([category, answers]) => (
-                              <div
-                                key={`visual-${category}`}
-                                className="mb-3 print-answer-category"
-                              >
-                                <h5 className="text-gray-700 mb-1 print-category-title">
-                                  {category}
-                                </h5>
-                                <div className="flex flex-wrap gap-1 print-answers-wrap">
-                                  {answers.map((answer) => (
-                                    <div
-                                      key={`q-${answer.questionId}`}
-                                      className={`
-                                    w-8 h-8 rounded-lg border flex items-center justify-center print-answer-box
-                                    ${
-                                      answer.isCorrect === true
-                                        ? "bg-green-100 border-green-500 text-green-800 print-correct"
-                                        : answer.isCorrect === false
-                                        ? "bg-red-100 border-red-500 text-red-800 print-wrong"
-                                        : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
-                                    }
-                                  `}
-                                      title={`سوال ${toPersianDigits(
-                                        answer.questionNumber
-                                      )}: ${
-                                        answer.isCorrect === true
-                                          ? `پاسخ صحیح (${toPersianDigits(
-                                              answer.earnedScore
-                                            )} از ${toPersianDigits(
-                                              answer.maxScore
-                                            )})`
-                                          : answer.isCorrect === false
-                                          ? "پاسخ اشتباه"
-                                          : "بدون پاسخ"
-                                      }`}
-                                    >
-                                      {toPersianDigits(answer.questionNumber)}
-                                    </div>
-                                  ))}
+                    <div className="grid grid-cols-2 gap-4 print-answers-grid">
+                      {Object.entries(participant.visualAnswers).map(
+                        ([category, answers]) => (
+                          <div
+                            key={`visual-${category}`}
+                            className="mb-3 print-answer-category"
+                          >
+                            <h5 className="text-gray-700 mb-1 print-category-title">
+                              {category}
+                            </h5>
+                            <div className="flex flex-wrap gap-1 print-answers-wrap">
+                              {answers.map((answer) => (
+                                <div
+                                  key={`q-${answer.questionId}`}
+                                  className={`
+                                w-8 h-8 rounded-lg border flex items-center justify-center print-answer-box
+                                ${
+                                  answer.isCorrect === true
+                                    ? "bg-green-100 border-green-500 text-green-800 print-correct"
+                                    : answer.isCorrect === false
+                                    ? "bg-red-100 border-red-500 text-red-800 print-wrong"
+                                    : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
+                                }
+                              `}
+                                  title={`سوال ${toPersianDigits(
+                                    answer.questionNumber
+                                  )}: ${
+                                    answer.isCorrect === true
+                                      ? `پاسخ صحیح (${toPersianDigits(
+                                          answer.earnedScore
+                                        )} از ${toPersianDigits(
+                                          answer.maxScore
+                                        )})`
+                                      : answer.isCorrect === false
+                                      ? "پاسخ اشتباه"
+                                      : "بدون پاسخ"
+                                  }`}
+                                >
+                                  {toPersianDigits(answer.questionNumber)}
                                 </div>
-                              </div>
-                            )
-                          )}
-                        </div>
-                        <div className="flex gap-4 mt-2 text-sm print-legend">
-                          <div className="flex items-center">
-                            <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
-                            <span>پاسخ صحیح</span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex items-center">
-                            <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
-                            <span>پاسخ اشتباه</span>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
-                            <span>بدون پاسخ</span>
-                          </div>
-                        </div>
+                        )
+                      )}
+                    </div>
+                    <div className="flex gap-4 mt-2 text-sm print-legend">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
+                        <span>پاسخ صحیح</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
+                        <span>پاسخ اشتباه</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
+                        <span>بدون پاسخ</span>
+                      </div>
+                    </div>
                       </div>
                     ) : null}
                   </div>
