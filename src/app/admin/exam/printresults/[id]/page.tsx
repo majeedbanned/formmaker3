@@ -196,6 +196,30 @@ export default function PrintExamResults({
       }
       const questionsData = await questionsResponse.json();
       setQuestions(questionsData);
+
+      // Fetch print settings
+      const settingsResponse = await fetch(`/api/exams/${id}/settings`, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData.printSettings) {
+          if (settingsData.printSettings.useNegativeMarking !== undefined) {
+            setUseNegativeMarking(settingsData.printSettings.useNegativeMarking);
+          }
+          if (settingsData.printSettings.wrongAnswersPerDeduction !== undefined) {
+            setWrongAnswersPerDeduction(settingsData.printSettings.wrongAnswersPerDeduction);
+          }
+          if (settingsData.printSettings.useWeighting !== undefined) {
+            setUseWeighting(settingsData.printSettings.useWeighting);
+          }
+          if (settingsData.printSettings.categoryWeights) {
+            setCategoryWeights(settingsData.printSettings.categoryWeights);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       setError(error instanceof Error ? error.message : "An error occurred");
@@ -221,6 +245,27 @@ export default function PrintExamResults({
       setCategoryWeights(initialWeights);
     }
   }, [questions]);
+
+  // Save print settings to database
+  const savePrintSettings = async (settings: {
+    useNegativeMarking?: boolean;
+    wrongAnswersPerDeduction?: number;
+    useWeighting?: boolean;
+    categoryWeights?: Record<string, number>;
+  }) => {
+    try {
+      await fetch(`/api/exams/${id}/settings`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify(settings),
+      });
+    } catch (error) {
+      console.error("Error saving print settings:", error);
+    }
+  };
 
   const calculateRankedParticipants = () => {
     const ranked = [...participants]
@@ -719,7 +764,11 @@ export default function PrintExamResults({
               <input
                 type="checkbox"
                 checked={useNegativeMarking}
-                onChange={(e) => setUseNegativeMarking(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setUseNegativeMarking(checked);
+                  savePrintSettings({ useNegativeMarking: checked });
+                }}
                 className="w-4 h-4 cursor-pointer"
               />
               <span className="text-sm">نمره منفی</span>
@@ -732,7 +781,11 @@ export default function PrintExamResults({
                   min="1"
                   max="10"
                   value={wrongAnswersPerDeduction}
-                  onChange={(e) => setWrongAnswersPerDeduction(parseInt(e.target.value) || 3)}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 3;
+                    setWrongAnswersPerDeduction(value);
+                    savePrintSettings({ wrongAnswersPerDeduction: value });
+                  }}
                   className="w-12 px-2 py-1 border rounded text-center text-sm"
                 />
                 <span className="text-sm">پاسخ اشتباه = ۱ نمره کسر</span>
@@ -746,7 +799,11 @@ export default function PrintExamResults({
               <input
                 type="checkbox"
                 checked={useWeighting}
-                onChange={(e) => setUseWeighting(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setUseWeighting(checked);
+                  savePrintSettings({ useWeighting: checked });
+                }}
                 className="w-4 h-4 cursor-pointer"
               />
               <span className="text-sm">ضریب دروس</span>
@@ -1563,7 +1620,10 @@ ${detailText ? `\n${detailText}` : ""}`}
                 بازنشانی به ۱
               </button>
               <button
-                onClick={() => setShowWeightModal(false)}
+                onClick={() => {
+                  savePrintSettings({ categoryWeights });
+                  setShowWeightModal(false);
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
               >
                 تایید
