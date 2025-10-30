@@ -18,6 +18,18 @@ interface Answer {
   teacherComment?: string;
 }
 
+interface ScanResult {
+  qRCodeData?: string;
+  rightAnswers?: number[];
+  wrongAnswers?: number[];
+  multipleAnswers?: number[];
+  unAnswered?: number[];
+  Useranswers?: number[];
+  correctedImageUrl?: string;
+  originalFilename?: string;
+  processedFilePath?: string;
+}
+
 interface Participant {
   _id: string;
   examId: string;
@@ -34,6 +46,7 @@ interface Participant {
   gradingStatus?: string;
   userName?: string;
   answers: Answer[];
+  scanResult?: ScanResult;
 }
 
 interface Question {
@@ -148,17 +161,10 @@ export default function PrintExamResults({
   const [useWeighting, setUseWeighting] = useState(false);
   const [categoryWeights, setCategoryWeights] = useState<Record<string, number>>({});
   const [showWeightModal, setShowWeightModal] = useState(false);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [showGradeEditor, setShowGradeEditor] = useState(false);
-  const [editedScores, setEditedScores] = useState<Record<string, number>>({});
-  const [isSavingScores, setIsSavingScores] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchData();
-      loadScoringSettings();
     }
   }, [id]);
 
@@ -196,125 +202,21 @@ export default function PrintExamResults({
     }
   };
 
-  const loadScoringSettings = async () => {
-    try {
-      const response = await fetch(`/api/exams/${id}/scoring-settings`);
-      if (response.ok) {
-        const settings = await response.json();
-        setUseNegativeMarking(settings.useNegativeMarking || false);
-        setWrongAnswersPerDeduction(settings.wrongAnswersPerDeduction || 3);
-        setUseWeighting(settings.useWeighting || false);
-        if (settings.categoryWeights && Object.keys(settings.categoryWeights).length > 0) {
-          setCategoryWeights(settings.categoryWeights);
-        }
-        setSettingsLoaded(true);
-      }
-    } catch (error) {
-      console.error("Error loading scoring settings:", error);
-    }
-  };
-
-  const saveScoringSettings = async () => {
-    setIsSavingSettings(true);
-    setSaveMessage(null);
-    try {
-      const response = await fetch(`/api/exams/${id}/scoring-settings`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          useNegativeMarking,
-          wrongAnswersPerDeduction,
-          useWeighting,
-          categoryWeights,
-        }),
-      });
-
-      if (response.ok) {
-        setSaveMessage({ type: 'success', text: 'تنظیمات با موفقیت ذخیره شد' });
-        setTimeout(() => setSaveMessage(null), 3000);
-      } else {
-        throw new Error('Failed to save settings');
-      }
-    } catch (error) {
-      console.error("Error saving scoring settings:", error);
-      setSaveMessage({ type: 'error', text: 'خطا در ذخیره تنظیمات' });
-      setTimeout(() => setSaveMessage(null), 3000);
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  const saveQuestionScores = async () => {
-    setIsSavingScores(true);
-    setSaveMessage(null);
-    try {
-      // Prepare updates array
-      const updates = Object.entries(editedScores).map(([questionId, newScore]) => ({
-        questionId,
-        newScore,
-      }));
-
-      const response = await fetch(`/api/exams/${id}/update-question-scores`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ updates }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setSaveMessage({
-          type: 'success',
-          text: `نمرات ${result.updatedQuestions} سوال بروزرسانی و نتایج ${result.updatedParticipants} شرکت‌کننده محاسبه شد`,
-        });
-        
-        // Reload data to show updated results
-        await fetchData();
-        
-        setShowGradeEditor(false);
-        setTimeout(() => setSaveMessage(null), 5000);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save scores');
-      }
-    } catch (error) {
-      console.error("Error saving question scores:", error);
-      setSaveMessage({ type: 'error', text: 'خطا در ذخیره نمرات' });
-      setTimeout(() => setSaveMessage(null), 3000);
-    } finally {
-      setIsSavingScores(false);
-    }
-  };
-
   useEffect(() => {
     if (participants.length > 0 && questions.length > 0) {
       calculateRankedParticipants();
     }
   }, [participants, questions]);
 
-  // Initialize category weights when questions are loaded (only if not loaded from DB)
+  // Initialize category weights when questions are loaded
   useEffect(() => {
-    if (questions.length > 0 && Object.keys(categoryWeights).length === 0 && settingsLoaded) {
+    if (questions.length > 0 && Object.keys(categoryWeights).length === 0) {
       const initialWeights: Record<string, number> = {};
       const categories = new Set(questions.map(q => q.category));
       categories.forEach(category => {
         initialWeights[category] = 1; // Default weight is 1
       });
       setCategoryWeights(initialWeights);
-    }
-  }, [questions, settingsLoaded]);
-
-  // Initialize edited scores when questions are loaded
-  useEffect(() => {
-    if (questions.length > 0 && Object.keys(editedScores).length === 0) {
-      const scores: Record<string, number> = {};
-      questions.forEach(question => {
-        scores[question._id] = question.score;
-      });
-      setEditedScores(scores);
     }
   }, [questions]);
 
@@ -856,33 +758,6 @@ export default function PrintExamResults({
               </button>
             )}
           </div>
-
-          {/* Edit Question Grades Button */}
-          <Button
-            onClick={() => setShowGradeEditor(true)}
-            className="flex items-center bg-purple-600 hover:bg-purple-700"
-          >
-            <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            ویرایش نمرات سوالات
-          </Button>
-
-          {/* Save Settings Button */}
-          <Button
-            onClick={saveScoringSettings}
-            disabled={isSavingSettings}
-            className="flex items-center bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-          >
-            {isSavingSettings ? (
-              <Spinner className="h-4 w-4 ml-1" />
-            ) : (
-              <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-            )}
-            {isSavingSettings ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}
-          </Button>
           
           <Button
             variant="outline"
@@ -900,17 +775,6 @@ export default function PrintExamResults({
             چاپ نتایج
           </Button>
         </div>
-        
-        {/* Save Message */}
-        {saveMessage && (
-          <div className={`mt-4 p-3 rounded-lg ${
-            saveMessage.type === 'success' 
-              ? 'bg-green-100 text-green-800 border border-green-400' 
-              : 'bg-red-100 text-red-800 border border-red-400'
-          }`}>
-            {saveMessage.text}
-          </div>
-        )}
       </div>
 
       <div ref={printRef} className="print-container">
@@ -1389,71 +1253,170 @@ export default function PrintExamResults({
                 </div>
 
                 {/* Visual answer representation */}
-                {printTemplate === "full" && participant.visualAnswers && (
+                {printTemplate === "full" && (participant.visualAnswers || participant.scanResult) && (
                   <div className="mb-4 print-stats-row print-visual-answers">
                     <h4 className="mb-2 print-section-title">
                       نمایش پاسخ‌های سوالات
                     </h4>
-                    <div className="grid grid-cols-2 gap-4 print-answers-grid">
-                      {Object.entries(participant.visualAnswers).map(
-                        ([category, answers]) => (
-                          <div
-                            key={`visual-${category}`}
-                            className="mb-3 print-answer-category"
-                          >
-                            <h5 className="text-gray-700 mb-1 print-category-title">
-                              {category}
-                            </h5>
-                            <div className="flex flex-wrap gap-1 print-answers-wrap">
-                              {answers.map((answer) => (
+                    
+                    {participant.scanResult ? (
+                      // Enhanced display using scanResult data
+                      <div>
+                        <div className="grid grid-cols-1 gap-3 print-answers-grid">
+                          {/* Show all question numbers with their status */}
+                          <div className="flex flex-wrap gap-1 print-answers-wrap">
+                            {Array.from({ length: questions.length }, (_, index) => {
+                              const questionNum = index + 1;
+                              const scanResult = participant.scanResult!; // Safe to assert since we're in the conditional block
+                              const isCorrect = scanResult.rightAnswers?.includes(questionNum);
+                              const isWrong = scanResult.wrongAnswers?.includes(questionNum);
+                              const isMultiple = scanResult.multipleAnswers?.includes(questionNum);
+                              const isUnanswered = scanResult.unAnswered?.includes(questionNum);
+                              const userAnswer = scanResult.Useranswers?.[index];
+                              const question = questions[index];
+                              const correctOption = question?.question?.correctoption;
+                              
+                              // Determine color and status
+                              let bgColor = "bg-gray-100 border-gray-400 text-gray-800";
+                              let statusText = "بدون پاسخ";
+                              let detailText = "";
+                              
+                              if (isCorrect) {
+                                bgColor = "bg-green-100 border-green-500 text-green-800 print-correct";
+                                statusText = "پاسخ صحیح";
+                                detailText = userAnswer ? `پاسخ: ${userAnswer}` : "";
+                              } else if (isMultiple) {
+                                bgColor = "bg-orange-100 border-orange-500 text-orange-800 print-multiple";
+                                statusText = "چند پاسخ";
+                                detailText = "بیش از یک گزینه انتخاب شده";
+                              } else if (isWrong) {
+                                bgColor = "bg-red-100 border-red-500 text-red-800 print-wrong";
+                                statusText = "پاسخ اشتباه";
+                                detailText = userAnswer 
+                                  ? `پاسخ دانش‌آموز: ${userAnswer}${correctOption ? ` | صحیح: ${correctOption}` : ""}`
+                                  : correctOption ? `پاسخ صحیح: ${correctOption}` : "";
+                              } else if (isUnanswered) {
+                                bgColor = "bg-gray-100 border-gray-400 text-gray-600 print-unanswered";
+                                statusText = "بدون پاسخ";
+                                detailText = correctOption ? `پاسخ صحیح: ${correctOption}` : "";
+                              }
+                              
+                              return (
                                 <div
-                                  key={`q-${answer.questionId}`}
+                                  key={`scan-q-${questionNum}`}
                                   className={`
-                                w-8 h-8 rounded-lg border flex items-center justify-center print-answer-box
-                                ${
-                                  answer.isCorrect === true
-                                    ? "bg-green-100 border-green-500 text-green-800 print-correct"
-                                    : answer.isCorrect === false
-                                    ? "bg-red-100 border-red-500 text-red-800 print-wrong"
-                                    : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
-                                }
-                              `}
-                                  title={`سوال ${toPersianDigits(
-                                    answer.questionNumber
-                                  )}: ${
-                                    answer.isCorrect === true
-                                      ? `پاسخ صحیح (${toPersianDigits(
-                                          answer.earnedScore
-                                        )} از ${toPersianDigits(
-                                          answer.maxScore
-                                        )})`
-                                      : answer.isCorrect === false
-                                      ? "پاسخ اشتباه"
-                                      : "بدون پاسخ"
-                                  }`}
+                                    w-8 h-8 rounded-lg border flex items-center justify-center 
+                                    print-answer-box cursor-help relative
+                                    ${bgColor}
+                                  `}
+                                  title={`سوال ${toPersianDigits(questionNum)}: ${statusText}
+${detailText ? `\n${detailText}` : ""}`}
                                 >
-                                  {toPersianDigits(answer.questionNumber)}
+                                  {toPersianDigits(questionNum)}
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </div>
-                        )
-                      )}
-                    </div>
-                    <div className="flex gap-4 mt-2 text-sm print-legend">
-                      <div className="flex items-center">
-                        <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
-                        <span>پاسخ صحیح</span>
+                        </div>
+                        
+                        {/* Enhanced legend with all statuses */}
+                        <div className="flex flex-wrap gap-4 mt-3 text-sm print-legend">
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
+                            <span>پاسخ صحیح ({toPersianDigits(participant.scanResult?.rightAnswers?.length || 0)})</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
+                            <span>پاسخ اشتباه ({toPersianDigits(participant.scanResult?.wrongAnswers?.length || 0)})</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-orange-100 border border-orange-500 rounded mr-1"></div>
+                            <span>چند پاسخ ({toPersianDigits(participant.scanResult?.multipleAnswers?.length || 0)})</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
+                            <span>بدون پاسخ ({toPersianDigits(participant.scanResult?.unAnswered?.length || 0)})</span>
+                          </div>
+                        </div>
+                        
+                        {/* Show scan info if available */}
+                        {participant.scanResult?.correctedImageUrl && (
+                          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                            <p><strong>اطلاعات اسکن:</strong></p>
+                            {participant.scanResult.originalFilename && (
+                              <p>نام فایل: {participant.scanResult.originalFilename}</p>
+                            )}
+                            {participant.scanResult.qRCodeData && (
+                              <p>کد QR: {participant.scanResult.qRCodeData}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
-                        <span>پاسخ اشتباه</span>
+                    ) : participant.visualAnswers ? (
+                      // Fallback to original display if no scanResult
+                      <div>
+                        <div className="grid grid-cols-2 gap-4 print-answers-grid">
+                          {Object.entries(participant.visualAnswers).map(
+                            ([category, answers]) => (
+                              <div
+                                key={`visual-${category}`}
+                                className="mb-3 print-answer-category"
+                              >
+                                <h5 className="text-gray-700 mb-1 print-category-title">
+                                  {category}
+                                </h5>
+                                <div className="flex flex-wrap gap-1 print-answers-wrap">
+                                  {answers.map((answer) => (
+                                    <div
+                                      key={`q-${answer.questionId}`}
+                                      className={`
+                                    w-8 h-8 rounded-lg border flex items-center justify-center print-answer-box
+                                    ${
+                                      answer.isCorrect === true
+                                        ? "bg-green-100 border-green-500 text-green-800 print-correct"
+                                        : answer.isCorrect === false
+                                        ? "bg-red-100 border-red-500 text-red-800 print-wrong"
+                                        : "bg-gray-100 border-gray-400 text-gray-800 print-unanswered"
+                                    }
+                                  `}
+                                      title={`سوال ${toPersianDigits(
+                                        answer.questionNumber
+                                      )}: ${
+                                        answer.isCorrect === true
+                                          ? `پاسخ صحیح (${toPersianDigits(
+                                              answer.earnedScore
+                                            )} از ${toPersianDigits(
+                                              answer.maxScore
+                                            )})`
+                                          : answer.isCorrect === false
+                                          ? "پاسخ اشتباه"
+                                          : "بدون پاسخ"
+                                      }`}
+                                    >
+                                      {toPersianDigits(answer.questionNumber)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                        <div className="flex gap-4 mt-2 text-sm print-legend">
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-green-100 border border-green-500 rounded mr-1"></div>
+                            <span>پاسخ صحیح</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-red-100 border border-red-500 rounded mr-1"></div>
+                            <span>پاسخ اشتباه</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
+                            <span>بدون پاسخ</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-4 h-4 bg-gray-100 border border-gray-400 rounded mr-1"></div>
-                        <span>بدون پاسخ</span>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
                 )}
 
@@ -1568,127 +1531,6 @@ export default function PrintExamResults({
                 className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
               >
                 تایید
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Question Grade Editor Modal */}
-      {showGradeEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 no-print">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
-            <h3 className="text-xl mb-4 border-b pb-2 flex items-center gap-2">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              ویرایش نمرات سوالات
-            </h3>
-            
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded">
-              <p className="text-sm text-yellow-900">
-                <strong>⚠️ توجه:</strong> تغییر نمرات سوالات، نتایج تمام شرکت‌کنندگان را بازمحاسبه می‌کند.
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-              <div className="grid grid-cols-12 gap-2 p-2 bg-gray-100 rounded font-bold text-sm sticky top-0">
-                <div className="col-span-1 text-center">#</div>
-                <div className="col-span-6">سوال</div>
-                <div className="col-span-2 text-center">دسته‌بندی</div>
-                <div className="col-span-2 text-center">نمره فعلی</div>
-                <div className="col-span-1 text-center">نمره جدید</div>
-              </div>
-              
-              {questions.map((question, index) => (
-                <div key={question._id} className="grid grid-cols-12 gap-2 p-2 border rounded hover:bg-gray-50 items-center">
-                  <div className="col-span-1 text-center text-sm text-gray-600">
-                    {toPersianDigits(index + 1)}
-                  </div>
-                  <div className="col-span-6 text-sm">
-                    <div
-                      className="line-clamp-2"
-                      dangerouslySetInnerHTML={{
-                        __html: question.question?.question || 'سوال بدون متن'
-                      }}
-                    />
-                  </div>
-                  <div className="col-span-2 text-center text-sm">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                      {question.category}
-                    </span>
-                  </div>
-                  <div className="col-span-2 text-center font-medium">
-                    {toPersianDigits(question.score)}
-                  </div>
-                  <div className="col-span-1">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      value={editedScores[question._id] || question.score}
-                      onChange={(e) => {
-                        const newValue = parseFloat(e.target.value) || 0;
-                        setEditedScores(prev => ({
-                          ...prev,
-                          [question._id]: newValue
-                        }));
-                      }}
-                      className="w-full px-2 py-1 border rounded text-center focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 justify-end border-t pt-4">
-              <button
-                onClick={() => {
-                  // Reset to original scores
-                  const original: Record<string, number> = {};
-                  questions.forEach(q => {
-                    original[q._id] = q.score;
-                  });
-                  setEditedScores(original);
-                }}
-                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
-              >
-                بازگشت به نمرات اصلی
-              </button>
-              <button
-                onClick={() => {
-                  setShowGradeEditor(false);
-                  // Reset to original scores on cancel
-                  const original: Record<string, number> = {};
-                  questions.forEach(q => {
-                    original[q._id] = q.score;
-                  });
-                  setEditedScores(original);
-                }}
-                className="px-4 py-2 border rounded text-sm hover:bg-gray-50"
-                disabled={isSavingScores}
-              >
-                انصراف
-              </button>
-              <button
-                onClick={saveQuestionScores}
-                disabled={isSavingScores}
-                className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2"
-              >
-                {isSavingScores ? (
-                  <>
-                    <Spinner className="h-4 w-4" />
-                    در حال ذخیره...
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    ذخیره و بازمحاسبه نتایج
-                  </>
-                )}
               </button>
             </div>
           </div>
@@ -1821,6 +1663,12 @@ export default function PrintExamResults({
             height: 0.5cm !important;
             font-size: 8pt !important;
             border-radius: 0.1cm !important;
+          }
+
+          .print-multiple {
+            background-color: #fed7aa !important;
+            border-color: #f97316 !important;
+            color: #9a3412 !important;
           }
 
           .print-answers-wrap {

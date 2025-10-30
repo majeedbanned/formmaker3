@@ -7,6 +7,7 @@ import {
   UsersIcon,
   PrinterIcon,
   QrCodeIcon,
+  CalculatorIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -993,6 +994,43 @@ function StudentsPageContent() {
                   setShowScanModal(true);
                 },
                 icon: QrCodeIcon,
+              },
+              {
+                label: "محاسبه مجدد نمرات",
+                action: async (examId) => {
+                  // Show confirmation dialog
+                  if (window.confirm("آیا از محاسبه مجدد نمرات این آزمون اطمینان دارید؟ تمام رکوردهای قبلی در جدول examstudentsinfo حذف شده و داده‌های تازه بر اساس examparticipants ایجاد خواهند شد.")) {
+                    try {
+                      toast.loading("در حال محاسبه مجدد نمرات...");
+                      
+                      const response = await fetch(`/api/exams/${examId}/recalculate-grades`, {
+                        method: "POST",
+                        headers: {
+                          "x-domain": window.location.host,
+                        },
+                      });
+
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        throw new Error(data.error || "خطا در محاسبه مجدد نمرات");
+                      }
+
+                      toast.dismiss();
+                      toast.success(data.message || `نمرات ${data.updatedCount} شرکت‌کننده با موفقیت محاسبه شد`);
+                      
+                      // Refresh the page or participants modal if open
+                      if (showParticipantsModal && selectedExamId === examId) {
+                        setShowParticipantsModal(false);
+                        setTimeout(() => setShowParticipantsModal(true), 100);
+                      }
+                    } catch (error) {
+                      toast.dismiss();
+                      toast.error(error instanceof Error ? error.message : "خطا در محاسبه مجدد نمرات");
+                    }
+                  }
+                },
+                icon: CalculatorIcon,
               },
             ]}
             initialFilter={{
