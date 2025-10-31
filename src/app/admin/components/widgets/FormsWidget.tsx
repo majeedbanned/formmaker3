@@ -18,6 +18,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { DateObject } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 interface FormSchema {
   _id?: string;
@@ -129,15 +132,59 @@ export default function FormsWidget() {
     }
   };
 
+  // Helper function to parse Persian date string to Date object
+  const parsePersianDate = (persianDateStr: string | null | undefined): Date | null => {
+    if (!persianDateStr) return null;
+    
+    try {
+      // Persian date format: "۱۴۰۴/۰۷/۲۹  ۰۸:۱۸"
+      // Replace Persian numerals with English numerals
+      const englishStr = persianDateStr
+        .replace(/۰/g, '0')
+        .replace(/۱/g, '1')
+        .replace(/۲/g, '2')
+        .replace(/۳/g, '3')
+        .replace(/۴/g, '4')
+        .replace(/۵/g, '5')
+        .replace(/۶/g, '6')
+        .replace(/۷/g, '7')
+        .replace(/۸/g, '8')
+        .replace(/۹/g, '9');
+      
+      // Parse format: "1404/07/29  08:18" or "1404/07/29 08:18"
+      const match = englishStr.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})/);
+      
+      if (!match) {
+        console.warn('Could not parse Persian date:', persianDateStr);
+        return null;
+      }
+      
+      const [, year, month, day, hour, minute] = match;
+      
+      // Create DateObject with Persian calendar
+      const persianDate = new DateObject({
+        calendar: persian,
+        locale: persian_fa,
+        year: parseInt(year),
+        month: parseInt(month),
+        day: parseInt(day),
+        hour: parseInt(hour),
+        minute: parseInt(minute),
+      });
+      
+      // Convert to Gregorian Date
+      return persianDate.toDate();
+    } catch (error) {
+      console.error('Error parsing Persian date:', persianDateStr, error);
+      return null;
+    }
+  };
+
   // Function to get form status and access conditions
   const getFormStatus = (form: FormSchema) => {
     const now = new Date();
-    const startDate = form.formStartEntryDatetime
-      ? new Date(form.formStartEntryDatetime.toString())
-      : null;
-    const endDate = form.formEndEntryDateTime
-      ? new Date(form.formEndEntryDateTime.toString())
-      : null;
+    const startDate = parsePersianDate(form.formStartEntryDatetime);
+    const endDate = parsePersianDate(form.formEndEntryDateTime);
 
     if (!startDate && !endDate)
       return {

@@ -455,6 +455,13 @@ function DashboardContent() {
             </div>
           )}
 
+          {/* Forms Section for Students - Always Visible */}
+          {user.userType === "student" && (
+            <div className="mb-6">
+              <FormsWidget />
+            </div>
+          )}
+
           {/* Onboarding Status for School Users */}
           {user.userType === "school" && (
             <OnboardingStatus
