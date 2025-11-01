@@ -14,6 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   BarChart,
   Bar,
   XAxis,
@@ -25,8 +31,15 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
-import { ArrowLeftIcon, ChevronLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 interface Answer {
   questionId: string;
@@ -37,6 +50,18 @@ interface Answer {
   earnedScore: number;
   category: string;
   teacherComment?: string;
+}
+
+interface ScanResult {
+  qRCodeData?: string;
+  rightAnswers?: number[];
+  wrongAnswers?: number[];
+  multipleAnswers?: number[];
+  unAnswered?: number[];
+  Useranswers?: number[];
+  correctedImageUrl?: string;
+  originalFilename?: string;
+  processedFilePath?: string;
 }
 
 interface Participant {
@@ -56,6 +81,7 @@ interface Participant {
   gradingStatus?: string;
   userName?: string;
   answers: Answer[];
+  scanResult?: ScanResult;
 }
 
 interface Question {
@@ -98,6 +124,16 @@ const COLORS = [
   "#82ca9d",
 ];
 
+// Helper function to convert numbers to Persian digits
+const toPersianDigits = (text: string | number | undefined): string => {
+  if (text === undefined) return "";
+  const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+  return String(text).replace(
+    /[0-9]/g,
+    (match) => persianDigits[parseInt(match)]
+  );
+};
+
 export default function ExamStatisticsPage({
   params,
 }: {
@@ -109,6 +145,7 @@ export default function ExamStatisticsPage({
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const id = params.id;
 
@@ -152,14 +189,204 @@ export default function ExamStatisticsPage({
     }
   };
 
-  // Generate statistics data
+  // ========== STATISTICS CALCULATION FUNCTIONS ==========
+
+  // Question-level analysis: percentage correct/wrong per question
+  const getQuestionAnalysis = () => {
+    return questions.map((question, index) => {
+      const questionNum = index + 1;
+      let correctCount = 0;
+      let wrongCount = 0;
+      let unansweredCount = 0;
+      let totalAttempts = 0;
+      const optionSelections: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+      participants.forEach((participant) => {
+        const answer = participant.answers.find(
+          (a) => a.questionId === question._id
+        );
+        
+        if (answer) {
+          totalAttempts++;
+          if (answer.isCorrect === true) {
+            correctCount++;
+          } else if (answer.isCorrect === false) {
+            wrongCount++;
+          } else {
+            unansweredCount++;
+          }
+
+          // Track option selections from scanResult
+          if (participant.scanResult?.Useranswers) {
+            const userAnswer = participant.scanResult.Useranswers[index];
+            if (userAnswer && userAnswer >= 1 && userAnswer <= 4) {
+              optionSelections[userAnswer] = (optionSelections[userAnswer] || 0) + 1;
+            }
+          } else if (answer.answer) {
+            // Fallback to answer field
+            const answerNum = parseInt(answer.answer);
+            if (answerNum >= 1 && answerNum <= 4) {
+              optionSelections[answerNum] = (optionSelections[answerNum] || 0) + 1;
+            }
+          }
+        } else {
+          unansweredCount++;
+        }
+      });
+
+      const correctPercentage = totalAttempts > 0 
+        ? Math.round((correctCount / participants.length) * 100) 
+        : 0;
+      const wrongPercentage = totalAttempts > 0 
+        ? Math.round((wrongCount / participants.length) * 100) 
+        : 0;
+      const unansweredPercentage = Math.round((unansweredCount / participants.length) * 100);
+      const difficultyRate = totalAttempts > 0 
+        ? Math.round((wrongCount / totalAttempts) * 100) 
+        : 0;
+
+      return {
+        questionNum,
+        questionId: question._id,
+        category: question.category,
+        questionText: question.question.question.substring(0, 50) + "...",
+        correctCount,
+        wrongCount,
+        unansweredCount,
+        totalAttempts,
+        correctPercentage,
+        wrongPercentage,
+        unansweredPercentage,
+        difficultyRate,
+        optionSelections,
+        correctOption: question.question.correctoption,
+        maxScore: question.score,
+      };
+    });
+  };
+
+  // Option selection analysis per question
+  const getOptionSelectionAnalysis = () => {
+    return questions.map((question, index) => {
+      const optionStats = {
+        option1: 0,
+        option2: 0,
+        option3: 0,
+        option4: 0,
+        unanswered: 0,
+      };
+
+      participants.forEach((participant) => {
+        if (participant.scanResult?.Useranswers) {
+          const userAnswer = participant.scanResult.Useranswers[index];
+          if (userAnswer === 1) optionStats.option1++;
+          else if (userAnswer === 2) optionStats.option2++;
+          else if (userAnswer === 3) optionStats.option3++;
+          else if (userAnswer === 4) optionStats.option4++;
+          else optionStats.unanswered++;
+        } else {
+          const answer = participant.answers.find(
+            (a) => a.questionId === question._id
+          );
+          if (answer && answer.answer) {
+            const answerNum = parseInt(answer.answer);
+            if (answerNum === 1) optionStats.option1++;
+            else if (answerNum === 2) optionStats.option2++;
+            else if (answerNum === 3) optionStats.option3++;
+            else if (answerNum === 4) optionStats.option4++;
+            else optionStats.unanswered++;
+          } else {
+            optionStats.unanswered++;
+          }
+        }
+      });
+
+      return {
+        questionNum: index + 1,
+        questionId: question._id,
+        category: question.category,
+        questionText: question.question.question.substring(0, 50) + "...",
+        option1Text: question.question.option1 || "گزینه ۱",
+        option2Text: question.question.option2 || "گزینه ۲",
+        option3Text: question.question.option3 || "گزینه ۳",
+        option4Text: question.question.option4 || "گزینه ۴",
+        correctOption: question.question.correctoption,
+        ...optionStats,
+        total: participants.length,
+      };
+    });
+  };
+
+  // Scan results analysis
+  const getScanResultsAnalysis = () => {
+    const scanStats = {
+      totalScanned: 0,
+      totalNotScanned: 0,
+      avgRightAnswers: 0,
+      avgWrongAnswers: 0,
+      avgMultipleAnswers: 0,
+      avgUnanswered: 0,
+      scanDetails: [] as Array<{
+        participantId: string;
+        userName: string;
+        rightCount: number;
+        wrongCount: number;
+        multipleCount: number;
+        unansweredCount: number;
+        hasImage: boolean;
+      }>,
+    };
+
+    let totalRight = 0;
+    let totalWrong = 0;
+    let totalMultiple = 0;
+    let totalUnanswered = 0;
+
+    participants.forEach((participant) => {
+      if (participant.scanResult) {
+        scanStats.totalScanned++;
+        const rightCount = participant.scanResult.rightAnswers?.length || 0;
+        const wrongCount = participant.scanResult.wrongAnswers?.length || 0;
+        const multipleCount = participant.scanResult.multipleAnswers?.length || 0;
+        const unansweredCount = participant.scanResult.unAnswered?.length || 0;
+
+        totalRight += rightCount;
+        totalWrong += wrongCount;
+        totalMultiple += multipleCount;
+        totalUnanswered += unansweredCount;
+
+        scanStats.scanDetails.push({
+          participantId: participant._id,
+          userName: participant.userName || participant.userId,
+          rightCount,
+          wrongCount,
+          multipleCount,
+          unansweredCount,
+          hasImage: !!participant.scanResult.correctedImageUrl,
+        });
+      } else {
+        scanStats.totalNotScanned++;
+      }
+    });
+
+    if (scanStats.totalScanned > 0) {
+      scanStats.avgRightAnswers = Math.round(totalRight / scanStats.totalScanned);
+      scanStats.avgWrongAnswers = Math.round(totalWrong / scanStats.totalScanned);
+      scanStats.avgMultipleAnswers = Math.round(totalMultiple / scanStats.totalScanned);
+      scanStats.avgUnanswered = Math.round(totalUnanswered / scanStats.totalScanned);
+    }
+
+    return scanStats;
+  };
+
+  // Score distribution
   const getScoreDistribution = () => {
     const scoreRanges = [
-      { name: "0-20%", count: 0 },
-      { name: "21-40%", count: 0 },
-      { name: "41-60%", count: 0 },
-      { name: "61-80%", count: 0 },
-      { name: "81-100%", count: 0 },
+      { name: "0-20%", min: 0, max: 20, count: 0 },
+      { name: "21-40%", min: 21, max: 40, count: 0 },
+      { name: "41-60%", min: 41, max: 60, count: 0 },
+      { name: "61-80%", min: 61, max: 80, count: 0 },
+      { name: "81-100%", min: 81, max: 100, count: 0 },
     ];
 
     participants.forEach((participant) => {
@@ -170,157 +397,33 @@ export default function ExamStatisticsPage({
       ) {
         const scorePercentage =
           (participant.sumScore / participant.maxScore) * 100;
-        if (scorePercentage <= 20) scoreRanges[0].count++;
-        else if (scorePercentage <= 40) scoreRanges[1].count++;
-        else if (scorePercentage <= 60) scoreRanges[2].count++;
-        else if (scorePercentage <= 80) scoreRanges[3].count++;
-        else scoreRanges[4].count++;
+        const range = scoreRanges.find(
+          (r) => scorePercentage >= r.min && scorePercentage <= r.max
+        );
+        if (range) range.count++;
       }
     });
 
     return scoreRanges;
   };
 
-  const getQuestionDifficultyData = () => {
-    const questionStats = questions.map((question) => {
-      const questionId = question._id;
-      let correctCount = 0;
-      let wrongCount = 0;
-      let unansweredCount = 0;
-
-      participants.forEach((participant) => {
-        const answer = participant.answers.find(
-          (a) => a.questionId === questionId
-        );
-        if (answer) {
-          if (answer.isCorrect === true) correctCount++;
-          else if (answer.isCorrect === false) wrongCount++;
-          else unansweredCount++;
-        }
-      });
-
-      const totalAttempts = correctCount + wrongCount;
-      const difficultyRate =
-        totalAttempts > 0 ? (wrongCount / totalAttempts) * 100 : 0;
-
-      return {
-        id: questionId,
-        category: question.category,
-        score: question.score,
-        correctCount,
-        wrongCount,
-        unansweredCount,
-        difficultyRate: Math.round(difficultyRate),
-      };
-    });
-
-    return questionStats;
-  };
-
-  const getCompletionRateData = () => {
-    const finishedCount = participants.filter((p) => p.isFinished).length;
-    const unfinishedCount = participants.length - finishedCount;
-
-    return [
-      { name: "تکمیل شده", value: finishedCount },
-      { name: "ناتمام", value: unfinishedCount },
-    ];
-  };
-
-  const getParticipantRanking = () => {
-    const rankedParticipants = [...participants]
-      .filter((p) => p.sumScore !== undefined)
-      .sort((a, b) => {
-        const scoreA = a.sumScore || 0;
-        const scoreB = b.sumScore || 0;
-        return scoreB - scoreA;
-      })
-      .map((participant, index) => {
-        // Calculate statistics by category
-        const categoryStats: Record<
-          string,
-          {
-            correct: number;
-            wrong: number;
-            unanswered: number;
-            maxPossible: number;
-            percentage: number;
-          }
-        > = {};
-
-        // Initialize with all question categories
-        questions.forEach((question) => {
-          const category = question.category;
-          if (!categoryStats[category]) {
-            categoryStats[category] = {
-              correct: 0,
-              wrong: 0,
-              unanswered: 0,
-              maxPossible: 0,
-              percentage: 0,
-            };
-          }
-        });
-
-        // Calculate stats for each answer
-        participant.answers.forEach((answer) => {
-          const question = questions.find((q) => q._id === answer.questionId);
-          if (question) {
-            const category = question.category;
-            if (!categoryStats[category]) {
-              categoryStats[category] = {
-                correct: 0,
-                wrong: 0,
-                unanswered: 0,
-                maxPossible: 0,
-                percentage: 0,
-              };
-            }
-
-            // Update category stats
-            categoryStats[category].maxPossible += answer.maxScore;
-
-            if (answer.isCorrect === true) {
-              categoryStats[category].correct += 1;
-            } else if (answer.isCorrect === false) {
-              categoryStats[category].wrong += 1;
-            } else {
-              categoryStats[category].unanswered += 1;
-            }
-          }
-        });
-
-        // Calculate percentages for each category
-        Object.keys(categoryStats).forEach((category) => {
-          const stats = categoryStats[category];
-          const totalQuestions = stats.correct + stats.wrong + stats.unanswered;
-          if (totalQuestions > 0) {
-            stats.percentage = Math.round(
-              (stats.correct / totalQuestions) * 100
-            );
-          }
-        });
-
-        return {
-          ...participant,
-          rank: index + 1,
-          categoryStats,
-        };
-      });
-
-    return rankedParticipants;
-  };
-
+  // Category performance
   const getCategoryPerformance = () => {
     const categoryStats: Record<
       string,
-      { totalScore: number; maxPossible: number }
+      { totalScore: number; maxPossible: number; correctCount: number; wrongCount: number; unansweredCount: number }
     > = {};
 
     questions.forEach((question) => {
       const category = question.category;
       if (!categoryStats[category]) {
-        categoryStats[category] = { totalScore: 0, maxPossible: 0 };
+        categoryStats[category] = { 
+          totalScore: 0, 
+          maxPossible: 0,
+          correctCount: 0,
+          wrongCount: 0,
+          unansweredCount: 0,
+        };
       }
 
       participants.forEach((participant) => {
@@ -330,17 +433,56 @@ export default function ExamStatisticsPage({
         if (answer) {
           categoryStats[category].totalScore += answer.earnedScore || 0;
           categoryStats[category].maxPossible += answer.maxScore;
+          if (answer.isCorrect === true) categoryStats[category].correctCount++;
+          else if (answer.isCorrect === false) categoryStats[category].wrongCount++;
+          else categoryStats[category].unansweredCount++;
         }
       });
     });
 
     return Object.entries(categoryStats).map(([category, stats]) => ({
-      name: category,
+      category,
       performanceRate:
         stats.maxPossible > 0
           ? Math.round((stats.totalScore / stats.maxPossible) * 100)
           : 0,
+      correctCount: stats.correctCount,
+      wrongCount: stats.wrongCount,
+      unansweredCount: stats.unansweredCount,
+      totalQuestions: stats.correctCount + stats.wrongCount + stats.unansweredCount,
     }));
+  };
+
+  // Overall statistics
+  const getOverallStats = () => {
+    const finishedCount = participants.filter((p) => p.isFinished).length;
+    const totalScore = participants.reduce((sum, p) => sum + (p.sumScore || 0), 0);
+    const avgScore = participants.length > 0 ? totalScore / participants.length : 0;
+    const maxScore = participants.length > 0 && participants[0].maxScore 
+      ? participants[0].maxScore 
+      : 0;
+    
+    const ranked = [...participants]
+      .filter((p) => p.sumScore !== undefined)
+      .sort((a, b) => (b.sumScore || 0) - (a.sumScore || 0));
+    
+    const highestScore = ranked.length > 0 ? ranked[0].sumScore || 0 : 0;
+    const lowestScore = ranked.length > 0 
+      ? ranked[ranked.length - 1].sumScore || 0 
+      : 0;
+
+    return {
+      totalParticipants: participants.length,
+      finishedCount,
+      unfinishedCount: participants.length - finishedCount,
+      finishRate: participants.length > 0 
+        ? Math.round((finishedCount / participants.length) * 100) 
+        : 0,
+      avgScore: avgScore.toFixed(2),
+      highestScore,
+      lowestScore,
+      maxScore,
+    };
   };
 
   if (isLoading) {
@@ -363,24 +505,25 @@ export default function ExamStatisticsPage({
           onClick={() => router.back()}
           className="mt-4 flex items-center"
         >
-          <ChevronLeftIcon className="h-4 w-4 ml-1" />
+          <ArrowLeftIcon className="h-4 w-4 mr-1" />
           بازگشت
         </Button>
       </div>
     );
   }
 
+  const questionAnalysis = getQuestionAnalysis();
+  const optionAnalysis = getOptionSelectionAnalysis();
+  const scanAnalysis = getScanResultsAnalysis();
   const scoreDistribution = getScoreDistribution();
-  const questionDifficultyData = getQuestionDifficultyData();
-  const completionRateData = getCompletionRateData();
-  const rankedParticipants = getParticipantRanking();
-  const categoryPerformanceData = getCategoryPerformance();
-  console.log("www", participants);
+  const categoryPerformance = getCategoryPerformance();
+  const overallStats = getOverallStats();
+
   return (
     <div className="container py-8" dir="rtl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">آمار آزمون</h1>
+          <h1 className="text-2xl font-bold">آمار پیشرفته آزمون</h1>
           {examInfo && (
             <p className="text-gray-500">
               {examInfo.data.examName} (کد: {examInfo.data.examCode})
@@ -392,314 +535,536 @@ export default function ExamStatisticsPage({
           onClick={() => router.back()}
           className="flex items-center"
         >
-          <ArrowLeftIcon className="h-4 w-4 ml-1" />
+          <ArrowLeftIcon className="h-4 w-4 mr-1" />
           بازگشت
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">تعداد شرکت‌کنندگان</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{participants.length}</div>
-            <div className="text-sm text-gray-500 mt-1">
-              {completionRateData[0].value} نفر تکمیل شده (
-              {Math.round(
-                (completionRateData[0].value / participants.length) * 100
-              )}
-              %)
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview">نمای کلی</TabsTrigger>
+          <TabsTrigger value="questions">تحلیل سوالات</TabsTrigger>
+          <TabsTrigger value="options">تحلیل گزینه‌ها</TabsTrigger>
+          <TabsTrigger value="scan">آمار اسکن</TabsTrigger>
+          <TabsTrigger value="categories">عملکرد دسته‌بندی</TabsTrigger>
+          <TabsTrigger value="distribution">توزیع نمرات</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">میانگین نمره</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {participants.length > 0
-                ? (
-                    participants.reduce(
-                      (sum, p) => sum + (p.sumScore || 0),
-                      0
-                    ) / participants.length
-                  ).toFixed(2)
-                : "0"}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              از{" "}
-              {participants.length > 0 && participants[0].maxScore
-                ? participants[0].maxScore
-                : 0}{" "}
-              نمره
-            </div>
-          </CardContent>
-        </Card>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6" dir="rtl">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">تعداد شرکت‌کنندگان</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{overallStats.totalParticipants}</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {overallStats.finishedCount} نفر تکمیل شده ({overallStats.finishRate}%)
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">بالاترین نمره</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {rankedParticipants.length > 0
-                ? rankedParticipants[0].sumScore
-                : "0"}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              {rankedParticipants.length > 0
-                ? rankedParticipants[0].userName || rankedParticipants[0].userId
-                : ""}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">میانگین نمره</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{overallStats.avgScore}</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  از {overallStats.maxScore} نمره
+                </div>
+              </CardContent>
+            </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>توزیع نمرات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={scoreDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="count"
-                    name="تعداد دانش‌آموزان"
-                    fill="#8884d8"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">بالاترین نمره</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{overallStats.highestScore}</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  از {overallStats.maxScore} نمره
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>نرخ تکمیل آزمون</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72 flex justify-center items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={completionRateData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {completionRateData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">پایین‌ترین نمره</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{overallStats.lowestScore}</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  از {overallStats.maxScore} نمره
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      <div className="grid grid-cols-1 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>عملکرد بر اساس دسته‌بندی سوالات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryPerformanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="performanceRate"
-                    name="درصد موفقیت"
-                    fill="#82ca9d"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card dir="rtl">
+              <CardHeader>
+                <CardTitle className="text-right">توزیع نمرات</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={scoreDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" name="تعداد دانش‌آموزان" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-      <div className="grid grid-cols-1 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>ضریب سختی سوالات</CardTitle>
-            <p className="text-sm text-gray-500">
-              درصد بالاتر نشان‌دهنده سوالات سخت‌تر است (نسبت پاسخ‌های اشتباه به
-              کل پاسخ‌ها)
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-right">شماره</TableHead>
-                    <TableHead className="text-right">دسته‌بندی</TableHead>
-                    <TableHead className="text-right">ضریب سختی</TableHead>
-                    <TableHead className="text-right">
-                      تعداد پاسخ صحیح
-                    </TableHead>
-                    <TableHead className="text-right">
-                      تعداد پاسخ اشتباه
-                    </TableHead>
-                    <TableHead className="text-right">بدون پاسخ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {questionDifficultyData.map((question, index) => (
-                    <TableRow key={question.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{question.category}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <div
-                            className="h-2.5 rounded-full mr-2"
-                            style={{
-                              width: `${question.difficultyRate}%`,
-                              backgroundColor:
-                                question.difficultyRate > 70
-                                  ? "red"
-                                  : question.difficultyRate > 40
-                                  ? "orange"
-                                  : "green",
-                            }}
-                          ></div>
-                          {question.difficultyRate}%
-                        </div>
-                      </TableCell>
-                      <TableCell>{question.correctCount}</TableCell>
-                      <TableCell>{question.wrongCount}</TableCell>
-                      <TableCell>{question.unansweredCount}</TableCell>
+            <Card dir="rtl">
+              <CardHeader>
+                <CardTitle className="text-right">عملکرد بر اساس دسته‌بندی</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categoryPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="category" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="performanceRate" name="درصد موفقیت" fill="#82ca9d" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Question Analysis Tab */}
+        <TabsContent value="questions" className="space-y-6" dir="rtl">
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">تحلیل تفصیلی سوالات</CardTitle>
+              <p className="text-sm text-gray-500 mt-2 text-right">
+                درصد پاسخ صحیح، اشتباه و بدون پاسخ برای هر سوال
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">شماره</TableHead>
+                      <TableHead className="text-right">دسته‌بندی</TableHead>
+                      <TableHead className="text-right">متن سوال</TableHead>
+                      <TableHead className="text-right">درصد صحیح</TableHead>
+                      <TableHead className="text-right">درصد اشتباه</TableHead>
+                      <TableHead className="text-right">بدون پاسخ</TableHead>
+                      <TableHead className="text-right">ضریب سختی</TableHead>
+                      <TableHead className="text-right">جمع</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  </TableHeader>
+                  <TableBody>
+                    {questionAnalysis.map((q) => (
+                      <TableRow key={q.questionId}>
+                        <TableCell className="font-medium">{q.questionNum}</TableCell>
+                        <TableCell>{q.category}</TableCell>
+                        <TableCell className="max-w-xs truncate" title={q.questionText}>
+                          {q.questionText}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center flex-row-reverse">
+                            {q.correctPercentage}%
+                            <div className="w-16 bg-green-100 rounded-full h-2 mr-2">
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ width: `${q.correctPercentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center flex-row-reverse">
+                            {q.wrongPercentage}%
+                            <div className="w-16 bg-red-100 rounded-full h-2 mr-2">
+                              <div
+                                className="bg-red-600 h-2 rounded-full"
+                                style={{ width: `${q.wrongPercentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center flex-row-reverse">
+                            {q.unansweredPercentage}%
+                            <div className="w-16 bg-gray-100 rounded-full h-2 mr-2">
+                              <div
+                                className="bg-gray-600 h-2 rounded-full"
+                                style={{ width: `${q.unansweredPercentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center flex-row-reverse">
+                            {q.difficultyRate}%
+                            <div
+                              className={`h-2.5 rounded-full mr-2 ${
+                                q.difficultyRate > 70
+                                  ? "bg-red-500"
+                                  : q.difficultyRate > 40
+                                  ? "bg-orange-500"
+                                  : "bg-green-500"
+                              }`}
+                              style={{ width: `${q.difficultyRate}%` }}
+                            ></div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          صحیح: {q.correctCount} | اشتباه: {q.wrongCount} | بدون پاسخ: {q.unansweredCount}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
 
-      <div className="grid grid-cols-1 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>رتبه‌بندی شرکت‌کنندگان</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-right">رتبه</TableHead>
-                    <TableHead className="text-right">نام کاربر</TableHead>
-                    <TableHead className="text-right">نمره کل</TableHead>
-                    <TableHead className="text-right">دسته‌بندی</TableHead>
-                    <TableHead className="text-right">صحیح</TableHead>
-                    <TableHead className="text-right">اشتباه</TableHead>
-                    <TableHead className="text-right">بدون پاسخ</TableHead>
-                    <TableHead className="text-right">درصد</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rankedParticipants
-                    .map((participant) => {
-                      // Get all unique categories
-                      const categories = Object.keys(
-                        participant.categoryStats || {}
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">نمودار ضریب سختی سوالات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={questionAnalysis}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="questionNum" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="correctPercentage" name="درصد صحیح" fill="#00C49F" />
+                    <Bar dataKey="wrongPercentage" name="درصد اشتباه" fill="#FF8042" />
+                    <Bar dataKey="unansweredPercentage" name="بدون پاسخ" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Option Selection Analysis Tab */}
+        <TabsContent value="options" className="space-y-6" dir="rtl">
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">تحلیل انتخاب گزینه‌ها</CardTitle>
+              <p className="text-sm text-gray-500 mt-2 text-right">
+                تعداد انتخاب هر گزینه برای هر سوال
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">شماره</TableHead>
+                      <TableHead className="text-right">دسته‌بندی</TableHead>
+                      <TableHead className="text-right">گزینه ۱</TableHead>
+                      <TableHead className="text-right">گزینه ۲</TableHead>
+                      <TableHead className="text-right">گزینه ۳</TableHead>
+                      <TableHead className="text-right">گزینه ۴</TableHead>
+                      <TableHead className="text-right">بدون پاسخ</TableHead>
+                      <TableHead className="text-right">گزینه صحیح</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {optionAnalysis.map((q) => (
+                      <TableRow key={q.questionId}>
+                        <TableCell className="font-medium">{q.questionNum}</TableCell>
+                        <TableCell>{q.category}</TableCell>
+                        <TableCell>
+                          <div className={`p-2 rounded ${
+                            q.correctOption === 1 ? "bg-green-100 font-bold" : "bg-gray-50"
+                          }`}>
+                            {q.option1Text} ({q.option1})
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={`p-2 rounded ${
+                            q.correctOption === 2 ? "bg-green-100 font-bold" : "bg-gray-50"
+                          }`}>
+                            {q.option2Text} ({q.option2})
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={`p-2 rounded ${
+                            q.correctOption === 3 ? "bg-green-100 font-bold" : "bg-gray-50"
+                          }`}>
+                            {q.option3Text} ({q.option3})
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={`p-2 rounded ${
+                            q.correctOption === 4 ? "bg-green-100 font-bold" : "bg-gray-50"
+                          }`}>
+                            {q.option4Text} ({q.option4})
+                          </div>
+                        </TableCell>
+                        <TableCell>{q.unanswered}</TableCell>
+                        <TableCell className="font-bold text-green-600">
+                          گزینه {q.correctOption}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Scan Results Analysis Tab */}
+        <TabsContent value="scan" className="space-y-6" dir="rtl">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">تعداد اسکن شده</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{scanAnalysis.totalScanned}</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  از {participants.length} نفر
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">میانگین پاسخ صحیح</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{scanAnalysis.avgRightAnswers}</div>
+                <div className="text-sm text-gray-500 mt-1">در هر پاسخ‌برگ</div>
+              </CardContent>
+            </Card>
+
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">میانگین پاسخ اشتباه</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{scanAnalysis.avgWrongAnswers}</div>
+                <div className="text-sm text-gray-500 mt-1">در هر پاسخ‌برگ</div>
+              </CardContent>
+            </Card>
+
+            <Card dir="rtl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-right">میانگین چند گزینه</CardTitle>
+              </CardHeader>
+              <CardContent className="text-right">
+                <div className="text-3xl font-bold">{scanAnalysis.avgMultipleAnswers}</div>
+                <div className="text-sm text-gray-500 mt-1">در هر پاسخ‌برگ</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">جزئیات اسکن پاسخ‌برگ‌ها</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">نام کاربر</TableHead>
+                      <TableHead className="text-right">پاسخ صحیح</TableHead>
+                      <TableHead className="text-right">پاسخ اشتباه</TableHead>
+                      <TableHead className="text-right">چند گزینه</TableHead>
+                      <TableHead className="text-right">بدون پاسخ</TableHead>
+                      <TableHead className="text-right">تصویر اسکن</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scanAnalysis.scanDetails.map((detail) => (
+                      <TableRow key={detail.participantId}>
+                        <TableCell>{detail.userName}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {detail.rightCount}
+                        </TableCell>
+                        <TableCell className="text-red-600 font-medium">
+                          {detail.wrongCount}
+                        </TableCell>
+                        <TableCell className="text-orange-600 font-medium">
+                          {detail.multipleCount}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {detail.unansweredCount}
+                        </TableCell>
+                        <TableCell>
+                          {detail.hasImage ? (
+                            <span className="text-green-600">✓ دارد</span>
+                          ) : (
+                            <span className="text-gray-400">✗ ندارد</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Category Performance Tab */}
+        <TabsContent value="categories" className="space-y-6" dir="rtl">
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">عملکرد بر اساس دسته‌بندی سوالات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryPerformance}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="performanceRate" name="درصد موفقیت" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">جدول تفصیلی دسته‌بندی‌ها</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">دسته‌بندی</TableHead>
+                      <TableHead className="text-right">درصد موفقیت</TableHead>
+                      <TableHead className="text-right">تعداد صحیح</TableHead>
+                      <TableHead className="text-right">تعداد اشتباه</TableHead>
+                      <TableHead className="text-right">بدون پاسخ</TableHead>
+                      <TableHead className="text-right">جمع سوالات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {categoryPerformance.map((cat) => (
+                      <TableRow key={cat.category}>
+                        <TableCell className="font-medium">{cat.category}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center flex-row-reverse">
+                            {cat.performanceRate}%
+                            <div className="w-24 bg-gray-100 rounded-full h-2 mr-2">
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ width: `${cat.performanceRate}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {cat.correctCount}
+                        </TableCell>
+                        <TableCell className="text-red-600 font-medium">
+                          {cat.wrongCount}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {cat.unansweredCount}
+                        </TableCell>
+                        <TableCell>{cat.totalQuestions}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Score Distribution Tab */}
+        <TabsContent value="distribution" className="space-y-6" dir="rtl">
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">توزیع نمرات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={scoreDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" name="تعداد دانش‌آموزان" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card dir="rtl">
+            <CardHeader>
+              <CardTitle className="text-right">جدول توزیع نمرات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">بازه نمره</TableHead>
+                      <TableHead className="text-right">تعداد</TableHead>
+                      <TableHead className="text-right">درصد</TableHead>
+                      <TableHead className="text-right">نمودار</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scoreDistribution.map((range) => {
+                      const percentage = participants.length > 0
+                        ? Math.round((range.count / participants.length) * 100)
+                        : 0;
+                      return (
+                        <TableRow key={range.name}>
+                          <TableCell className="font-medium">{range.name}</TableCell>
+                          <TableCell>{range.count}</TableCell>
+                          <TableCell>{percentage}%</TableCell>
+                          <TableCell>
+                            <div className="flex items-center flex-row-reverse">
+                              {percentage}%
+                              <div className="w-32 bg-gray-100 rounded-full h-2 mr-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       );
-
-                      // Calculate overall statistics
-                      const overallCorrect =
-                        participant.correctAnswerCount || 0;
-                      const overallWrong = participant.wrongAnswerCount || 0;
-                      const overallUnanswered =
-                        participant.unansweredCount || 0;
-                      const overallTotal =
-                        overallCorrect + overallWrong + overallUnanswered;
-                      const overallPercentage =
-                        overallTotal > 0
-                          ? Math.round((overallCorrect / overallTotal) * 100)
-                          : 0;
-
-                      // First row is overall stats
-                      return [
-                        // Overall stats row
-                        <TableRow key={`${participant._id}-overall`}>
-                          <TableCell rowSpan={categories.length + 1}>
-                            {participant.rank}
-                          </TableCell>
-                          <TableCell
-                            rowSpan={categories.length + 1}
-                            className="font-medium"
-                          >
-                            {participant.userName || participant.userId}
-                          </TableCell>
-                          <TableCell rowSpan={categories.length + 1}>
-                            {participant.sumScore !== undefined
-                              ? `${participant.sumScore} از ${
-                                  participant.maxScore || 0
-                                }`
-                              : "نامشخص"}
-                          </TableCell>
-                          <TableCell className="font-bold">کل</TableCell>
-                          <TableCell>{overallCorrect}</TableCell>
-                          <TableCell>{overallWrong}</TableCell>
-                          <TableCell>{overallUnanswered}</TableCell>
-                          <TableCell>{overallPercentage}%</TableCell>
-                        </TableRow>,
-
-                        // Category-specific rows
-                        ...categories.map((category) => (
-                          <TableRow key={`${participant._id}-${category}`}>
-                            <TableCell>{category}</TableCell>
-                            <TableCell>
-                              {participant.categoryStats[category].correct}
-                            </TableCell>
-                            <TableCell>
-                              {participant.categoryStats[category].wrong}
-                            </TableCell>
-                            <TableCell>
-                              {participant.categoryStats[category].unanswered}
-                            </TableCell>
-                            <TableCell>
-                              {participant.categoryStats[category].percentage}%
-                            </TableCell>
-                          </TableRow>
-                        )),
-                      ];
-                    })
-                    .flat()}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   PrinterIcon,
   QrCodeIcon,
   CalculatorIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -1031,6 +1032,13 @@ function StudentsPageContent() {
                   }
                 },
                 icon: CalculatorIcon,
+              },
+              {
+                label: "آمار پیشرفته",
+                action: (examId) => {
+                  window.location.href = `/admin/exam/statistics/${examId}`;
+                },
+                icon: ChartBarIcon,
               },
             ]}
             initialFilter={{
