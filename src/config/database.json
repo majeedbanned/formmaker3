@@ -609,10 +609,10 @@
               "description": "khomaini.farsamooz.ir"
             },
 
-"rashd2.farsamooz.ir": {
+"roshd2.farsamooz.ir": {
               "schoolCode":"95114795",
               "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/rashd2?authSource=admin",
-              "description": "rashd2.farsamooz.ir"
+              "description": "roshd2.farsamooz.ir"
             }
 
 
