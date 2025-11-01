@@ -530,6 +530,18 @@ const ClassSheet = ({
   const [groupDescriptiveStatus, setGroupDescriptiveStatus] = useState<Record<string, string>>({});
   const [isSavingGroupDescriptive, setIsSavingGroupDescriptive] = useState(false);
 
+  // State for advanced remove dialog
+  const [isAdvancedRemoveOpen, setIsAdvancedRemoveOpen] = useState(false);
+  const [advancedRemoveColumn, setAdvancedRemoveColumn] = useState<Column | null>(null);
+  const [advancedRemoveTypes, setAdvancedRemoveTypes] = useState({
+    grades: false,
+    assessments: false,
+    notes: false,
+    descriptiveStatus: false,
+    presenceStatus: false,
+  });
+  const [isAdvancedRemoving, setIsAdvancedRemoving] = useState(false);
+
   // Create a unique key for each cell
   const getCellKey = (studentCode: string, column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
@@ -1753,6 +1765,34 @@ const ClassSheet = ({
       })
     );
 
+    // Add separator
+    const separator = document.createElement("div");
+    separator.className = "border-t my-2";
+    menu.appendChild(separator);
+
+    // Add Advanced Remove option with red styling
+    const advancedRemoveItem = document.createElement("button");
+    advancedRemoveItem.className =
+      "px-4 py-2 hover:bg-red-50 text-right w-full rounded-md transition-colors text-red-600 font-medium";
+    advancedRemoveItem.innerText = "🗑️ حذف پیشرفته";
+    advancedRemoveItem.onclick = (e) => {
+      e.preventDefault();
+      // Pre-select this column
+      setAdvancedRemoveColumn(column);
+      // Reset data type selections
+      setAdvancedRemoveTypes({
+        grades: false,
+        assessments: false,
+        notes: false,
+        descriptiveStatus: false,
+        presenceStatus: false,
+      });
+      // Open the advanced remove dialog
+      setIsAdvancedRemoveOpen(true);
+      document.body.removeChild(menu);
+    };
+    menu.appendChild(advancedRemoveItem);
+
     // Position menu near the cursor
     const handleClickOutside = (e: MouseEvent) => {
       if (!menu.contains(e.target as Node)) {
@@ -2795,6 +2835,132 @@ const ClassSheet = ({
   };
 
   // Function to generate a unique key for column identification
+  // Handler for advanced remove operation
+  const handleAdvancedRemove = async () => {
+    if (!advancedRemoveColumn || !selectedOption) {
+      toast.error("لطفاً یک تاریخ انتخاب کنید");
+      return;
+    }
+
+    // Check if at least one type is selected
+    const hasSelection = Object.values(advancedRemoveTypes).some(v => v);
+    if (!hasSelection) {
+      toast.error("لطفاً حداقل یک نوع داده برای حذف انتخاب کنید");
+      return;
+    }
+
+    // Confirm with user
+    const typesToRemove = [];
+    if (advancedRemoveTypes.grades) typesToRemove.push("نمرات");
+    if (advancedRemoveTypes.assessments) typesToRemove.push("ارزیابی‌ها");
+    if (advancedRemoveTypes.notes) typesToRemove.push("یادداشت‌ها");
+    if (advancedRemoveTypes.descriptiveStatus) typesToRemove.push("توصیف وضعیت");
+    if (advancedRemoveTypes.presenceStatus) typesToRemove.push("وضعیت حضور");
+
+    const confirmMessage = `آیا از حذف ${typesToRemove.join("، ")} برای تاریخ ${advancedRemoveColumn.formattedDate} (${advancedRemoveColumn.day} - زنگ ${advancedRemoveColumn.timeSlot}) برای تمام دانش‌آموزان مطمئن هستید؟\n\nاین عملیات قابل بازگشت نیست!`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setIsAdvancedRemoving(true);
+
+      // Delete the specified data for all students
+      const deletePromises = students.map(async (student) => {
+        const cellKey = getCellKey(student.studentCode, advancedRemoveColumn);
+        const existingCell = cellsData[cellKey];
+
+        if (!existingCell) {
+          return { success: true, studentCode: student.studentCode };
+        }
+
+        // Prepare updated cell data by removing selected types
+        const updatedCell = { ...existingCell };
+
+        if (advancedRemoveTypes.grades) {
+          updatedCell.grades = [];
+        }
+        if (advancedRemoveTypes.assessments) {
+          updatedCell.assessments = [];
+        }
+        if (advancedRemoveTypes.notes) {
+          updatedCell.note = "";
+        }
+        if (advancedRemoveTypes.descriptiveStatus) {
+          updatedCell.descriptiveStatus = "";
+        }
+        if (advancedRemoveTypes.presenceStatus) {
+          updatedCell.presenceStatus = null;
+        }
+
+        // Save the updated cell data
+        const response = await fetch("/api/classsheet/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedCell),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update data for student ${student.studentCode}`);
+        }
+
+        // Update local state
+        setCellsData((prev) => ({
+          ...prev,
+          [cellKey]: updatedCell,
+        }));
+
+        return { success: true, studentCode: student.studentCode };
+      });
+
+      await Promise.all(deletePromises);
+
+      toast.success("اطلاعات انتخاب شده با موفقیت حذف شد");
+      setIsAdvancedRemoveOpen(false);
+
+      // Reload the cell data
+      if (selectedOption) {
+        const response = await fetch("/api/classsheet", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            classCode: selectedClassDocument.data.classCode,
+            teacherCode: selectedOption.teacherCode,
+            courseCode: selectedOption.courseCode,
+            schoolCode: schoolCode,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const cellsDataMap: Record<string, CellData> = {};
+          data.forEach((cell: CellData) => {
+            const key = formatCellKeyFromDB(cell);
+            cellsDataMap[key] = {
+              ...cell,
+              grades: cell.grades || [],
+              presenceStatus: cell.presenceStatus || null,
+              note: cell.note || "",
+              descriptiveStatus: cell.descriptiveStatus || "",
+              assessments: cell.assessments || [],
+            };
+          });
+          setCellsData(cellsDataMap);
+        }
+      }
+    } catch (error) {
+      console.error("Error in advanced remove:", error);
+      toast.error("خطا در حذف اطلاعات");
+    } finally {
+      setIsAdvancedRemoving(false);
+    }
+  };
+
   const getColumnKey = (column: Column) => {
     // Format the date as YYYY-MM-DD to ensure consistency
     const dateStr = column.date.toISOString().split("T")[0];
@@ -3045,6 +3211,41 @@ const ClassSheet = ({
                     clipRule="evenodd"
                   />
                 </svg>
+              </button>
+              
+              {/* Advanced Remove Button */}
+              <button
+                onClick={() => {
+                  // Reset selections
+                  setAdvancedRemoveColumn(null);
+                  setAdvancedRemoveTypes({
+                    grades: false,
+                    assessments: false,
+                    notes: false,
+                    descriptiveStatus: false,
+                    presenceStatus: false,
+                  });
+                  setIsAdvancedRemoveOpen(true);
+                }}
+                disabled={!selectedOption || allColumns.filter(col => col.day !== "monthly").length === 0}
+                className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                title="حذف پیشرفته - حذف اطلاعات یک روز کامل"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                حذف پیشرفته
               </button>
             </div>
           </div>
@@ -5575,6 +5776,251 @@ const ClassSheet = ({
               disabled={isSavingGroupDescriptive}
             >
               انصراف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Advanced Remove Dialog */}
+      <Dialog open={isAdvancedRemoveOpen} onOpenChange={setIsAdvancedRemoveOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-red-600">
+              حذف پیشرفته اطلاعات
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 p-4">
+            {/* Warning Message */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3 space-x-reverse">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  <h4 className="text-red-800 font-semibold mb-1">هشدار مهم!</h4>
+                  <p className="text-red-700 text-sm">
+                    این عملیات اطلاعات انتخابی را برای تمام دانش‌آموزان در تاریخ مشخص شده حذف می‌کند.
+                    این عملیات قابل بازگشت نیست!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Date Selection */}
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold">۱. انتخاب تاریخ</Label>
+              {advancedRemoveColumn ? (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-blue-900">
+                        {advancedRemoveColumn.formattedDate} - {advancedRemoveColumn.day} (زنگ {advancedRemoveColumn.timeSlot})
+                      </div>
+                      <div className="text-sm text-blue-700 mt-1">
+                        این تاریخ از ستون انتخاب شده است
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setAdvancedRemoveColumn(null)}
+                      className="text-blue-600 hover:text-blue-800 text-sm underline"
+                    >
+                      تغییر تاریخ
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    const column = allColumns.find(col => getColumnKey(col) === value);
+                    setAdvancedRemoveColumn(column || null);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="تاریخ مورد نظر را انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allColumns.filter(col => col.day !== "monthly").map((col) => (
+                      <SelectItem key={getColumnKey(col)} value={getColumnKey(col)}>
+                        {col.formattedDate} - {col.day} (زنگ {col.timeSlot})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Data Type Selection */}
+            <div className="space-y-3">
+              <Label className="text-lg font-semibold">۲. انتخاب نوع اطلاعات برای حذف</Label>
+              <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                {/* Grades */}
+                <div className="flex items-center space-x-3 space-x-reverse p-3 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="remove-grades"
+                    checked={advancedRemoveTypes.grades}
+                    onChange={(e) => setAdvancedRemoveTypes(prev => ({
+                      ...prev,
+                      grades: e.target.checked
+                    }))}
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="remove-grades"
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="font-medium text-gray-900">نمرات</div>
+                    <div className="text-sm text-gray-600">تمام نمرات ثبت شده</div>
+                  </label>
+                </div>
+
+                {/* Assessments */}
+                <div className="flex items-center space-x-3 space-x-reverse p-3 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="remove-assessments"
+                    checked={advancedRemoveTypes.assessments}
+                    onChange={(e) => setAdvancedRemoveTypes(prev => ({
+                      ...prev,
+                      assessments: e.target.checked
+                    }))}
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="remove-assessments"
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="font-medium text-gray-900">ارزیابی‌ها</div>
+                    <div className="text-sm text-gray-600">ارزیابی‌های کیفی (عالی، خوب، ...)</div>
+                  </label>
+                </div>
+
+                {/* Notes */}
+                <div className="flex items-center space-x-3 space-x-reverse p-3 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="remove-notes"
+                    checked={advancedRemoveTypes.notes}
+                    onChange={(e) => setAdvancedRemoveTypes(prev => ({
+                      ...prev,
+                      notes: e.target.checked
+                    }))}
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="remove-notes"
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="font-medium text-gray-900">یادداشت‌ها</div>
+                    <div className="text-sm text-gray-600">یادداشت‌های ثبت شده برای هر دانش‌آموز</div>
+                  </label>
+                </div>
+
+                {/* Descriptive Status */}
+                <div className="flex items-center space-x-3 space-x-reverse p-3 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="remove-descriptive"
+                    checked={advancedRemoveTypes.descriptiveStatus}
+                    onChange={(e) => setAdvancedRemoveTypes(prev => ({
+                      ...prev,
+                      descriptiveStatus: e.target.checked
+                    }))}
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="remove-descriptive"
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="font-medium text-gray-900">توصیف وضعیت</div>
+                    <div className="text-sm text-gray-600">وضعیت توصیفی (خیلی خوب، خوب، ...)</div>
+                  </label>
+                </div>
+
+                {/* Presence Status */}
+                <div className="flex items-center space-x-3 space-x-reverse p-3 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="remove-presence"
+                    checked={advancedRemoveTypes.presenceStatus}
+                    onChange={(e) => setAdvancedRemoveTypes(prev => ({
+                      ...prev,
+                      presenceStatus: e.target.checked
+                    }))}
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="remove-presence"
+                    className="flex-1 cursor-pointer"
+                  >
+                    <div className="font-medium text-gray-900">وضعیت حضور</div>
+                    <div className="text-sm text-gray-600">حاضر، غایب یا تأخیر</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            {advancedRemoveColumn && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">خلاصه عملیات:</h4>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p>• تاریخ: <span className="font-medium">{advancedRemoveColumn.formattedDate}</span></p>
+                  <p>• روز: <span className="font-medium">{advancedRemoveColumn.day}</span></p>
+                  <p>• زنگ: <span className="font-medium">{advancedRemoveColumn.timeSlot}</span></p>
+                  <p>• تعداد دانش‌آموزان: <span className="font-medium">{students.length}</span></p>
+                  <p>• اطلاعات حذف‌شدنی: <span className="font-medium">
+                    {Object.values(advancedRemoveTypes).filter(v => v).length === 0 
+                      ? "هیچ موردی انتخاب نشده" 
+                      : Object.entries(advancedRemoveTypes)
+                          .filter(([, v]) => v)
+                          .map(([k]) => {
+                            const labels: Record<string, string> = {
+                              grades: "نمرات",
+                              assessments: "ارزیابی‌ها",
+                              notes: "یادداشت‌ها",
+                              descriptiveStatus: "توصیف وضعیت",
+                              presenceStatus: "وضعیت حضور"
+                            };
+                            return labels[k];
+                          })
+                          .join("، ")
+                    }
+                  </span></p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAdvancedRemoveOpen(false)}
+              disabled={isAdvancedRemoving}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAdvancedRemove}
+              disabled={isAdvancedRemoving || !advancedRemoveColumn || Object.values(advancedRemoveTypes).every(v => !v)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isAdvancedRemoving ? "در حال حذف..." : "حذف اطلاعات"}
             </Button>
           </DialogFooter>
         </DialogContent>
