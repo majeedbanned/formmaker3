@@ -578,6 +578,7 @@ type StudentReportCard = {
       teacherName: string;
       vahed: number;
       monthlyGrades: Record<string, number | null>;
+      monthlyRawGrades: Record<string, GradeEntry[]>; // Add raw grades collection
       monthlyAssessments: Record<string, AssessmentEntry[]>;
       monthlyPresence: Record<
         string,
@@ -1164,6 +1165,7 @@ const ReportCards = ({
               teacherName,
               vahed,
               monthlyGrades: {},
+              monthlyRawGrades: {}, // Add raw grades collection
               monthlyAssessments: {}, // Add assessments tracking
               monthlyPresence: {}, // Add presence tracking
               yearAverage: null,
@@ -1177,6 +1179,9 @@ const ReportCards = ({
               ].monthlyGrades[monthKey] = null;
               studentReports[student.studentCode].courses[
                 tc.courseCode
+              ].monthlyRawGrades[monthKey] = []; // Initialize raw grades array
+              studentReports[student.studentCode].courses[
+                tc.courseCode
               ].monthlyAssessments[monthKey] = [];
               studentReports[student.studentCode].courses[
                 tc.courseCode
@@ -1188,7 +1193,7 @@ const ReportCards = ({
               };
             }
 
-            // Process cells for each month
+            // Process cells for each month - COLLECT grades, don't calculate yet
             studentCells.forEach((cell) => {
               if (!cell.date) return;
 
@@ -1202,40 +1207,11 @@ const ReportCards = ({
 
                 const monthKey = cellMonth.toString();
 
-                // If there are grades for this cell, calculate average for this month
+                // Collect ALL grades for this month (don't calculate per cell)
                 if (cell.grades && cell.grades.length > 0) {
-                  // Calculate base grade normalized to 20
-                  // This handles grades with different totalPoints (e.g., 5/10, 16/20)
-                  // by calculating the weighted average and converting to base 20
-                  const totalValue = cell.grades.reduce(
-                    (sum, grade) => sum + grade.value,
-                    0
-                  );
-                  const totalPoints = cell.grades.reduce(
-                    (sum, grade) => sum + (grade.totalPoints || 20),
-                    0
-                  );
-                  
-                  // Normalize to base 20: (achieved/possible) × 20
-                  const gradeAverage =
-                    totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
-
-                  // Store or update the monthly grade
-                  const currentGrade =
-                    studentReports[student.studentCode].courses[tc.courseCode]
-                      .monthlyGrades[monthKey];
-
-                  if (currentGrade === null) {
-                    studentReports[student.studentCode].courses[
-                      tc.courseCode
-                    ].monthlyGrades[monthKey] = gradeAverage;
-                  } else {
-                    // If already has a grade for this month, take the average
-                    studentReports[student.studentCode].courses[
-                      tc.courseCode
-                    ].monthlyGrades[monthKey] =
-                      (currentGrade + gradeAverage) / 2;
-                  }
+                  studentReports[student.studentCode].courses[
+                    tc.courseCode
+                  ].monthlyRawGrades[monthKey].push(...cell.grades);
                 }
 
                 // Store assessments
@@ -1270,22 +1246,38 @@ const ReportCards = ({
               }
             });
 
-            // Calculate final grades with assessments for each month
+            // Calculate final grades from collected raw grades for each month
+            // This matches the logic in monthlygradeoverall
             for (let month = 1; month <= 12; month++) {
               const monthKey = month.toString();
-              const rawGrade =
+              const rawGrades =
                 studentReports[student.studentCode].courses[tc.courseCode]
-                  .monthlyGrades[monthKey];
+                  .monthlyRawGrades[monthKey];
               const assessments =
                 studentReports[student.studentCode].courses[tc.courseCode]
                   .monthlyAssessments[monthKey];
 
-              if (rawGrade !== null) {
+              if (rawGrades && rawGrades.length > 0) {
+                // Calculate base grade normalized to 20
+                // This handles grades with different totalPoints (e.g., 5/10, 16/20)
+                // by calculating the weighted average and converting to base 20
+                const totalValue = rawGrades.reduce(
+                  (sum, grade) => sum + grade.value,
+                  0
+                );
+                const totalPoints = rawGrades.reduce(
+                  (sum, grade) => sum + (grade.totalPoints || 20),
+                  0
+                );
+
+                // Normalize to base 20: (achieved/possible) × 20
+                const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+
                 // Apply assessments to get final grade
                 studentReports[student.studentCode].courses[
                   tc.courseCode
                 ].monthlyGrades[monthKey] = calculateFinalScore(
-                  rawGrade,
+                  baseGrade,
                   assessments,
                   tc.courseCode,
                   assessmentValues
