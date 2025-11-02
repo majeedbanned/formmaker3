@@ -1292,6 +1292,116 @@ const PresenceReport = ({
     );
   };
 
+  const selectAllCustomSmsPhones = () => {
+    setCustomSmsData(prev =>
+      prev.map(student => ({
+        ...student,
+        selectedPhones: [...student.phones]
+      }))
+    );
+    toast.success("همه شماره‌ها انتخاب شدند");
+  };
+
+  const deselectAllCustomSmsPhones = () => {
+    setCustomSmsData(prev =>
+      prev.map(student => ({
+        ...student,
+        selectedPhones: []
+      }))
+    );
+    toast.info("انتخاب همه شماره‌ها لغو شد");
+  };
+
+  const selectFathersPhones = async () => {
+    try {
+      const studentCodes = customSmsData.map(s => s.studentCode);
+      const response = await fetch("/api/students/phone-numbers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          studentCodes,
+          schoolCode: schoolCode
+        }),
+      });
+
+      if (response.ok) {
+        const { students } = await response.json();
+        
+        setCustomSmsData(prev =>
+          prev.map(student => {
+            const studentData = students.find((s: any) => s.studentCode === student.studentCode);
+            if (studentData) {
+              const fatherPhones = studentData.phones
+                .filter((p: any) => {
+                  const owner = p.owner.toLowerCase();
+                  return owner.includes("پدر") || owner.includes("father");
+                })
+                .map((p: any) => p.number);
+              
+              return {
+                ...student,
+                selectedPhones: fatherPhones
+              };
+            }
+            return student;
+          })
+        );
+        toast.success("شماره‌های پدران انتخاب شدند");
+      }
+    } catch (error) {
+      console.error("Error selecting father phones:", error);
+      toast.error("خطا در انتخاب شماره‌ها");
+    }
+  };
+
+  const selectMothersPhones = async () => {
+    try {
+      const studentCodes = customSmsData.map(s => s.studentCode);
+      const response = await fetch("/api/students/phone-numbers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          studentCodes,
+          schoolCode: schoolCode
+        }),
+      });
+
+      if (response.ok) {
+        const { students } = await response.json();
+        
+        setCustomSmsData(prev =>
+          prev.map(student => {
+            const studentData = students.find((s: any) => s.studentCode === student.studentCode);
+            if (studentData) {
+              const motherPhones = studentData.phones
+                .filter((p: any) => {
+                  const owner = p.owner.toLowerCase();
+                  return owner.includes("مادر") || owner.includes("mother");
+                })
+                .map((p: any) => p.number);
+              
+              return {
+                ...student,
+                selectedPhones: motherPhones
+              };
+            }
+            return student;
+          })
+        );
+        toast.success("شماره‌های مادران انتخاب شدند");
+      }
+    } catch (error) {
+      console.error("Error selecting mother phones:", error);
+      toast.error("خطا در انتخاب شماره‌ها");
+    }
+  };
+
   // SMS Functions
   const openSmsDialog = async (section: "absent" | "late") => {
     setSmsSection(section);
@@ -2930,7 +3040,7 @@ const PresenceReport = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => selectGroupPhones("پدر")}
+                  onClick={() => selectGroupPhones("father")}
                   className="text-blue-600 hover:text-blue-800"
                 >
                   انتخاب همه پدرها
@@ -2939,7 +3049,7 @@ const PresenceReport = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => selectGroupPhones("مادر")}
+                  onClick={() => selectGroupPhones("mother")}
                   className="text-pink-600 hover:text-pink-800"
                 >
                   انتخاب همه مادرها
@@ -2948,7 +3058,7 @@ const PresenceReport = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => selectGroupPhones("دانش آموز")}
+                  onClick={() => selectGroupPhones("student")}
                   className="text-green-600 hover:text-green-800"
                 >
                   انتخاب همه دانش‌آموزان
@@ -3051,6 +3161,104 @@ const PresenceReport = ({
               هر دانش‌آموز پیام اختصاصی بر اساس غیبت یا تاخیرهای خود دریافت می‌کند
             </DialogDescription>
           </DialogHeader>
+
+          {/* Quick Selection Buttons */}
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+            <div className="text-sm font-medium text-gray-700 mb-3">انتخاب سریع شماره‌ها:</div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                type="button"
+                size="sm"
+                onClick={selectAllCustomSmsPhones}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-1"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                انتخاب همه
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={deselectAllCustomSmsPhones}
+                className="bg-gray-600 hover:bg-gray-700 text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-1"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                لغو همه
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={selectFathersPhones}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-1"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                فقط پدران
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={selectMothersPhones}
+                className="bg-pink-600 hover:bg-pink-700 text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-1"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                فقط مادران
+              </Button>
+            </div>
+          </div>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             {customSmsData.map((student, index) => (
