@@ -963,6 +963,27 @@ const ClassSheet = ({
   const handleSaveNote = async () => {
     if (!selectedCell || !selectedOption) return;
 
+    // Check for unsaved grade data
+    if (newGrade.value > 0 && !grades.some(g => g.value === newGrade.value && g.description === newGrade.description)) {
+      const confirmSave = window.confirm(
+        "شما نمره‌ای وارد کرده‌اید اما روی دکمه افزودن کلیک نکرده‌اید.\n\nآیا می‌خواهید بدون افزودن این نمره ذخیره کنید؟"
+      );
+      if (!confirmSave) {
+        return;
+      }
+    }
+
+    // Check for unsaved assessment data
+    if ((newAssessment.title || newAssessment.value) && 
+        !assessments.some(a => a.title === newAssessment.title && a.value === newAssessment.value)) {
+      const confirmSave = window.confirm(
+        "شما ارزیابی وارد کرده‌اید اما روی دکمه افزودن کلیک نکرده‌اید.\n\nآیا می‌خواهید بدون افزودن این ارزیابی ذخیره کنید؟"
+      );
+      if (!confirmSave) {
+        return;
+      }
+    }
+
     const column = allColumns[selectedCell.columnIndex];
     // console.log("Saving for column:", column);
 
@@ -3579,20 +3600,37 @@ const ClassSheet = ({
                               <div className="w-full text-center mt-1">
                                 <div className="flex flex-wrap gap-1 justify-center">
                                   {cellData.assessments.map(
-                                    (assessment, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="relative group"
-                                        title={`${assessment.title}: ${assessment.value}`}
-                                      >
-                                        <Badge className="bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
-                                          {assessment.title.substring(0, 2)}
-                                        </Badge>
-                                        <div className="absolute bottom-full mb-1 z-50 w-32 bg-gray-800 text-white text-xs rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                          {assessment.title}: {assessment.value}
+                                    (assessment, idx) => {
+                                      const weight = assessment.weight || getAssessmentWeight(assessment.value);
+                                      
+                                      // Determine color based on weight
+                                      let badgeColor = "bg-gray-100 text-gray-800 border-gray-200";
+                                      if (weight > 0) {
+                                        badgeColor = "bg-green-100 text-green-800 border-green-300";
+                                      } else if (weight < 0) {
+                                        badgeColor = "bg-red-100 text-red-800 border-red-300";
+                                      }
+                                      
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="relative group"
+                                          title={assessment.title}
+                                        >
+                                          <Badge className={`${badgeColor} border shadow-sm font-medium`}>
+                                            {assessment.value}
+                                            {weight !== 0 && (
+                                              <span className="text-xs mr-1">
+                                                ({weight > 0 ? "+" : ""}{weight})
+                                              </span>
+                                            )}
+                                          </Badge>
+                                          <div className="absolute bottom-full mb-1 z-50 w-auto whitespace-nowrap bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                            {assessment.title}
+                                          </div>
                                         </div>
-                                      </div>
-                                    )
+                                      );
+                                    }
                                   )}
                                 </div>
                               </div>
@@ -3678,85 +3716,154 @@ const ClassSheet = ({
       {/* Note Input Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
-          className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
           dir="rtl"
         >
-          <DialogHeader>
-            <DialogTitle>
-              اطلاعات{" "}
-              {selectedCell &&
-                students.find((s) => s.studentCode === selectedCell.studentCode)
-                  ?.studentName}{" "}
-              {selectedCell &&
-                students.find((s) => s.studentCode === selectedCell.studentCode)
-                  ?.studentlname}
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+                {selectedCell && students.find((s) => s.studentCode === selectedCell.studentCode)?.studentName.charAt(0)}
+              </div>
+              <div>
+                <div className="text-xl">
+                  {selectedCell &&
+                    students.find((s) => s.studentCode === selectedCell.studentCode)
+                      ?.studentName}{" "}
+                  {selectedCell &&
+                    students.find((s) => s.studentCode === selectedCell.studentCode)
+                      ?.studentlname}
+                </div>
+                {selectedCell && (
+                  <div className="text-sm font-normal text-gray-500">
+                    کد دانش‌آموز: {selectedCell.studentCode}
+                  </div>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
-            {/* Presence Status */}
-            <div>
-              <Label htmlFor="presenceStatus" className="block mb-2">
-                وضعیت حضور
-              </Label>
-              <Select
-                value={presenceStatus}
-                onValueChange={(value) =>
-                  setPresenceStatus(value as PresenceStatus)
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="انتخاب وضعیت حضور" />
-                </SelectTrigger>
-                <SelectContent dir="rtl">
-                  <SelectItem value=" ">انتخاب کنید</SelectItem>
-                  <SelectItem value="present">حاضر</SelectItem>
-                  <SelectItem value="absent">غایب</SelectItem>
-                  <SelectItem value="late">با تاخیر</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex-1 overflow-y-auto px-1 py-4 space-y-5">
+            {/* Date and Time Info */}
+            {selectedCell && allColumns[selectedCell.columnIndex] && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">تاریخ:</span>
+                    <span className="font-semibold mr-2 text-gray-900">
+                      {allColumns[selectedCell.columnIndex].formattedDate}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">روز:</span>
+                    <span className="font-semibold mr-2 text-gray-900">
+                      {allColumns[selectedCell.columnIndex].day}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">زنگ:</span>
+                    <span className="font-semibold mr-2 text-gray-900">
+                      {allColumns[selectedCell.columnIndex].timeSlot}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">درس:</span>
+                    <span className="font-semibold mr-2 text-gray-900">
+                      {selectedOption ? (coursesInfo[selectedOption.courseCode] || selectedOption.courseCode) : "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {/* Descriptive Status */}
-            <div className="space-y-2">
-              <Label htmlFor="descriptive-status">وضعیت توصیفی:</Label>
-              <Select
-                value={descriptiveStatus}
-                onValueChange={(value) => setDescriptiveStatus(value)}
-              >
-                <SelectTrigger id="descriptive-status">
-                  <SelectValue placeholder="انتخاب وضعیت توصیفی" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="خیلی خوب">خیلی خوب</SelectItem>
-                  <SelectItem value="خوب">خوب</SelectItem>
-                  <SelectItem value="قابل قبول">قابل قبول</SelectItem>
-                  <SelectItem value="نیازمند تلاش بیشتر">
-                    نیازمند تلاش بیشتر
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Presence and Descriptive Status Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Presence Status */}
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <Label htmlFor="presenceStatus" className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  وضعیت حضور
+                </Label>
+                <Select
+                  value={presenceStatus}
+                  onValueChange={(value) =>
+                    setPresenceStatus(value as PresenceStatus)
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="انتخاب وضعیت حضور" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl">
+                    <SelectItem value=" ">انتخاب کنید</SelectItem>
+                    <SelectItem value="present">✓ حاضر</SelectItem>
+                    <SelectItem value="absent">✗ غایب</SelectItem>
+                    <SelectItem value="late">⏰ با تاخیر</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Descriptive Status */}
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <Label htmlFor="descriptive-status" className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                  وضعیت توصیفی
+                </Label>
+                <Select
+                  value={descriptiveStatus}
+                  onValueChange={(value) => setDescriptiveStatus(value)}
+                >
+                  <SelectTrigger id="descriptive-status">
+                    <SelectValue placeholder="انتخاب وضعیت توصیفی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="خیلی خوب">⭐⭐⭐ خیلی خوب</SelectItem>
+                    <SelectItem value="خوب">⭐⭐ خوب</SelectItem>
+                    <SelectItem value="قابل قبول">⭐ قابل قبول</SelectItem>
+                    <SelectItem value="نیازمند تلاش بیشتر">
+                      ⚠️ نیازمند تلاش بیشتر
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Grades Section */}
-            <div className="space-y-2 border p-2 rounded-md">
-              <Label>نمرات:</Label>
+            <div className="bg-white p-4 rounded-lg border-2 border-green-200 shadow-sm">
+              <Label className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                نمرات
+                {grades.length > 0 && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    {grades.length} نمره
+                  </span>
+                )}
+              </Label>
 
               {/* Existing Grades */}
               {grades.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-2 mb-3 p-3 bg-green-50 rounded-lg">
                   {grades.map((grade, index) => {
                     const totalPoints = grade.totalPoints || 20;
+                    const percentage = (grade.value / totalPoints) * 100;
+                    let gradeColor = "bg-red-100 text-red-800 border-red-300";
+                    if (percentage >= 80) gradeColor = "bg-green-100 text-green-800 border-green-300";
+                    else if (percentage >= 60) gradeColor = "bg-amber-100 text-amber-800 border-amber-300";
+                    
                     return (
                       <div
                         key={index}
-                        className="flex items-center gap-1 bg-gray-100 p-1 rounded"
+                        className={`flex items-center gap-2 ${gradeColor} px-3 py-2 rounded-lg border shadow-sm`}
                       >
-                        <span className="font-bold">
+                        <span className="font-bold text-lg">
                           {grade.value}/{totalPoints}
                         </span>
                         {grade.description && (
-                          <span className="text-xs">({grade.description})</span>
+                          <span className="text-xs border-r pr-2">({grade.description})</span>
                         )}
                         <button
                           type="button"
@@ -3764,116 +3871,126 @@ const ClassSheet = ({
                             e.stopPropagation();
                             handleRemoveGrade(index);
                           }}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-600 hover:text-red-800 transition-colors"
                         >
-                          <XMarkIcon className="h-4 w-4" />
+                          <XMarkIcon className="h-5 w-5" />
                         </button>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-gray-500 text-sm mb-2">
+                <div className="text-gray-400 text-sm mb-3 p-3 bg-gray-50 rounded-lg text-center border-2 border-dashed border-gray-200">
                   هیچ نمره‌ای ثبت نشده است
                 </div>
               )}
 
               {/* Add New Grade */}
-              <div className="flex items-end gap-2">
-                <div className="flex-grow-0">
-                  <Label htmlFor="grade-value" className="text-xs">
-                    نمره:
-                  </Label>
-                  <div className="flex items-center mt-1">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
+                <div className="flex items-end gap-2 flex-wrap">
+                  <div className="flex-grow-0">
+                    <Label htmlFor="grade-value" className="text-sm font-medium text-gray-700">
+                      نمره:
+                    </Label>
+                    <div className="flex items-center mt-1 gap-2">
+                      <Input
+                        id="grade-value"
+                        type="number"
+                        min="0"
+                        step="0.25"
+                        value={newGrade.value || ""}
+                        onChange={(e) =>
+                          setNewGrade({
+                            ...newGrade,
+                            value: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-24 font-semibold"
+                        placeholder="0"
+                      />
+                      <span className="text-gray-600 font-medium">از</span>
+                      <Input
+                        id="grade-total"
+                        type="number"
+                        min="1"
+                        value={newGrade.totalPoints || 20}
+                        onChange={(e) =>
+                          setNewGrade({
+                            ...newGrade,
+                            totalPoints: parseFloat(e.target.value) || 20,
+                          })
+                        }
+                        className="w-24 font-semibold"
+                        placeholder="20"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <Label htmlFor="grade-desc" className="text-sm font-medium text-gray-700">
+                      توضیحات:
+                    </Label>
                     <Input
-                      id="grade-value"
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      value={newGrade.value || ""}
+                      id="grade-desc"
+                      type="text"
+                      value={newGrade.description}
                       onChange={(e) =>
-                        setNewGrade({
-                          ...newGrade,
-                          value: parseFloat(e.target.value) || 0,
-                        })
+                        setNewGrade({ ...newGrade, description: e.target.value })
                       }
-                      className="w-20"
-                    />
-                    <span className="mx-1">از</span>
-                    <Input
-                      id="grade-total"
-                      type="number"
-                      min="1"
-                      value={newGrade.totalPoints || 20}
-                      onChange={(e) =>
-                        setNewGrade({
-                          ...newGrade,
-                          totalPoints: parseFloat(e.target.value) || 20,
-                        })
-                      }
-                      className="w-20"
+                      className="mt-1"
+                      placeholder="توضیحات نمره..."
                     />
                   </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddGrade}
+                    className="mb-0.5 bg-green-600 hover:bg-green-700"
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    افزودن نمره
+                  </Button>
                 </div>
-                <div className="flex-1">
-                  <Label htmlFor="grade-desc" className="text-xs">
-                    توضیحات:
-                  </Label>
-                  <Input
-                    id="grade-desc"
-                    type="text"
-                    value={newGrade.description}
-                    onChange={(e) =>
-                      setNewGrade({ ...newGrade, description: e.target.value })
-                    }
-                    className="mt-1"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAddGrade}
-                  className="mb-0.5"
-                >
-                  <PlusIcon className="h-4 w-4 mr-1" />
-                  افزودن
-                </Button>
               </div>
             </div>
 
             {/* Assessments Section */}
-            <div className="space-y-2 border p-2 rounded-md">
-              <Label>ارزیابی‌ها:</Label>
+            <div className="bg-white p-4 rounded-lg border-2 border-purple-200 shadow-sm">
+              <Label className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                ارزیابی‌ها
+                {assessments.length > 0 && (
+                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                    {assessments.length} ارزیابی
+                  </span>
+                )}
+              </Label>
 
               {/* Existing Assessments */}
               {assessments.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-2 mb-3 p-3 bg-purple-50 rounded-lg">
                   {assessments.map((assessment, index) => {
                     // Get assessment weight
                     const weight = getAssessmentWeight(assessment.value);
 
-                    // Determine badge color based on assessment value
-                    let badgeColor = "bg-gray-100";
-                    if (assessment.value === "عالی")
-                      badgeColor = "bg-green-100 text-green-800";
-                    else if (assessment.value === "خوب")
-                      badgeColor = "bg-blue-100 text-blue-800";
-                    else if (assessment.value === "متوسط")
-                      badgeColor = "bg-yellow-100 text-yellow-800";
-                    else if (assessment.value === "ضعیف")
-                      badgeColor = "bg-orange-100 text-orange-800";
-                    else if (assessment.value === "بسیار ضعیف")
-                      badgeColor = "bg-red-100 text-red-800";
+                    // Determine badge color based on weight
+                    let badgeColor = "bg-gray-100 text-gray-800 border-gray-300";
+                    if (weight > 0) {
+                      badgeColor = "bg-green-100 text-green-800 border-green-300";
+                    } else if (weight < 0) {
+                      badgeColor = "bg-red-100 text-red-800 border-red-300";
+                    }
 
                     return (
                       <div
                         key={index}
-                        className={`flex items-center gap-1 p-1 rounded ${badgeColor}`}
+                        className={`flex items-center gap-2 ${badgeColor} px-3 py-2 rounded-lg border shadow-sm`}
                       >
                         <span className="font-bold">{assessment.title}:</span>
-                        <span>{assessment.value}</span>
+                        <span className="font-medium">{assessment.value}</span>
                         {weight !== 0 && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs font-semibold">
                             ({weight > 0 ? "+" : ""}
                             {weight})
                           </span>
@@ -3884,28 +4001,28 @@ const ClassSheet = ({
                             e.stopPropagation();
                             handleRemoveAssessment(index);
                           }}
-                          className="text-red-500 hover:text-red-700 ml-1"
+                          className="text-red-600 hover:text-red-800 transition-colors mr-1"
                         >
-                          <XMarkIcon className="h-4 w-4" />
+                          <XMarkIcon className="h-5 w-5" />
                         </button>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-gray-500 text-sm mb-2">
+                <div className="text-gray-400 text-sm mb-3 p-3 bg-gray-50 rounded-lg text-center border-2 border-dashed border-gray-200">
                   هیچ ارزیابی ثبت نشده است
                 </div>
               )}
 
               {/* Add New Assessment */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-end gap-2">
-                  <div className="flex-grow-0">
-                    <Label htmlFor="assessment-title" className="text-xs">
+              <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-3 rounded-lg border border-purple-200">
+                <div className="flex items-end gap-2 flex-wrap">
+                  <div className="flex-grow-0 min-w-[200px]">
+                    <Label htmlFor="assessment-title" className="text-sm font-medium text-gray-700">
                       عنوان ارزیابی:
                     </Label>
-                    <div className="flex items-center">
+                    <div className="flex items-center mt-1 gap-1">
                       <Select
                         value={newAssessment.title}
                         onValueChange={(value) =>
@@ -3914,7 +4031,7 @@ const ClassSheet = ({
                       >
                         <SelectTrigger
                           id="assessment-title"
-                          className="w-[180px]"
+                          className="w-full"
                         >
                           <SelectValue placeholder="انتخاب عنوان" />
                         </SelectTrigger>
@@ -3931,17 +4048,18 @@ const ClassSheet = ({
                         size="icon"
                         variant="ghost"
                         onClick={() => setIsAddingTitle(true)}
-                        className="ml-1"
+                        className="flex-shrink-0"
+                        title="افزودن عنوان جدید"
                       >
-                        <PlusCircleIcon className="h-5 w-5" />
+                        <PlusCircleIcon className="h-5 w-5 text-purple-600" />
                       </Button>
                     </div>
                   </div>
-                  <div className="flex-grow-0">
-                    <Label htmlFor="assessment-value" className="text-xs">
+                  <div className="flex-grow-0 min-w-[200px]">
+                    <Label htmlFor="assessment-value" className="text-sm font-medium text-gray-700">
                       مقدار ارزیابی:
                     </Label>
-                    <div className="flex items-center">
+                    <div className="flex items-center mt-1 gap-1">
                       <Select
                         value={newAssessment.value}
                         onValueChange={(value) =>
@@ -3950,7 +4068,7 @@ const ClassSheet = ({
                       >
                         <SelectTrigger
                           id="assessment-value"
-                          className="w-[180px]"
+                          className="w-full"
                         >
                           <SelectValue placeholder="انتخاب مقدار" />
                         </SelectTrigger>
@@ -3976,9 +4094,10 @@ const ClassSheet = ({
                         size="icon"
                         variant="ghost"
                         onClick={() => setIsAddingValue(true)}
-                        className="ml-1"
+                        className="flex-shrink-0"
+                        title="افزودن مقدار جدید"
                       >
-                        <PlusCircleIcon className="h-5 w-5" />
+                        <PlusCircleIcon className="h-5 w-5 text-purple-600" />
                       </Button>
                     </div>
                   </div>
@@ -3986,10 +4105,10 @@ const ClassSheet = ({
                     type="button"
                     size="sm"
                     onClick={handleAddAssessment}
-                    className="mb-0.5"
+                    className="mb-0.5 bg-purple-600 hover:bg-purple-700"
                   >
                     <PlusIcon className="h-4 w-4 mr-1" />
-                    افزودن
+                    افزودن ارزیابی
                   </Button>
                 </div>
 
@@ -4101,29 +4220,60 @@ const ClassSheet = ({
             </div>
 
             {/* Notes Section */}
-            <div className="space-y-2">
-              <Label htmlFor="note-text">یادداشت:</Label>
+            <div className="bg-white p-4 rounded-lg border-2 border-amber-200 shadow-sm">
+              <Label htmlFor="note-text" className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                یادداشت
+                {noteText.trim() && (
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                    {noteText.length} کاراکتر
+                  </span>
+                )}
+              </Label>
               <Textarea
                 id="note-text"
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                placeholder="یادداشت خود را وارد کنید..."
-                className="min-h-[100px]"
+                placeholder="یادداشت خود را در اینجا وارد کنید..."
+                className="min-h-[120px] resize-none"
               />
             </div>
           </div>
 
-          <DialogFooter className="sm:justify-start">
+          <DialogFooter className="border-t pt-4 bg-gray-50">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => setIsModalOpen(false)}
               disabled={isLoading}
+              className="border-gray-300"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
               انصراف
             </Button>
-            <Button type="button" onClick={handleSaveNote} disabled={isLoading}>
-              {isLoading ? "در حال ذخیره..." : "ذخیره"}
+            <Button 
+              type="button" 
+              onClick={handleSaveNote} 
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLoading ? (
+                <>
+                  <span className="h-4 w-4 ml-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                  در حال ذخیره...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  ذخیره اطلاعات
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
