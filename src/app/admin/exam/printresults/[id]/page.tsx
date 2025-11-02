@@ -698,7 +698,21 @@ export default function PrintExamResults({
       0
     );
     const unansweredQuestions = participants.reduce(
-      (sum, p) => sum + (p.unansweredCount || 0),
+      (sum, p) => {
+        // Use scanResult.unAnswered if available (matches display logic)
+        if (p.scanResult?.unAnswered) {
+          return sum + p.scanResult.unAnswered.length;
+        }
+        // Otherwise count answers where isCorrect === null
+        const countFromAnswers = p.answers.filter(
+          (answer) => answer.isCorrect === null
+        ).length;
+        if (countFromAnswers > 0) {
+          return sum + countFromAnswers;
+        }
+        // Fallback to unansweredCount
+        return sum + (p.unansweredCount || 0);
+      },
       0
     );
 
@@ -989,22 +1003,42 @@ export default function PrintExamResults({
                       </>
                     ) : useNegativeMarking ? (
                       <>
-                        <p className="text-xl">
-                          نمره (با احتساب منفی):{" "}
-                          {toPersianDigits(
-                            calculateNegativeMarkingScore(
-                              participant.correctAnswerCount || 0,
-                              participant.wrongAnswerCount || 0,
-                              participant.maxScore && participant.answers.length > 0
-                                ? participant.maxScore / participant.answers.length
-                                : 1
-                            ).toFixed(2)
-                          )}{" "}
-                          از {toPersianDigits(participant.maxScore || 0)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          نمره اصلی: {toPersianDigits(participant.sumScore || 0)}
-                        </p>
+                        {(() => {
+                          // Calculate wrong count for negative marking (only wrong answers, not unanswered)
+                          let wrongCountForNegMarking = 0;
+                          if (participant.scanResult?.wrongAnswers) {
+                            wrongCountForNegMarking = participant.scanResult.wrongAnswers.length;
+                            // Include multipleAnswers as wrong for negative marking
+                            if (participant.scanResult.multipleAnswers) {
+                              wrongCountForNegMarking += participant.scanResult.multipleAnswers.length;
+                            }
+                          } else {
+                            wrongCountForNegMarking = participant.answers.filter(
+                              (answer) => answer.isCorrect === false
+                            ).length;
+                          }
+                          
+                          return (
+                            <>
+                              <p className="text-xl">
+                                نمره (با احتساب منفی):{" "}
+                                {toPersianDigits(
+                                  calculateNegativeMarkingScore(
+                                    participant.correctAnswerCount || 0,
+                                    wrongCountForNegMarking,
+                                    participant.maxScore && participant.answers.length > 0
+                                      ? participant.maxScore / participant.answers.length
+                                      : 1
+                                  ).toFixed(2)
+                                )}{" "}
+                                از {toPersianDigits(participant.maxScore || 0)}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                نمره اصلی: {toPersianDigits(participant.sumScore || 0)}
+                              </p>
+                            </>
+                          );
+                        })()}
                       </>
                     ) : (
                       <>
@@ -1051,13 +1085,35 @@ export default function PrintExamResults({
                     <div className="border rounded p-2 text-center bg-gray-50 print-stat-box">
                       <p className="text-sm text-gray-600">بدون پاسخ</p>
                       <p className="text-lg text-gray-600">
-                        {toPersianDigits(participant.unansweredCount || 0)}
+                        {toPersianDigits(
+                          participant.scanResult?.unAnswered?.length ??
+                            participant.answers.filter(
+                              (answer) => answer.isCorrect === null
+                            ).length ??
+                            participant.unansweredCount ??
+                            0
+                        )}
                       </p>
                     </div>
                   </div>
                   {useNegativeMarking && (() => {
                     // Calculate negative marking details
-                    const wrongCount = participant.wrongAnswerCount || 0;
+                    // For negative marking, only count actual wrong answers, not unanswered
+                    let wrongCount = 0;
+                    if (participant.scanResult?.wrongAnswers) {
+                      // Use scanResult wrongAnswers (doesn't include unanswered)
+                      wrongCount = participant.scanResult.wrongAnswers.length;
+                      // Optionally include multipleAnswers as wrong answers for negative marking
+                      if (participant.scanResult.multipleAnswers) {
+                        wrongCount += participant.scanResult.multipleAnswers.length;
+                      }
+                    } else {
+                      // Count answers where isCorrect === false (not null for unanswered)
+                      wrongCount = participant.answers.filter(
+                        (answer) => answer.isCorrect === false
+                      ).length;
+                    }
+                    
                     const correctCount = participant.correctAnswerCount || 0;
                     const maxScorePerQuestion = participant.maxScore && participant.answers.length > 0
                       ? participant.maxScore / participant.answers.length
