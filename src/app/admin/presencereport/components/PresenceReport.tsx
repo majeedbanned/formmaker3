@@ -37,6 +37,8 @@ import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import type { Value } from "react-multi-date-picker";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 // Define types
 type CellData = {
@@ -461,6 +463,8 @@ const PresenceReport = ({
   const [presenceRecords, setPresenceRecords] = useState<PresenceRecord[]>([]);
   const [todayAbsent, setTodayAbsent] = useState<PresenceRecord[]>([]);
   const [todayLate, setTodayLate] = useState<PresenceRecord[]>([]);
+  const [showUniqueAbsences, setShowUniqueAbsences] = useState(false); // Toggle for unique/all absences
+  const [showUniqueDelays, setShowUniqueDelays] = useState(false); // Toggle for unique/all delays
   const [studentStats, setStudentStats] = useState<StudentStats[]>([]);
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
   const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
@@ -481,6 +485,17 @@ const PresenceReport = ({
   const [selectedPhones, setSelectedPhones] = useState<Record<string, string[]>>({});
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsSection, setSmsSection] = useState<"absent" | "late">("absent");
+  
+  // Custom SMS related state
+  const [isCustomSmsDialogOpen, setIsCustomSmsDialogOpen] = useState(false);
+  const [customSmsData, setCustomSmsData] = useState<{
+    studentCode: string;
+    studentName: string;
+    message: string;
+    phones: string[];
+    selectedPhones: string[];
+  }[]>([]);
+  const [isSendingCustomSms, setIsSendingCustomSms] = useState(false);
   const [isSmsEnabled, setIsSmsEnabled] = useState<boolean | null>(null);
   const [isCheckingSmsStatus, setIsCheckingSmsStatus] = useState(true);
   const [smsCredit, setSmsCredit] = useState<string>("0");
@@ -982,11 +997,304 @@ const PresenceReport = ({
     });
   };
 
+  // Helper functions to get unique absences/delays per student per day
+  const getUniqueAbsences = (records: PresenceRecord[]): PresenceRecord[] => {
+    const uniqueMap = new Map<string, PresenceRecord>();
+    
+    records.forEach(record => {
+      const key = `${record.studentCode}-${record.date.split('T')[0]}`;
+      
+      // If student not in map, or current record has more class periods, keep it
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, record);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
+  const getUniqueDelays = (records: PresenceRecord[]): PresenceRecord[] => {
+    const uniqueMap = new Map<string, PresenceRecord>();
+    
+    records.forEach(record => {
+      const key = `${record.studentCode}-${record.date.split('T')[0]}`;
+      
+      // If student not in map, or current record has more class periods, keep it
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, record);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
+  // Get the display data based on toggle state
+  const displayedAbsences = showUniqueAbsences ? getUniqueAbsences(todayAbsent) : todayAbsent;
+  const displayedDelays = showUniqueDelays ? getUniqueDelays(todayLate) : todayLate;
+
+  // Excel Export Functions
+  const exportToExcel = async (records: PresenceRecord[], type: "absent" | "late") => {
+    if (records.length === 0) {
+      toast.warning(`هیچ ${type === "absent" ? "غیبتی" : "تاخیری"} برای خروجی وجود ندارد`);
+      return;
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(type === "absent" ? "غیبت‌ها" : "تاخیرها");
+
+      // Set RTL direction for the worksheet
+      worksheet.views = [{ rightToLeft: true }];
+
+      // Define columns
+      worksheet.columns = [
+        { header: "ردیف", key: "index", width: 10 },
+        { header: "نام دانش‌آموز", key: "studentName", width: 25 },
+        { header: "کد دانش‌آموز", key: "studentCode", width: 15 },
+        { header: "کلاس", key: "className", width: 20 },
+        { header: "درس", key: "courseName", width: 20 },
+        { header: "معلم", key: "teacherName", width: 25 },
+        { header: "ساعت", key: "timeSlot", width: 15 },
+        { header: "تاریخ", key: "date", width: 20 },
+        { header: "وضعیت", key: "status", width: 15 },
+      ];
+
+      // Style header row
+      worksheet.getRow(1).font = { bold: true, size: 12 };
+      worksheet.getRow(1).alignment = { horizontal: "center", vertical: "middle" };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: type === "absent" ? "FFEF4444" : "FFEAB308" },
+      };
+      worksheet.getRow(1).height = 25;
+
+      // Add data rows
+      records.forEach((record, index) => {
+        const row = worksheet.addRow({
+          index: index + 1,
+          studentName: record.studentName,
+          studentCode: record.studentCode,
+          className: record.className,
+          courseName: record.courseName,
+          teacherName: record.teacherName,
+          timeSlot: record.timeSlot,
+          date: formatDate(record.date),
+          status: record.absenceAcceptable !== undefined 
+            ? (record.absenceAcceptable ? "قابل قبول" : "غیرقابل قبول")
+            : "-",
+        });
+
+        // Center align all cells
+        row.alignment = { horizontal: "center", vertical: "middle" };
+        
+        // Alternate row colors
+        if (index % 2 === 0) {
+          row.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF3F4F6" },
+          };
+        }
+      });
+
+      // Add borders to all cells
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Generate filename with date
+      const persianDate = formatDate(selectedDate);
+      const viewType = (type === "absent" && showUniqueAbsences) || (type === "late" && showUniqueDelays) ? "یکتا" : "همه";
+      const fileName = `گزارش_${type === "absent" ? "غیبت" : "تاخیر"}_${viewType}_${persianDate}.xlsx`;
+
+      // Generate buffer and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, fileName);
+
+      toast.success("فایل اکسل با موفقیت ذخیره شد");
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("خطا در خروجی اکسل");
+    }
+  };
+
+  const exportAbsencesToExcel = () => {
+    exportToExcel(displayedAbsences, "absent");
+  };
+
+  const exportDelaysToExcel = () => {
+    exportToExcel(displayedDelays, "late");
+  };
+
+  // Custom SMS Functions
+  const openCustomSmsDialog = async (section: "absent" | "late") => {
+    const records = section === "absent" ? todayAbsent : todayLate;
+    
+    if (records.length === 0) {
+      toast.warning(`هیچ ${section === "absent" ? "غیبتی" : "تاخیری"} در تاریخ انتخاب شده ثبت نشده است.`);
+      return;
+    }
+
+    try {
+      // Group records by student
+      const studentRecordsMap = new Map<string, PresenceRecord[]>();
+      
+      records.forEach(record => {
+        const existing = studentRecordsMap.get(record.studentCode) || [];
+        existing.push(record);
+        studentRecordsMap.set(record.studentCode, existing);
+      });
+
+      // Get unique student codes
+      const studentCodes = Array.from(studentRecordsMap.keys());
+      
+      // Fetch phone numbers
+      const response = await fetch("/api/students/phone-numbers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify({
+          studentCodes,
+          schoolCode: schoolCode
+        }),
+      });
+
+      if (response.ok) {
+        const { students } = await response.json();
+        
+        // Create custom SMS data for each student
+        const customData = studentCodes.map(studentCode => {
+          const studentRecords = studentRecordsMap.get(studentCode) || [];
+          const firstRecord = studentRecords[0];
+          const student = students.find((s: any) => s.studentCode === studentCode);
+          
+          // Create list of courses
+          const courses = studentRecords.map(r => r.courseName).join("، ");
+          const courseCount = studentRecords.length;
+          
+          // Generate custom message
+          const message = `سلام، ${firstRecord.studentName} عزیز در تاریخ ${formatDate(selectedDate)} در ${courseCount} درس ${section === "absent" ? "غایب" : "با تاخیر"} بوده است: ${courses}`;
+          
+          const phones = student?.phones || [];
+          
+          return {
+            studentCode,
+            studentName: firstRecord.studentName,
+            message,
+            phones: phones.map((p: any) => p.number),
+            selectedPhones: phones.filter((p: any) => p.sendSMS).map((p: any) => p.number)
+          };
+        });
+
+        setCustomSmsData(customData);
+        setIsCustomSmsDialogOpen(true);
+      } else {
+        toast.error("خطا در دریافت شماره‌های تلفن دانش‌آموزان");
+      }
+    } catch (error) {
+      console.error("Error fetching student phones:", error);
+      toast.error("خطا در دریافت شماره‌های تلفن");
+    }
+  };
+
+  const sendCustomSms = async () => {
+    setIsSendingCustomSms(true);
+    
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Send SMS for each student
+      for (const student of customSmsData) {
+        if (student.selectedPhones.length === 0) continue;
+        
+        try {
+          const response = await fetch("/api/sms/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-domain": window.location.host,
+            },
+            body: JSON.stringify({
+              phoneNumbers: student.selectedPhones,
+              message: student.message,
+              schoolCode: schoolCode
+            }),
+          });
+          
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          console.error(`Error sending SMS to ${student.studentName}:`, error);
+          failCount++;
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`پیامک به ${successCount} دانش‌آموز با موفقیت ارسال شد`);
+      }
+      if (failCount > 0) {
+        toast.error(`خطا در ارسال پیامک به ${failCount} دانش‌آموز`);
+      }
+      
+      setIsCustomSmsDialogOpen(false);
+      setCustomSmsData([]);
+    } catch (error) {
+      console.error("Error sending custom SMS:", error);
+      toast.error("خطا در ارسال پیامک‌ها");
+    } finally {
+      setIsSendingCustomSms(false);
+    }
+  };
+
+  const updateCustomSmsMessage = (studentCode: string, newMessage: string) => {
+    setCustomSmsData(prev => 
+      prev.map(student => 
+        student.studentCode === studentCode 
+          ? { ...student, message: newMessage }
+          : student
+      )
+    );
+  };
+
+  const toggleCustomSmsPhone = (studentCode: string, phone: string) => {
+    setCustomSmsData(prev =>
+      prev.map(student => {
+        if (student.studentCode === studentCode) {
+          const isSelected = student.selectedPhones.includes(phone);
+          return {
+            ...student,
+            selectedPhones: isSelected
+              ? student.selectedPhones.filter(p => p !== phone)
+              : [...student.selectedPhones, phone]
+          };
+        }
+        return student;
+      })
+    );
+  };
+
   // SMS Functions
   const openSmsDialog = async (section: "absent" | "late") => {
     setSmsSection(section);
     
-    // Get the appropriate records based on section
+    // Get the appropriate records based on section (always use all records for SMS)
     const records = section === "absent" ? todayAbsent : todayLate;
     
     if (records.length === 0) {
@@ -1604,22 +1912,37 @@ const PresenceReport = ({
             {/* Today's Absences */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg text-red-800">
-                    غیبت‌های امروز
-                  </CardTitle>
-                  {user?.userType === "school" && todayAbsent.length > 0 && (
-                    <>
-                      {isCheckingSmsStatus ? (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
-                          در حال بررسی وضعیت پیامک...
-                        </div>
-                      ) : isSmsEnabled ? (
-                        <Button
-                          onClick={() => openSmsDialog("absent")}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          size="sm"
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-lg text-red-800">
+                      غیبت‌های امروز
+                    </CardTitle>
+                    {todayAbsent.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <button
+                          onClick={() => setShowUniqueAbsences(false)}
+                          className={`px-3 py-1 rounded-md transition-colors ${
+                            !showUniqueAbsences
+                              ? 'bg-red-600 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          همه ({toPersianDigits(todayAbsent.length)})
+                        </button>
+                        <button
+                          onClick={() => setShowUniqueAbsences(true)}
+                          className={`px-3 py-1 rounded-md transition-colors ${
+                            showUniqueAbsences
+                              ? 'bg-red-600 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          یکتا ({toPersianDigits(getUniqueAbsences(todayAbsent).length)})
+                        </button>
+                        <button
+                          onClick={exportAbsencesToExcel}
+                          className="px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1"
+                          title="خروجی اکسل"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1631,12 +1954,69 @@ const PresenceReport = ({
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="ml-2"
                           >
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
                           </svg>
-                          ارسال پیامک
-                        </Button>
+                          اکسل
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {user?.userType === "school" && todayAbsent.length > 0 && (
+                    <>
+                      {isCheckingSmsStatus ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
+                          در حال بررسی وضعیت پیامک...
+                        </div>
+                      ) : isSmsEnabled ? (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => openSmsDialog("absent")}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            size="sm"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            ارسال پیامک
+                          </Button>
+                          <Button
+                            onClick={() => openCustomSmsDialog("absent")}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            size="sm"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            پیامک اختصاصی
+                          </Button>
+                        </div>
                       ) : (
                         <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
                           <div className="flex items-center">
@@ -1689,7 +2069,7 @@ const PresenceReport = ({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {todayAbsent.map((record, index) => (
+                        {displayedAbsences.map((record, index) => (
                           <TableRow key={`absent-${index}`}>
                             <TableCell className="font-medium">
                               {record.studentName}
@@ -1736,22 +2116,37 @@ const PresenceReport = ({
             {/* Today's Late Arrivals */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg text-yellow-800">
-                    تاخیرهای امروز
-                  </CardTitle>
-                  {user?.userType === "school" && todayLate.length > 0 && (
-                    <>
-                      {isCheckingSmsStatus ? (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
-                          در حال بررسی وضعیت پیامک...
-                        </div>
-                      ) : isSmsEnabled ? (
-                        <Button
-                          onClick={() => openSmsDialog("late")}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                          size="sm"
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-lg text-yellow-800">
+                      تاخیرهای امروز
+                    </CardTitle>
+                    {todayLate.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <button
+                          onClick={() => setShowUniqueDelays(false)}
+                          className={`px-3 py-1 rounded-md transition-colors ${
+                            !showUniqueDelays
+                              ? 'bg-yellow-600 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          همه ({toPersianDigits(todayLate.length)})
+                        </button>
+                        <button
+                          onClick={() => setShowUniqueDelays(true)}
+                          className={`px-3 py-1 rounded-md transition-colors ${
+                            showUniqueDelays
+                              ? 'bg-yellow-600 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          یکتا ({toPersianDigits(getUniqueDelays(todayLate).length)})
+                        </button>
+                        <button
+                          onClick={exportDelaysToExcel}
+                          className="px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1"
+                          title="خروجی اکسل"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1763,12 +2158,69 @@ const PresenceReport = ({
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="ml-2"
                           >
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
                           </svg>
-                          ارسال پیامک
-                        </Button>
+                          اکسل
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {user?.userType === "school" && todayLate.length > 0 && (
+                    <>
+                      {isCheckingSmsStatus ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <span className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 border-t-transparent animate-spin"></span>
+                          در حال بررسی وضعیت پیامک...
+                        </div>
+                      ) : isSmsEnabled ? (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => openSmsDialog("late")}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            size="sm"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            ارسال پیامک
+                          </Button>
+                          <Button
+                            onClick={() => openCustomSmsDialog("late")}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            size="sm"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="ml-2"
+                            >
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            پیامک اختصاصی
+                          </Button>
+                        </div>
                       ) : (
                         <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
                           <div className="flex items-center">
@@ -1821,7 +2273,7 @@ const PresenceReport = ({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {todayLate.map((record, index) => (
+                        {displayedDelays.map((record, index) => (
                           <TableRow key={`late-${index}`}>
                             <TableCell className="font-medium">
                               {record.studentName}
@@ -2543,6 +2995,115 @@ const PresenceReport = ({
                 <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
               )}
               {isSendingSms ? "در حال ارسال..." : "ارسال پیامک"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom SMS Dialog */}
+      <Dialog open={isCustomSmsDialogOpen} onOpenChange={setIsCustomSmsDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>
+              ارسال پیامک اختصاصی به هر دانش‌آموز
+            </DialogTitle>
+            <DialogDescription>
+              هر دانش‌آموز پیام اختصاصی بر اساس غیبت یا تاخیرهای خود دریافت می‌کند
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {customSmsData.map((student, index) => (
+              <div key={student.studentCode} className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                {/* Student Header */}
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h4 className="font-semibold text-gray-800">
+                    {index + 1}. {student.studentName}
+                  </h4>
+                  <span className="text-xs text-gray-500">
+                    کد: {student.studentCode}
+                  </span>
+                </div>
+
+                {/* Message Text */}
+                <div>
+                  <Label className="text-sm font-medium mb-1 block">متن پیام</Label>
+                  <Textarea
+                    value={student.message}
+                    onChange={(e) => updateCustomSmsMessage(student.studentCode, e.target.value)}
+                    className="min-h-[80px] text-sm"
+                    dir="rtl"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    تعداد کاراکتر: {student.message.length}
+                  </div>
+                </div>
+
+                {/* Phone Numbers */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    انتخاب شماره تلفن ({student.selectedPhones.length} انتخاب شده)
+                  </Label>
+                  <div className="space-y-2">
+                    {student.phones.length > 0 ? (
+                      student.phones.map((phone, phoneIndex) => (
+                        <div key={phoneIndex} className="flex items-center gap-2 bg-white p-2 rounded">
+                          <Checkbox
+                            id={`custom-phone-${student.studentCode}-${phoneIndex}`}
+                            checked={student.selectedPhones.includes(phone)}
+                            onCheckedChange={() => toggleCustomSmsPhone(student.studentCode, phone)}
+                          />
+                          <Label
+                            htmlFor={`custom-phone-${student.studentCode}-${phoneIndex}`}
+                            className="flex-1 text-sm cursor-pointer"
+                          >
+                            {phone}
+                          </Label>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500 bg-white p-2 rounded">
+                        هیچ شماره تلفنی ثبت نشده است
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Summary */}
+          {customSmsData.length > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-3 mt-4">
+              <div className="text-sm text-purple-800">
+                <strong>خلاصه:</strong> پیامک اختصاصی به {customSmsData.filter(s => s.selectedPhones.length > 0).length} دانش‌آموز 
+                ({customSmsData.reduce((sum, s) => sum + s.selectedPhones.length, 0)} شماره) ارسال خواهد شد
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsCustomSmsDialogOpen(false);
+                setCustomSmsData([]);
+              }}
+              disabled={isSendingCustomSms}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={sendCustomSms}
+              disabled={isSendingCustomSms || customSmsData.every(s => s.selectedPhones.length === 0)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isSendingCustomSms && (
+                <span className="h-4 w-4 mr-2 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+              )}
+              {isSendingCustomSms ? "در حال ارسال..." : "ارسال پیامک‌ها"}
             </Button>
           </DialogFooter>
         </DialogContent>
