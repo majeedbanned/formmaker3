@@ -145,6 +145,7 @@ type AbsenceStatusDialog = {
   isAcceptable: boolean;
   description: string;
   isSubmitting: boolean;
+  applyToAllToday: boolean;
 };
 
 // Helper function: Convert numbers to Persian digits.
@@ -517,7 +518,8 @@ const PresenceReport = ({
     record: null,
     isAcceptable: false,
     description: "",
-    isSubmitting: false
+    isSubmitting: false,
+    applyToAllToday: false
   });
   const { user } = useAuth();
 
@@ -1529,7 +1531,8 @@ const PresenceReport = ({
       record,
       isAcceptable: record.absenceAcceptable || false,
       description: record.absenceDescription || "",
-      isSubmitting: false
+      isSubmitting: false,
+      applyToAllToday: false
     });
   };
 
@@ -1539,7 +1542,8 @@ const PresenceReport = ({
       record: null,
       isAcceptable: false,
       description: "",
-      isSubmitting: false
+      isSubmitting: false,
+      applyToAllToday: false
     });
   };
 
@@ -1549,29 +1553,60 @@ const PresenceReport = ({
     try {
       setAbsenceStatusDialog(prev => ({ ...prev, isSubmitting: true }));
 
-      const response = await fetch("/api/classsheet/update-absence-status", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-domain": window.location.host,
-        },
-        body: JSON.stringify({
-          classCode: absenceStatusDialog.record.classCode,
-          courseCode: absenceStatusDialog.record.courseCode,
-          studentCode: absenceStatusDialog.record.studentCode,
-          teacherCode: absenceStatusDialog.record.teacherCode,
-          date: absenceStatusDialog.record.date,
-          timeSlot: absenceStatusDialog.record.timeSlot,
-          isAcceptable: absenceStatusDialog.isAcceptable,
-          description: absenceStatusDialog.description,
-          schoolCode: schoolCode
-        }),
-      });
+      // Get all records that need to be updated
+      let recordsToUpdate: PresenceRecord[] = [absenceStatusDialog.record];
+      
+      if (absenceStatusDialog.applyToAllToday) {
+        // Find all absences for this student on the same date
+        const recordDate = absenceStatusDialog.record.date.split('T')[0];
+        recordsToUpdate = presenceRecords.filter(record => 
+          record.studentCode === absenceStatusDialog.record?.studentCode &&
+          record.date.split('T')[0] === recordDate &&
+          record.presenceStatus === "absent"
+        );
+      }
 
-      if (response.ok) {
-        // Update the local record
+      // Update all records
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const record of recordsToUpdate) {
+        try {
+          const response = await fetch("/api/classsheet/update-absence-status", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-domain": window.location.host,
+            },
+            body: JSON.stringify({
+              classCode: record.classCode,
+              courseCode: record.courseCode,
+              studentCode: record.studentCode,
+              teacherCode: record.teacherCode,
+              date: record.date,
+              timeSlot: record.timeSlot,
+              isAcceptable: absenceStatusDialog.isAcceptable,
+              description: absenceStatusDialog.description,
+              schoolCode: schoolCode
+            }),
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          console.error("Error updating record:", error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        // Update the local records
         const updatedRecords = presenceRecords.map(record => {
-          if (record.id === absenceStatusDialog.record?.id) {
+          const shouldUpdate = recordsToUpdate.some(r => r.id === record.id);
+          if (shouldUpdate) {
             return {
               ...record,
               absenceAcceptable: absenceStatusDialog.isAcceptable,
@@ -1583,15 +1618,20 @@ const PresenceReport = ({
         setPresenceRecords(updatedRecords);
 
         // Show success message
-        alert("وضعیت غیبت با موفقیت به‌روزرسانی شد");
+        if (recordsToUpdate.length > 1) {
+          toast.success(`وضعیت ${successCount} غیبت با موفقیت به‌روزرسانی شد`);
+        } else {
+          toast.success("وضعیت غیبت با موفقیت به‌روزرسانی شد");
+        }
         closeAbsenceStatusDialog();
-      } else {
-        const errorData = await response.json();
-        alert(`خطا در به‌روزرسانی وضعیت: ${errorData.error}`);
+      }
+      
+      if (failCount > 0) {
+        toast.error(`خطا در به‌روزرسانی ${failCount} غیبت`);
       }
     } catch (error) {
       console.error("Error updating absence status:", error);
-      alert("خطا در به‌روزرسانی وضعیت غیبت");
+      toast.error("خطا در به‌روزرسانی وضعیت غیبت");
     } finally {
       setAbsenceStatusDialog(prev => ({ ...prev, isSubmitting: false }));
     }
@@ -3434,6 +3474,38 @@ const PresenceReport = ({
                 <Label htmlFor="acceptable" className="text-sm font-medium">
                   {absenceStatusDialog.record.presenceStatus === "absent" ? "غیبت قابل قبول است" : "تاخیر قابل قبول است"}
                 </Label>
+              </div>
+
+              {/* Apply to All Today Checkbox */}
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 space-y-2">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                  <input
+                    type="checkbox"
+                    id="applyToAll"
+                    checked={absenceStatusDialog.applyToAllToday}
+                    onChange={(e) => setAbsenceStatusDialog(prev => ({ 
+                      ...prev, 
+                      applyToAllToday: e.target.checked 
+                    }))}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <Label htmlFor="applyToAll" className="text-sm font-medium flex-1 cursor-pointer">
+                    اعمال به تمام غیبت‌های این دانش‌آموز در این روز
+                  </Label>
+                </div>
+                {absenceStatusDialog.applyToAllToday && (() => {
+                  const recordDate = absenceStatusDialog.record.date.split('T')[0];
+                  const todayAbsences = presenceRecords.filter(record => 
+                    record.studentCode === absenceStatusDialog.record?.studentCode &&
+                    record.date.split('T')[0] === recordDate &&
+                    record.presenceStatus === "absent"
+                  );
+                  return (
+                    <div className="text-xs text-blue-700 pr-6">
+                      این تنظیمات به {toPersianDigits(todayAbsences.length)} غیبت اعمال خواهد شد
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Description */}
