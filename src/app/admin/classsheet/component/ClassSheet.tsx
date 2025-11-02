@@ -3298,18 +3298,28 @@ const ClassSheet = ({
                 </div>
               </th>
               {allColumns.length > 0 ? (
-                allColumns.map((col, index) => (
-                  <th
-                    key={index}
-                    className={`px-4 py-4 w-[150px] min-w-[150px] h-14 border-b border-gray-200 text-sm whitespace-normal font-medium transition-colors ${
-                      col.day === "monthly"
-                        ? "bg-purple-600 text-white"
-                        : "bg-blue-500 text-white cursor-pointer hover:bg-blue-600"
-                    }`}
-                    onClick={() =>
-                      col.day !== "monthly" && handleColumnHeaderClick(col)
-                    }
-                  >
+                allColumns.map((col, index) => {
+                  // Check if this column is today
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const colDate = new Date(col.date);
+                  colDate.setHours(0, 0, 0, 0);
+                  const isToday = colDate.getTime() === today.getTime();
+                  
+                  return (
+                    <th
+                      key={index}
+                      className={`px-4 py-4 w-[150px] min-w-[150px] h-14 border-b border-gray-200 text-sm whitespace-normal font-medium transition-colors ${
+                        col.day === "monthly"
+                          ? "bg-purple-600 text-white"
+                          : isToday
+                          ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white cursor-pointer hover:from-yellow-500 hover:to-orange-600 shadow-lg ring-2 ring-yellow-300"
+                          : "bg-blue-500 text-white cursor-pointer hover:bg-blue-600"
+                      }`}
+                      onClick={() =>
+                        col.day !== "monthly" && handleColumnHeaderClick(col)
+                      }
+                    >
                     <div className="flex flex-col items-center space-y-1">
                       {col.day === "monthly" ? (
                         <>
@@ -3342,12 +3352,18 @@ const ClassSheet = ({
                           <span className="text-xs opacity-90">
                             {col.formattedDate}
                           </span>
-                          <span className="text-xl mt-1">➕</span>
+                          {isToday && (
+                            <div className="text-xs font-bold mt-1 bg-white text-orange-600 px-2 py-0.5 rounded-full animate-pulse">
+                              امروز
+                            </div>
+                          )}
+                          {!isToday && <span className="text-xl mt-1">➕</span>}
                         </>
                       )}
                     </div>
                   </th>
-                ))
+                  );
+                })
               ) : (
                 <th className="px-4 py-3 w-[150px] min-w-[150px] h-14 border-b border-gray-200 bg-gray-100 text-center">
                   لطفاً تاریخ شروع و پایان را وارد کنید
@@ -3495,10 +3511,23 @@ const ClassSheet = ({
                         else gradeColor = "bg-red-600 text-white";
                       }
 
+                      // Check if monthly column contains today's data
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const hasToday = monthCells.some(cell => {
+                        const cellDate = new Date(cell.date);
+                        cellDate.setHours(0, 0, 0, 0);
+                        return cellDate.getTime() === today.getTime();
+                      });
+
                       return (
                         <td
                           key={`monthly-grade-${student.studentCode}-${index}`}
-                          className="px-3 py-3 w-[150px] min-w-[150px] text-center border-b border-gray-200 bg-purple-50 cursor-pointer hover:bg-purple-100 transition-colors hover:shadow-md hover:border-purple-300"
+                          className={`px-3 py-3 w-[150px] min-w-[150px] text-center border-b cursor-pointer transition-colors hover:shadow-md ${
+                            hasToday
+                              ? "bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-400 border-2 hover:bg-purple-100 hover:border-purple-300"
+                              : "border-gray-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-300"
+                          }`}
                           onClick={() =>
                             handleMonthlyCellClick(
                               student,
@@ -3694,10 +3723,21 @@ const ClassSheet = ({
                       );
                     }
 
+                    // Check if this cell is in today's column
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const colDate = new Date(col.date);
+                    colDate.setHours(0, 0, 0, 0);
+                    const isToday = colDate.getTime() === today.getTime();
+
                     return (
                       <td
                         key={`cell-${student.studentCode}-${index}`}
-                        className="px-2 py-2 w-[150px] min-w-[150px] h-14 text-center border border-gray-200 cursor-pointer transition-all overflow-hidden hover:bg-blue-50 hover:shadow-md hover:border-blue-200"
+                        className={`px-2 py-2 w-[150px] min-w-[150px] h-14 text-center border cursor-pointer transition-all overflow-hidden ${
+                          isToday
+                            ? "bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-400 border-2 hover:bg-gradient-to-br hover:from-yellow-100 hover:to-orange-100 hover:shadow-xl hover:border-yellow-500"
+                            : "border-gray-200 hover:bg-blue-50 hover:shadow-md hover:border-blue-200"
+                        }`}
                         onClick={() =>
                           handleCellClick(student.studentCode, index, col)
                         }
