@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { SurveyQuestion } from "../../types/survey";
+import { SurveyQuestion, SurveyOption } from "../../types/survey";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,13 @@ import {
   Circle,
   CheckSquare,
   Star,
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  Upload,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface QuestionsStepProps {
   questions: SurveyQuestion[];
@@ -57,6 +63,8 @@ export default function QuestionsStep({
   onUpdate,
 }: QuestionsStepProps) {
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  const [expandedOptions, setExpandedOptions] = useState<Record<string, boolean>>({});
+  const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
 
   const addQuestion = () => {
     const newQuestion: SurveyQuestion = {
@@ -85,19 +93,33 @@ export default function QuestionsStep({
   const addOption = (questionIndex: number) => {
     const question = questions[questionIndex];
     const options = question.options || [];
+    const newOption: SurveyOption = {
+      caption: "",
+      image: "",
+      description: "",
+    };
     updateQuestion(questionIndex, {
-      options: [...options, ""],
+      options: [...options, newOption],
     });
+  };
+
+  const normalizeOption = (option: string | SurveyOption): SurveyOption => {
+    if (typeof option === "string") {
+      return { caption: option, image: "", description: "" };
+    }
+    return option;
   };
 
   const updateOption = (
     questionIndex: number,
     optionIndex: number,
+    field: keyof SurveyOption,
     value: string
   ) => {
     const question = questions[questionIndex];
     const options = [...(question.options || [])];
-    options[optionIndex] = value;
+    const currentOption = normalizeOption(options[optionIndex]);
+    options[optionIndex] = { ...currentOption, [field]: value };
     updateQuestion(questionIndex, { options });
   };
 
@@ -107,6 +129,67 @@ export default function QuestionsStep({
       (_, i) => i !== optionIndex
     );
     updateQuestion(questionIndex, { options });
+    // Clean up expanded state
+    const key = `${questionIndex}-${optionIndex}`;
+    const newExpanded = { ...expandedOptions };
+    delete newExpanded[key];
+    setExpandedOptions(newExpanded);
+  };
+
+  const toggleOptionExpanded = (questionIndex: number, optionIndex: number) => {
+    const key = `${questionIndex}-${optionIndex}`;
+    setExpandedOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleImageUpload = async (
+    questionIndex: number,
+    optionIndex: number,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("فقط فایل‌های تصویری مجاز هستند");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("حجم فایل باید کمتر از 5 مگابایت باشد");
+      return;
+    }
+
+    const key = `${questionIndex}-${optionIndex}`;
+    setUploadingImages((prev) => ({ ...prev, [key]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload/survey-images", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.url) {
+        updateOption(questionIndex, optionIndex, "image", data.url);
+        toast.success("تصویر با موفقیت آپلود شد");
+      } else {
+        toast.error(data.error || "خطا در آپلود تصویر");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("خطا در آپلود تصویر");
+    } finally {
+      setUploadingImages((prev) => ({ ...prev, [key]: false }));
+      // Reset input
+      event.target.value = "";
+    }
   };
 
   const renderQuestionEditor = (question: SurveyQuestion, index: number) => {
@@ -191,30 +274,148 @@ export default function QuestionsStep({
               {(question.type === "radio" || question.type === "checkbox") && (
                 <div className="space-y-2">
                   <Label>گزینه‌ها</Label>
-                  <div className="space-y-2">
-                    {(question.options || []).map((option, optionIndex) => (
-                      <div
-                        key={optionIndex}
-                        className="flex items-center space-x-2 space-x-reverse"
-                      >
-                        <Input
-                          value={option}
-                          onChange={(e) =>
-                            updateOption(index, optionIndex, e.target.value)
-                          }
-                          placeholder={`گزینه ${optionIndex + 1}`}
-                          dir="rtl"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteOption(index, optionIndex)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    {(question.options || []).map((option, optionIndex) => {
+                      const normalizedOption = normalizeOption(option);
+                      const expandKey = `${index}-${optionIndex}`;
+                      const isExpanded = expandedOptions[expandKey];
+
+                      return (
+                        <div key={optionIndex} className="border rounded-lg p-3 space-y-2">
+                          {/* Caption and Actions Row */}
+                          <div className="flex items-center space-x-2 space-x-reverse">
+                            <Input
+                              value={normalizedOption.caption}
+                              onChange={(e) =>
+                                updateOption(index, optionIndex, "caption", e.target.value)
+                              }
+                              placeholder={`گزینه ${optionIndex + 1}`}
+                              dir="rtl"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleOptionExpanded(index, optionIndex)}
+                              title={isExpanded ? "بستن تنظیمات پیشرفته" : "تنظیمات پیشرفته"}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteOption(index, optionIndex)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {/* Advanced Settings (Collapsible) */}
+                          {isExpanded && (
+                            <div className="space-y-3 pt-2 border-t">
+                              {/* Image Upload */}
+                              <div className="space-y-2">
+                                <Label className="text-xs text-gray-600 flex items-center gap-1">
+                                  <ImageIcon className="h-3 w-3" />
+                                  تصویر (اختیاری)
+                                </Label>
+                                
+                                {/* Upload Button */}
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="file"
+                                    id={`image-upload-${index}-${optionIndex}`}
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={(e) => handleImageUpload(index, optionIndex, e)}
+                                    className="hidden"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      document.getElementById(`image-upload-${index}-${optionIndex}`)?.click();
+                                    }}
+                                    disabled={uploadingImages[`${index}-${optionIndex}`]}
+                                    className="flex-shrink-0"
+                                  >
+                                    {uploadingImages[`${index}-${optionIndex}`] ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 ml-2 animate-spin" />
+                                        در حال آپلود...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-3 w-3 ml-2" />
+                                        آپلود تصویر
+                                      </>
+                                    )}
+                                  </Button>
+                                  
+                                  {/* URL Input (alternative to upload) */}
+                                  <Input
+                                    value={normalizedOption.image || ""}
+                                    onChange={(e) =>
+                                      updateOption(index, optionIndex, "image", e.target.value)
+                                    }
+                                    placeholder="یا آدرس تصویر را وارد کنید"
+                                    dir="ltr"
+                                    className="text-sm flex-1"
+                                  />
+                                </div>
+
+                                {/* Image Preview */}
+                                {normalizedOption.image && (
+                                  <div className="relative inline-block mt-2">
+                                    <img
+                                      src={normalizedOption.image}
+                                      alt="پیش‌نمایش"
+                                      className="h-20 w-20 object-cover rounded border"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => updateOption(index, optionIndex, "image", "")}
+                                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0"
+                                    >
+                                      ×
+                                    </Button>
+                                  </div>
+                                )}
+                                
+                                <p className="text-xs text-gray-500">
+                                  فرمت‌های مجاز: JPG, PNG, GIF, WEBP (حداکثر 5MB)
+                                </p>
+                              </div>
+
+                              {/* Description */}
+                              <div className="space-y-1">
+                                <Label className="text-xs text-gray-600">
+                                  توضیحات (اختیاری)
+                                </Label>
+                                <Textarea
+                                  value={normalizedOption.description || ""}
+                                  onChange={(e) =>
+                                    updateOption(index, optionIndex, "description", e.target.value)
+                                  }
+                                  placeholder="توضیحات این گزینه..."
+                                  dir="rtl"
+                                  className="text-sm min-h-[60px]"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     <Button
                       variant="outline"
                       size="sm"

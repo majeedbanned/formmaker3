@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,16 +14,15 @@ import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft,
   ArrowRight,
-  Send,
   FileText,
   Calendar,
   User,
   Star,
+  Eye,
+  AlertCircle,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useSurvey } from "../../hooks/useSurveys";
 import { SurveyQuestion, SurveyOption } from "../../types/survey";
-import { toast } from "sonner";
 
 interface QuestionResponse {
   questionId: string | number;
@@ -32,10 +31,9 @@ interface QuestionResponse {
   answer: unknown;
 }
 
-export default function SurveyAnswerPage() {
+export default function SurveyPreviewPage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuth();
   const surveyId = params.id as string;
 
   const { survey, loading, error } = useSurvey(surveyId);
@@ -44,65 +42,7 @@ export default function SurveyAnswerPage() {
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>(
     {}
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-
-  // Check if user has access to this survey
-  useEffect(() => {
-    if (survey && user) {
-      // For students, check if the survey targets their classes or them directly
-      if (user.userType === "student") {
-        const userClasses =
-          (user as { classCode?: { value: string }[] })?.classCode?.map(
-            (c: { value: string }) => c.value
-          ) || [];
-
-        const hasClassAccess = survey.classTargets?.some((classCode: string) =>
-          userClasses.includes(classCode)
-        );
-
-        const hasDirectAccess = survey.teacherTargets?.includes(
-          user.username || ""
-        );
-
-        if (!hasClassAccess && !hasDirectAccess) {
-          toast.error("شما دسترسی به این نظرسنجی ندارید");
-          router.push("/admin/surveys");
-          return;
-        }
-      }
-
-      // For teachers, check if the survey targets their classes or them directly
-      if (user.userType === "teacher") {
-        const userClasses =
-          (user as { classCode?: { value: string }[] })?.classCode?.map(
-            (c: { value: string }) => c.value
-          ) || [];
-
-        const hasClassAccess = survey.classTargets?.some((classCode: string) =>
-          userClasses.includes(classCode)
-        );
-
-        const hasDirectAccess = survey.teacherTargets?.includes(
-          user.username || ""
-        );
-
-        // Teachers can participate in surveys that target their classes or them directly
-        if (!hasClassAccess && !hasDirectAccess) {
-          toast.error("شما دسترسی به این نظرسنجی ندارید");
-          router.push("/admin/surveys");
-          return;
-        }
-      }
-
-      // Check if survey is active
-      if (survey.status !== "active") {
-        toast.error("این نظرسنجی فعال نیست");
-        router.push("/admin/surveys");
-        return;
-      }
-    }
-  }, [survey, user, router]);
 
   if (loading) {
     return (
@@ -154,14 +94,6 @@ export default function SurveyAnswerPage() {
   };
 
   const handleNext = () => {
-    if (
-      currentQuestion.required &&
-      !responses[currentQuestion.id || currentQuestionIndex]
-    ) {
-      toast.error("لطفاً به این سوال پاسخ دهید");
-      return;
-    }
-
     if (currentQuestionIndex < survey.questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     }
@@ -173,47 +105,8 @@ export default function SurveyAnswerPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    // Check required questions
-    const unansweredRequired = survey.questions.filter(
-      (question, index) => question.required && !responses[question.id || index]
-    );
-
-    if (unansweredRequired.length > 0) {
-      toast.error("لطفاً به تمام سوالات اجباری پاسخ دهید");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const responseData = {
-        surveyId,
-        responses: Object.values(responses),
-        schoolCode: user?.schoolCode,
-      };
-
-      const response = await fetch("/api/surveys/responses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-domain": window.location.host,
-        },
-        body: JSON.stringify(responseData),
-      });
-
-      if (response.ok) {
-        toast.success("پاسخ شما با موفقیت ثبت شد");
-        router.push("/admin/surveys");
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "خطا در ثبت پاسخ");
-      }
-    } catch (error) {
-      console.error("Submit error:", error);
-      toast.error("خطا در ارسال پاسخ");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleFinishPreview = () => {
+    router.push("/admin/surveys");
   };
 
   const normalizeOption = (option: string | SurveyOption): SurveyOption => {
@@ -400,6 +293,21 @@ export default function SurveyAnswerPage() {
   if (!hasStarted) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl" dir="rtl">
+        {/* Preview Mode Banner */}
+        <Card className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 text-indigo-800">
+              <Eye className="h-6 w-6" />
+              <div>
+                <h3 className="font-bold text-lg">حالت پیش‌نمایش</h3>
+                <p className="text-sm text-indigo-600">
+                  شما در حال مشاهده پیش‌نمایش نظرسنجی هستید. پاسخ‌ها ذخیره نخواهند شد.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -430,20 +338,32 @@ export default function SurveyAnswerPage() {
               )}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">
-                📝 راهنمای شرکت در نظرسنجی
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+              <h4 className="font-medium text-indigo-900 mb-2 flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                حالت پیش‌نمایش
               </h4>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• سوالات با علامت * اجباری هستند</li>
-                <li>• می‌توانید بین سوالات جابجا شوید</li>
-                <li>• پاسخ‌های شما ذخیره خواهد شد</li>
+              <ul className="text-sm text-indigo-700 space-y-1">
+                <li>• این پیش‌نمایش نظرسنجی است</li>
+                <li>• پاسخ‌های شما ذخیره نمی‌شوند</li>
+                <li>• می‌توانید عملکرد نظرسنجی را تست کنید</li>
               </ul>
             </div>
 
-            <div className="flex justify-center">
-              <Button onClick={() => setHasStarted(true)} size="lg">
-                شروع نظرسنجی
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => router.push("/admin/surveys")}
+                variant="outline"
+                className="flex-1"
+              >
+                <ArrowLeft className="h-4 w-4 ml-2" />
+                بازگشت
+              </Button>
+              <Button 
+                onClick={() => setHasStarted(true)} 
+                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                شروع پیش‌نمایش
                 <ArrowRight className="h-4 w-4 mr-2" />
               </Button>
             </div>
@@ -455,11 +375,37 @@ export default function SurveyAnswerPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl" dir="rtl">
+      {/* Preview Mode Banner */}
+      <Card className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-indigo-800">
+              <Eye className="h-5 w-5" />
+              <div>
+                <h3 className="font-bold">حالت پیش‌نمایش</h3>
+                <p className="text-xs text-indigo-600">
+                  پاسخ‌ها ذخیره نخواهند شد
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/admin/surveys")}
+              className="border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+            >
+              <ArrowLeft className="h-4 w-4 ml-2" />
+              خروج از پیش‌نمایش
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900">{survey.title}</h1>
-          <Badge variant="outline">
+          <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">
             {currentQuestionIndex + 1} از {survey.questions.length}
           </Badge>
         </div>
@@ -495,14 +441,11 @@ export default function SurveyAnswerPage() {
 
             {isLastQuestion ? (
               <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex items-center space-x-2 space-x-reverse"
+                onClick={handleFinishPreview}
+                className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
               >
-                <Send className="h-4 w-4" />
-                <span>
-                  {isSubmitting ? "در حال ارسال..." : "ارسال پاسخ‌ها"}
-                </span>
+                <AlertCircle className="h-4 w-4" />
+                <span>پایان پیش‌نمایش</span>
               </Button>
             ) : (
               <Button
@@ -524,3 +467,4 @@ export default function SurveyAnswerPage() {
     </div>
   );
 }
+

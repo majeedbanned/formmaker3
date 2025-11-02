@@ -217,7 +217,7 @@ function QuestionBankContent(): React.ReactElement {
     pages: 0,
   });
   const [categories, setCategories] = useState<Categories>({
-    grades: [],
+    grades: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     cat1: [],
     cat2: [],
     cat3: [],
@@ -1383,6 +1383,7 @@ function QuestionBankContent(): React.ReactElement {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value=" ">همه</SelectItem>
+                  <SelectItem value="7">پایه هفتم</SelectItem>
                   {categories.grades.map((grade) => (
                     <SelectItem key={grade} value={grade.toString()}>
                       پایه {toPersianNumber(grade)}
@@ -2590,6 +2591,12 @@ function QuestionBankContent(): React.ReactElement {
                     <SelectValue placeholder="انتخاب پایه" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="7">پایه هفتم</SelectItem>
+                    <SelectItem value="8">پایه هشتم</SelectItem>
+                    <SelectItem value="9">پایه نهم</SelectItem>
+                    <SelectItem value="10">پایه دهم</SelectItem>
+                    <SelectItem value="11">پایه یازدهم</SelectItem>
+                    <SelectItem value="12">پایه دوازدهم</SelectItem>
                     {categories.grades.map((grade) => (
                       <SelectItem key={grade} value={grade.toString()}>
                         پایه {toPersianNumber(grade)}

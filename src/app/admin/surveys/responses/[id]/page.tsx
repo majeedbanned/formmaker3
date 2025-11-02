@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useSurveyResponses } from "../../hooks/useSurveys";
+import { SurveyOption } from "../../types/survey";
 
 export default function SurveyResponsesPage() {
   const router = useRouter();
@@ -28,6 +29,10 @@ export default function SurveyResponsesPage() {
   const surveyId = params.id as string;
 
   const { responses, survey, loading, error } = useSurveyResponses(surveyId);
+
+  const getOptionCaption = (option: string | SurveyOption): string => {
+    return typeof option === "string" ? option : option.caption;
+  };
 
   // Enhanced statistics calculations
   const statistics = useMemo(() => {
@@ -663,8 +668,9 @@ export default function SurveyResponsesPage() {
                         </div>
 
                         <div className="space-y-3">
-                          {question.options?.map((option) => {
-                            const count = stats.optionCounts![option] || 0;
+                          {question.options?.map((option, optIdx) => {
+                            const optionCaption = getOptionCaption(option);
+                            const count = stats.optionCounts![optionCaption] || 0;
                             const percentage =
                               stats.totalResponses > 0
                                 ? (count / stats.totalResponses) * 100
@@ -672,12 +678,12 @@ export default function SurveyResponsesPage() {
 
                             return (
                               <div
-                                key={option}
+                                key={optIdx}
                                 className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
                               >
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="font-medium text-gray-800">
-                                    {option}
+                                    {optionCaption}
                                   </span>
                                   <div className="flex items-center space-x-2 space-x-reverse">
                                     <span className="text-lg font-bold text-blue-600">

@@ -158,6 +158,10 @@ export default function SurveysPage() {
     }
   };
 
+  const handlePreviewSurvey = (surveyId: string) => {
+    router.push(`/admin/surveys/preview/${surveyId}`);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
@@ -444,6 +448,13 @@ export default function SurveysPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem
+                                onClick={() => handlePreviewSurvey(survey._id!)}
+                                className="text-indigo-600"
+                              >
+                                <Eye className="h-4 w-4 ml-2" />
+                                پیش‌نمایش نظرسنجی
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleViewResponses(survey._id!)}
                                 className="text-blue-600"
@@ -801,6 +812,13 @@ export default function SurveysPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() => handlePreviewSurvey(survey._id!)}
+                          className="text-indigo-600"
+                        >
+                          <Eye className="h-4 w-4 ml-2" />
+                          پیش‌نمایش نظرسنجی
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleViewResponses(survey._id!)}
                           className="text-blue-600"

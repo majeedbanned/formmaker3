@@ -1,9 +1,15 @@
+export interface SurveyOption {
+  caption: string;
+  image?: string; // Optional image URL
+  description?: string; // Optional description
+}
+
 export interface SurveyQuestion {
   id?: string;
   text: string;
   type: "text" | "radio" | "checkbox" | "rating";
   required?: boolean;
-  options?: string[]; // For radio and checkbox questions
+  options?: (string | SurveyOption)[]; // For radio and checkbox questions - support both old (string) and new (object) format
   maxRating?: number; // For rating questions (default 5)
 }
 
