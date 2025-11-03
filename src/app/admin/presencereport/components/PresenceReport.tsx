@@ -1330,6 +1330,9 @@ const PresenceReport = ({
       if (response.ok) {
         const { students } = await response.json();
         
+        // Search terms for father
+        const fatherTerms = ['father', 'پدر', 'dad', 'بابا'];
+        
         setCustomSmsData(prev =>
           prev.map(student => {
             const studentData = students.find((s: any) => s.studentCode === student.studentCode);
@@ -1337,7 +1340,7 @@ const PresenceReport = ({
               const fatherPhones = studentData.phones
                 .filter((p: any) => {
                   const owner = p.owner.toLowerCase();
-                  return owner.includes("پدر") || owner.includes("father");
+                  return fatherTerms.some(term => owner.includes(term.toLowerCase()));
                 })
                 .map((p: any) => p.number);
               
@@ -1375,6 +1378,9 @@ const PresenceReport = ({
       if (response.ok) {
         const { students } = await response.json();
         
+        // Search terms for mother
+        const motherTerms = ['mother', 'مادر', 'mom', 'مامان'];
+        
         setCustomSmsData(prev =>
           prev.map(student => {
             const studentData = students.find((s: any) => s.studentCode === student.studentCode);
@@ -1382,7 +1388,7 @@ const PresenceReport = ({
               const motherPhones = studentData.phones
                 .filter((p: any) => {
                   const owner = p.owner.toLowerCase();
-                  return owner.includes("مادر") || owner.includes("mother");
+                  return motherTerms.some(term => owner.includes(term.toLowerCase()));
                 })
                 .map((p: any) => p.number);
               
@@ -1472,10 +1478,18 @@ const PresenceReport = ({
     setSelectedPhones(prev => {
       const newSelection = { ...prev };
       
+      // Define search terms for both Persian and English
+      const searchTerms: Record<string, string[]> = {
+        father: ['father', 'پدر', 'dad', 'بابا'],
+        mother: ['mother', 'مادر', 'mom', 'مامان'],
+        student: ['student', 'دانش‌آموز', 'دانشآموز', 'دانش آموز', 'خود']
+      };
+      
       selectedStudents.forEach(student => {
-        const groupPhones = student.phones.filter(phone => 
-          phone.owner.toLowerCase().includes(groupType)
-        );
+        const groupPhones = student.phones.filter(phone => {
+          const ownerLower = phone.owner.toLowerCase();
+          return searchTerms[groupType].some(term => ownerLower.includes(term.toLowerCase()));
+        });
         
         if (groupPhones.length > 0) {
           const currentSelection = newSelection[student.studentCode] || [];
@@ -1495,10 +1509,18 @@ const PresenceReport = ({
     setSelectedPhones(prev => {
       const newSelection = { ...prev };
       
+      // Define search terms for both Persian and English
+      const searchTerms: Record<string, string[]> = {
+        father: ['father', 'پدر', 'dad', 'بابا'],
+        mother: ['mother', 'مادر', 'mom', 'مامان'],
+        student: ['student', 'دانش‌آموز', 'دانشآموز', 'دانش آموز', 'خود']
+      };
+      
       selectedStudents.forEach(student => {
-        const groupPhones = student.phones.filter(phone => 
-          phone.owner.toLowerCase().includes(groupType)
-        );
+        const groupPhones = student.phones.filter(phone => {
+          const ownerLower = phone.owner.toLowerCase();
+          return searchTerms[groupType].some(term => ownerLower.includes(term.toLowerCase()));
+        });
         
         if (groupPhones.length > 0) {
           const currentSelection = newSelection[student.studentCode] || [];
