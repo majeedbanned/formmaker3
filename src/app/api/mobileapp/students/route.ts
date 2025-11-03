@@ -46,6 +46,7 @@ interface Student {
   classCode: string;
   schoolCode: string;
   phone?: string;
+  phones?: Array<{ owner: string; number: string }>;
   isActive: boolean;
   addedAt: string;
   lastUpdated: string;
@@ -168,6 +169,7 @@ export async function GET(request: NextRequest) {
           classCode: student.data.classCode,
           schoolCode: student.data.schoolCode,
           phone: student.data.phone,
+          phones: student.data.phones || [], // Include phones array
           isActive: student.data.isActive,
           hasInstalledApp: hasActiveTokens,
           addedAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
