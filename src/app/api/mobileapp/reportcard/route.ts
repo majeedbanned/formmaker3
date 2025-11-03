@@ -64,38 +64,49 @@ function gregorian_to_jalali(gy: number, gm: number, gd: number): [number, numbe
   return [jy, jm, jd];
 }
 
-// Assessment values mapping (same as web version)
+// Assessment values mapping (EXACT same as web version)
 const ASSESSMENT_VALUES_MAP: Record<string, number> = {
-  '۱': 1,
-  '۲': 2,
-  '۳': 3,
-  '۰.۵': 0.5,
-  '-۱': -1,
-  '-۲': -2,
-  '-۳': -3,
-  '-۰.۵': -0.5,
+  'عالی': 2,
+  'خوب': 1,
+  'متوسط': 0,
+  'ضعیف': -1,
+  'بسیار ضعیف': -2,
 };
 
-// Calculate final score with assessments (same as web version)
+// Calculate final score with assessments (EXACT same as web version)
 function calculateFinalScore(
-  baseGrade: number | null,
-  assessments: Array<{ value: string }>,
-  assessmentValues: Record<string, number>
+  grades: number | null,
+  assessments: Array<{ value: string; title?: string }>,
+  courseKey: string,
+  assessmentValues: Record<string, Record<string, number>>
 ): number | null {
-  if (baseGrade === null) return null;
+  if (grades === null) return null;
 
-  if (!assessments || assessments.length === 0) return baseGrade;
+  // If no assessments, return the average grade
+  if (!assessments || assessments.length === 0) return grades;
 
+  // Get course-specific assessment values if available
+  const courseValues = assessmentValues[courseKey] || {};
+
+  // Calculate direct assessment adjustment (add/subtract directly)
   const assessmentAdjustment = assessments.reduce((total, assessment) => {
+    // Check if there's a custom value for this assessment
     const adjustment =
-      assessmentValues[assessment.value] !== undefined
-        ? assessmentValues[assessment.value]
+      courseValues[assessment.value] !== undefined
+        ? courseValues[assessment.value]
         : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+
     return total + adjustment;
   }, 0);
 
-  let finalScore = baseGrade + assessmentAdjustment;
-  finalScore = Math.max(0, Math.min(20, finalScore));
+  // Calculate final score with direct addition of assessment adjustment
+  let finalScore = grades + assessmentAdjustment;
+
+  // Cap at 20
+  finalScore = Math.min(finalScore, 20);
+
+  // Ensure not negative
+  finalScore = Math.max(finalScore, 0);
 
   return finalScore;
 }
@@ -273,6 +284,40 @@ export async function GET(request: NextRequest) {
         weightedAverage: null,
       };
 
+      // Fetch custom assessment values for all teacher-course pairs
+      const assessmentValues: Record<string, Record<string, number>> = {};
+      
+      console.log(`Fetching custom assessment values for ${classDoc.data.teachers?.length || 0} courses...`);
+      
+      for (const tc of classDoc.data.teachers || []) {
+        try {
+          // Fetch custom assessment values for this teacher-course pair
+          const assessmentResponse = await fetch(
+            `http://localhost:3000/api/assessments?teacherCode=${tc.teacherCode}&courseCode=${tc.courseCode}&schoolCode=${decoded.schoolCode}`
+          );
+
+          if (assessmentResponse.ok) {
+            const assessmentData = await assessmentResponse.json();
+            if (assessmentData && assessmentData.data && Array.isArray(assessmentData.data)) {
+              // Process assessment data to extract custom values
+              const customValues: Record<string, number> = {};
+              assessmentData.data.forEach((assessment: { value?: string; weight?: number }) => {
+                if (assessment && assessment.value && assessment.weight !== undefined) {
+                  customValues[assessment.value] = assessment.weight;
+                }
+              });
+
+              if (Object.keys(customValues).length > 0) {
+                assessmentValues[tc.courseCode] = customValues;
+                console.log(`  Custom assessments for ${tc.courseCode}:`, customValues);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching assessment values for ${tc.courseCode}:`, error);
+        }
+      }
+
       // Process each course
       console.log(`Processing ${classDoc.data.teachers?.length || 0} courses for class ${classCode}`);
       
@@ -366,11 +411,12 @@ export async function GET(request: NextRequest) {
 
             console.log(`Course ${courseKey}, Month ${monthKey}: rawGrades=${rawGrades.length}, totalValue=${totalValue}, totalPoints=${totalPoints}, baseGrade=${baseGrade}`);
 
-            // Apply assessments
+            // Apply assessments with custom values
             reportCardData.courses[courseKey].monthlyGrades[monthKey] = calculateFinalScore(
               baseGrade,
               assessments,
-              {}
+              courseKey,
+              assessmentValues
             );
             
             console.log(`Course ${courseKey}, Month ${monthKey}: finalGrade=${reportCardData.courses[courseKey].monthlyGrades[monthKey]}`);
