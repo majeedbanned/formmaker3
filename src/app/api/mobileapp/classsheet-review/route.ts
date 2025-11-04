@@ -43,6 +43,11 @@ function gregorian_to_jalali(gy: number, gm: number, gd: number): [number, numbe
   return [jy, jm, jd];
 }
 
+function toPersianDigits(str: string | number): string {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  return String(str).replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -153,7 +158,7 @@ export async function GET(request: NextRequest) {
         try {
           const date = new Date(record.date);
           const [jYear, jMonth, jDay] = gregorian_to_jalali(date.getFullYear(), date.getMonth() + 1, date.getDate());
-          persianDate = `${jYear}/${jMonth}/${jDay}`;
+          persianDate = toPersianDigits(`${jYear}/${jMonth}/${jDay}`);
         } catch (e) {
           persianDate = record.date;
         }
