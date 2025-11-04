@@ -203,3 +203,65 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, message: error.message || 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded: JWTPayload;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    } catch (error) {
+      return NextResponse.json({ success: false, message: 'Invalid token' }, { status: 401 });
+    }
+
+    if (decoded.userType !== 'teacher' && decoded.userType !== 'school') {
+      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { recordId, absenceAcceptable, absenceDescription } = body;
+
+    if (!recordId) {
+      return NextResponse.json({ success: false, message: 'Record ID is required' }, { status: 400 });
+    }
+
+    const dbConfig = getDatabaseConfig();
+    const schoolConfig = dbConfig[decoded.domain];
+    if (!schoolConfig) {
+      return NextResponse.json({ success: false, message: 'Database configuration not found' }, { status: 500 });
+    }
+
+    const client = new MongoClient(schoolConfig.connectionString);
+    await client.connect();
+    const db = client.db();
+
+    const { ObjectId } = require('mongodb');
+    const result = await db.collection('classsheet').updateOne(
+      { _id: new ObjectId(recordId), schoolCode: decoded.schoolCode },
+      { 
+        $set: { 
+          absenceAcceptable: absenceAcceptable,
+          absenceDescription: absenceDescription || '',
+          updatedAt: new Date(),
+        } 
+      }
+    );
+
+    await client.close();
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ success: false, message: 'Record not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: 'وضعیت با موفقیت به‌روزرسانی شد' });
+
+  } catch (error: any) {
+    console.error('Error updating absence status:', error);
+    return NextResponse.json({ success: false, message: error.message || 'Internal server error' }, { status: 500 });
+  }
+}
