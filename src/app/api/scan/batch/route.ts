@@ -41,7 +41,17 @@ export async function POST(request: Request) {
     // Parse the multipart form data
     const formData = await request.formData();
     const examId = formData.get('examId') as string;
+    const scannerScript = (formData.get('scanner') as string) || 'scanner';
     const files = formData.getAll('files') as File[];
+
+    // Validate scanner script name to prevent path traversal
+    const allowedScanners = ['scanner', 'scanner2', 'scanner3', 'scanner4'];
+    if (!allowedScanners.includes(scannerScript)) {
+      return NextResponse.json(
+        { error: 'Invalid scanner script selected' },
+        { status: 400 }
+      );
+    }
 
     if (!examId) {
       return NextResponse.json(
@@ -86,6 +96,7 @@ export async function POST(request: Request) {
     });
 
     console.log("correctAnswers", correctAnswers);
+    console.log(`📋 Using scanner script: ${scannerScript}.py`);
 
     // Get exam details for school code
     const examCollection = connection.collection('exam');
@@ -112,7 +123,7 @@ export async function POST(request: Request) {
       writeFileSync(absoluteFilePath, buffer);
 
       // Pass the file to the Python script for processing
-      const scriptPath = path.join(process.cwd(), 'python', 'scanner.py');
+      const scriptPath = path.join(process.cwd(), 'python', `${scannerScript}.py`);
       const pythonCwd = path.join(process.cwd(), 'python');
       
       return new Promise<ScanResult>((resolve, reject) => {

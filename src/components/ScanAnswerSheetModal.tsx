@@ -47,6 +47,7 @@ export default function ScanAnswerSheetModal({
   const [selectedResult, setSelectedResult] = useState<ScanResult | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedScanner, setSelectedScanner] = useState<string>("scanner");
 
   // Fetch previous scan results on mount
   React.useEffect(() => {
@@ -123,6 +124,7 @@ export default function ScanAnswerSheetModal({
     try {
       const formData = new FormData();
       formData.append("examId", examId);
+      formData.append("scanner", selectedScanner);
 
       selectedFiles.forEach((file) => {
         formData.append(`files`, file);
@@ -494,6 +496,26 @@ export default function ScanAnswerSheetModal({
           {/* Show Upload UI when in list view */}
           {viewMode === "list" && (
             <>
+              {/* Scanner Selection */}
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg p-4">
+                <label className="block text-sm font-bold text-purple-800 mb-2">
+                  🔧 انتخاب الگوریتم تصحیح
+                </label>
+                <select
+                  value={selectedScanner}
+                  onChange={(e) => setSelectedScanner(e.target.value)}
+                  className="w-full p-2 border-2 border-purple-300 rounded-lg bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition-all text-right"
+                >
+                  <option value="scanner">الگوریتم پیش‌فرض (scanner.py)</option>
+                  <option value="scanner2">الگوریتم نسخه 2 - پردازش فضایی (scanner2.py)</option>
+                  <option value="scanner3">الگوریتم نسخه 3 - تشخیص پیشرفته (scanner3.py)</option>
+                  <option value="scanner4">الگوریتم نسخه 4 - دقت بالا (scanner4.py)</option>
+                </select>
+                <p className="text-xs text-purple-600 mt-2">
+                  💡 هر الگوریتم روش متفاوتی برای تشخیص و تصحیح پاسخ‌ها دارد. الگوریتم‌های جدیدتر معمولاً دقت بیشتری دارند.
+                </p>
+              </div>
+
               {/* File upload area */}
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center ${
@@ -624,12 +646,12 @@ export default function ScanAnswerSheetModal({
                 {isUploading ? (
                   <>
                     <Spinner className="w-4 h-4 ml-2" />
-                    در حال پردازش...
+                    در حال پردازش با {selectedScanner}.py...
                   </>
                 ) : (
                   <>
                     <DocumentArrowUpIcon className="w-4 h-4 ml-2" />
-                    اسکن {selectedFiles.length} پاسخ‌برگ جدید
+                    اسکن {selectedFiles.length} پاسخ‌برگ با {selectedScanner}.py
                   </>
                 )}
               </Button>
