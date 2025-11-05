@@ -47,7 +47,7 @@ export default function ScanAnswerSheetModal({
   const [selectedResult, setSelectedResult] = useState<ScanResult | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [selectedScanner, setSelectedScanner] = useState<string>("scanner");
+  const [selectedScanner, setSelectedScanner] = useState<string>("scanner2");
 
   // Fetch previous scan results on mount
   React.useEffect(() => {
@@ -496,8 +496,8 @@ export default function ScanAnswerSheetModal({
           {/* Show Upload UI when in list view */}
           {viewMode === "list" && (
             <>
-              {/* Scanner Selection */}
-              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg p-4">
+              {/* Scanner Selection - Hidden, using scanner2 as default */}
+              {/* <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg p-4">
                 <label className="block text-sm font-bold text-purple-800 mb-2">
                   🔧 انتخاب الگوریتم تصحیح
                 </label>
@@ -514,7 +514,7 @@ export default function ScanAnswerSheetModal({
                 <p className="text-xs text-purple-600 mt-2">
                   💡 هر الگوریتم روش متفاوتی برای تشخیص و تصحیح پاسخ‌ها دارد. الگوریتم‌های جدیدتر معمولاً دقت بیشتری دارند.
                 </p>
-              </div>
+              </div> */}
 
               {/* File upload area */}
               <div
@@ -646,12 +646,12 @@ export default function ScanAnswerSheetModal({
                 {isUploading ? (
                   <>
                     <Spinner className="w-4 h-4 ml-2" />
-                    در حال پردازش با {selectedScanner}.py...
+                    در حال پردازش...
                   </>
                 ) : (
                   <>
                     <DocumentArrowUpIcon className="w-4 h-4 ml-2" />
-                    اسکن {selectedFiles.length} پاسخ‌برگ با {selectedScanner}.py
+                    اسکن {selectedFiles.length} پاسخ‌برگ جدید
                   </>
                 )}
               </Button>

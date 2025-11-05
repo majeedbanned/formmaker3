@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     // Parse the multipart form data
     const formData = await request.formData();
     const examId = formData.get('examId') as string;
-    const scannerScript = (formData.get('scanner') as string) || 'scanner';
+    const scannerScript = (formData.get('scanner') as string) || 'scanner2';
     const files = formData.getAll('files') as File[];
 
     // Validate scanner script name to prevent path traversal
