@@ -203,10 +203,18 @@ export async function POST(request: Request) {
       for (const result of successfulResults) {
         // If there's a QR code data that identifies the student, we can use it
         if (result.qRCodeData) {
-          // Find the participant based on qRCodeData or other identifiers
+          // Parse QR code data - format: studentcode-examcode
+          // Extract student code (before the dash)
+          const studentCode = result.qRCodeData.includes('-') 
+            ? result.qRCodeData.split('-')[0] 
+            : result.qRCodeData; // Fallback to whole string if no dash
+          
+          console.log(`Processing QR code: ${result.qRCodeData}, extracted student code: ${studentCode}`);
+          
+          // Find the participant based on student code
           const participant = await participantsCollection.findOne({
             examId: examId,
-            userId: result.qRCodeData  // Assuming qRCodeData contains userId
+            userId: studentCode
           });
           
           // Calculate total max score from questions
@@ -273,7 +281,7 @@ export async function POST(request: Request) {
             // Participant doesn't exist, create a new entry in examparticipants
             await participantsCollection.insertOne({
               examId: examId,
-              userId: result.qRCodeData,
+              userId: studentCode,
               answers: result.Useranswers.map((answer: number, index: number) => ({
                 questionId: questions[index]?._id || '',
                 answer: answer.toString(),
@@ -297,7 +305,7 @@ export async function POST(request: Request) {
           // Check if entry already exists in examstudentsinfo
           const existingEntry = await examStudentsInfoCollection.findOne({
             examId: examId,
-            userId: result.qRCodeData
+            userId: studentCode
           });
           
           if (existingEntry) {
@@ -317,7 +325,8 @@ export async function POST(request: Request) {
                   maxScore: totalMaxScore,
                   gradingStatus: "scanned",
                   gradingTime: now,
-                  scanResult: result
+                  scanResult: result,
+                  qrCodeData: result.qRCodeData // Store full QR code for reference
                 }
               }
             );
@@ -325,7 +334,7 @@ export async function POST(request: Request) {
             // Create new entry
             await examStudentsInfoCollection.insertOne({
               examId: examId,
-              userId: result.qRCodeData,
+              userId: studentCode,
               schoolCode: schoolCode,
               entryTime: now,
               entryDate: now,
@@ -342,7 +351,8 @@ export async function POST(request: Request) {
               maxScore: totalMaxScore,
               gradingStatus: "scanned",
               gradingTime: now,
-              scanResult: result
+              scanResult: result,
+              qrCodeData: result.qRCodeData // Store full QR code for reference
             });
           }
         }

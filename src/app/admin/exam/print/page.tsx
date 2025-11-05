@@ -483,8 +483,9 @@ function PrintExamContent() {
 
           // Generate and add QR code for first student with optimization
           console.log("student1", student1);
+          const qrCodeData1 = `${student1.username}-${examData?.data.examCode || ''}`;
           const qrDataUrl1 = await qrcodeModule.toDataURL(
-            student1.username.toString(),
+            qrCodeData1,
             qrOptions
           );
 
@@ -527,8 +528,9 @@ function PrintExamContent() {
           pdf.addImage(img, "PNG", a5Width, 0, a5Width, a5Height);
 
           // Generate and add QR code for second student with optimization
+          const qrCodeData2 = `${student2.username}-${examData?.data.examCode || ''}`;
           const qrDataUrl2 = await qrcodeModule.toDataURL(
-            student2.username.toString(),
+            qrCodeData2,
             qrOptions
           );
 

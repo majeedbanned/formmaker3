@@ -213,7 +213,11 @@ export default function ScanAnswerSheetModal({
               <div className="flex justify-between items-center">
                 <div className="flex-1">
                   <span className="font-medium">
-                    {result.qRCodeData || result.studentCode || `پاسخ‌برگ ${index + 1}`}
+                    {result.qRCodeData 
+                      ? (result.qRCodeData.includes('-') 
+                          ? `دانش‌آموز: ${result.qRCodeData.split('-')[0]}` 
+                          : result.qRCodeData)
+                      : result.studentCode || `پاسخ‌برگ ${index + 1}`}
                   </span>
                   {result.scannedAt && (
                     <span className="text-xs text-gray-500 mr-2">
@@ -276,7 +280,11 @@ export default function ScanAnswerSheetModal({
             بازگشت به لیست
           </Button>
           <h3 className="font-bold text-lg">
-            {selectedResult.qRCodeData || "پاسخ‌برگ"}
+            {selectedResult.qRCodeData 
+              ? (selectedResult.qRCodeData.includes('-')
+                  ? `دانش‌آموز: ${selectedResult.qRCodeData.split('-')[0]}`
+                  : selectedResult.qRCodeData)
+              : "پاسخ‌برگ"}
           </h3>
         </div>
 
@@ -448,7 +456,11 @@ export default function ScanAnswerSheetModal({
                     شناسه دانش‌آموز
                   </div>
                   <div className="font-medium">
-                    {selectedResult.qRCodeData || "نامشخص"}
+                    {selectedResult.qRCodeData 
+                      ? (selectedResult.qRCodeData.includes('-')
+                          ? selectedResult.qRCodeData.split('-')[0]
+                          : selectedResult.qRCodeData)
+                      : "نامشخص"}
                   </div>
                 </div>
 
