@@ -9,12 +9,14 @@ import {
   QrCodeIcon,
   CalculatorIcon,
   ChartBarIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
 import { usePagePermission } from "@/hooks/usePagePermission";
 import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
 import ScanAnswerSheetModal from "@/components/ScanAnswerSheetModal";
+import DefineExamKeysModal from "@/components/DefineExamKeysModal";
 import { toast } from "sonner";
 
 const layout: LayoutSettings = {
@@ -59,6 +61,7 @@ function StudentsPageContent() {
   // } = usePagePermission("show");
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
+  const [showKeysModal, setShowKeysModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
 
   // Add state for teacher's classes
@@ -946,6 +949,14 @@ function StudentsPageContent() {
                 icon: UsersIcon,
               },
               {
+                label: "تعریف کلید پاسخنامه",
+                action: (examId) => {
+                  setSelectedExamId(examId);
+                  setShowKeysModal(true);
+                },
+                icon: KeyIcon,
+              },
+              {
                 label: "افزودن سوالات ازبانک سوالات",
                 action: (examId) => {
                   window.location.href = `/admin/questionbank?examID=${examId}`;
@@ -1086,6 +1097,13 @@ function StudentsPageContent() {
         <ScanAnswerSheetModal
           isOpen={showScanModal}
           onClose={() => setShowScanModal(false)}
+          examId={selectedExamId}
+        />
+
+        {/* Define Exam Keys Modal */}
+        <DefineExamKeysModal
+          isOpen={showKeysModal}
+          onClose={() => setShowKeysModal(false)}
           examId={selectedExamId}
         />
       </div>
