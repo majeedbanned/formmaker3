@@ -430,6 +430,9 @@ export default function DefineExamKeysModal({
       const data = await response.json();
       
       if (data.success && data.answers && Array.isArray(data.answers)) {
+        console.log('Scanned answers:', data.answers);
+        console.log(`Total: ${data.totalQuestions}, Answered: ${data.answeredQuestions}`);
+        
         // Get default values from user input
         const defaultScore = parseFloat(prompt("بارم پیش‌فرض برای همه سوالات:", "1") || "1");
         const defaultResponseTime = parseInt(prompt("زمان پاسخ پیش‌فرض (ثانیه):", "60") || "60");
@@ -440,26 +443,38 @@ export default function DefineExamKeysModal({
         }
 
         // Create keys from scanned answers
-        const generatedKeys: ExamKey[] = data.answers.map((answer: number, index: number) => ({
-          questionNumber: index + 1,
-          category: newKey.category,
-          score: defaultScore,
-          correctOption: answer || 1, // Use scanned answer, fallback to 1
-          responseTime: defaultResponseTime,
-        }));
+        // Only create keys for answered questions (where answer > 0)
+        const generatedKeys: ExamKey[] = data.answers
+          .map((answer: number, index: number) => ({
+            questionNumber: index + 1,
+            category: newKey.category,
+            score: defaultScore,
+            correctOption: answer > 0 ? answer : 1, // Use scanned answer if marked, otherwise default to 1
+            responseTime: defaultResponseTime,
+            isAnswered: answer > 0, // Track if this was actually marked
+          }))
+          .filter((key: any) => key.isAnswered) // Only include questions that were marked
+          .map(({ isAnswered, ...key }: any) => key); // Remove the temporary flag
+
+        if (generatedKeys.length === 0) {
+          toast.error('هیچ پاسخی در پاسخنامه علامت گذاری نشده است');
+          return;
+        }
 
         // Override existing keys
         setExamKeys(generatedKeys);
         setScannedImageUrl(data.correctedImageUrl);
         
-        toast.success(`✅ ${data.totalQuestions} کلید پاسخ از تصویر استخراج شد!`, {
-          duration: 5000,
-        });
+        toast.success(
+          `✅ ${generatedKeys.length} کلید پاسخ از ${data.totalQuestions} سوال استخراج شد!`,
+          { duration: 5000 }
+        );
 
         // Set next question number
+        const maxQuestionNum = Math.max(...generatedKeys.map(k => k.questionNumber));
         setNewKey(prev => ({
           ...prev,
-          questionNumber: generatedKeys.length + 1,
+          questionNumber: maxQuestionNum + 1,
         }));
       } else {
         throw new Error('Invalid response from scanner');
@@ -648,7 +663,9 @@ export default function DefineExamKeysModal({
                 🎯 روش سریع: اسکن پاسخنامه تکمیل شده
               </Label>
               <p className="text-xs text-gray-600 mb-3">
-                یک پاسخنامه را با پاسخ‌های صحیح پر کنید و آپلود کنید تا تمام کلیدها به صورت خودکار استخراج شوند
+                یک پاسخنامه را با پاسخ‌های صحیح پر کنید و آپلود کنید تا تمام کلیدها به صورت خودکار استخراج شوند.
+                <br />
+                <span className="font-semibold text-green-700">💡 نکته:</span> فقط سوالاتی که علامت زده‌اید استخراج می‌شوند.
               </p>
               <input
                 type="file"

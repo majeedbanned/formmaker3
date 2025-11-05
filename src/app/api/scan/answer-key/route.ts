@@ -65,33 +65,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Connect to MongoDB using the utility
-    const connection = await connectToDatabase(domain);
-    if (!connection) {
-      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
-    }
+    // For extracting answer keys, we don't need to validate against correct answers
+    // We just need to detect what the user marked, regardless if it's "correct" or not
+    // Create a dummy array of correct answers (all 1s) for the scanner to work
+    // The scanner needs this parameter but we'll use the Useranswers output
     
-    // Get questions for this exam from the database
-    const examQuestionsCollection = connection.collection('examquestions');
-    const questions = await examQuestionsCollection.find({ 
-      examId: examId 
-    })
-    .sort({ createdAt: -1 })
-    .toArray();
+    // Determine number of questions based on paper size
+    // A4 = 120 questions, A5 = 60 questions
+    // We'll use 120 as default (A4) - scanner will detect actual paper size
+    const dummyCorrectAnswers = Array(120).fill(1);
 
-    if (!questions || questions.length === 0) {
-      return NextResponse.json(
-        { error: 'No questions found for this exam. Please add questions or define exam keys first.' },
-        { status: 404 }
-      );
-    }
-    
-    // Extract the correct answers from the questions
-    const correctAnswers = questions.map((q) => {
-      return q.question?.correctoption || 1;
-    });
-
-    console.log("Using correct answers for validation:", correctAnswers);
+    console.log("Scanning answer sheet to extract all marked answers...");
 
     // Create directory if it doesn't exist
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'scan');
@@ -118,7 +102,7 @@ export async function POST(request: Request) {
       const py = spawn('python3', [
         scriptPath,
         absoluteFilePath,
-        JSON.stringify(correctAnswers)
+        JSON.stringify(dummyCorrectAnswers)
       ], { cwd: pythonCwd });
 
       let stdout = '', stderr = '';
@@ -150,17 +134,36 @@ export async function POST(request: Request) {
           try {
             const result = JSON.parse(stdout) as ScanResult;
             console.log("Scan result:", result);
+            console.log("User answers extracted:", result.Useranswers);
             
             // Extract user answers (these will become the correct answers for the keys)
             const userAnswers = result.Useranswers;
             
-            // Return the extracted answers
+            if (!userAnswers || userAnswers.length === 0) {
+              resolve(NextResponse.json(
+                { error: 'No answers detected on the answer sheet. Please make sure the sheet is clearly marked and properly aligned.' },
+                { status: 400 }
+              ));
+              return;
+            }
+
+            // Filter out answers that are 0 (unanswered questions)
+            // Keep track of question numbers
+            const extractedAnswers = userAnswers.map((answer, index) => ({
+              questionNumber: index + 1,
+              answer: answer
+            })).filter(item => item.answer > 0); // Only include answered questions
+
+            console.log(`Extracted ${extractedAnswers.length} answered questions out of ${userAnswers.length} total`);
+            
+            // Return the extracted answers (all of them, including 0 for unanswered)
             resolve(NextResponse.json({
               success: true,
-              answers: userAnswers,
+              answers: userAnswers, // Return all answers including 0s
               totalQuestions: userAnswers.length,
+              answeredQuestions: extractedAnswers.length,
               correctedImageUrl: result.correctedImageUrl,
-              message: `Successfully extracted ${userAnswers.length} answers from the answer sheet`
+              message: `Successfully extracted ${userAnswers.length} questions (${extractedAnswers.length} answered)`
             }));
           } catch (error) {
             console.error('JSON parsing error:', error, 'Raw output:', stdout);
