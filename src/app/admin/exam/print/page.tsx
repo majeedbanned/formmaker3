@@ -578,6 +578,139 @@ function PrintExamContent() {
     }
   };
 
+  const handlePrintQRAnswerSheet120 = async () => {
+    try {
+      // Filter only student users
+      const studentsForQR = examUsers.filter((user) => user.role === "student");
+
+      if (studentsForQR.length === 0) {
+        toast.error("هیچ دانش آموزی در لیست شرکت کنندگان وجود ندارد.");
+        return;
+      }
+
+      toast.info("در حال ساخت پاسخنامه‌های QR 120 سوالی...");
+
+      // Dynamically import libraries
+      const jspdfModule = await import("jspdf");
+      const qrcodeModule = await import("qrcode");
+
+      // Create PDF document in portrait orientation (A4)
+      const pdf = new jspdfModule.default({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      // Add Farsi font
+      try {
+        const fontPath = "/fonts/Vazirmatn-Regular.ttf";
+        const fontResponse = await fetch(fontPath);
+        if (!fontResponse.ok) throw new Error("Could not load font");
+        const fontArrayBuffer = await fontResponse.arrayBuffer();
+        const fontBase64 = arrayBufferToBase64(fontArrayBuffer);
+
+        pdf.addFileToVFS("Vazirmatn-Regular.ttf", fontBase64);
+        pdf.addFont(
+          "Vazirmatn-Regular.ttf",
+          "Vazirmatn",
+          "normal",
+          "Identity-H"
+        );
+        pdf.setFont("Vazirmatn");
+      } catch (fontError) {
+        console.error("Failed to load Farsi font:", fontError);
+      }
+
+      // A4 portrait dimensions (210x297 mm)
+      const pageWidth = 210;
+      const pageHeight = 297;
+
+      // Load the 120-question template image
+      const img = new Image();
+      img.src = "/answersheet/sheet120.png";
+
+      // Wait for image to load
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      // QR code settings
+      const qrOptions = {
+        errorCorrectionLevel: "H" as const,
+        margin: 1,
+        width: 100,
+        scale: 4,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      };
+
+      // Process each student - one per page
+      for (let i = 0; i < studentsForQR.length; i++) {
+        // Add new page after first page
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        const student = studentsForQR[i];
+
+        // Add template image - full A4 page
+        pdf.addImage(
+          img,
+          "PNG",
+          0,
+          0,
+          pageWidth,
+          pageHeight,
+          undefined,
+          "SLOW"
+        );
+
+        // Generate QR code with studentcode-examcode format
+        const qrCodeData = `${student.username}-${examData?.data.examCode || ''}`;
+        const qrDataUrl = await qrcodeModule.toDataURL(qrCodeData, qrOptions);
+
+        // Add QR code to the page (adjust position based on your template)
+        // You may need to adjust these coordinates to match your template layout
+        pdf.addImage(qrDataUrl, "PNG", 15, 15, 25, 25);
+
+        // Add student info with RTL text
+        pdf.setFont("Vazirmatn", "normal");
+        pdf.setFontSize(12);
+
+        const studentName = `نام و نام خانوادگی: ${student.name}`;
+        const studentCode = `کد دانش آموزی: ${student.username}`;
+        const studentClass = `کلاس: ${student.className || ""}`;
+        const examNameText = `آزمون: ${examData?.data.examName || ""}`;
+
+        // Adjust text positions based on your template
+        // These coordinates may need adjustment
+        pdf.text(studentName, pageWidth - 10, 20, { align: "right" });
+        pdf.text(studentCode, pageWidth - 10, 27, { align: "right" });
+        pdf.text(studentClass, pageWidth - 10, 34, { align: "right" });
+        pdf.text(examNameText, pageWidth - 10, 41, { align: "right" });
+      }
+
+      // Set PDF properties
+      pdf.setProperties({
+        title: `پاسخنامه 120 سوالی ${examData?.data.examName || "آزمون"}`,
+        creator: "Farsamooz",
+      });
+
+      // Save and download PDF
+      pdf.save(`answersheet-120-${examData?.data.examCode || 'exam'}.pdf`);
+      toast.success(
+        `پاسخنامه‌های QR 120 سوالی برای ${studentsForQR.length} دانش آموز با موفقیت ساخته شد.`
+      );
+    } catch (error) {
+      console.error("Error generating 120-question QR answer sheets:", error);
+      toast.error("خطا در ساخت پاسخنامه‌های QR 120 سوالی");
+    }
+  };
+
   const handleGoBack = () => {
     window.history.back();
   };
@@ -871,7 +1004,18 @@ function PrintExamContent() {
                         }}
                         className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
                       >
-                        پاسخنامه QR
+                        پاسخنامه QR (60 سوالی)
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          handlePrintQRAnswerSheet120();
+                          setAnswerSheetDropdownOpen(false);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-right"
+                      >
+                        پاسخنامه QR (120 سوالی - A4)
                       </button>
                     </li>
                   </ul>
