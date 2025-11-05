@@ -673,9 +673,8 @@ function PrintExamContent() {
         const qrCodeData = `${student.username}-${examData?.data.examCode || ''}`;
         const qrDataUrl = await qrcodeModule.toDataURL(qrCodeData, qrOptions);
 
-        // Add QR code to the page (adjust position based on your template)
-        // You may need to adjust these coordinates to match your template layout
-        pdf.addImage(qrDataUrl, "PNG", 15, 15, 25, 25);
+        // Add QR code to the page - positioned lower to avoid border
+        pdf.addImage(qrDataUrl, "PNG", 15, 30, 25, 25);
 
         // Add student info with RTL text
         pdf.setFont("Vazirmatn", "normal");
@@ -686,12 +685,11 @@ function PrintExamContent() {
         const studentClass = `کلاس: ${student.className || ""}`;
         const examNameText = `آزمون: ${examData?.data.examName || ""}`;
 
-        // Adjust text positions based on your template
-        // These coordinates may need adjustment
-        pdf.text(studentName, pageWidth - 10, 20, { align: "right" });
-        pdf.text(studentCode, pageWidth - 10, 27, { align: "right" });
-        pdf.text(studentClass, pageWidth - 10, 34, { align: "right" });
-        pdf.text(examNameText, pageWidth - 10, 41, { align: "right" });
+        // Text positioned lower to avoid border
+        pdf.text(studentName, pageWidth - 10, 35, { align: "right" });
+        pdf.text(studentCode, pageWidth - 10, 42, { align: "right" });
+        pdf.text(studentClass, pageWidth - 10, 49, { align: "right" });
+        pdf.text(examNameText, pageWidth - 10, 56, { align: "right" });
       }
 
       // Set PDF properties
