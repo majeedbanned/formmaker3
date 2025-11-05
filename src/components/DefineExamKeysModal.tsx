@@ -65,6 +65,8 @@ export default function DefineExamKeysModal({
   const [isLoadingExistingKeys, setIsLoadingExistingKeys] = useState(false);
   const [editingKey, setEditingKey] = useState<number | null>(null);
   const [editingValues, setEditingValues] = useState<ExamKey | null>(null);
+  const [isScanningAnswerKey, setIsScanningAnswerKey] = useState(false);
+  const [scannedImageUrl, setScannedImageUrl] = useState<string | null>(null);
 
   // Fetch exam categories and existing keys
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function DefineExamKeysModal({
       // Reset states when modal closes
       setEditingKey(null);
       setEditingValues(null);
+      setScannedImageUrl(null);
     }
   }, [isOpen, examId, user]);
 
@@ -393,9 +396,86 @@ export default function DefineExamKeysModal({
     toast.success(`${newKeys.length} سوال به لیست اضافه شد`);
   };
 
+  const handleAnswerKeyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!newKey.category.trim()) {
+      toast.error("لطفا ابتدا دسته‌بندی را انتخاب کنید");
+      e.target.value = '';
+      return;
+    }
+
+    setIsScanningAnswerKey(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('examId', examId);
+      formData.append('scanner', 'scanner2');
+
+      const response = await fetch('/api/scan/answer-key', {
+        method: 'POST',
+        headers: {
+          'x-domain': window.location.host,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'خطا در اسکن پاسخنامه');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.answers && Array.isArray(data.answers)) {
+        // Get default values from user input
+        const defaultScore = parseFloat(prompt("بارم پیش‌فرض برای همه سوالات:", "1") || "1");
+        const defaultResponseTime = parseInt(prompt("زمان پاسخ پیش‌فرض (ثانیه):", "60") || "60");
+
+        if (defaultScore <= 0 || isNaN(defaultScore)) {
+          toast.error("بارم نامعتبر است");
+          return;
+        }
+
+        // Create keys from scanned answers
+        const generatedKeys: ExamKey[] = data.answers.map((answer: number, index: number) => ({
+          questionNumber: index + 1,
+          category: newKey.category,
+          score: defaultScore,
+          correctOption: answer || 1, // Use scanned answer, fallback to 1
+          responseTime: defaultResponseTime,
+        }));
+
+        // Override existing keys
+        setExamKeys(generatedKeys);
+        setScannedImageUrl(data.correctedImageUrl);
+        
+        toast.success(`✅ ${data.totalQuestions} کلید پاسخ از تصویر استخراج شد!`, {
+          duration: 5000,
+        });
+
+        // Set next question number
+        setNewKey(prev => ({
+          ...prev,
+          questionNumber: generatedKeys.length + 1,
+        }));
+      } else {
+        throw new Error('Invalid response from scanner');
+      }
+    } catch (error) {
+      console.error('Error scanning answer key:', error);
+      toast.error(error instanceof Error ? error.message : 'خطا در اسکن پاسخنامه');
+    } finally {
+      setIsScanningAnswerKey(false);
+      e.target.value = ''; // Reset file input
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" dir="rtl">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-blue-700">
             🔑 تعریف کلید پاسخنامه آزمون
@@ -405,7 +485,7 @@ export default function DefineExamKeysModal({
           </p>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
+        <div className="space-y-6 mt-4 overflow-y-auto flex-1">
           {/* Loading Existing Keys Indicator */}
           {isLoadingExistingKeys && (
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center">
@@ -561,7 +641,67 @@ export default function DefineExamKeysModal({
                 ⚡ تولید دسته‌جمعی کلیدها
               </Button>
             </div>
+
+            {/* Scan Answer Key Button */}
+            <div className="mt-4 pt-4 border-t border-blue-200">
+              <Label className="text-sm text-gray-700 mb-2 block">
+                🎯 روش سریع: اسکن پاسخنامه تکمیل شده
+              </Label>
+              <p className="text-xs text-gray-600 mb-3">
+                یک پاسخنامه را با پاسخ‌های صحیح پر کنید و آپلود کنید تا تمام کلیدها به صورت خودکار استخراج شوند
+              </p>
+              <input
+                type="file"
+                id="answerKeyUpload"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAnswerKeyImageUpload}
+                disabled={isScanningAnswerKey || !newKey.category.trim()}
+              />
+              <Button
+                onClick={() => document.getElementById('answerKeyUpload')?.click()}
+                variant="outline"
+                className="w-full border-green-300 text-green-700 hover:bg-green-50"
+                type="button"
+                disabled={isScanningAnswerKey || !newKey.category.trim()}
+              >
+                {isScanningAnswerKey ? (
+                  <>
+                    <Spinner className="w-4 h-4 ml-2" />
+                    در حال پردازش تصویر...
+                  </>
+                ) : (
+                  <>
+                    📸 اسکن پاسخنامه و استخراج کلیدها
+                  </>
+                )}
+              </Button>
+              {!newKey.category.trim() && (
+                <p className="text-xs text-orange-600 mt-2">
+                  ⚠️ ابتدا دسته‌بندی را انتخاب کنید
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* Scanned Image Preview */}
+          {scannedImageUrl && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg p-4">
+              <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                ✅ پاسخنامه اسکن شده
+              </h3>
+              <div className="relative overflow-hidden rounded-lg border bg-white flex justify-center">
+                <img
+                  src={scannedImageUrl.replace("/../public", "") + "?v=" + new Date().getTime()}
+                  alt="Scanned Answer Key"
+                  className="max-w-full object-contain max-h-64"
+                />
+              </div>
+              <p className="text-xs text-gray-600 mt-2 text-center">
+                کلیدهای پاسخ از این تصویر استخراج شد
+              </p>
+            </div>
+          )}
 
           {/* Keys List */}
           {examKeys.length > 0 && (
@@ -570,12 +710,14 @@ export default function DefineExamKeysModal({
                 <h3 className="font-bold text-green-800 flex items-center gap-2">
                   <CheckCircleIcon className="w-5 h-5" />
                   کلیدهای پاسخ تعریف شده ({examKeys.length} سوال)
+                  {scannedImageUrl && <span className="text-xs text-gray-600">(از اسکن تصویر)</span>}
                 </h3>
                 <Button
                   onClick={() => {
                     setExamKeys([]);
                     setEditingKey(null);
                     setEditingValues(null);
+                    setScannedImageUrl(null);
                     setNewKey(prev => ({ ...prev, questionNumber: 1 }));
                   }}
                   variant="outline"
@@ -749,7 +891,7 @@ export default function DefineExamKeysModal({
           )}
         </div>
 
-        <DialogFooter className="mt-6">
+        <DialogFooter className="mt-6 border-t pt-4 flex-shrink-0">
           <Button
             onClick={onClose}
             variant="outline"
