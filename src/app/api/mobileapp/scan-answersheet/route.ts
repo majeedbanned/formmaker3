@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
       // Find exam by exam code
       const examDetails = await db.collection('exam').findOne({ 
         'data.examCode': examCode,
-        schoolCode: decoded.schoolCode
+         // schoolCode: decoded.schoolCode
       });
 
       if (!examDetails) {
