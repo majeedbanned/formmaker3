@@ -70,6 +70,24 @@ def read_local_image(file_path):
         raise Exception(f"Error reading image from path: {file_path}")
 
 
+if len(sys.argv) != 3:
+    raise ValueError("Two inputs required: 1) Image path, 2) Correct answers list")
+
+image_path = sys.argv[1]
+correct_answers_str = sys.argv[2]
+
+try:
+    correct_answers = json.loads(correct_answers_str)
+except json.JSONDecodeError:
+    raise ValueError("Invalid format for correct answers")
+
+answer_mapping = {1: 'A', 2: 'B', 3: 'C', 4: 'D'}
+mapped_answers = [answer_mapping[ans] for ans in correct_answers]
+
+image = read_local_image(image_path)
+qr_code_data = detect_qr_code(image)
+
+
 def detect_paper_size_and_set_rois(ids):
     global rois
     if ids is not None:
@@ -101,134 +119,13 @@ def detect_paper_size_and_set_rois(ids):
     return None
 
 
-def estimate_missing_corners(corners, expected_ratio, dest_size):
-    """
-    Estimate missing corners based on detected ones using geometric relationships
-    corners: list of 4 points [top-left, top-right, bottom-left, bottom-right]
-    """
-    corners = list(corners)
-    detected_count = sum(1 for c in corners if c is not None)
-    
-    if detected_count == 4:
-        return corners
-    
-    if detected_count == 3:
-        # Find missing corner
-        missing_idx = corners.index(None)
-        
-        if missing_idx == 0:  # top-left missing
-            tr, bl, br = corners[1], corners[2], corners[3]
-            tl = tr + (bl - br)
-            corners[0] = tl
-        elif missing_idx == 1:  # top-right missing
-            tl, bl, br = corners[0], corners[2], corners[3]
-            tr = tl + (br - bl)
-            corners[1] = tr
-        elif missing_idx == 2:  # bottom-left missing
-            tl, tr, br = corners[0], corners[1], corners[3]
-            bl = tl + (br - tr)
-            corners[2] = bl
-        elif missing_idx == 3:  # bottom-right missing
-            tl, tr, bl = corners[0], corners[1], corners[2]
-            br = tr + (bl - tl)
-            corners[3] = br
-    
-    elif detected_count == 2:
-        detected_indices = [i for i, c in enumerate(corners) if c is not None]
-        
-        if set(detected_indices) == {0, 3}:  # diagonal: top-left and bottom-right
-            tl, br = corners[0], corners[3]
-            distance = np.linalg.norm(br - tl)
-            
-            # Calculate width and height from diagonal
-            width = distance * expected_ratio / np.sqrt(1 + expected_ratio**2)
-            height = distance / np.sqrt(1 + expected_ratio**2)
-            
-            # Calculate angle of diagonal
-            angle = np.arctan2(br[1] - tl[1], br[0] - tl[0])
-            
-            # Estimate top-right and bottom-left
-            tr = tl + np.array([width * np.cos(angle), width * np.sin(angle)])
-            bl = tl + np.array([height * np.cos(angle + np.pi/2), height * np.sin(angle + np.pi/2)])
-            
-            corners[1] = tr
-            corners[2] = bl
-            
-        elif set(detected_indices) == {1, 2}:  # diagonal: top-right and bottom-left
-            tr, bl = corners[1], corners[2]
-            distance = np.linalg.norm(bl - tr)
-            
-            width = distance * expected_ratio / np.sqrt(1 + expected_ratio**2)
-            height = distance / np.sqrt(1 + expected_ratio**2)
-            
-            angle = np.arctan2(bl[1] - tr[1], bl[0] - tr[0])
-            
-            tl = tr + np.array([height * np.cos(angle + np.pi/2), height * np.sin(angle + np.pi/2)])
-            br = bl - np.array([height * np.cos(angle + np.pi/2), height * np.sin(angle + np.pi/2)])
-            
-            corners[0] = tl
-            corners[3] = br
-            
-        elif 0 in detected_indices and 1 in detected_indices:  # top edge
-            tl, tr = corners[0], corners[1]
-            width = np.linalg.norm(tr - tl)
-            height = width / expected_ratio
-            
-            angle = np.arctan2(tr[1] - tl[1], tr[0] - tl[0])
-            perpendicular_angle = angle + np.pi/2
-            
-            bl = tl + np.array([height * np.cos(perpendicular_angle), height * np.sin(perpendicular_angle)])
-            br = tr + np.array([height * np.cos(perpendicular_angle), height * np.sin(perpendicular_angle)])
-            
-            corners[2] = bl
-            corners[3] = br
-            
-        elif 2 in detected_indices and 3 in detected_indices:  # bottom edge
-            bl, br = corners[2], corners[3]
-            width = np.linalg.norm(br - bl)
-            height = width / expected_ratio
-            
-            angle = np.arctan2(br[1] - bl[1], br[0] - bl[0])
-            perpendicular_angle = angle - np.pi/2
-            
-            tl = bl + np.array([height * np.cos(perpendicular_angle), height * np.sin(perpendicular_angle)])
-            tr = br + np.array([height * np.cos(perpendicular_angle), height * np.sin(perpendicular_angle)])
-            
-            corners[0] = tl
-            corners[1] = tr
-            
-        elif 0 in detected_indices and 2 in detected_indices:  # left edge
-            tl, bl = corners[0], corners[2]
-            height = np.linalg.norm(bl - tl)
-            width = height * expected_ratio
-            
-            angle = np.arctan2(bl[1] - tl[1], bl[0] - tl[0])
-            perpendicular_angle = angle - np.pi/2
-            
-            tr = tl + np.array([width * np.cos(perpendicular_angle), width * np.sin(perpendicular_angle)])
-            br = bl + np.array([width * np.cos(perpendicular_angle), width * np.sin(perpendicular_angle)])
-            
-            corners[1] = tr
-            corners[3] = br
-            
-        elif 1 in detected_indices and 3 in detected_indices:  # right edge
-            tr, br = corners[1], corners[3]
-            height = np.linalg.norm(br - tr)
-            width = height * expected_ratio
-            
-            angle = np.arctan2(br[1] - tr[1], br[0] - tr[0])
-            perpendicular_angle = angle + np.pi/2
-            
-            tl = tr + np.array([width * np.cos(perpendicular_angle), width * np.sin(perpendicular_angle)])
-            bl = br + np.array([width * np.cos(perpendicular_angle), width * np.sin(perpendicular_angle)])
-            
-            corners[0] = tl
-            corners[2] = bl
-    
-    return corners
+def convert_to_two_tone(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, thresholded = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
+    return thresholded
 
 
-def warp_image_robust(input_image):
+def warp_image(input_image):
     global paper_size
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     parameters = aruco.DetectorParameters_create()
@@ -236,62 +133,15 @@ def warp_image_robust(input_image):
     gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
     corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
-    if ids is None or len(ids) < 2:
-        raise ValueError(f"Not enough ArUco markers detected (found {len(ids) if ids is not None else 0}, minimum 2 required)")
-
-    # Try to detect paper size
     paper_size = detect_paper_size_and_set_rois(ids)
-    
-    if paper_size == 'A4':
+
+    if paper_size in ['A4', 'A5']:
         destination_size = (2360, 3388)
-        target_ids = [1, 2, 3, 4]
-        expected_ratio = 2360 / 3388
-    elif paper_size == 'A5':
-        destination_size = (2360, 3388)
-        target_ids = [5, 6, 7, 8]
-        expected_ratio = 2360 / 3388
+        target_ids = [1, 2, 3, 4] if paper_size == 'A4' else [5, 6, 7, 8]
+        if set(target_ids).issubset(ids.flatten()):
+            target_indices = [np.where(ids == i)[0][0] for i in target_ids]
     else:
-        # If paper size cannot be determined, try both
-        if ids is not None and any(id in [1, 2, 3, 4] for id in ids.flatten()):
-            paper_size = 'A4'
-            destination_size = (2360, 3388)
-            target_ids = [1, 2, 3, 4]
-            expected_ratio = 2360 / 3388
-        else:
-            paper_size = 'A5'
-            destination_size = (2360, 3388)
-            target_ids = [5, 6, 7, 8]
-            expected_ratio = 2360 / 3388
-
-    # Find which markers were detected
-    detected_markers = {}
-    for i, target_id in enumerate(target_ids):
-        if target_id in ids.flatten():
-            idx = np.where(ids == target_id)[0][0]
-            detected_markers[i] = corners[idx][0]
-
-    if len(detected_markers) < 2:
-        raise ValueError("At least 2 ArUco markers required for reconstruction")
-
-    print(f"Detected {len(detected_markers)} out of 4 markers for {paper_size} paper")
-
-    # Define corner positions (0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right)
-    source_points = [None, None, None, None]
-    
-    # Extract detected corners
-    corner_map = {
-        0: 0,  # marker 0 -> top-left corner (corner index 0)
-        1: 3,  # marker 1 -> top-right corner (corner index 3)
-        2: 1,  # marker 2 -> bottom-left corner (corner index 1)
-        3: 2   # marker 3 -> bottom-right corner (corner index 2)
-    }
-    
-    for marker_idx, marker_corners in detected_markers.items():
-        corner_idx = corner_map[marker_idx]
-        source_points[marker_idx] = marker_corners[corner_idx]
-
-    # Estimate missing corners based on detected ones
-    source_points = estimate_missing_corners(source_points, expected_ratio, destination_size)
+        raise ValueError("Unknown paper size or ArUco markers not found")
 
     destination_points = np.array([
         [0, 0],
@@ -300,17 +150,25 @@ def warp_image_robust(input_image):
         [destination_size[0] - 1, destination_size[1] - 1]
     ], dtype="float32")
 
-    source_points = np.array(source_points, dtype="float32")
-    
+    source_points = np.array([
+        corners[target_indices[0]][0][0],
+        corners[target_indices[1]][0][3],
+        corners[target_indices[2]][0][1],
+        corners[target_indices[3]][0][2]
+    ], dtype="float32")
+
     transform_matrix = cv2.getPerspectiveTransform(source_points, destination_points)
     warped_image = cv2.warpPerspective(input_image, transform_matrix, destination_size)
     return warped_image
 
 
-def convert_to_two_tone(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresholded = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
-    return thresholded
+image = read_local_image(image_path)
+warped_image = warp_image(image)
+
+if warped_image is not None:
+    two_tone_image = convert_to_two_tone(warped_image)
+    final_image = two_tone_image
+    pil_image = Image.fromarray(final_image)
 
 
 def detect_circles(input_image, min_radius=0):
@@ -325,12 +183,22 @@ def detect_circles(input_image, min_radius=0):
 def sort_circles_spatially(circles, roi_index, y_tolerance=15):
     """
     Sort circles by spatial position (Y then X) and assign question/option based on position
+    
+    Args:
+        circles: Array of detected circles
+        roi_index: Index of the ROI (1-4 for A4, 1-3 for A5)
+        y_tolerance: Maximum Y-difference to consider circles in same row
+    
+    Returns:
+        Dictionary mapping circle coordinates to (question_number, option)
     """
     if circles is None or len(circles) == 0:
         return {}
     
+    # Sort by Y coordinate first
     circles_sorted = sorted(circles, key=lambda c: c[1])
     
+    # Group circles into rows based on Y-coordinate proximity
     rows = []
     current_row = [circles_sorted[0]]
     
@@ -342,9 +210,11 @@ def sort_circles_spatially(circles, roi_index, y_tolerance=15):
             current_row = [circle]
     rows.append(current_row)
     
+    # Sort each row by X coordinate
     for i in range(len(rows)):
         rows[i] = sorted(rows[i], key=lambda c: c[0])
     
+    # Calculate base question number for this ROI
     if paper_size == 'A4':
         base_question = (roi_index - 1) * 30
     elif paper_size == 'A5':
@@ -352,12 +222,14 @@ def sort_circles_spatially(circles, roi_index, y_tolerance=15):
     else:
         base_question = (roi_index - 1) * 30
     
+    # Assign question numbers and options
     circle_mapping = {}
     for row_idx, row in enumerate(rows):
         question_number = base_question + row_idx + 1
         
+        # Assign options A, B, C, D based on X position within the row
         for col_idx, circle in enumerate(row):
-            if col_idx < 4:
+            if col_idx < 4:  # Only process first 4 circles (A, B, C, D)
                 option = ['A', 'B', 'C', 'D'][col_idx]
                 circle_key = tuple(circle)
                 circle_mapping[circle_key] = (question_number, option, circle)
@@ -390,32 +262,6 @@ def is_filled_circle(image, circle):
     return filled_points >= len(points_to_check) // 2
 
 
-# Main execution
-if len(sys.argv) != 3:
-    raise ValueError("Two inputs required: 1) Image path, 2) Correct answers list")
-
-image_path = sys.argv[1]
-correct_answers_str = sys.argv[2]
-
-try:
-    correct_answers = json.loads(correct_answers_str)
-except json.JSONDecodeError:
-    raise ValueError("Invalid format for correct answers")
-
-answer_mapping = {1: 'A', 2: 'B', 3: 'C', 4: 'D'}
-mapped_answers = [answer_mapping[ans] for ans in correct_answers]
-
-image = read_local_image(image_path)
-qr_code_data = detect_qr_code(image)
-
-# Use robust warping function
-warped_image = warp_image_robust(image)
-
-if warped_image is not None:
-    two_tone_image = convert_to_two_tone(warped_image)
-    final_image = two_tone_image
-    pil_image = Image.fromarray(final_image)
-
 # Detect circles in each ROI
 detected_circles = {}
 for key, roi in rois.items():
@@ -424,11 +270,13 @@ for key, roi in rois.items():
     if circles is not None:
         detected_circles[key] = circles
 
+
 # Process circles using spatial positioning
 circle_mappings = {}
 for roi_key, circles in detected_circles.items():
     roi_index = int(roi_key.split('_')[-1])
     circle_mappings[roi_key] = sort_circles_spatially(circles, roi_index)
+
 
 # Initialize dataframe
 if paper_size == 'A4':
@@ -454,9 +302,10 @@ for roi_key, circle_map in circle_mappings.items():
             filled_circles_count[question_number] += 1
             
             if filled_circles_count[question_number] > 1:
-                df.at[question_number, 'Option'] = 'W'
+                df.at[question_number, 'Option'] = 'W'  # Multiple answers
             else:
                 df.at[question_number, 'Option'] = option
+
 
 # Visualization and correction
 circle_radius = 20 if paper_size == 'A4' else 25 if paper_size == 'A5' else 20
@@ -486,6 +335,7 @@ for question_number in range(1, total_questions + 1):
     if filled_circles_count.get(question_number, 0) == 0:
         correct_answer = mapped_answers[question_number - 1]
         
+        # Find the correct answer circle
         for roi_key, circle_map in circle_mappings.items():
             x_offset, y_offset = rois[roi_key][0], rois[roi_key][1]
             
@@ -508,16 +358,20 @@ for roi_key, circle_map in circle_mappings.items():
             
             if is_filled_circle(final_image, (adjusted_x, adjusted_y, r)):
                 if filled_circles_count[question_number] > 1:
+                    # Multiple answers - yellow rectangle
                     cv2.rectangle(final_image_color, (adjusted_x-half_square, adjusted_y-half_square), 
                                  (adjusted_x+half_square, adjusted_y+half_square), (0, 255, 255), 3)
                 else:
                     correct_answer = mapped_answers[question_number - 1]
                     if correct_answer == df.at[question_number, 'Option']:
+                        # Correct answer - green rectangle
                         cv2.rectangle(final_image_color, (adjusted_x-half_square, adjusted_y-half_square), 
                                      (adjusted_x+half_square, adjusted_y+half_square), (55, 155, 55), 3)
                     else:
+                        # Wrong answer - red rectangle
                         cv2.rectangle(final_image_color, (adjusted_x-half_square, adjusted_y-half_square), 
                                      (adjusted_x+half_square, adjusted_y+half_square), (35, 35, 200), 3)
+
 
 # Add correction guide
 correction_guide = cv2.imread('correction_guide.jpg')
