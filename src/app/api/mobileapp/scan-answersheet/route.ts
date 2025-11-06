@@ -7,6 +7,13 @@ import { spawn } from 'child_process';
 import { existsSync, writeFileSync, mkdirSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
+export const runtime = 'nodejs';
+const PY_BIN = process.env.PYTHON_BIN
+|| '/var/www/formmaker3/python/.venv-aruco/bin/python';
+const PY_CWD = process.env.PYTHON_CWD
+|| path.join(process.cwd(), 'python');
+
+
 // Load database configuration
 const getDatabaseConfig = () => {
   try {
@@ -59,6 +66,8 @@ export const config = {
 };
 
 export async function POST(request: NextRequest) {
+
+  
   try {
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -141,8 +150,15 @@ export async function POST(request: NextRequest) {
     writeFileSync(absoluteFilePath, buffer);
 
     // STEP 1: First scan with dummy answers to extract QR code
-    const scriptPath = path.join(process.cwd(), 'python', `${scannerScript}.py`);
-    const pythonCwd = path.join(process.cwd(), 'python');
+
+
+   // const scriptPath = path.join(process.cwd(), 'python', `${scannerScript}.py`);
+   // const pythonCwd = path.join(process.cwd(), 'python');
+
+
+    const scriptPath = path.join(PY_CWD, `${scannerScript}.py`);
+    const pythonCwd = PY_CWD;
+
     const dummyAnswers = Array(120).fill(1); // Dummy answers for initial scan
     
     console.log("scriptPath", scriptPath);
@@ -151,12 +167,12 @@ export async function POST(request: NextRequest) {
     console.log("pythonCwd", pythonCwd);
     
     const initialScan = await new Promise<ScanResult>((resolve, reject) => {
-      const py = spawn('python3', [
-        scriptPath,
-        absoluteFilePath,
-        JSON.stringify(dummyAnswers)
-      ], { cwd: pythonCwd });
-
+      // const py = spawn('python3', [
+      //   scriptPath,
+      //   absoluteFilePath,
+      //   JSON.stringify(dummyAnswers)
+      // ], { cwd: pythonCwd });
+      const py = spawn(PY_BIN, [ scriptPath, absoluteFilePath, JSON.stringify(dummyAnswers) ], { cwd: pythonCwd });
    
       console.log("py", py);
 
@@ -263,11 +279,15 @@ export async function POST(request: NextRequest) {
 
       // STEP 5: Re-scan with actual correct answers for grading
       const finalScan = await new Promise<ScanResult>((resolve, reject) => {
-        const py = spawn('python3', [
-          scriptPath,
-          absoluteFilePath,
-          JSON.stringify(correctAnswers)
-        ], { cwd: pythonCwd });
+        // const py = spawn('python3', [
+        //   scriptPath,
+        //   absoluteFilePath,
+        //   JSON.stringify(correctAnswers)
+        // ], { cwd: pythonCwd });
+
+        const py = spawn(PY_BIN, [ scriptPath, absoluteFilePath, JSON.stringify(correctAnswers) ], { cwd: pythonCwd });
+
+
 
         let stdout = '', stderr = '';
         
@@ -292,12 +312,16 @@ export async function POST(request: NextRequest) {
               const result = JSON.parse(stdout) as ScanResult;
               
               // Fix correctedImageUrl path
-              if (result.correctedImageUrl && !result.correctedImageUrl.startsWith('http')) {
-                const imagePath = result.correctedImageUrl.startsWith('/') 
-                  ? result.correctedImageUrl 
-                  : `/${result.correctedImageUrl}`;
-                result.correctedImageUrl = imagePath;
-              }
+              // if (result.correctedImageUrl && !result.correctedImageUrl.startsWith('http')) {
+              //   const imagePath = result.correctedImageUrl.startsWith('/') 
+              //     ? result.correctedImageUrl 
+              //     : `/${result.correctedImageUrl}`;
+              //   result.correctedImageUrl = imagePath;
+              // }
+
+              if (result.correctedImageUrl) {
+                  result.correctedImageUrl = result.correctedImageUrl.replace(/^(\.\.\/)?public\//, '/');
+                 }
               
               resolve(result);
             } catch {
