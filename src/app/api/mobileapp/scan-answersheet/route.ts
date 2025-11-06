@@ -145,6 +145,11 @@ export async function POST(request: NextRequest) {
     const pythonCwd = path.join(process.cwd(), 'python');
     const dummyAnswers = Array(120).fill(1); // Dummy answers for initial scan
     
+    console.log("scriptPath", scriptPath);
+    console.log("absoluteFilePath", absoluteFilePath);
+    console.log("dummyAnswers", dummyAnswers);
+    console.log("pythonCwd", pythonCwd);
+    
     const initialScan = await new Promise<ScanResult>((resolve, reject) => {
       const py = spawn('python3', [
         scriptPath,
@@ -152,10 +157,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify(dummyAnswers)
       ], { cwd: pythonCwd });
 
-      console.log("scriptPath", scriptPath);
-      console.log("absoluteFilePath", absoluteFilePath);
-      console.log("dummyAnswers", dummyAnswers);
-      console.log("pythonCwd", pythonCwd);
+   
       console.log("py", py);
 
       let stdout = '', stderr = '';
