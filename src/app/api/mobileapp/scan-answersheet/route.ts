@@ -152,6 +152,12 @@ export async function POST(request: NextRequest) {
         JSON.stringify(dummyAnswers)
       ], { cwd: pythonCwd });
 
+      console.log("scriptPath", scriptPath);
+      console.log("absoluteFilePath", absoluteFilePath);
+      console.log("dummyAnswers", dummyAnswers);
+      console.log("pythonCwd", pythonCwd);
+      console.log("py", py);
+
       let stdout = '', stderr = '';
       
       py.stdout.on('data', (data) => {
