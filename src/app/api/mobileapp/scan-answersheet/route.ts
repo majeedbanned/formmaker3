@@ -184,8 +184,8 @@ export async function POST(request: NextRequest) {
     // STEP 2: Extract exam code from QR code
     if (!initialScan.qRCodeData) {
       return NextResponse.json(
-        { success: false, message: 'QR code یافت نشد. لطفا مطمئن شوید که پاسخنامه واضح است' },
-        { status: 400 }
+        { success: false, message:JSON.stringify(initialScan) },
+        { status: 401}
       );
     }
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     if (qrParts.length < 2) {
       return NextResponse.json(
         { success: false, message: 'فرمت QR code نامعتبر است. فرمت صحیح: studentcode-examcode' },
-        { status: 400 }
+        { status: 402 }
       );
     }
 

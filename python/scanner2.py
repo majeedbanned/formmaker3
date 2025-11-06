@@ -1,5 +1,8 @@
 import cv2
 import sys
+
+# from pyzbar.pyzbar import decode
+
 import numpy as np
 import pandas as pd
 import json
@@ -7,7 +10,7 @@ from operator import itemgetter
 import cv2.aruco as aruco
 from PIL import Image, ImageOps
 import random
-from pyzbar.pyzbar import decode
+
 
 global paper_size
 paper_size = None
@@ -52,14 +55,27 @@ def generate_json_output(qr_code_data):
     return json.dumps(json_output)
 
 
+# def detect_qr_code(image):
+#     detector = cv2.QRCodeDetector()
+#     data, points, _ = detector.detectAndDecode(image)
+#     return data if data else None
+
 def detect_qr_code(image):
-    decoded_objects = decode(image)
-    qr_data = None
-    for obj in decoded_objects:
-        if obj.type == 'QRCODE':
-            qr_data = obj.data.decode('utf-8')
-            break
-    return qr_data
+    detector = cv2.QRCodeDetector()
+    data, points, _ = detector.detectAndDecode(image)
+    return data if data else None
+
+
+# def detect_qr_code(image):
+#     decoded_objects = decode(image)
+#     qr_data = None
+#     for obj in decoded_objects:
+#         if obj.type == 'QRCODE':
+#             qr_data = obj.data.decode('utf-8')
+#             break
+#     return qr_data
+
+
 
 
 def read_local_image(file_path):
