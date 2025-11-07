@@ -64,14 +64,12 @@ function formatPersianDate(year: number, month: number, day: number): string {
   return toPersianDigits(`${y}/${m}/${d}`);
 }
 
-// GET: Fetch today's courses for a student
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
-
     const token = authHeader.substring(7);
     let decoded: JWTPayload;
     try {
@@ -79,112 +77,62 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       return NextResponse.json({ success: false, message: 'Invalid token' }, { status: 401 });
     }
-
     if (decoded.userType !== 'teacher' && decoded.userType !== 'school') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
-
     const searchParams = request.nextUrl.searchParams;
     const studentCode = searchParams.get('studentCode');
     if (!studentCode) {
       return NextResponse.json({ success: false, message: 'Student code is required' }, { status: 400 });
     }
-
     const dbConfig = getDatabaseConfig();
     const schoolConfig = dbConfig[decoded.domain];
     if (!schoolConfig) {
       return NextResponse.json({ success: false, message: 'Database configuration not found' }, { status: 500 });
     }
-
     const client = new MongoClient(schoolConfig.connectionString);
     await client.connect();
     const db = client.db();
-
-    // Find student's class
     const studentClass = await db.collection('classes').findOne({
       'data.schoolCode': decoded.schoolCode,
       'data.students.studentCode': studentCode,
     });
-
     if (!studentClass) {
       await client.close();
       return NextResponse.json({ success: false, message: 'Student class not found' }, { status: 404 });
     }
-
     const todayPersianDay = getTodayPersianDay();
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const [jYear, jMonth, jDay] = gregorian_to_jalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
     const persianDate = formatPersianDate(jYear, jMonth, jDay);
     const persianMonth = persianMonths[jMonth];
-
-    // console.log("todayPersianDay", todayPersianDay);
-    // console.log("today", today);
-    // console.log("todayStr", todayStr);
-    // console.log("jYear", jYear);
-    // console.log("jMonth", jMonth);
-    // console.log("jDay", jDay);
-    // console.log("persianDate", persianDate);
-    // console.log("persianMonth", persianMonth);
-    console.log("studentClass", studentClass);
-    // Filter teachers/courses for today
-    const todaysCourses = studentClass.data.teachers
-      .filter((teacher: any) => 
-        teacher.weeklySchedule && 
-        teacher.weeklySchedule.some((schedule: any) => schedule.day === todayPersianDay)
-      )
-      .map((teacher: any) => {
-        const todaySlots = teacher.weeklySchedule.filter((s: any) => s.day === todayPersianDay);
-        return todaySlots.map((slot: any) => ({
-          teacherCode: teacher.teacherCode,
-          courseCode: teacher.courseCode,
-          timeSlot: slot.timeSlot,
-        }));
-      })
-      .flat();
-console.log("todaysCourses", todaysCourses);
-    // Fetch course names
+    const todaysCourses = studentClass.data.teachers.filter((teacher: any) => teacher.weeklySchedule && teacher.weeklySchedule.some((schedule: any) => schedule.day === todayPersianDay)).map((teacher: any) => {
+      const todaySlots = teacher.weeklySchedule.filter((s: any) => s.day === todayPersianDay);
+      return todaySlots.map((slot: any) => ({ teacherCode: teacher.teacherCode, courseCode: teacher.courseCode, timeSlot: slot.timeSlot }));
+    }).flat();
     const courseCodes = [...new Set(todaysCourses.map((c: any) => c.courseCode))];
-    const courses = await db.collection('courses').find({
-      'data.schoolCode': decoded.schoolCode,
-      'data.courseCode': { $in: courseCodes },
-    }).toArray();
-
+    const courses = await db.collection('courses').find({ 'data.schoolCode': decoded.schoolCode, 'data.courseCode': { $in: courseCodes } }).toArray();
     const courseMap: Record<string, string> = {};
     courses.forEach((course: any) => {
       if (course.data?.courseCode && course.data?.courseName) {
         courseMap[course.data.courseCode] = course.data.courseName;
       }
     });
-
-    // Fetch teacher names
     const teacherCodes = [...new Set(todaysCourses.map((c: any) => c.teacherCode))];
-    const teachers = await db.collection('teachers').find({
-      'data.schoolCode': decoded.schoolCode,
-      'data.teacherCode': { $in: teacherCodes },
-    }).toArray();
-
+    const teachers = await db.collection('teachers').find({ 'data.schoolCode': decoded.schoolCode, 'data.teacherCode': { $in: teacherCodes } }).toArray();
     const teacherMap: Record<string, string> = {};
     teachers.forEach((teacher: any) => {
       if (teacher.data?.teacherCode && teacher.data?.teacherName) {
         teacherMap[teacher.data.teacherCode] = teacher.data.teacherName + ' ' + (teacher.data.teacherlname || '');
       }
     });
-
-    // Check existing records in classsheet for today
-    const existingRecords = await db.collection('classsheet').find({
-      studentCode: studentCode,
-      schoolCode: decoded.schoolCode,
-      date: todayStr,
-    }).toArray();
-
+    const existingRecords = await db.collection('classsheet').find({ studentCode: studentCode, schoolCode: decoded.schoolCode, date: todayStr }).toArray();
     const existingMap: Record<string, any> = {};
     existingRecords.forEach((record: any) => {
       const key = `${record.courseCode}-${record.timeSlot}`;
       existingMap[key] = record;
     });
-
-    // Build course list with existing status
     const courseList = todaysCourses.map((course: any) => {
       const key = `${course.courseCode}-${course.timeSlot}`;
       const existing = existingMap[key];
@@ -194,40 +142,28 @@ console.log("todaysCourses", todaysCourses);
         teacherCode: course.teacherCode,
         teacherName: teacherMap[course.teacherCode] || '',
         timeSlot: course.timeSlot,
-        alreadyMarked: !!existing,
-        currentStatus: existing?.presenceStatus || null,
+        hasRecord: !!existing,
+        existingGrades: existing?.grades || [],
+        existingAssessments: existing?.assessments || [],
       };
     });
-
     await client.close();
-
     return NextResponse.json({
       success: true,
-      data: {
-        classCode: studentClass.data.classCode,
-        className: studentClass.data.className,
-        date: todayStr,
-        persianDate,
-        persianMonth,
-        dayOfWeek: todayPersianDay,
-        courses: courseList,
-      },
+      data: { classCode: studentClass.data.classCode, className: studentClass.data.className, date: todayStr, persianDate, persianMonth, dayOfWeek: todayPersianDay, courses: courseList },
     });
-
   } catch (error: any) {
-    console.error('Error fetching today\'s courses:', error);
+    console.error('Error fetching courses:', error);
     return NextResponse.json({ success: false, message: error.message || 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST: Mark student absent for selected courses
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
-
     const token = authHeader.substring(7);
     let decoded: JWTPayload;
     try {
@@ -235,119 +171,72 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       return NextResponse.json({ success: false, message: 'Invalid token' }, { status: 401 });
     }
-
     if (decoded.userType !== 'teacher' && decoded.userType !== 'school') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
-
     const body = await request.json();
-    const { studentCode, classCode, date, persianDate, persianMonth, coursesData, absenceAcceptable, absenceDescription } = body;
-
-    if (!studentCode || !classCode || !date || !coursesData || !Array.isArray(coursesData)) {
+    const { studentCode, classCode, courseCode, teacherCode, timeSlot, date, persianDate, persianMonth, grade, assessments, descriptiveStatus, note } = body;
+    if (!studentCode || !classCode || !courseCode || !teacherCode || !timeSlot || !date) {
       return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
-
     const dbConfig = getDatabaseConfig();
     const schoolConfig = dbConfig[decoded.domain];
     if (!schoolConfig) {
       return NextResponse.json({ success: false, message: 'Database configuration not found' }, { status: 500 });
     }
-
     const client = new MongoClient(schoolConfig.connectionString);
     await client.connect();
     const db = client.db();
-
-    let createdCount = 0;
-    let updatedCount = 0;
-
-    for (const courseData of coursesData) {
-      const { courseCode, teacherCode, timeSlot, presenceStatus } = courseData;
-      
-      // Check if record exists
-      const existing = await db.collection('classsheet').findOne({
-        studentCode: studentCode,
-        schoolCode: decoded.schoolCode,
-        classCode: classCode,
-        courseCode: courseCode,
-        teacherCode: teacherCode,
-        timeSlot: timeSlot,
-        date: date,
-      });
-
-      // Determine if we should set absence-related fields
-      const isAbsence = presenceStatus === 'absent' || presenceStatus === 'late';
-      const isPresent = presenceStatus === 'present';
-
-      if (existing) {
-        // Update existing record
-        const updateFields: any = {
-          presenceStatus: presenceStatus,
-          updatedAt: new Date(),
-        };
-
-        // For present status, always set absenceAcceptable to true
-        if (isPresent) {
-          updateFields.absenceAcceptable = true;
-          updateFields.absenceDescription = '';
-        }
-        // For absence/late, use the provided values
-        else if (isAbsence) {
-          updateFields.absenceAcceptable = absenceAcceptable;
-          updateFields.absenceDescription = absenceDescription || '';
-        }
-
-        await db.collection('classsheet').updateOne(
-          { _id: existing._id },
-          { $set: updateFields }
-        );
-        updatedCount++;
-      } else {
-        // Create new record
-        const newRecord: any = {
-          classCode: classCode,
-          courseCode: courseCode,
-          date: date,
-          schoolCode: decoded.schoolCode,
-          studentCode: studentCode,
-          teacherCode: teacherCode,
-          timeSlot: timeSlot,
-          assessments: [],
-          descriptiveStatus: '',
-          grades: [],
-          note: '',
-          persianDate: persianDate,
-          persianMonth: persianMonth,
-          presenceStatus: presenceStatus,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        // For present status, always set absenceAcceptable to true
-        if (isPresent) {
-          newRecord.absenceAcceptable = true;
-          newRecord.absenceDescription = '';
-        }
-        // For absence/late, use the provided values
-        else if (isAbsence) {
-          newRecord.absenceAcceptable = absenceAcceptable;
-          newRecord.absenceDescription = absenceDescription || '';
-        }
-
-        await db.collection('classsheet').insertOne(newRecord);
-        createdCount++;
-      }
-    }
-
-    await client.close();
-
-    return NextResponse.json({
-      success: true,
-      message: `وضعیت حضور با موفقیت ثبت شد (${createdCount} جدید، ${updatedCount} به‌روزرسانی)`,
-      data: { createdCount, updatedCount },
+    const existing = await db.collection('classsheet').findOne({
+      studentCode: studentCode, schoolCode: decoded.schoolCode, classCode: classCode, courseCode: courseCode, teacherCode: teacherCode, timeSlot: timeSlot, date: date
     });
-
+    const now = new Date();
+    const nowISO = now.toISOString();
+    if (existing) {
+      const updateFields: any = { updatedAt: now };
+      if (grade && grade.value !== null && grade.value !== undefined) {
+        const gradeObj = { value: parseFloat(grade.value), description: grade.description || '', date: nowISO, totalPoints: parseFloat(grade.totalPoints) || 20 };
+        updateFields['$push'] = { grades: gradeObj };
+      }
+      if (assessments && Array.isArray(assessments) && assessments.length > 0) {
+        const assessmentObjs = assessments.map((a: any) => ({ title: a.title || '', value: a.value || '', date: nowISO, weight: a.weight || 0 }));
+        if (updateFields['$push']) {
+          updateFields['$push'].assessments = { $each: assessmentObjs };
+        } else {
+          updateFields['$push'] = { assessments: { $each: assessmentObjs } };
+        }
+      }
+      if (descriptiveStatus !== undefined) updateFields.descriptiveStatus = descriptiveStatus;
+      if (note !== undefined) updateFields.note = note;
+      const pushUpdate = updateFields['$push'];
+      delete updateFields['$push'];
+      if (pushUpdate) {
+        await db.collection('classsheet').updateOne({ _id: existing._id }, { $set: updateFields, $push: pushUpdate });
+      } else {
+        await db.collection('classsheet').updateOne({ _id: existing._id }, { $set: updateFields });
+      }
+      await client.close();
+      return NextResponse.json({ success: true, message: 'ارزیابی با موفقیت به‌روزرسانی شد' });
+    } else {
+      const grades = [];
+      if (grade && grade.value !== null && grade.value !== undefined) {
+        grades.push({ value: parseFloat(grade.value), description: grade.description || '', date: nowISO, totalPoints: parseFloat(grade.totalPoints) || 20 });
+      }
+      const assessmentsList = [];
+      if (assessments && Array.isArray(assessments) && assessments.length > 0) {
+        assessmentsList.push(...assessments.map((a: any) => ({ title: a.title || '', value: a.value || '', date: nowISO, weight: a.weight || 0 })));
+      }
+      const newRecord = {
+        classCode, courseCode, date, schoolCode: decoded.schoolCode, studentCode, teacherCode, timeSlot,
+        grades, assessments: assessmentsList, descriptiveStatus: descriptiveStatus || '', note: note || '',
+        persianDate, persianMonth, presenceStatus: null, createdAt: now, updatedAt: now
+      };
+      await db.collection('classsheet').insertOne(newRecord);
+      await client.close();
+      return NextResponse.json({ success: true, message: 'ارزیابی با موفقیت ثبت شد' });
+    }
   } catch (error: any) {
-    console.error('Error marking student absent:', error);
+    console.error('Error adding assessment:', error);
     return NextResponse.json({ success: false, message: error.message || 'Internal server error' }, { status: 500 });
   }
 }

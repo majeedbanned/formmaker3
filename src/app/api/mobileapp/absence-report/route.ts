@@ -48,6 +48,13 @@ function toPersianDigits(str: string | number): string {
   return String(str).replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
 }
 
+function formatPersianDate(year: number, month: number, day: number): string {
+  const y = String(year);
+  const m = String(month).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return toPersianDigits(`${y}/${m}/${d}`);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -143,7 +150,7 @@ export async function GET(request: NextRequest) {
         try {
           const date = new Date(record.date);
           const [jYear, jMonth, jDay] = gregorian_to_jalali(date.getFullYear(), date.getMonth() + 1, date.getDate());
-          persianDate = toPersianDigits(`${jYear}/${jMonth}/${jDay}`);
+          persianDate = formatPersianDate(jYear, jMonth, jDay);
         } catch (e) {
           persianDate = record.date;
         }
