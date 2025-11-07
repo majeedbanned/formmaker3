@@ -52,6 +52,8 @@ interface StudentAttendanceRecord {
   timeSlot: string;
   presenceStatus: 'present' | 'absent' | 'late';
   note?: string;
+  absenceAcceptable?: boolean;
+  absenceDescription?: string;
   date: string;
   persianDate: string;
   persianMonth: string;
@@ -296,6 +298,8 @@ export async function GET(request: NextRequest) {
           timeSlot: record.timeSlot,
           presenceStatus: record.presenceStatus || 'present',
           note: record.note || '',
+          absenceAcceptable: record.absenceAcceptable,
+          absenceDescription: record.absenceDescription || '',
           date: record.date,
           persianDate: record.persianDate || persianDate,
           persianMonth: record.persianMonth || persianMonth
