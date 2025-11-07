@@ -655,7 +655,12 @@
               "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/alm?authSource=admin",
               "description": "alm.farsamooz.ir"
             }
-            
+            ,
+            "olom.farsamooz.ir": {
+              "schoolCode":"3000",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/olom?authSource=admin",
+              "description": "olom.farsamooz.ir"
+            }
 
 
 
