@@ -1,0 +1,101 @@
+{
+  "videos": [
+    {
+      "id": "video-001",
+      "title": "آموزش ثبت حضور و غیاب در دفترچه کلاسی",
+      "description": "در این ویدیو نحوه ثبت حضور و غیاب دانش‌آموزان در سیستم دفترچه کلاسی را یاد می‌گیرید.",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "5:30",
+      "roles": ["teacher", "school"],
+      "category": "دفترچه کلاسی",
+      "active": true,
+      "createdAt": "2025-10-20T10:00:00Z"
+    },
+    {
+      "id": "video-002",
+      "title": "نحوه ثبت نمرات و ارزیابی‌های مهارتی",
+      "description": "آموزش کامل ثبت نمرات درسی و ارزیابی‌های مهارتی دانش‌آموزان",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "8:45",
+      "roles": ["teacher", "school"],
+      "category": "ارزیابی",
+      "active": true,
+      "createdAt": "2025-10-21T10:00:00Z"
+    },
+    {
+      "id": "video-003",
+      "title": "مشاهده نمرات و گزارش عملکرد تحصیلی",
+      "description": "راهنمای مشاهده نمرات، حضور و غیاب و گزارش عملکرد تحصیلی در اپلیکیشن",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "4:20",
+      "roles": ["student"],
+      "category": "دانش‌آموز",
+      "active": true,
+      "createdAt": "2025-10-22T10:00:00Z"
+    },
+    {
+      "id": "video-004",
+      "title": "پنل مدیریت و ارسال اعلان به دانش‌آموزان",
+      "description": "آموزش کامل استفاده از پنل ارسال اعلان و مدیریت ارتباطات",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "7:15",
+      "roles": ["school"],
+      "category": "مدیریت",
+      "active": true,
+      "createdAt": "2025-10-23T10:00:00Z"
+    },
+    {
+      "id": "video-005",
+      "title": "نحوه استفاده از اپلیکیشن موبایل پارس‌آموز",
+      "description": "آشنایی کامل با امکانات و قابلیت‌های اپلیکیشن موبایل",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "6:30",
+      "roles": ["student", "teacher", "school"],
+      "category": "عمومی",
+      "active": true,
+      "createdAt": "2025-10-24T10:00:00Z"
+    },
+    {
+      "id": "video-006",
+      "title": "تنظیم برنامه هفتگی و مدیریت کلاس‌ها",
+      "description": "نحوه تنظیم برنامه هفتگی کلاس‌ها و مدیریت دروس",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "9:00",
+      "roles": ["school"],
+      "category": "مدیریت",
+      "active": true,
+      "createdAt": "2025-10-25T10:00:00Z"
+    },
+    {
+      "id": "video-007",
+      "title": "ثبت تکلیف و پیگیری انجام آن",
+      "description": "آموزش ثبت تکالیف درسی و پیگیری وضعیت انجام تکالیف توسط دانش‌آموزان",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "5:50",
+      "roles": ["teacher"],
+      "category": "دفترچه کلاسی",
+      "active": true,
+      "createdAt": "2025-10-26T10:00:00Z"
+    },
+    {
+      "id": "video-008",
+      "title": "گزارش‌گیری و آمار عملکرد",
+      "description": "نحوه استفاده از بخش گزارش‌ها و مشاهده آمار عملکرد دانش‌آموزان و معلمان",
+      "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "duration": "10:20",
+      "roles": ["school"],
+      "category": "گزارش‌گیری",
+      "active": true,
+      "createdAt": "2025-10-27T10:00:00Z"
+    }
+  ]
+}
+
