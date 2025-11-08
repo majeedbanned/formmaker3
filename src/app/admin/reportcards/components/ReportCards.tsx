@@ -90,9 +90,21 @@ const printStyles = `
       margin-bottom: 8px !important;
       padding: 2px !important;
       page-break-before: always !important;
+      page-break-after: always !important;
+      break-before: page !important;
+      break-after: page !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      min-height: calc(100vh - 1cm) !important;
+      display: block !important;
     }
     .printing .report-card-wrapper:first-of-type {
       page-break-before: avoid !important;
+      break-before: auto !important;
+    }
+    .printing .report-card-wrapper:last-of-type {
+      page-break-after: avoid !important;
+      break-after: auto !important;
     }
     .printing .card-content {
       padding: 0 !important;
