@@ -222,46 +222,61 @@ export async function GET(request: NextRequest) {
         }).toArray()
       ]);
 
-      // Create lookup maps
-      const studentMap = new Map(
-        students.map(s => [s.data.studentCode, {
-          studentId: s._id.toString(),
-          studentName: s.data.studentName,
-          studentFamily: s.data.studentFamily
-        }])
-      );
+      // Create lookup maps with better error handling
+      const studentMap = new Map();
+      students.forEach(s => {
+        if (s.data && s.data.studentCode) {
+          studentMap.set(s.data.studentCode, {
+            studentId: s._id.toString(),
+            studentName: s.data.studentName || 'نامشخص',
+            studentFamily: s.data.studentFamily || ''
+          });
+        }
+      });
 
-      const classMap = new Map(
-        classes.map(c => [c.data.classCode.value, c.data.className])
-      );
+      const classMap = new Map();
+      classes.forEach(c => {
+        if (c.data && c.data.classCode) {
+          const classCode = typeof c.data.classCode === 'object' ? c.data.classCode.value : c.data.classCode;
+          const className = c.data.className || c.data.classCode?.label || classCode;
+          classMap.set(classCode, className);
+        }
+      });
 
-      const teacherMap = new Map(
-        teachers.map(t => [t.data.teacherCode, t.data.teacherName || t.data.teacherCode])
-      );
+      const teacherMap = new Map();
+      teachers.forEach(t => {
+        if (t.data && t.data.teacherCode) {
+          teacherMap.set(t.data.teacherCode, t.data.teacherName || t.data.teacherCode);
+        }
+      });
 
-      const courseMap = new Map(
-        courses.map(c => [c.data.courseCode, c.data.courseName || c.data.courseCode])
-      );
+      const courseMap = new Map();
+      courses.forEach(c => {
+        if (c.data && c.data.courseCode) {
+          courseMap.set(c.data.courseCode, c.data.courseName || c.data.courseCode);
+        }
+      });
 
       // Transform records
       const transformedRecords: AttendanceRecord[] = attendanceRecords.map(record => {
         const student = studentMap.get(record.studentCode);
+        const className = classMap.get(record.classCode);
         
         return {
           studentId: student?.studentId || '',
           studentName: student?.studentName || 'نامشخص',
-          studentFamily: student?.studentFamily || 'نامشخص',
-          studentCode: record.studentCode,
-          classCode: record.classCode,
-          className: classMap.get(record.classCode) || 'نامشخص',
-          teacherCode: record.teacherCode,
-          teacherName: teacherMap.get(record.teacherCode) || record.teacherCode,
-          courseCode: record.courseCode,
-          courseName: courseMap.get(record.courseCode) || record.courseCode,
-          timeSlot: record.timeSlot,
+          studentFamily: student?.studentFamily || '',
+          studentCode: record.studentCode || '',
+          classCode: record.classCode || '',
+          className: className || record.className || record.classCode || 'نامشخص',
+          teacherCode: record.teacherCode || '',
+          teacherName: teacherMap.get(record.teacherCode) || record.teacherName || record.teacherCode || 'نامشخص',
+          courseCode: record.courseCode || '',
+          courseName: courseMap.get(record.courseCode) || record.courseName || record.courseCode || 'نامشخص',
+          timeSlot: record.timeSlot || '',
           presenceStatus: record.presenceStatus as 'absent' | 'late',
           note: record.note || '',
-          date: record.date,
+          date: record.date || todayStr,
           persianDate: record.persianDate || formatJalaliDate(today)
         };
       });

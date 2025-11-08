@@ -161,19 +161,27 @@ export async function GET(request: NextRequest) {
         }).toArray()
       ]);
 
-      // Create lookup maps
-      const classMap = new Map(
-        classes.map(c => [c.data.classCode.value, c.data.className])
-      );
+      // Create lookup maps with better error handling
+      const classMap = new Map();
+      classes.forEach(c => {
+        if (c.data && c.data.classCode) {
+          const classCode = typeof c.data.classCode === 'object' ? c.data.classCode.value : c.data.classCode;
+          const className = c.data.className || c.data.classCode?.label || classCode;
+          classMap.set(classCode, className);
+        }
+      });
 
-      const studentMap = new Map(
-        students.map(s => [s.data.studentCode, {
-          studentId: s._id.toString(),
-          studentName: s.data.studentName,
-          studentFamily: s.data.studentFamily,
-          studentCode: s.data.studentCode
-        }])
-      );
+      const studentMap = new Map();
+      students.forEach(s => {
+        if (s.data && s.data.studentCode) {
+          studentMap.set(s.data.studentCode, {
+            studentId: s._id.toString(),
+            studentName: s.data.studentName || 'نامشخص',
+            studentFamily: s.data.studentFamily || '',
+            studentCode: s.data.studentCode
+          });
+        }
+      });
 
       // Transform the data
       const absentByClass: ClassAbsenceGroup[] = absentByClassAggregation.map(group => {
@@ -183,15 +191,15 @@ export async function GET(request: NextRequest) {
           .map((code: string) => studentMap.get(code))
           .filter((student: any) => student !== undefined)
           .map((student: any) => ({
-            studentId: student.studentId,
-            studentName: student.studentName,
-            studentFamily: student.studentFamily,
-            studentCode: student.studentCode
+            studentId: student.studentId || '',
+            studentName: student.studentName || 'نامشخص',
+            studentFamily: student.studentFamily || '',
+            studentCode: student.studentCode || ''
           }));
 
         return {
-          classCode: group._id,
-          className,
+          classCode: group._id || '',
+          className: className || 'نامشخص',
           students
         };
       }).filter(group => group.students.length > 0); // Only include groups with valid students

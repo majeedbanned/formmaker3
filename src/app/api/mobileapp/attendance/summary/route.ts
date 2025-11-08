@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       const todayStr = today.toISOString().split('T')[0];
 
       // Count absent and delayed students (optimized aggregation)
-      const [absentCount, delayedCount, coursesData, classCount] = await Promise.all([
+      const [absentCount, delayedCount, uniqueAbsentAgg, coursesData, classCount] = await Promise.all([
         // Count total absent records
         db.collection('classsheet').countDocuments({
           schoolCode: decoded.schoolCode,
@@ -117,6 +117,31 @@ export async function GET(request: NextRequest) {
           date: todayStr,
           presenceStatus: 'late'
         }),
+        
+        // Get unique absent students using aggregation
+        db.collection('classsheet').aggregate([
+          {
+            $match: {
+              schoolCode: decoded.schoolCode,
+              date: todayStr,
+              presenceStatus: 'absent'
+            }
+          },
+          {
+            $group: {
+              _id: '$studentCode',
+              classCode: { $first: '$classCode' },
+              studentCode: { $first: '$studentCode' }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              studentCode: '$studentCode',
+              classCode: '$classCode'
+            }
+          }
+        ]).toArray(),
         
         // Get course presence information
         db.collection('classsheet').aggregate([
@@ -152,17 +177,82 @@ export async function GET(request: NextRequest) {
         })
       ]);
 
-      // Fetch course names for courses that need them
+      // Extract unique codes for batch fetching
       const courseCodes = coursesData.map(c => c._id);
-      const courses = await db.collection('courses').find({
-        'data.schoolCode': decoded.schoolCode,
-        'data.courseCode': { $in: courseCodes }
-      }).toArray();
+      const uniqueAbsentStudentCodes = uniqueAbsentAgg.map(s => s.studentCode);
+      const uniqueAbsentClassCodes = [...new Set(uniqueAbsentAgg.map(s => s.classCode))];
 
+      // Fetch courses, students, and classes in parallel
+      const [courses, students, classesWithValue, classesWithoutValue] = await Promise.all([
+        db.collection('courses').find({
+          'data.schoolCode': decoded.schoolCode,
+          'data.courseCode': { $in: courseCodes }
+        }).toArray(),
+        
+        db.collection('students').find({
+          'data.schoolCode': decoded.schoolCode,
+          'data.studentCode': { $in: uniqueAbsentStudentCodes }
+        }).toArray(),
+        
+        // Try with classCode.value (object structure)
+        db.collection('classes').find({
+          'data.schoolCode': decoded.schoolCode,
+          'data.classCode.value': { $in: uniqueAbsentClassCodes }
+        }).toArray(),
+        
+        // Also try with direct classCode (string structure)
+        db.collection('classes').find({
+          'data.schoolCode': decoded.schoolCode,
+          'data.classCode': { $in: uniqueAbsentClassCodes }
+        }).toArray()
+      ]);
+
+      // Combine both class query results
+      const classes = [...classesWithValue, ...classesWithoutValue];
+
+      // Create lookup maps
       const courseMap = new Map();
       courses.forEach(course => {
         courseMap.set(course.data.courseCode, course.data.courseName || course.data.courseCode);
       });
+
+      const studentMap = new Map();
+      students.forEach(s => {
+        if (s.data && s.data.studentCode) {
+          studentMap.set(s.data.studentCode, {
+            studentId: s._id.toString(),
+            studentName: s.data.studentName || 'نامشخص',
+            studentFamily: s.data.studentFamily || ''
+          });
+        }
+      });
+
+      const classMap = new Map();
+      classes.forEach(c => {
+        if (c.data && c.data.classCode) {
+          // Handle both object and string classCode structures
+          let classCode: string;
+          if (typeof c.data.classCode === 'object' && c.data.classCode.value) {
+            classCode = c.data.classCode.value;
+          } else if (typeof c.data.classCode === 'string') {
+            classCode = c.data.classCode;
+          } else {
+            return; // Skip invalid entries
+          }
+          
+          // Get className with multiple fallbacks
+          const className = c.data.className 
+            || (typeof c.data.classCode === 'object' ? c.data.classCode.label : null)
+            || classCode;
+          
+          classMap.set(classCode, className);
+        }
+      });
+      
+      // Log for debugging (remove in production)
+      console.log('Class codes to lookup:', uniqueAbsentClassCodes);
+      console.log('Class map size:', classMap.size);
+      console.log('Class map entries:', Array.from(classMap.entries()));
 
       // Separate courses with and without presence
       const coursesWithPresence: { courseCode: string; courseName: string }[] = [];
@@ -179,6 +269,31 @@ export async function GET(request: NextRequest) {
         }
       });
 
+      // Build unique absent students list
+      const uniqueAbsentStudents = uniqueAbsentAgg.map(record => {
+        const student = studentMap.get(record.studentCode);
+        const className = classMap.get(record.classCode);
+        
+        // Log missing class names for debugging
+        if (!className || className === record.classCode) {
+          console.log('Missing className for classCode:', record.classCode, 'Student:', record.studentCode);
+        }
+        
+        return {
+          studentId: student?.studentId || '',
+          studentName: student?.studentName || 'نامشخص',
+          studentFamily: student?.studentFamily || '',
+          studentCode: record.studentCode || '',
+          classCode: record.classCode || '',
+          className: className || 'کلاس ' + record.classCode || 'نامشخص'
+        };
+      }).sort((a, b) => {
+        // Sort by class name, then student name
+        const classCompare = a.className.localeCompare(b.className, 'fa');
+        if (classCompare !== 0) return classCompare;
+        return a.studentName.localeCompare(b.studentName, 'fa');
+      });
+
       await client.close();
 
       return NextResponse.json({
@@ -186,9 +301,11 @@ export async function GET(request: NextRequest) {
         data: {
           totalAbsent: absentCount,
           totalDelayed: delayedCount,
+          uniqueAbsent: uniqueAbsentAgg.length,
           totalClasses: classCount.length,
           coursesWithPresence,
-          coursesWithoutPresence
+          coursesWithoutPresence,
+          uniqueAbsentStudents
         }
       });
 
