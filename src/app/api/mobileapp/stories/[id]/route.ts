@@ -38,10 +38,12 @@ interface JWTPayload {
 }
 
 interface UpdateStoryBody {
+  title?: string;
   caption?: string;
   imageData?: string;
-  audienceType?: 'all' | 'class';
+  audienceType?: 'all' | 'class' | 'teachers';
   classCodes?: string[];
+  visibleToTeachers?: boolean;
 }
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // ~5MB base64 length approximation
@@ -181,7 +183,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    if (body.audienceType && !['all', 'class'].includes(body.audienceType)) {
+    if (body.audienceType && !['all', 'class', 'teachers'].includes(body.audienceType)) {
       return NextResponse.json(
         { success: false, message: 'نوع مخاطب نامعتبر است' },
         { status: 400 }
@@ -246,6 +248,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       const updateFields: Record<string, unknown> = {};
 
+      if (typeof body.title === 'string') {
+        const trimmedTitle = body.title.trim();
+        if (!trimmedTitle) {
+          return NextResponse.json(
+            { success: false, message: 'عنوان استوری نمی‌تواند خالی باشد' },
+            { status: 400 }
+          );
+        }
+        if (trimmedTitle.length > 100) {
+          return NextResponse.json(
+            { success: false, message: 'حداکثر طول عنوان ۱۰۰ کاراکتر است' },
+            { status: 400 }
+          );
+        }
+        updateFields.title = trimmedTitle;
+      }
+
       if (typeof body.caption === 'string') {
         updateFields.caption = body.caption;
       }
@@ -253,12 +272,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       if (body.audienceType) {
         updateFields.audienceType = body.audienceType;
         updateFields.classCodes = body.audienceType === 'class' ? body.classCodes || [] : [];
+        updateFields.visibleToStudents = body.audienceType !== 'teachers';
       } else if (Array.isArray(body.classCodes)) {
         updateFields.classCodes = body.classCodes;
       }
 
       if (body.imageData) {
         updateFields.imageData = body.imageData;
+      }
+
+      if (typeof body.visibleToTeachers === 'boolean') {
+        updateFields.visibleToTeachers = body.visibleToTeachers;
       }
 
       if (Object.keys(updateFields).length === 0) {

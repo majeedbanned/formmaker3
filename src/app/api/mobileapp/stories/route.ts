@@ -39,16 +39,17 @@ interface JWTPayload {
 
 interface StoryResponseItem {
   id: string;
+  title: string;
   caption: string;
   imageData: string;
   createdAt: string;
-  expiresAt: string;
   createdBy: {
     id: string;
     name: string;
   };
-  audienceType: 'all' | 'class';
+  audienceType: 'all' | 'class' | 'teachers';
   classCodes: string[];
+  visibleToTeachers: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -97,13 +98,10 @@ export async function GET(request: NextRequest) {
       const dbName = schoolConfig.connectionString.split('/')[3].split('?')[0];
       const db = client.db(dbName);
 
-      const now = new Date();
-
       const rawStories = await db
         .collection('stories')
         .find({
           schoolCode: decoded.schoolCode,
-          expiresAt: { $gt: now },
         })
         .sort({ createdAt: -1 })
         .toArray();
@@ -121,6 +119,10 @@ export async function GET(request: NextRequest) {
           : [];
 
         filteredStories = rawStories.filter((story) => {
+          if (story.visibleToStudents === false) {
+            return false;
+          }
+
           if (story.audienceType === 'all') return true;
           if (!Array.isArray(story.classCodes) || story.classCodes.length === 0) return false;
           return story.classCodes.some((code: string) => classCodes.includes(code));
@@ -135,27 +137,44 @@ export async function GET(request: NextRequest) {
           ? teacher!.data.classCode.map((cls: any) => cls.value || cls)
           : [];
 
-        if (teacherClasses.length > 0) {
-          filteredStories = rawStories.filter((story) => {
-            if (story.audienceType === 'all') return true;
-            if (!Array.isArray(story.classCodes) || story.classCodes.length === 0) return false;
-            return story.classCodes.some((code: string) => teacherClasses.includes(code));
-          });
-        }
+        filteredStories = rawStories.filter((story) => {
+          if (story.visibleToTeachers === false) {
+            return false;
+          }
+
+          if (story.audienceType === 'teachers') {
+            return true;
+          }
+
+          if (story.audienceType === 'all') {
+            return true;
+          }
+
+          if (!Array.isArray(story.classCodes) || story.classCodes.length === 0) {
+            return false;
+          }
+
+          if (teacherClasses.length === 0) {
+            return false;
+          }
+
+          return story.classCodes.some((code: string) => teacherClasses.includes(code));
+        });
       }
 
       const stories: StoryResponseItem[] = filteredStories.map((story) => ({
         id: story._id instanceof ObjectId ? story._id.toHexString() : String(story._id),
+        title: story.title || 'بدون عنوان',
         caption: story.caption || '',
         imageData: story.imageData || '',
         createdAt: story.createdAt ? new Date(story.createdAt).toISOString() : new Date().toISOString(),
-        expiresAt: story.expiresAt ? new Date(story.expiresAt).toISOString() : '',
         createdBy: {
           id: story.createdBy?.id || '',
           name: story.createdBy?.name || 'مدرسه',
         },
         audienceType: story.audienceType || 'all',
         classCodes: Array.isArray(story.classCodes) ? story.classCodes : [],
+        visibleToTeachers: story.visibleToTeachers !== false,
       }));
 
       return NextResponse.json({

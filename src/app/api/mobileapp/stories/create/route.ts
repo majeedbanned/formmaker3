@@ -38,10 +38,12 @@ interface JWTPayload {
 }
 
 interface CreateStoryBody {
+  title?: string;
   caption?: string;
   imageData: string;
-  audienceType: 'all' | 'class';
+  audienceType: 'all' | 'class' | 'teachers';
   classCodes?: string[];
+  visibleToTeachers?: boolean;
 }
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB base64 length approx
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.audienceType || !['all', 'class'].includes(body.audienceType)) {
+    if (!body.audienceType || !['all', 'class', 'teachers'].includes(body.audienceType)) {
       return NextResponse.json(
         { success: false, message: 'نوع مخاطب نامعتبر است' },
         { status: 400 }
@@ -97,6 +99,19 @@ export async function POST(request: NextRequest) {
           { success: false, message: 'انتخاب حداقل یک کلاس ضروری است' },
           { status: 400 }
         );
+    if (typeof body.title !== 'string' || body.title.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'عنوان استوری الزامی است' },
+        { status: 400 }
+      );
+    }
+
+    if (body.title.trim().length > 100) {
+      return NextResponse.json(
+        { success: false, message: 'حداکثر طول عنوان ۱۰۰ کاراکتر است' },
+        { status: 400 }
+      );
+    }
       }
     }
 
@@ -131,17 +146,16 @@ export async function POST(request: NextRequest) {
       const dbName = schoolConfig.connectionString.split('/')[3].split('?')[0];
       const db = client.db(dbName);
 
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
       const storyDoc = {
         schoolCode: decoded.schoolCode,
+        title: body.title.trim(),
         caption: body.caption || '',
         imageData: body.imageData,
         audienceType: body.audienceType,
         classCodes: body.audienceType === 'class' ? body.classCodes || [] : [],
-        createdAt: now,
-        expiresAt,
+        visibleToTeachers: body.visibleToTeachers !== false,
+        visibleToStudents: body.audienceType !== 'teachers',
+        createdAt: new Date(),
         createdBy: {
           id: decoded.userId,
           name: decoded.name || 'مدرسه',
