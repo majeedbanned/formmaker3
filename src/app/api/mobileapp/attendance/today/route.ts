@@ -56,12 +56,31 @@ interface AttendanceRecord {
   persianDate: string;
 }
 
+interface ClassAbsenceGroup {
+  classCode: string;
+  className: string;
+  students: {
+    studentId: string;
+    studentName: string;
+    studentFamily: string;
+    studentCode: string;
+  }[];
+}
+
+interface CoursePresenceInfo {
+  courseCode: string;
+  courseName: string;
+}
+
 interface AttendanceResponse {
   success: boolean;
   message?: string;
   data?: {
     absentStudents: AttendanceRecord[];
     delayedStudents: AttendanceRecord[];
+    absentByClass: ClassAbsenceGroup[];
+    coursesWithPresenceRecord: CoursePresenceInfo[];
+    coursesWithoutPresenceRecord: CoursePresenceInfo[];
     summary: {
       totalAbsent: number;
       totalDelayed: number;
@@ -181,15 +200,19 @@ export async function GET(request: NextRequest) {
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
-      // Find all attendance records for today with absent or late status
-      const attendanceRecords = await db.collection('classsheet').find({
+      // Find all class records for today
+      const todaysRecords = await db.collection('classsheet').find({
         schoolCode: decoded.schoolCode,
         date: todayStr,
-        presenceStatus: { $in: ['absent', 'late'] }
       }).toArray();
 
+      // Attendance records that have absence or delay status
+      const attendanceRecords = todaysRecords.filter(
+        (record) => record.presenceStatus === 'absent' || record.presenceStatus === 'late'
+      );
+
       // Get unique class codes to fetch class information
-      const classCodes = [...new Set(attendanceRecords.map(record => record.classCode))];
+      const classCodes = [...new Set(todaysRecords.map(record => record.classCode))];
       
       // Fetch class information
       const classes = await db.collection('classes').find({
@@ -247,7 +270,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Get unique course codes to fetch course information
-      const courseCodes = [...new Set(attendanceRecords.map(record => record.courseCode))];
+      const courseCodes = [...new Set(todaysRecords.map(record => record.courseCode))];
       
       // Fetch course information
       const courses = await db.collection('courses').find({
@@ -264,7 +287,7 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      // Transform attendance records
+      // Transform attendance records (absent/late only)
       const transformedRecords: AttendanceRecord[] = attendanceRecords.map(record => {
         const student = studentMap.get(record.studentCode);
         const classInfo = classMap.get(record.classCode);
@@ -294,6 +317,80 @@ export async function GET(request: NextRequest) {
       const absentStudents = transformedRecords.filter(record => record.presenceStatus === 'absent');
       const delayedStudents = transformedRecords.filter(record => record.presenceStatus === 'late');
 
+      // Build distinct absent students grouped by class
+      const absentByClassMap = new Map<string, ClassAbsenceGroup & { studentMap: Map<string, ClassAbsenceGroup['students'][number]> }>();
+
+      absentStudents.forEach((record) => {
+        const key = record.studentId || record.studentCode;
+        const existing = absentByClassMap.get(record.classCode);
+        if (!existing) {
+          const studentEntry = {
+            studentId: record.studentId,
+            studentName: record.studentName,
+            studentFamily: record.studentFamily,
+            studentCode: record.studentCode,
+          };
+          absentByClassMap.set(record.classCode, {
+            classCode: record.classCode,
+            className: record.className,
+            students: [studentEntry],
+            studentMap: new Map([[key, studentEntry]]),
+          });
+          return;
+        }
+
+        if (!existing.studentMap.has(key)) {
+          const studentEntry = {
+            studentId: record.studentId,
+            studentName: record.studentName,
+            studentFamily: record.studentFamily,
+            studentCode: record.studentCode,
+          };
+          existing.studentMap.set(key, studentEntry);
+          existing.students.push(studentEntry);
+        }
+      });
+
+      const absentByClass: ClassAbsenceGroup[] = Array.from(absentByClassMap.values()).map(({ studentMap, ...group }) => ({
+        ...group,
+        students: group.students,
+      }));
+
+      // Determine course presence coverage
+      const coursePresenceMap = new Map<string, { courseCode: string; courseName: string; hasPresence: boolean }>();
+
+      todaysRecords.forEach((record) => {
+        const courseInfo = courseMap.get(record.courseCode);
+        const courseName = courseInfo?.courseName || record.courseName || record.courseCode;
+        const hasPresenceStatus =
+          record.presenceStatus === 'present' ||
+          record.presenceStatus === 'absent' ||
+          record.presenceStatus === 'late';
+
+        const existing = coursePresenceMap.get(record.courseCode);
+        if (!existing) {
+          coursePresenceMap.set(record.courseCode, {
+            courseCode: record.courseCode,
+            courseName,
+            hasPresence: !!hasPresenceStatus,
+          });
+        } else if (hasPresenceStatus) {
+          existing.hasPresence = true;
+        }
+      });
+
+      const coursesWithPresenceRecord: CoursePresenceInfo[] = [];
+      const coursesWithoutPresenceRecord: CoursePresenceInfo[] = [];
+
+      coursePresenceMap.forEach((course) => {
+        const payload = { courseCode: course.courseCode, courseName: course.courseName };
+        if (course.hasPresence) {
+          coursesWithPresenceRecord.push(payload);
+        } else {
+          coursesWithoutPresenceRecord.push(payload);
+        }
+      });
+
       // Get total number of classes for today (for context)
       const totalClassesToday = await db.collection('classsheet').distinct('classCode', {
         schoolCode: decoded.schoolCode,
@@ -307,6 +404,9 @@ export async function GET(request: NextRequest) {
         data: {
           absentStudents,
           delayedStudents,
+          absentByClass,
+          coursesWithPresenceRecord,
+          coursesWithoutPresenceRecord,
           summary: {
             totalAbsent: absentStudents.length,
             totalDelayed: delayedStudents.length,
