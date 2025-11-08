@@ -13,7 +13,7 @@ type WeeklySchedule = {
 };
 
 type Student = {
-  studentCode: number;
+  studentCode: string;
   studentName: string;
   studentlname: string;
   phone: string;

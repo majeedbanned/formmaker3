@@ -27,7 +27,7 @@ type WeeklySchedule = {
 };
 
 type Student = {
-  studentCode: number;
+  studentCode: string | number;
   studentName: string;
   studentlname: string;
   phone: string;
@@ -71,7 +71,7 @@ type AssessmentEntry = {
 
 type CellData = {
   classCode: string;
-  studentCode: number;
+  studentCode: string | number;
   teacherCode: string;
   courseCode: string;
   schoolCode: string;
@@ -208,7 +208,7 @@ type WeightedGradeInfo = {
 };
 
 type StudentGradesByMonth = {
-  studentCode: number;
+  studentCode: string;
   studentName: string;
   courseGrades: Record<string, number | null>;
   courseMonthlyGrades: Record<string, MonthlyGrade[]>;
@@ -489,12 +489,19 @@ const MonthlyGradeOverallReport = ({
             const courseData = await response.json();
             // If course data exists, use it, otherwise use fallback
             if (courseData && courseData.length > 0 && courseData[0].data) {
+              const rawVahed = courseData[0].data.vahed;
+              const numericVahed = Number(rawVahed ?? 1);
+              const finalVahed =
+                Number.isFinite(numericVahed) && numericVahed > 0
+                  ? numericVahed
+                  : 1;
+
               return {
                 ...teacherCourse,
                 courseName:
                   courseData[0].data.courseName ||
                   `درس ${teacherCourse.courseCode}`,
-                vahed: courseData[0].data.vahed || 1,
+                vahed: finalVahed,
               };
             } else {
               return {
@@ -625,12 +632,13 @@ const MonthlyGradeOverallReport = ({
         }
 
         // Create a map to store grades by student and course
-        const studentGradesMap: Record<number, StudentGradesByMonth> = {};
+        const studentGradesMap: Record<string, StudentGradesByMonth> = {};
 
         // Initialize students with the gradeDetails property
         selectedClassData.students.forEach((student) => {
-          studentGradesMap[student.studentCode] = {
-            studentCode: student.studentCode,
+          const studentCode = String(student.studentCode ?? "");
+          studentGradesMap[studentCode] = {
+            studentCode,
             studentName: `${student.studentName} ${student.studentlname}`,
             courseGrades: {},
             courseMonthlyGrades: {},
@@ -729,7 +737,7 @@ const MonthlyGradeOverallReport = ({
 
           // Group data by student and month
           const studentGradesForCourse: Record<
-            number,
+            string,
             {
               grades: GradeEntry[];
               assessments: AssessmentEntry[];
@@ -742,7 +750,7 @@ const MonthlyGradeOverallReport = ({
 
           // Collect all grades and assessments for each student
           filteredCellData.forEach((cell) => {
-            const studentCode = cell.studentCode;
+            const studentCode = String(cell.studentCode ?? "");
 
             if (!studentGradesForCourse[studentCode]) {
               studentGradesForCourse[studentCode] = {
@@ -812,8 +820,7 @@ const MonthlyGradeOverallReport = ({
 
           // Calculate average for each student (either monthly or yearly average)
           Object.entries(studentGradesForCourse).forEach(
-            ([studentCodeStr, data]) => {
-              const studentCode = parseInt(studentCodeStr);
+            ([studentCode, data]) => {
               const courseKey = `${course.teacherCode}_${course.courseCode}`;
 
               if (studentGradesMap[studentCode]) {
@@ -921,7 +928,7 @@ const MonthlyGradeOverallReport = ({
           validCourseInfos.forEach((course) => {
             const courseKey = `${course.teacherCode}_${course.courseCode}`;
             const grade = student.courseGrades[courseKey];
-            const vahed = course.vahed || 1; // Default to 1 if not specified
+            const vahed = Number(course.vahed ?? 1) || 1; // Ensure numeric default to 1 if not specified
 
             if (grade !== null && grade !== undefined) {
               weightedSum += grade * vahed;
@@ -1326,8 +1333,8 @@ const MonthlyGradeOverallReport = ({
   const calculateStudentRanks = useCallback(
     (students: StudentGradesByMonth[]) => {
       // Create maps to store rankings for each course and average
-      const ranksByCourse: Record<string, Record<number, number>> = {};
-      const averageRanks: Record<number, number> = {};
+      const ranksByCourse: Record<string, Record<string, number>> = {};
+      const averageRanks: Record<string, number> = {};
 
       // Initialize rank storage for each course
       courseInfo.forEach((course) => {
