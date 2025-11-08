@@ -9,7 +9,8 @@
       "imageUrl": "",
       "roles": ["teacher", "school"],
       "active": true,
-      "createdAt": "2025-10-24T14:00:00Z"
+      "createdAt": "2025-10-24T14:00:00Z",
+      "showinmobile": true
     },
     {
       "id": "announce-005",
@@ -20,6 +21,7 @@
       "roles": ["school"],
       "active": true,
       "createdAt": "2025-10-24T14:30:00Z"
+      ,   "showinmobile": false
     },
     {
       "id": "announce-006",
