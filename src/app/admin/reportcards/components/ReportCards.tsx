@@ -878,6 +878,16 @@ const ReportCards = ({
               const courseCode =
                 course.courseCode || (course.data && course.data.courseCode);
               if (courseCode) {
+                const rawVahed =
+                  course.vahed ?? (course.data && course.data.vahed);
+                const numericVahed =
+                  typeof rawVahed === "number"
+                    ? rawVahed
+                    : rawVahed !== undefined && rawVahed !== null && rawVahed !== ""
+                    ? Number(rawVahed)
+                    : 1;
+                const finalVahed = Number.isFinite(numericVahed) && numericVahed > 0 ? numericVahed : 1;
+
                 // Create a standardized course data object
                 courseMap[courseCode] = {
                   courseCode,
@@ -885,8 +895,7 @@ const ReportCards = ({
                     course.courseName ||
                     (course.data && course.data.courseName) ||
                     courseCode,
-                  vahed:
-                    course.vahed || (course.data && course.data.vahed) || 1, // Default to 1 if not specified
+                  vahed: finalVahed,
                   schoolCode,
                 };
               }
@@ -1110,7 +1119,7 @@ const ReportCards = ({
             vahed: 1, // Default to 1 if not specified
           };
           const courseName = courseData.courseName || `درس ${tc.courseCode}`;
-          const vahed = courseData.vahed || 1;
+          const vahed = Number(courseData.vahed ?? 1) || 1;
 
           // Fetch all grade data for this teacher-course
           const response = await fetch("/api/classsheet", {
@@ -1323,15 +1332,16 @@ const ReportCards = ({
             // Process each course
             Object.values(student.courses).forEach((course) => {
               if (course.yearAverage !== null) {
-                const weightedValue = course.yearAverage * course.vahed;
-                weightedSum += weightedValue;
-                totalWeight += course.vahed;
+            const numericVahed = Number(course.vahed ?? 1) || 1;
+            const weightedValue = course.yearAverage * numericVahed;
+            weightedSum += weightedValue;
+            totalWeight += numericVahed;
 
                 // Store weighted grade info for tooltip
                 weightedGradesInfo.push({
                   courseName: course.courseName,
                   grade: course.yearAverage,
-                  vahed: course.vahed,
+                  vahed: numericVahed,
                   weightedValue,
                 });
               }
@@ -1557,8 +1567,9 @@ const ReportCards = ({
         Object.values(student.courses).forEach((course) => {
           const monthGrade = course.monthlyGrades[monthKey];
           if (monthGrade !== null) {
-            weightedSum += monthGrade * course.vahed;
-            totalWeight += course.vahed;
+            const courseVahed = Number(course.vahed ?? 1) || 1;
+            weightedSum += monthGrade * courseVahed;
+            totalWeight += courseVahed;
           }
         });
 
@@ -3560,7 +3571,7 @@ const ReportCards = ({
                                       (course) => {
                                         const grade =
                                           course.monthlyGrades[monthKey];
-                                        const vahed = course.vahed || 1;
+                                        const vahed = Number(course.vahed ?? 1) || 1;
 
                                         if (grade !== null) {
                                           weightedSum += grade * vahed;
@@ -3592,7 +3603,7 @@ const ReportCards = ({
                                       (course) => {
                                         const grade =
                                           course.monthlyGrades[prevMonthKey];
-                                        const vahed = course.vahed || 1;
+                                        const vahed = Number(course.vahed ?? 1) || 1;
 
                                         if (grade !== null) {
                                           prevWeightedSum += grade * vahed;
@@ -3630,7 +3641,7 @@ const ReportCards = ({
                                           ).forEach((course) => {
                                             const grade =
                                               course.monthlyGrades[monthKey];
-                                            const vahed = course.vahed || 1;
+                                            const vahed = Number(course.vahed ?? 1) || 1;
 
                                             if (grade !== null) {
                                               otherWeightedSum += grade * vahed;
