@@ -41,7 +41,7 @@ interface UpdateAnnouncementBody {
   message?: string;
   icon?: string;
   backgroundColor?: string;
-  audienceType?: 'all' | 'class';
+  audienceType?: 'all' | 'class' | 'teachers';
   classCodes?: string[];
   expiresInHours?: number | null;
 }
@@ -225,7 +225,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     if (body.audienceType !== undefined) {
-      if (!['all', 'class'].includes(body.audienceType)) {
+      if (!['all', 'class', 'teachers'].includes(body.audienceType)) {
         return NextResponse.json(
           { success: false, message: 'نوع مخاطب نامعتبر است' },
           { status: 400 }

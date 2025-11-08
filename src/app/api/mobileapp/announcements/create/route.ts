@@ -41,7 +41,7 @@ interface CreateAnnouncementBody {
   message: string;
   icon: string;
   backgroundColor: string;
-  audienceType: 'all' | 'class';
+  audienceType: 'all' | 'class' | 'teachers';
   classCodes?: string[];
   expiresInHours?: number;
 }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       body.backgroundColor = DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)];
     }
 
-    if (!body.audienceType || !['all', 'class'].includes(body.audienceType)) {
+    if (!body.audienceType || !['all', 'class', 'teachers'].includes(body.audienceType)) {
       return NextResponse.json(
         { success: false, message: 'نوع مخاطب نامعتبر است' },
         { status: 400 }

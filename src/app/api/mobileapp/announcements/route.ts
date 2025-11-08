@@ -48,7 +48,7 @@ interface AnnouncementItem {
     id: string;
     name: string;
   };
-  audienceType: 'all' | 'class';
+  audienceType: 'all' | 'class' | 'teachers';
   classCodes: string[];
 }
 
@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           : [];
 
         filtered = rawAnnouncements.filter((announcement) => {
+          if (announcement.audienceType === 'teachers') return false;
           if (announcement.audienceType === 'all') return true;
           if (!Array.isArray(announcement.classCodes) || announcement.classCodes.length === 0) return false;
           return announcement.classCodes.some((code: string) => studentClasses.includes(code));
@@ -141,6 +142,7 @@ export async function GET(request: NextRequest) {
           : [];
 
         filtered = rawAnnouncements.filter((announcement) => {
+          if (announcement.audienceType === 'teachers') return true;
           if (announcement.audienceType === 'all') return true;
           if (!Array.isArray(announcement.classCodes) || announcement.classCodes.length === 0) return false;
           return announcement.classCodes.some((code: string) => teacherClasses.includes(code));
