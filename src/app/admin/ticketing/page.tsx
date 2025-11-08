@@ -9,7 +9,8 @@ import {
   Users, 
   BarChart3,
   Filter,
-  Search
+  Search,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -214,6 +215,13 @@ export default function TicketingDashboard() {
               <Button variant="outline" className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 تخصیص معلمان
+              </Button>
+            </Link>
+
+            <Link href="/admin/ticketing/templates">
+              <Button variant="outline" className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                الگوهای تیکت
               </Button>
             </Link>
           </>

@@ -67,18 +67,45 @@ export async function GET(
 
     // Get teachers info for creator and reply authors
     const teachersCollection = connection.collection("teachers");
-    const teacherIds = [
-      ticket.data.createdByTeacherId,
-      ...replies.map(r => r.data.authorTeacherId)
-    ].filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
+    const teacherIdsSet = new Set<string>();
 
-    const teachers = await teachersCollection
-      .find({ "_id": { $in: teacherIds.map(id => new ObjectId(id)) } })
-      .toArray();
+    if (ticket.data.createdByTeacherId) {
+      teacherIdsSet.add(ticket.data.createdByTeacherId);
+    }
+
+    replies.forEach(reply => {
+      const potentialTeacherId =
+        reply.data.authorTeacherId ||
+        (reply.data.authorType === "teacher" ? reply.data.authorId : undefined);
+      if (potentialTeacherId) {
+        teacherIdsSet.add(potentialTeacherId);
+      }
+    });
+
+    const teacherIds = Array.from(teacherIdsSet);
+    let teachersMap: Map<string, any> | null = null;
+    if (teacherIds.length > 0) {
+      const teachers = await teachersCollection
+        .find({ "_id": { $in: teacherIds.map(id => new ObjectId(id)) } })
+        .toArray();
+      teachersMap = new Map(teachers.map(teacher => [teacher._id.toString(), teacher]));
+    }
 
     // Enrich replies with author names
     const enrichedReplies = replies.map(reply => {
-      const author = teachers.find(t => t._id.toString() === reply.data.authorTeacherId);
+      if (reply.data.authorName) {
+        return {
+          ...reply,
+          authorName: reply.data.authorName
+        };
+      }
+
+      const teacherId =
+        reply.data.authorTeacherId ||
+        (reply.data.authorType === "teacher" ? reply.data.authorId : undefined);
+      const author =
+        teacherId && teachersMap ? teachersMap.get(teacherId.toString()) : undefined;
+
       return {
         ...reply,
         authorName: author?.data.teacherName || "نامشخص"
@@ -86,7 +113,10 @@ export async function GET(
     });
 
     // Enrich ticket with additional info
-    const creator = teachers.find(t => t._id.toString() === ticket.data.createdByTeacherId);
+    const creator =
+      teachersMap && ticket.data.createdByTeacherId
+        ? teachersMap.get(ticket.data.createdByTeacherId.toString())
+        : undefined;
     const enrichedTicket = {
       ...ticket,
       departmentName: department?.data.name || "نامشخص",

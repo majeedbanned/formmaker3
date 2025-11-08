@@ -28,6 +28,14 @@ interface Department {
   };
 }
 
+interface TicketTemplate {
+  _id: string;
+  data: {
+    title: string;
+    description: string;
+  };
+}
+
 interface AttachmentFile {
   name: string;
   size: number;
@@ -39,9 +47,11 @@ export default function NewTicketPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -54,22 +64,34 @@ export default function NewTicketPage() {
 
   useEffect(() => {
     if (isAuthenticated && user?.userType === "teacher") {
-      fetchDepartments();
+      fetchInitialData();
     }
   }, [isAuthenticated, user]);
 
-  const fetchDepartments = async () => {
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/ticketing/departments");
-      if (response.ok) {
-        const data = await response.json();
+
+      const [departmentsResponse, templatesResponse] = await Promise.all([
+        fetch("/api/ticketing/departments"),
+        fetch("/api/ticketing/templates"),
+      ]);
+
+      if (departmentsResponse.ok) {
+        const data = await departmentsResponse.json();
         setDepartments(data.departments || []);
       } else {
         toast.error("خطا در دریافت لیست بخش‌ها");
       }
+
+      if (templatesResponse.ok) {
+        const data = await templatesResponse.json();
+        setTemplates(data.templates || []);
+      } else if (templatesResponse.status !== 404) {
+        toast.error("خطا در دریافت الگوهای تیکت");
+      }
     } catch (error) {
-      console.error("Error fetching departments:", error);
+      console.error("Error fetching initial ticket data:", error);
       toast.error("خطا در دریافت لیست بخش‌ها");
     } finally {
       setLoading(false);
@@ -137,6 +159,23 @@ export default function NewTicketPage() {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+
+    if (!templateId) {
+      return;
+    }
+
+    const template = templates.find((item) => item._id === templateId);
+    if (template) {
+      setFormData((prev) => ({
+        ...prev,
+        title: template.data.title,
+        description: template.data.description,
+      }));
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -232,6 +271,29 @@ export default function NewTicketPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Template Selector */}
+            {templates.length > 0 && (
+              <div>
+                <Label htmlFor="template">استفاده از الگوی آماده</Label>
+                <Select
+                  value={selectedTemplateId}
+                  onValueChange={handleTemplateSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="یک الگو انتخاب کنید (اختیاری)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value=" ">بدون استفاده از الگو</SelectItem>
+                    {templates.map((template) => (
+                      <SelectItem key={template._id} value={template._id}>
+                        {template.data.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <Label htmlFor="title">عنوان تیکت *</Label>

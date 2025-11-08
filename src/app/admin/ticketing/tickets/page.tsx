@@ -273,7 +273,7 @@ export default function TicketsPage() {
                 <SelectValue placeholder="بخش" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">همه بخش‌ها</SelectItem>
+                <SelectItem value=" ">همه بخش‌ها</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept._id} value={dept._id}>
                     {dept.data.name}

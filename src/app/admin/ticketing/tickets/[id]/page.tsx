@@ -226,7 +226,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
     document.body.removeChild(link);
   };
 
-  const canReply = user?.userType === "teacher";
+  const canReply = user?.userType === "teacher" || user?.userType === "school";
   const canUpdateStatus = user?.userType === "school";
 
   if (isLoading || loading) {

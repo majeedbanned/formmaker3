@@ -1,11 +1,12 @@
-                                            "use client";
+"use client";
 
+import { useMemo, useState } from "react";
 import CRUDComponent from "@/components/CRUDComponent";
 import PageHeader from "@/components/PageHeader";
 import {
-  DocumentIcon,
-  ShareIcon,
   AcademicCapIcon,
+  ArrowUpTrayIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useInitialFilter } from "@/hooks/useInitialFilter";
@@ -14,6 +15,27 @@ import { useRouter } from "next/navigation";
 import { filterExamples } from "@/utils/filterHelpers";
 import { useAuth } from "@/hooks/useAuth";
 import PageHeaderDemo from "@/components/PageHeaderDemo";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { toast } from "sonner";
 
 const layout: LayoutSettings = {
   direction: "rtl",
@@ -48,6 +70,12 @@ const layout: LayoutSettings = {
   },
 };
 
+type TeacherImportRow = {
+  line: number;
+  teacherCode: string;
+  teacherName: string;
+};
+
 export default function Home({
   postedFilter,
 }: {
@@ -55,6 +83,213 @@ export default function Home({
 }) {
   const router = useRouter();
   const { hasPermission, isLoading, user } = useAuth();
+  const [isImportWizardOpen, setImportWizardOpen] = useState(false);
+  const [importStep, setImportStep] = useState(1);
+  const [rawImportData, setRawImportData] = useState("");
+  const [parsedTeachers, setParsedTeachers] = useState<TeacherImportRow[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [inputDuplicates, setInputDuplicates] = useState<string[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const wizardSteps = [
+    {
+      id: 1,
+      title: "چسباندن داده‌ها",
+      description: "اطلاعات معلمان را از اکسل کپی کنید",
+    },
+    {
+      id: 2,
+      title: "بازبینی و تایید",
+      description: "اطلاعات استخراج شده را بررسی و تکمیل کنید",
+    },
+  ] as const;
+
+  const resetImportWizard = () => {
+    setImportStep(1);
+    setRawImportData("");
+    setParsedTeachers([]);
+    setParseErrors([]);
+    setInputDuplicates([]);
+    setIsImporting(false);
+  };
+
+  const handleImportWizardOpenChange = (open: boolean) => {
+    setImportWizardOpen(open);
+    if (!open) {
+      resetImportWizard();
+    }
+  };
+
+  const handleParseImport = () => {
+    const lines = rawImportData
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const errors: string[] = [];
+    const rows: TeacherImportRow[] = [];
+    const seenCodes = new Set<string>();
+    const duplicateCodes: string[] = [];
+
+    lines.forEach((line, index) => {
+      let columns = line.split("\t");
+      if (columns.length < 2) {
+        columns = line.split(",");
+      }
+      const teacherCode = (columns[0] ?? "").trim();
+      const teacherName = columns.slice(1).join(" ").replace(/\s+/g, " ").trim();
+
+      if (!teacherCode) {
+        errors.push(`ردیف ${index + 1}: کد معلم خالی است`);
+        return;
+      }
+
+      if (!teacherName) {
+        errors.push(`ردیف ${index + 1}: نام معلم خالی است`);
+        return;
+      }
+
+      if (seenCodes.has(teacherCode)) {
+        duplicateCodes.push(teacherCode);
+        return;
+      }
+
+      seenCodes.add(teacherCode);
+      rows.push({
+        line: index + 1,
+        teacherCode,
+        teacherName,
+      });
+    });
+
+    if (rows.length === 0) {
+      errors.push("هیچ ردیف معتبری شناسایی نشد");
+    }
+
+    setParsedTeachers(rows);
+    setParseErrors(errors);
+    setInputDuplicates([...new Set(duplicateCodes)]);
+
+    if (errors.length === 0 && rows.length > 0) {
+      setImportStep(2);
+    }
+  };
+
+  const handleRowChange = (
+    index: number,
+    field: keyof Omit<TeacherImportRow, "line">,
+    value: string
+  ) => {
+    setParsedTeachers((prev) =>
+      prev.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              [field]: value,
+            }
+          : row
+      )
+    );
+  };
+
+  const handleRemoveRow = (index: number) => {
+    setParsedTeachers((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+  };
+
+  const duplicateCodesInPreview = useMemo(() => {
+    const counts = parsedTeachers.reduce<Record<string, number>>((acc, row) => {
+      const code = row.teacherCode.trim();
+      if (!code) {
+        return acc;
+      }
+      acc[code] = (acc[code] ?? 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .filter(([, count]) => count > 1)
+      .map(([code]) => code);
+  }, [parsedTeachers]);
+
+  const hasIncompleteRows = useMemo(
+    () =>
+      parsedTeachers.some(
+        (row) => !row.teacherCode.trim() || !row.teacherName.trim()
+      ),
+    [parsedTeachers]
+  );
+
+  const handleSubmitImport = async () => {
+    if (
+      parsedTeachers.length === 0 ||
+      hasIncompleteRows ||
+      duplicateCodesInPreview.length > 0
+    ) {
+      return;
+    }
+
+    setIsImporting(true);
+
+    try {
+      const response = await fetch("/api/teachers/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          teachers: parsedTeachers.map(({ teacherCode, teacherName }) => ({
+            teacherCode: teacherCode.trim(),
+            teacherName: teacherName.trim(),
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "خطا در وارد کردن معلمان");
+        return;
+      }
+
+      if (data.insertedCount) {
+        toast.success(`${data.insertedCount} معلم با موفقیت ثبت شد`);
+      } else {
+        toast.success("درخواست با موفقیت پردازش شد");
+      }
+
+      if (data.skippedExisting?.length) {
+        toast.warning(
+          `کدهای تکراری و موجود: ${data.skippedExisting.join("، ")}`
+        );
+      }
+
+      if (data.duplicateInPayload?.length) {
+        toast.warning(
+          `کدهای تکراری در ورودی: ${data.duplicateInPayload.join("، ")}`
+        );
+      }
+
+      if (data.invalidRows?.length) {
+        const invalidSummary = data.invalidRows
+          .map(
+            (item: { line: number; reason: string }) =>
+              `ردیف ${item.line}: ${item.reason}`
+          )
+          .join("، ");
+        if (invalidSummary) {
+          toast.warning(`برخی ردیف‌ها وارد نشدند: ${invalidSummary}`);
+        }
+      }
+
+      resetImportWizard();
+      setImportWizardOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error("Error importing teachers:", error);
+      toast.error("بروز خطا در ارتباط با سرور");
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Function to update URL with encrypted filter
   const updateFilterInURL = (filter: Record<string, unknown>) => {
@@ -207,7 +442,7 @@ export default function Home({
       type: "datepicker",
       isShowInList: true,
       isSearchable: true,
-      required: true,
+      required: false,
       enabled: true,
       visible: true,
       readonly: false,
@@ -674,6 +909,273 @@ export default function Home({
           icon={<AcademicCapIcon className="w-6 h-6" />}
           gradient={true}
         />
+
+        {user?.userType === "school" && (
+          <>
+            <div className="mt-6 mb-8 flex justify-end">
+              <Button
+                onClick={() => setImportWizardOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <ArrowUpTrayIcon className="h-5 w-5" />
+                <span>وارد کردن گروهی معلمان</span>
+              </Button>
+            </div>
+
+            <Dialog
+              open={isImportWizardOpen}
+              onOpenChange={handleImportWizardOpenChange}
+            >
+              <DialogContent className="max-w-4xl" dir="rtl">
+                <DialogHeader className="text-right">
+                  <DialogTitle>وارد کردن گروهی معلمان</DialogTitle>
+                  <DialogDescription>
+                    اطلاعات معلمان را از فایل اکسل در قالب دو ستون «کد معلم» و
+                    «نام معلم» کپی و در کادر زیر جایگذاری کنید. 
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="mt-4 space-y-6">
+                  <div>
+                    <ol className="space-y-3">
+                      {wizardSteps.map((step) => (
+                        <li key={step.id} className="flex items-center gap-3">
+                          <div
+                            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${
+                              importStep >= step.id
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {step.id}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-800">
+                              {step.title}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {step.description}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  {importStep === 1 ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                        <p>
+                          برای بهترین نتیجه، ابتدا در اکسل ستون‌های «کد معلم» و
+                          «نام معلم» را انتخاب کرده و سپس آن‌ها را کپی کنید.
+                          هنگام چسباندن، ستون‌ها به صورت خودکار با تب از هم
+                          جدا می‌شوند.
+                        </p>
+                        <div className="mt-3 rounded-md bg-white p-3 font-mono text-xs text-gray-700 shadow-inner">
+                          <div>123456{`\t`}حسین احمدی</div>
+                          <div>123457{`\t`}زهرا محمدی</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="teacher-import-textarea">
+                          لیست معلمان
+                        </Label>
+                        <Textarea
+                          id="teacher-import-textarea"
+                          value={rawImportData}
+                          onChange={(event) =>
+                            setRawImportData(event.target.value)
+                          }
+                          rows={10}
+                          placeholder="کد معلم[TAB]نام معلم"
+                          className="font-mono text-sm"
+                        />
+                        <p className="text-xs text-gray-500">
+                          هر ردیف باید شامل کد معلم و نام معلم باشد. بین ستون‌ها
+                          از کلید tab استفاده کنید.
+                        </p>
+                      </div>
+
+                      {parseErrors.length > 0 && (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          <ul className="list-disc space-y-1 pr-5">
+                            {parseErrors.map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {inputDuplicates.length > 0 && (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                          کدهای تکراری در ورودی شناسایی و نادیده گرفته شدند:
+                          {" "}
+                          {inputDuplicates.join("، ")}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>
+                          تعداد ردیف‌های آماده ثبت: {parsedTeachers.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-blue-600 underline-offset-4 hover:underline"
+                          onClick={() => setImportStep(1)}
+                          disabled={isImporting}
+                        >
+                          بازگشت به مرحله قبل
+                        </button>
+                      </div>
+
+                      {inputDuplicates.length > 0 && (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                          ردیف‌هایی با کد تکراری در ورودی اولیه حذف شدند:
+                          {" "}
+                          {inputDuplicates.join("، ")}
+                        </div>
+                      )}
+
+                      {duplicateCodesInPreview.length > 0 && (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          برای ثبت نهایی، کد معلم باید یکتا باشد. کدهای تکراری
+                          فعلی: {duplicateCodesInPreview.join("، ")}
+                        </div>
+                      )}
+
+                      {hasIncompleteRows && (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          برخی ردیف‌ها ناقص هستند. لطفاً تمام کدها و نام‌ها را
+                          تکمیل کنید.
+                        </div>
+                      )}
+
+                      <div className="overflow-x-auto rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-16 text-center">
+                                #
+                              </TableHead>
+                              <TableHead className="min-w-[150px] text-right">
+                                کد معلم
+                              </TableHead>
+                              <TableHead className="min-w-[200px] text-right">
+                                نام معلم
+                              </TableHead>
+                              <TableHead className="w-16 text-center">
+                                حذف
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {parsedTeachers.map((row, index) => (
+                              <TableRow key={`${row.line}-${index}`}>
+                                <TableCell className="text-center text-sm text-gray-500">
+                                  {index + 1}
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={row.teacherCode}
+                                    onChange={(event) =>
+                                      handleRowChange(
+                                        index,
+                                        "teacherCode",
+                                        event.target.value
+                                      )
+                                    }
+                                    className="text-sm"
+                                  />
+                                  <p className="mt-1 text-xs text-gray-400">
+                                    ردیف منبع: {row.line}
+                                  </p>
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    value={row.teacherName}
+                                    onChange={(event) =>
+                                      handleRowChange(
+                                        index,
+                                        "teacherName",
+                                        event.target.value
+                                      )
+                                    }
+                                    className="text-sm"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveRow(index)}
+                                    className="text-red-500 hover:text-red-600"
+                                  >
+                                    <XMarkIcon className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter className="flex flex-row-reverse gap-3 sm:justify-start">
+                  {importStep === 1 ? (
+                    <>
+                      <Button
+                        onClick={handleParseImport}
+                        disabled={!rawImportData.trim()}
+                      >
+                        مرحله بعد
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleImportWizardOpenChange(false)}
+                      >
+                        انصراف
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={handleSubmitImport}
+                        disabled={
+                          isImporting ||
+                          parsedTeachers.length === 0 ||
+                          hasIncompleteRows ||
+                          duplicateCodesInPreview.length > 0
+                        }
+                      >
+                        {isImporting ? "در حال ثبت..." : "ثبت معلمان"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setImportStep(1)}
+                        disabled={isImporting}
+                      >
+                        ویرایش ورودی‌ها
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleImportWizardOpenChange(false)}
+                        disabled={isImporting}
+                      >
+                        انصراف
+                      </Button>
+                    </>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
 
         {/* Filter Examples Section */}
         {/* <div className="mb-8 p-4 bg-white rounded-lg shadow">
