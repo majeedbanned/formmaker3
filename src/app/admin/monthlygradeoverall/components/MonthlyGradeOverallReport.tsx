@@ -1314,24 +1314,37 @@ const MonthlyGradeOverallReport = ({
       text-orientation: mixed;
       transform: rotate(180deg);
       white-space: nowrap;
-      min-height: 120px;
+      min-height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 0.75rem;
+      line-height: 1.2;
     }
     
     .course-header {
       display: flex;
       flex-direction: column;
       align-items: center;
+      gap: 2px;
     }
     
     .vahed-badge {
       background-color: #e2e8f0;
       border-radius: 9999px;
-      padding: 2px 8px;
-      font-size: 0.75rem;
-      margin-top: 4px;
+      padding: 1px 4px;
+      font-size: 0.65rem;
+      margin-top: 2px;
+    }
+    
+    .compact-table th,
+    .compact-table td {
+      padding: 4px 6px !important;
+      font-size: 0.875rem;
+    }
+    
+    .compact-table th {
+      padding: 6px 6px !important;
     }
   `;
 
@@ -1436,7 +1449,7 @@ const MonthlyGradeOverallReport = ({
 
     return (
       <div
-        className={`text-xs mt-1 px-1 py-0.5 rounded-full ${getRankBadgeClass(
+        className={`text-[10px] mt-0.5 px-0.5 py-0 rounded-full ${getRankBadgeClass(
           rank
         )}`}
       >
@@ -1662,13 +1675,13 @@ const MonthlyGradeOverallReport = ({
             <CardContent>
               {studentGrades.length > 0 && courseInfo.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <Table dir="rtl">
+                  <Table dir="rtl" className="compact-table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[60px]">ردیف</TableHead>
-                        <TableHead className="w-[90px]">کد</TableHead>
+                        <TableHead className="w-[40px]">ردیف</TableHead>
+                        <TableHead className="w-[60px]">کد</TableHead>
                         <TableHead
-                          className="min-w-[150px] cursor-pointer"
+                          className="w-[120px] cursor-pointer"
                           onClick={() => requestSort("studentName")}
                         >
                           نام دانش‌آموز <SortIcon column="studentName" />
@@ -1680,7 +1693,7 @@ const MonthlyGradeOverallReport = ({
                           return (
                             <TableHead
                               key={courseKey}
-                              className="w-[70px] cursor-pointer p-1"
+                              className="w-[50px] cursor-pointer p-0.5"
                               onClick={() => requestSort(courseKey)}
                             >
                               <div className="course-header">
@@ -1690,7 +1703,7 @@ const MonthlyGradeOverallReport = ({
                                 <span className="vahed-badge">
                                   {course.vahed} واحد
                                 </span>
-                                <div className="mt-1">
+                                <div className="mt-0.5">
                                   <SortIcon column={courseKey} />
                                 </div>
                               </div>
@@ -1700,7 +1713,7 @@ const MonthlyGradeOverallReport = ({
 
                         {/* Average column with weighted calculation tooltip */}
                         <TableHead
-                          className="w-[90px] font-bold cursor-pointer"
+                          className="w-[65px] font-bold cursor-pointer"
                           onClick={() => requestSort("average")}
                         >
                           میانگین <SortIcon column="average" />
@@ -1710,11 +1723,11 @@ const MonthlyGradeOverallReport = ({
                     <TableBody>
                       {getSortedItems(studentGrades).map((student, index) => (
                         <TableRow key={student.studentCode}>
-                          <TableCell>{toPersianDigits(index + 1)}</TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">{toPersianDigits(index + 1)}</TableCell>
+                          <TableCell className="p-1">
                             {toPersianDigits(student.studentCode)}
                           </TableCell>
-                          <TableCell>{student.studentName}</TableCell>
+                          <TableCell className="p-1 text-sm">{student.studentName}</TableCell>
 
                           {/* Course grades */}
                           {courseInfo.map((course) => {
@@ -1735,7 +1748,7 @@ const MonthlyGradeOverallReport = ({
                             return (
                               <TableCell
                                 key={courseKey}
-                                className={getScoreColorClass(score)}
+                                className={`${getScoreColorClass(score)} p-1`}
                                 title={
                                   selectedMonth === "all"
                                     ? formatTooltipContent(monthlyGrades)
@@ -1749,7 +1762,7 @@ const MonthlyGradeOverallReport = ({
                                   cursor: "help",
                                 }}
                               >
-                                <div className="flex flex-col items-center">
+                                <div className="flex flex-col items-center gap-0.5">
                                   {score !== null
                                     ? toPersianDigits(
                                         (Math.round(score * 100) / 100).toFixed(
@@ -1765,7 +1778,7 @@ const MonthlyGradeOverallReport = ({
 
                           {/* Average */}
                           <TableCell
-                            className={`font-bold ${
+                            className={`font-bold p-1 ${
                               student.average !== null
                                 ? getScoreColorClass(student.average)
                                 : "text-gray-400"
@@ -1784,7 +1797,7 @@ const MonthlyGradeOverallReport = ({
                                   : "default",
                             }}
                           >
-                            <div className="flex flex-col items-center">
+                            <div className="flex flex-col items-center gap-0.5">
                               {student.average !== null
                                 ? toPersianDigits(student.average.toFixed(2))
                                 : "-"}
@@ -1804,7 +1817,7 @@ const MonthlyGradeOverallReport = ({
                       <tr>
                         <td
                           colSpan={3}
-                          className="p-2 font-bold text-amber-800"
+                          className="p-1 font-bold text-amber-800 text-sm"
                         >
                           نفرات برتر
                         </td>
@@ -1818,13 +1831,13 @@ const MonthlyGradeOverallReport = ({
                           );
 
                           return (
-                            <td key={`top-${courseKey}`} className="p-2">
+                            <td key={`top-${courseKey}`} className="p-1">
                               {topStudent ? (
-                                <div className="flex flex-col items-center">
-                                  <div className="text-amber-800 text-xs">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <div className="text-amber-800 text-[10px]">
                                     🏆 نفر اول
                                   </div>
-                                  <div className="font-bold text-amber-800">
+                                  <div className="font-bold text-amber-800 text-xs">
                                     {topStudent.score !== null
                                       ? toPersianDigits(
                                           topStudent.score.toFixed(2)
@@ -1832,7 +1845,7 @@ const MonthlyGradeOverallReport = ({
                                       : "-"}
                                   </div>
                                   <div
-                                    className="text-xs text-amber-800 truncate max-w-[100px]"
+                                    className="text-[10px] text-amber-800 truncate max-w-[45px]"
                                     title={topStudent.name}
                                   >
                                     {topStudent.name}
@@ -1846,7 +1859,7 @@ const MonthlyGradeOverallReport = ({
                         })}
 
                         {/* Average top student */}
-                        <td className="p-2">
+                        <td className="p-1">
                           {(() => {
                             const topStudent = getTopStudent(
                               studentGrades,
@@ -1856,11 +1869,11 @@ const MonthlyGradeOverallReport = ({
                             if (!topStudent) return "-";
 
                             return (
-                              <div className="flex flex-col items-center">
-                                <div className="text-amber-800 text-xs">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <div className="text-amber-800 text-[10px]">
                                   🏆 نفر اول
                                 </div>
-                                <div className="font-bold text-amber-800">
+                                <div className="font-bold text-amber-800 text-xs">
                                   {topStudent.score !== null
                                     ? toPersianDigits(
                                         topStudent.score.toFixed(2)
@@ -1868,7 +1881,7 @@ const MonthlyGradeOverallReport = ({
                                     : "-"}
                                 </div>
                                 <div
-                                  className="text-xs text-amber-800 truncate max-w-[100px]"
+                                  className="text-[10px] text-amber-800 truncate max-w-[50px]"
                                   title={topStudent.name}
                                 >
                                   {topStudent.name}
@@ -1881,7 +1894,7 @@ const MonthlyGradeOverallReport = ({
 
                       {/* Column averages row */}
                       <tr className="bg-blue-50">
-                        <td colSpan={3} className="p-2 font-bold text-blue-800">
+                        <td colSpan={3} className="p-1 font-bold text-blue-800 text-sm">
                           میانگین ستون‌ها
                         </td>
 
@@ -1894,9 +1907,9 @@ const MonthlyGradeOverallReport = ({
                             const average = columnAverages[courseKey];
 
                             return (
-                              <td key={`avg-${courseKey}`} className="p-2">
+                              <td key={`avg-${courseKey}`} className="p-1">
                                 <div className="flex flex-col items-center">
-                                  <div className="font-bold text-blue-800">
+                                  <div className="font-bold text-blue-800 text-xs">
                                     {average !== null
                                       ? toPersianDigits(average.toFixed(2))
                                       : "-"}
@@ -1908,14 +1921,14 @@ const MonthlyGradeOverallReport = ({
                         })()}
 
                         {/* Overall average */}
-                        <td className="p-2">
+                        <td className="p-1">
                           {(() => {
                             const columnAverages = calculateColumnAverages();
                             const overallAverage = columnAverages.overall;
 
                             return (
                               <div className="flex flex-col items-center">
-                                <div className="font-bold text-blue-800">
+                                <div className="font-bold text-blue-800 text-xs">
                                   {overallAverage !== null
                                     ? toPersianDigits(overallAverage.toFixed(2))
                                     : "-"}
