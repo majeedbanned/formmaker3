@@ -69,6 +69,13 @@ interface MonthlyNoteDetail {
   date?: string;
 }
 
+interface PresenceDetail {
+  status: string | null;
+  date?: string;
+  timeSlot?: string;
+  note?: string;
+}
+
 interface MonthlyGradeDetail {
   finalScore: number | null;
   baseGrade: number | null;
@@ -76,6 +83,7 @@ interface MonthlyGradeDetail {
   grades: GradeDetail[];
   assessments: AssessmentDetail[];
   notes: MonthlyNoteDetail[];
+  presence: PresenceDetail[];
 }
 
 interface MonthlyCalculationResult {
@@ -489,7 +497,7 @@ export async function GET(request: NextRequest) {
 
         // Initialize monthly grades structure
         const monthlyGrades: Record<string, MonthlyGradeDetail> = {};
-        const monthlyData: Record<string, { grades: GradeEntry[], assessments: AssessmentEntry[], notes: MonthlyNoteDetail[] }> = {};
+        const monthlyData: Record<string, { grades: GradeEntry[], assessments: AssessmentEntry[], notes: MonthlyNoteDetail[], presence: PresenceDetail[] }> = {};
 
         // Initialize all months
         for (let i = 1; i <= 12; i++) {
@@ -499,9 +507,10 @@ export async function GET(request: NextRequest) {
             assessmentAdjustment: 0,
             grades: [],
             assessments: [],
-            notes: []
+            notes: [],
+            presence: []
           };
-          monthlyData[i.toString()] = { grades: [], assessments: [], notes: [] };
+          monthlyData[i.toString()] = { grades: [], assessments: [], notes: [], presence: [] };
         }
 
         // Populate with actual data
@@ -545,10 +554,11 @@ export async function GET(request: NextRequest) {
             }
 
             if (cell.presenceStatus) {
-              monthlyData[monthKey].notes.push({
-                type: 'presenceStatus',
-                value: cell.presenceStatus,
+              monthlyData[monthKey].presence.push({
+                status: cell.presenceStatus,
                 date: cell.date || cell.persianDate,
+                timeSlot: cell.timeSlot,
+                note: cell.note || undefined,
               });
             }
           } catch (err) {
@@ -562,12 +572,22 @@ export async function GET(request: NextRequest) {
 
         for (let i = 1; i <= 12; i++) {
           const monthKey = i.toString();
-          const { grades, assessments, notes } = monthlyData[monthKey];
+          const { grades, assessments, notes, presence } = monthlyData[monthKey];
 
           const calculation = calculateFinalScore(grades, assessments, customAssessmentValues);
 
           const dedupedNotes = notes.length > 0
             ? Array.from(new Map(notes.map((note) => [`${note.type}-${note.value}-${note.date || ''}`, note])).values())
+            : [];
+          const dedupedPresence = presence.length > 0
+            ? Array.from(
+                new Map(
+                  presence.map((record) => [
+                    `${record.status || ''}-${record.date || ''}-${record.timeSlot || ''}`,
+                    record,
+                  ])
+                ).values()
+              )
             : [];
 
           monthlyGrades[monthKey] = {
@@ -577,6 +597,7 @@ export async function GET(request: NextRequest) {
             grades: calculation.grades,
             assessments: calculation.assessments,
             notes: dedupedNotes,
+            presence: dedupedPresence,
           };
 
           if (calculation.finalScore !== null) {
