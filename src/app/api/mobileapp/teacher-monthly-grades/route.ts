@@ -52,6 +52,40 @@ interface AssessmentEntry {
   weight?: number;
 }
 
+interface GradeDetail extends GradeEntry {
+  normalizedValue: number | null;
+}
+
+type AssessmentWeightSource = 'explicit' | 'custom' | 'default';
+
+interface AssessmentDetail extends AssessmentEntry {
+  appliedWeight: number;
+  weightSource: AssessmentWeightSource;
+}
+
+interface MonthlyNoteDetail {
+  type: 'note' | 'descriptiveStatus' | 'presenceStatus';
+  value: string;
+  date?: string;
+}
+
+interface MonthlyGradeDetail {
+  finalScore: number | null;
+  baseGrade: number | null;
+  assessmentAdjustment: number;
+  grades: GradeDetail[];
+  assessments: AssessmentDetail[];
+  notes: MonthlyNoteDetail[];
+}
+
+interface MonthlyCalculationResult {
+  finalScore: number | null;
+  baseGrade: number | null;
+  assessmentAdjustment: number;
+  grades: GradeDetail[];
+  assessments: AssessmentDetail[];
+}
+
 // Assessment values with weights
 const ASSESSMENT_VALUES_MAP: Record<string, number> = {
   عالی: 2,
@@ -98,8 +132,43 @@ function calculateFinalScore(
   grades: GradeEntry[], 
   assessments: AssessmentEntry[], 
   customAssessmentValues: Record<string, number>
-): number | null {
-  if (grades.length === 0) return null;
+): MonthlyCalculationResult {
+  if (grades.length === 0) {
+    const assessmentsDetail: AssessmentDetail[] = assessments.map((assessment) => {
+      let appliedWeight = 0;
+      let weightSource: AssessmentWeightSource = 'default';
+
+      if (assessment.weight !== undefined && assessment.weight !== null) {
+        appliedWeight = Number(assessment.weight);
+        weightSource = 'explicit';
+      } else if (customAssessmentValues[assessment.value] !== undefined) {
+        appliedWeight = customAssessmentValues[assessment.value];
+        weightSource = 'custom';
+      } else {
+        appliedWeight = ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+        weightSource = 'default';
+      }
+
+      return {
+        ...assessment,
+        appliedWeight,
+        weightSource,
+      };
+    });
+
+    const assessmentAdjustment = assessmentsDetail.reduce(
+      (total, assessment) => total + assessment.appliedWeight,
+      0
+    );
+
+    return {
+      finalScore: null,
+      baseGrade: null,
+      assessmentAdjustment,
+      grades: [],
+      assessments: assessmentsDetail,
+    };
+  }
 
   // Calculate base grade normalized to 20
   const totalValue = grades.reduce((sum, grade) => sum + grade.value, 0);
@@ -108,23 +177,62 @@ function calculateFinalScore(
   // Normalize to base 20: (achieved/possible) × 20
   const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
 
-  // If no assessments, return the base grade
-  if (!assessments || assessments.length === 0) return baseGrade;
-
-  // Calculate direct assessment adjustment using custom or default values
-  const assessmentAdjustment = assessments.reduce((total, assessment) => {
-    // If explicit weight stored on assessment, use it
-    if (assessment.weight !== undefined && assessment.weight !== null) {
-      return total + Number(assessment.weight);
+  const gradeDetails: GradeDetail[] = grades.map((grade) => {
+    if (grade.totalPoints && grade.totalPoints > 0) {
+      const normalized = (grade.value / grade.totalPoints) * 20;
+      return {
+        ...grade,
+        normalizedValue: normalized,
+      };
     }
 
+    return {
+      ...grade,
+      normalizedValue: grade.value,
+    };
+  });
+
+  // If no assessments, return the base grade
+  if (!assessments || assessments.length === 0) {
+    return {
+      finalScore: baseGrade,
+      baseGrade,
+      assessmentAdjustment: 0,
+      grades: gradeDetails,
+      assessments: [],
+    };
+  }
+
+  // Calculate direct assessment adjustment using custom or default values
+  const assessmentsDetail: AssessmentDetail[] = assessments.map((assessment) => {
+    let appliedWeight = 0;
+    let weightSource: AssessmentWeightSource = 'default';
+
+    // If explicit weight stored on assessment, use it
+    if (assessment.weight !== undefined && assessment.weight !== null) {
+      appliedWeight = Number(assessment.weight);
+      weightSource = 'explicit';
+    }
     // Otherwise, check if there's a custom value for this assessment, otherwise use default
-    const adjustment = 
-      customAssessmentValues[assessment.value] !== undefined
-        ? customAssessmentValues[assessment.value]
-        : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
-    return total + adjustment;
-  }, 0);
+    else if (customAssessmentValues[assessment.value] !== undefined) {
+      appliedWeight = customAssessmentValues[assessment.value];
+      weightSource = 'custom';
+    } else {
+      appliedWeight = ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+      weightSource = 'default';
+    }
+
+    return {
+      ...assessment,
+      appliedWeight,
+      weightSource,
+    };
+  });
+
+  const assessmentAdjustment = assessmentsDetail.reduce(
+    (total, assessment) => total + assessment.appliedWeight,
+    0
+  );
 
   // Calculate final score with direct addition of assessment adjustment
   let finalScore = baseGrade + assessmentAdjustment;
@@ -135,7 +243,13 @@ function calculateFinalScore(
   // Ensure not negative
   finalScore = Math.max(finalScore, 0);
 
-  return finalScore;
+  return {
+    finalScore,
+    baseGrade,
+    assessmentAdjustment,
+    grades: gradeDetails,
+    assessments: assessmentsDetail,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -374,13 +488,20 @@ export async function GET(request: NextRequest) {
         const studentCells = studentGroups.get(studentCode) || [];
 
         // Initialize monthly grades structure
-        const monthlyGrades: Record<string, number | null> = {};
-        const monthlyData: Record<string, { grades: GradeEntry[], assessments: AssessmentEntry[] }> = {};
+        const monthlyGrades: Record<string, MonthlyGradeDetail> = {};
+        const monthlyData: Record<string, { grades: GradeEntry[], assessments: AssessmentEntry[], notes: MonthlyNoteDetail[] }> = {};
 
         // Initialize all months
         for (let i = 1; i <= 12; i++) {
-          monthlyGrades[i.toString()] = null;
-          monthlyData[i.toString()] = { grades: [], assessments: [] };
+          monthlyGrades[i.toString()] = {
+            finalScore: null,
+            baseGrade: null,
+            assessmentAdjustment: 0,
+            grades: [],
+            assessments: [],
+            notes: []
+          };
+          monthlyData[i.toString()] = { grades: [], assessments: [], notes: [] };
         }
 
         // Populate with actual data
@@ -406,6 +527,30 @@ export async function GET(request: NextRequest) {
             if (cell.assessments && cell.assessments.length > 0) {
               monthlyData[monthKey].assessments.push(...cell.assessments);
             }
+
+            if (cell.note) {
+              monthlyData[monthKey].notes.push({
+                type: 'note',
+                value: cell.note,
+                date: cell.date || cell.persianDate,
+              });
+            }
+
+            if (cell.descriptiveStatus) {
+              monthlyData[monthKey].notes.push({
+                type: 'descriptiveStatus',
+                value: cell.descriptiveStatus,
+                date: cell.date || cell.persianDate,
+              });
+            }
+
+            if (cell.presenceStatus) {
+              monthlyData[monthKey].notes.push({
+                type: 'presenceStatus',
+                value: cell.presenceStatus,
+                date: cell.date || cell.persianDate,
+              });
+            }
           } catch (err) {
             console.error("Error processing cell date:", cell.date, err);
           }
@@ -417,16 +562,26 @@ export async function GET(request: NextRequest) {
 
         for (let i = 1; i <= 12; i++) {
           const monthKey = i.toString();
-          const { grades, assessments } = monthlyData[monthKey];
-          
-          if (grades.length > 0) {
-            const finalScore = calculateFinalScore(grades, assessments, customAssessmentValues);
-            monthlyGrades[monthKey] = finalScore;
-            
-            if (finalScore !== null) {
-              yearTotal += finalScore;
-              monthsWithScores++;
-            }
+          const { grades, assessments, notes } = monthlyData[monthKey];
+
+          const calculation = calculateFinalScore(grades, assessments, customAssessmentValues);
+
+          const dedupedNotes = notes.length > 0
+            ? Array.from(new Map(notes.map((note) => [`${note.type}-${note.value}-${note.date || ''}`, note])).values())
+            : [];
+
+          monthlyGrades[monthKey] = {
+            finalScore: calculation.finalScore,
+            baseGrade: calculation.baseGrade,
+            assessmentAdjustment: calculation.assessmentAdjustment,
+            grades: calculation.grades,
+            assessments: calculation.assessments,
+            notes: dedupedNotes,
+          };
+
+          if (calculation.finalScore !== null) {
+            yearTotal += calculation.finalScore;
+            monthsWithScores++;
           }
         }
 
