@@ -320,7 +320,8 @@ const MonthlyGradeOverallReport = ({
       );
 
       // Normalize to base 20: (achieved/possible) × 20
-      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+      // Cap at 20 to ensure no grade exceeds maximum
+      const baseGrade = totalPoints > 0 ? Math.min((totalValue / totalPoints) * 20, 20) : 0;
 
       // If no assessments, return the base grade
       if (!assessments || assessments.length === 0) return baseGrade;
@@ -368,7 +369,8 @@ const MonthlyGradeOverallReport = ({
         (sum, grade) => sum + (grade.totalPoints || 20),
         0
       );
-      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+      // Cap at 20 to ensure no grade exceeds maximum
+      const baseGrade = totalPoints > 0 ? Math.min((totalValue / totalPoints) * 20, 20) : 0;
 
       // Build the tooltip text
       let tooltip = "محاسبه نمره:\n\n";
@@ -874,9 +876,12 @@ const MonthlyGradeOverallReport = ({
                       (total, grade) => total + grade.value,
                       0
                     );
-                    finalScore =
+                    // Cap at 20 to ensure no grade exceeds maximum
+                    finalScore = Math.min(
                       Math.round((sum / monthlyGradesWithValues.length) * 100) /
-                      100;
+                      100,
+                      20
+                    );
                   } else {
                     finalScore = null; // If no valid monthly grades, set to null
                   }
@@ -948,7 +953,8 @@ const MonthlyGradeOverallReport = ({
           let average = null;
           if (totalWeight > 0) {
             // Round to 2 decimal places for consistency
-            average = Math.round((weightedSum / totalWeight) * 100) / 100;
+            // Cap at 20 to ensure no average exceeds maximum
+            average = Math.min(Math.round((weightedSum / totalWeight) * 100) / 100, 20);
           }
 
           return {
@@ -1510,8 +1516,9 @@ const MonthlyGradeOverallReport = ({
 
       if (validGrades.length > 0) {
         const sum = validGrades.reduce((acc, grade) => acc + grade, 0);
+        // Cap at 20 to ensure no average exceeds maximum
         averages[courseKey] =
-          Math.round((sum / validGrades.length) * 100) / 100;
+          Math.min(Math.round((sum / validGrades.length) * 100) / 100, 20);
       } else {
         averages[courseKey] = null;
       }
@@ -1524,7 +1531,8 @@ const MonthlyGradeOverallReport = ({
 
     if (validAverages.length > 0) {
       const sum = validAverages.reduce((acc, avg) => acc + avg, 0);
-      averages.overall = Math.round((sum / validAverages.length) * 100) / 100;
+      // Cap at 20 to ensure no overall average exceeds maximum
+      averages.overall = Math.min(Math.round((sum / validAverages.length) * 100) / 100, 20);
     } else {
       averages.overall = null;
     }

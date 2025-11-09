@@ -528,7 +528,8 @@ const MonthlyGradeReport = ({
       );
 
       // Normalize to base 20: (achieved/possible) × 20
-      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+      // Cap at 20 to ensure no grade exceeds maximum
+      const baseGrade = totalPoints > 0 ? Math.min((totalValue / totalPoints) * 20, 20) : 0;
 
       // If no assessments, return the base grade
       if (!assessments || assessments.length === 0) return baseGrade;
@@ -694,10 +695,13 @@ const MonthlyGradeReport = ({
             const monthData = monthlyGrades[month];
 
             // Calculate average grade if there are grades
+            // Cap at 20 to ensure no average exceeds maximum
             if (monthData.grades.length > 0) {
-              monthData.averageGrade =
+              monthData.averageGrade = Math.min(
                 monthData.grades.reduce((sum, grade) => sum + grade.value, 0) /
-                monthData.grades.length;
+                monthData.grades.length,
+                20
+              );
             }
 
             // Calculate final score (grades adjusted by assessments)
@@ -713,9 +717,10 @@ const MonthlyGradeReport = ({
           });
 
           // Calculate year average
+          // Cap at 20 to ensure no average exceeds maximum
           const yearAverage =
             monthsWithScores > 0
-              ? (totalFinalScore / monthsWithScores).toFixed(2)
+              ? Math.min(totalFinalScore / monthsWithScores, 20).toFixed(2)
               : "-";
 
           return {
@@ -994,7 +999,8 @@ const MonthlyGradeReport = ({
         (sum, grade) => sum + (grade.totalPoints || 20),
         0
       );
-      const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
+      // Cap at 20 to ensure no grade exceeds maximum
+      const baseGrade = totalPoints > 0 ? Math.min((totalValue / totalPoints) * 20, 20) : 0;
 
       // Build the tooltip text
       let tooltip = "محاسبه نمره:\n\n";
