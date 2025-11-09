@@ -94,7 +94,11 @@ function gregorian_to_jalali(gy: number, gm: number, gd: number) {
 }
 
 // Calculate final score (matching MonthlyGradeReport logic)
-function calculateFinalScore(grades: GradeEntry[], assessments: AssessmentEntry[]): number | null {
+function calculateFinalScore(
+  grades: GradeEntry[], 
+  assessments: AssessmentEntry[], 
+  customAssessmentValues: Record<string, number>
+): number | null {
   if (grades.length === 0) return null;
 
   // Calculate base grade normalized to 20
@@ -107,9 +111,18 @@ function calculateFinalScore(grades: GradeEntry[], assessments: AssessmentEntry[
   // If no assessments, return the base grade
   if (!assessments || assessments.length === 0) return baseGrade;
 
-  // Calculate direct assessment adjustment
+  // Calculate direct assessment adjustment using custom or default values
   const assessmentAdjustment = assessments.reduce((total, assessment) => {
-    const adjustment = ASSESSMENT_VALUES_MAP[assessment.value] || 0;
+    // If explicit weight stored on assessment, use it
+    if (assessment.weight !== undefined && assessment.weight !== null) {
+      return total + Number(assessment.weight);
+    }
+
+    // Otherwise, check if there's a custom value for this assessment, otherwise use default
+    const adjustment = 
+      customAssessmentValues[assessment.value] !== undefined
+        ? customAssessmentValues[assessment.value]
+        : ASSESSMENT_VALUES_MAP[assessment.value] || 0;
     return total + adjustment;
   }, 0);
 
@@ -234,6 +247,33 @@ export async function GET(request: NextRequest) {
       });
 
       const courseName = courseDoc?.data?.courseName || courseCode;
+
+      // Fetch custom assessment values for this teacher and course
+      const customAssessmentValues: Record<string, number> = {};
+      try {
+        const assessmentsData = await db.collection('assessments').find({
+          schoolCode: decoded.schoolCode,
+          type: 'value',
+          $or: [
+            { teacherCode: decoded.username },
+            { isGlobal: true },
+            { teacherCode: { $exists: false } }
+          ]
+        }).toArray();
+
+        // Build custom assessment values map
+        assessmentsData.forEach((assessment: any) => {
+          const valueKey = assessment?.value ?? assessment?.data?.value;
+          const valueWeight = assessment?.weight ?? assessment?.data?.weight;
+
+          if (valueKey && valueWeight !== undefined) {
+            customAssessmentValues[valueKey] = Number(valueWeight);
+          }
+        });
+      } catch (assessmentError) {
+        console.error('Error fetching custom assessments:', assessmentError);
+        // Continue with default values if fetching fails
+      }
 
       // Get current Persian year
       const currentDate = new Date();
@@ -380,7 +420,7 @@ export async function GET(request: NextRequest) {
           const { grades, assessments } = monthlyData[monthKey];
           
           if (grades.length > 0) {
-            const finalScore = calculateFinalScore(grades, assessments);
+            const finalScore = calculateFinalScore(grades, assessments, customAssessmentValues);
             monthlyGrades[monthKey] = finalScore;
             
             if (finalScore !== null) {
