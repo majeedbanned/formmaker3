@@ -291,7 +291,7 @@ const FloatingChat: React.FC = () => {
       </button>
 
       {/* Chat box */}
-      {isOpen && (
+      {isOpen && false && (
         <div className="absolute bottom-16 left-0 w-80 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-blue-600 text-white p-3 font-bold rtl">
