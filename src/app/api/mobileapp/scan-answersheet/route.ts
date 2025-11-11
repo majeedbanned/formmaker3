@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 const PY_BIN = process.env.PYTHON_BIN
+const MAX_UPLOAD_SIZE = 1 * 1024 * 1024; // 1MB
 || '/var/www/formmaker3/python/.venv-aruco/bin/python';
 const PY_CWD = process.env.PYTHON_CWD
 || path.join(process.cwd(), 'python');
@@ -117,6 +118,13 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { success: false, message: 'فایل تصویر الزامی است' },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return NextResponse.json(
+        { success: false, message: 'حجم تصویر بیش از حد مجاز (۱ مگابایت) است' },
         { status: 400 }
       );
     }
