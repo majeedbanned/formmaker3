@@ -174,24 +174,53 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    const body: UpdateStoryBody = await request.json();
+    // Parse form data
+    const formData = await request.formData();
+    
+    const title = formData.get('title') as string | null;
+    const caption = formData.get('caption') as string | null;
+    const audienceType = formData.get('audienceType') as 'all' | 'class' | 'teachers' | null;
+    const classCodesStr = formData.get('classCodes') as string | null;
+    const visibleToTeachersStr = formData.get('visibleToTeachers') as string | null;
+    const imageFile = formData.get('imageData') as File | null;
 
-    if (!body || Object.keys(body).length === 0) {
+    // Check if any data was provided
+    if (!title && !caption && !audienceType && !classCodesStr && visibleToTeachersStr === null && !imageFile) {
       return NextResponse.json(
         { success: false, message: 'هیچ تغییری ارسال نشده است' },
         { status: 400 }
       );
     }
 
-    if (body.audienceType && !['all', 'class', 'teachers'].includes(body.audienceType)) {
+    // Validate audience type if provided
+    if (audienceType && !['all', 'class', 'teachers'].includes(audienceType)) {
       return NextResponse.json(
         { success: false, message: 'نوع مخاطب نامعتبر است' },
         { status: 400 }
       );
     }
 
-    if (body.audienceType === 'class') {
-      if (!Array.isArray(body.classCodes) || body.classCodes.length === 0) {
+    // Parse class codes if provided
+    let classCodes: string[] | undefined;
+    if (classCodesStr) {
+      try {
+        classCodes = JSON.parse(classCodesStr);
+        if (!Array.isArray(classCodes)) {
+          return NextResponse.json(
+            { success: false, message: 'کلاس‌ها باید به صورت آرایه ارسال شوند' },
+            { status: 400 }
+          );
+        }
+      } catch (error) {
+        return NextResponse.json(
+          { success: false, message: 'فرمت کلاس‌ها نامعتبر است' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (audienceType === 'class') {
+      if (!classCodes || classCodes.length === 0) {
         return NextResponse.json(
           { success: false, message: 'انتخاب حداقل یک کلاس ضروری است' },
           { status: 400 }
@@ -199,27 +228,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    if (body.classCodes && !Array.isArray(body.classCodes)) {
-      return NextResponse.json(
-        { success: false, message: 'کلاس‌ها باید به صورت آرایه ارسال شوند' },
-        { status: 400 }
-      );
-    }
-
-    if (body.imageData !== undefined) {
-      if (body.imageData !== null && typeof body.imageData !== 'string') {
-        return NextResponse.json(
-          { success: false, message: 'فرمت تصویر نامعتبر است' },
-          { status: 400 }
-        );
-      }
-
-      if (body.imageData && body.imageData.length > MAX_IMAGE_SIZE * 1.4) {
+    // Validate and convert image if provided
+    let base64Image: string | undefined;
+    if (imageFile) {
+      if (imageFile.size > MAX_IMAGE_SIZE) {
         return NextResponse.json(
           { success: false, message: 'حجم تصویر بیش از حد مجاز است (حداکثر ۵ مگابایت)' },
           { status: 400 }
         );
       }
+
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      base64Image = `data:${imageFile.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
     }
 
     const dbConfig = getDatabaseConfig();
@@ -248,8 +269,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       const updateFields: Record<string, unknown> = {};
 
-      if (typeof body.title === 'string') {
-        const trimmedTitle = body.title.trim();
+      if (title !== null) {
+        const trimmedTitle = title.trim();
         if (!trimmedTitle) {
           return NextResponse.json(
             { success: false, message: 'عنوان استوری نمی‌تواند خالی باشد' },
@@ -265,24 +286,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         updateFields.title = trimmedTitle;
       }
 
-      if (typeof body.caption === 'string') {
-        updateFields.caption = body.caption;
+      if (caption !== null) {
+        updateFields.caption = caption;
       }
 
-      if (body.audienceType) {
-        updateFields.audienceType = body.audienceType;
-        updateFields.classCodes = body.audienceType === 'class' ? body.classCodes || [] : [];
-        updateFields.visibleToStudents = body.audienceType !== 'teachers';
-      } else if (Array.isArray(body.classCodes)) {
-        updateFields.classCodes = body.classCodes;
+      if (audienceType) {
+        updateFields.audienceType = audienceType;
+        updateFields.classCodes = audienceType === 'class' ? classCodes || [] : [];
+        updateFields.visibleToStudents = audienceType !== 'teachers';
+      } else if (classCodes) {
+        updateFields.classCodes = classCodes;
       }
 
-      if (body.imageData) {
-        updateFields.imageData = body.imageData;
+      if (base64Image) {
+        updateFields.imageData = base64Image;
       }
 
-      if (typeof body.visibleToTeachers === 'boolean') {
-        updateFields.visibleToTeachers = body.visibleToTeachers;
+      if (visibleToTeachersStr !== null) {
+        updateFields.visibleToTeachers = visibleToTeachersStr === 'true';
       }
 
       if (Object.keys(updateFields).length === 0) {

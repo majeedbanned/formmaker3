@@ -46,7 +46,7 @@ interface CreateStoryBody {
   visibleToTeachers?: boolean;
 }
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB base64 length approx
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB file size
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,50 +77,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body: CreateStoryBody = await request.json();
+    // Parse form data
+    const formData = await request.formData();
+    
+    const title = formData.get('title') as string;
+    const caption = formData.get('caption') as string;
+    const audienceType = formData.get('audienceType') as 'all' | 'class' | 'teachers';
+    const classCodesStr = formData.get('classCodes') as string;
+    const visibleToTeachersStr = formData.get('visibleToTeachers') as string;
+    const imageFile = formData.get('imageData') as File | null;
 
-    if (!body || !body.imageData || typeof body.imageData !== 'string') {
+    // Validate image
+    if (!imageFile) {
       return NextResponse.json(
         { success: false, message: 'تصویر استوری الزامی است' },
         { status: 400 }
       );
     }
 
-    if (!body.audienceType || !['all', 'class', 'teachers'].includes(body.audienceType)) {
+    if (imageFile.size > MAX_IMAGE_SIZE) {
       return NextResponse.json(
-        { success: false, message: 'نوع مخاطب نامعتبر است' },
+        { success: false, message: 'حجم تصویر بیش از حد مجاز است (حداکثر ۵ مگابایت)' },
         { status: 400 }
       );
     }
 
-    if (body.audienceType === 'class') {
-      if (!Array.isArray(body.classCodes) || body.classCodes.length === 0) {
-        return NextResponse.json(
-          { success: false, message: 'انتخاب حداقل یک کلاس ضروری است' },
-          { status: 400 }
-        );
-    if (typeof body.title !== 'string' || body.title.trim().length === 0) {
+    // Validate title
+    if (!title || title.trim().length === 0) {
       return NextResponse.json(
         { success: false, message: 'عنوان استوری الزامی است' },
         { status: 400 }
       );
     }
 
-    if (body.title.trim().length > 100) {
+    if (title.trim().length > 100) {
       return NextResponse.json(
         { success: false, message: 'حداکثر طول عنوان ۱۰۰ کاراکتر است' },
         { status: 400 }
       );
     }
-      }
-    }
 
-    if (body.imageData.length > MAX_IMAGE_SIZE * 1.4) {
+    // Validate audience type
+    if (!audienceType || !['all', 'class', 'teachers'].includes(audienceType)) {
       return NextResponse.json(
-        { success: false, message: 'حجم تصویر بیش از حد مجاز است (حداکثر ۵ مگابایت)' },
+        { success: false, message: 'نوع مخاطب نامعتبر است' },
         { status: 400 }
       );
     }
+
+    // Parse class codes
+    let classCodes: string[] = [];
+    if (classCodesStr) {
+      try {
+        classCodes = JSON.parse(classCodesStr);
+      } catch (error) {
+        classCodes = [];
+      }
+    }
+
+    if (audienceType === 'class') {
+      if (!Array.isArray(classCodes) || classCodes.length === 0) {
+        return NextResponse.json(
+          { success: false, message: 'انتخاب حداقل یک کلاس ضروری است' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Convert image file to base64
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64Image = `data:${imageFile.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
 
     const dbConfig = getDatabaseConfig();
     const schoolConfig = dbConfig[decoded.domain];
@@ -146,15 +173,17 @@ export async function POST(request: NextRequest) {
       const dbName = schoolConfig.connectionString.split('/')[3].split('?')[0];
       const db = client.db(dbName);
 
+      const visibleToTeachers = visibleToTeachersStr === 'true' || visibleToTeachersStr === undefined;
+
       const storyDoc = {
         schoolCode: decoded.schoolCode,
-        title: body.title.trim(),
-        caption: body.caption || '',
-        imageData: body.imageData,
-        audienceType: body.audienceType,
-        classCodes: body.audienceType === 'class' ? body.classCodes || [] : [],
-        visibleToTeachers: body.visibleToTeachers !== false,
-        visibleToStudents: body.audienceType !== 'teachers',
+        title: title.trim(),
+        caption: caption || '',
+        imageData: base64Image,
+        audienceType: audienceType,
+        classCodes: audienceType === 'class' ? classCodes : [],
+        visibleToTeachers: visibleToTeachers,
+        visibleToStudents: audienceType !== 'teachers',
         createdAt: new Date(),
         createdBy: {
           id: decoded.userId,
