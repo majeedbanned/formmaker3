@@ -11,6 +11,8 @@ export interface SurveyQuestion {
   required?: boolean;
   options?: (string | SurveyOption)[]; // For radio and checkbox questions - support both old (string) and new (object) format
   maxRating?: number; // For rating questions (default 5)
+  minSelections?: number; // For checkbox questions - minimum number of selections required
+  maxSelections?: number; // For checkbox questions - maximum number of selections allowed
 }
 
 export interface Survey {

@@ -154,12 +154,27 @@ export default function SurveyAnswerPage() {
   };
 
   const handleNext = () => {
-    if (
-      currentQuestion.required &&
-      !responses[currentQuestion.id || currentQuestionIndex]
-    ) {
+    const questionId = currentQuestion.id || currentQuestionIndex;
+    const currentResponse = responses[questionId];
+
+    if (currentQuestion.required && !currentResponse) {
       toast.error("لطفاً به این سوال پاسخ دهید");
       return;
+    }
+
+    // Validate checkbox min/max selections
+    if (currentQuestion.type === "checkbox" && currentResponse) {
+      const selectedOptions = (currentResponse.answer as string[]) || [];
+      
+      if (currentQuestion.minSelections && selectedOptions.length < currentQuestion.minSelections) {
+        toast.error(`لطفاً حداقل ${currentQuestion.minSelections} گزینه انتخاب کنید`);
+        return;
+      }
+      
+      if (currentQuestion.maxSelections && selectedOptions.length > currentQuestion.maxSelections) {
+        toast.error(`حداکثر ${currentQuestion.maxSelections} گزینه مجاز است`);
+        return;
+      }
     }
 
     if (currentQuestionIndex < survey.questions.length - 1) {
@@ -182,6 +197,26 @@ export default function SurveyAnswerPage() {
     if (unansweredRequired.length > 0) {
       toast.error("لطفاً به تمام سوالات اجباری پاسخ دهید");
       return;
+    }
+
+    // Validate checkbox min/max selections for all questions
+    for (const question of survey.questions) {
+      const questionId = question.id || survey.questions.indexOf(question);
+      const response = responses[questionId];
+      
+      if (question.type === "checkbox" && response) {
+        const selectedOptions = (response.answer as string[]) || [];
+        
+        if (question.minSelections && selectedOptions.length < question.minSelections) {
+          toast.error(`سوال "${question.text}": لطفاً حداقل ${question.minSelections} گزینه انتخاب کنید`);
+          return;
+        }
+        
+        if (question.maxSelections && selectedOptions.length > question.maxSelections) {
+          toast.error(`سوال "${question.text}": حداکثر ${question.maxSelections} گزینه مجاز است`);
+          return;
+        }
+      }
     }
 
     setIsSubmitting(true);
@@ -303,20 +338,58 @@ export default function SurveyAnswerPage() {
         const selectedOptions = (currentResponse as string[]) || [];
         return (
           <div className="space-y-3">
+            {/* Selection constraints hint */}
+            {(question.minSelections || question.maxSelections) && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-start space-x-2 space-x-reverse">
+                <div className="text-indigo-600 mt-0.5">ℹ️</div>
+                <p className="text-sm text-indigo-700">
+                  {question.minSelections && question.maxSelections
+                    ? `بین ${question.minSelections} تا ${question.maxSelections} گزینه انتخاب کنید`
+                    : question.minSelections
+                    ? `حداقل ${question.minSelections} گزینه انتخاب کنید`
+                    : `حداکثر ${question.maxSelections} گزینه انتخاب کنید`}
+                </p>
+              </div>
+            )}
+
+            {/* Current selection count */}
+            {selectedOptions.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                <p className="text-sm text-green-700 font-medium">
+                  {selectedOptions.length} گزینه انتخاب شده
+                  {question.maxSelections && ` از ${question.maxSelections}`}
+                </p>
+              </div>
+            )}
+
             {question.options?.map((option, index) => {
               const normalizedOption = normalizeOption(option);
               const optionValue = getOptionValue(option);
+              const isSelected = selectedOptions.includes(optionValue);
+              const isMaxReached = question.maxSelections 
+                ? selectedOptions.length >= question.maxSelections 
+                : false;
+              const isDisabled = !isSelected && isMaxReached;
               
               return (
                 <div
                   key={index}
-                  className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                  className={`border rounded-lg p-3 transition-colors ${
+                    isDisabled 
+                      ? 'bg-gray-50 opacity-60 cursor-not-allowed' 
+                      : 'hover:bg-gray-50'
+                  }`}
                 >
                   <div className="flex items-start space-x-3 space-x-reverse">
                     <Checkbox
                       id={`checkbox-${questionId}-${index}`}
-                      checked={selectedOptions.includes(optionValue)}
+                      checked={isSelected}
+                      disabled={isDisabled}
                       onCheckedChange={(checked) => {
+                        if (checked && isMaxReached) {
+                          toast.error(`حداکثر ${question.maxSelections} گزینه قابل انتخاب است`);
+                          return;
+                        }
                         const newSelection = checked
                           ? [...selectedOptions, optionValue]
                           : selectedOptions.filter((item) => item !== optionValue);
@@ -327,7 +400,7 @@ export default function SurveyAnswerPage() {
                     <div className="flex-1">
                       <Label
                         htmlFor={`checkbox-${questionId}-${index}`}
-                        className="cursor-pointer block"
+                        className={`block ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         <div className="flex items-start gap-3">
                           {normalizedOption.image && (

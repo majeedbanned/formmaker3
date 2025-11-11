@@ -429,6 +429,53 @@ export default function QuestionsStep({
                 </div>
               )}
 
+              {question.type === "checkbox" && (
+                <div className="space-y-2">
+                  <Label>محدودیت تعداد انتخاب</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-600">حداقل انتخاب</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={question.maxSelections || question.options?.length || 99}
+                        value={question.minSelections?.toString() || ""}
+                        onChange={(e) => {
+                          const val = e.target.value ? parseInt(e.target.value) : undefined;
+                          updateQuestion(index, { minSelections: val });
+                        }}
+                        placeholder="بدون محدودیت"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-gray-600">حداکثر انتخاب</Label>
+                      <Input
+                        type="number"
+                        min={question.minSelections || 1}
+                        max={question.options?.length || 99}
+                        value={question.maxSelections?.toString() || ""}
+                        onChange={(e) => {
+                          const val = e.target.value ? parseInt(e.target.value) : undefined;
+                          updateQuestion(index, { maxSelections: val });
+                        }}
+                        placeholder="بدون محدودیت"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {question.minSelections && question.maxSelections
+                      ? `کاربر باید بین ${question.minSelections} تا ${question.maxSelections} گزینه انتخاب کند`
+                      : question.minSelections
+                      ? `کاربر باید حداقل ${question.minSelections} گزینه انتخاب کند`
+                      : question.maxSelections
+                      ? `کاربر می‌تواند حداکثر ${question.maxSelections} گزینه انتخاب کند`
+                      : "بدون محدودیت تعداد انتخاب"}
+                  </p>
+                </div>
+              )}
+
               {question.type === "rating" && (
                 <div className="space-y-2">
                   <Label>حداکثر امتیاز</Label>
@@ -465,6 +512,16 @@ export default function QuestionsStep({
               <p className="font-medium">{question.text || "سوال بدون متن"}</p>
               <p className="text-sm text-gray-500 mt-1">
                 نوع: {questionType?.label} {question.required && "• اجباری"}
+                {question.type === "checkbox" && (question.minSelections || question.maxSelections) && (
+                  <>
+                    {" • "}
+                    {question.minSelections && question.maxSelections
+                      ? `${question.minSelections}-${question.maxSelections} انتخاب`
+                      : question.minSelections
+                      ? `حداقل ${question.minSelections} انتخاب`
+                      : `حداکثر ${question.maxSelections} انتخاب`}
+                  </>
+                )}
               </p>
             </div>
           )}
