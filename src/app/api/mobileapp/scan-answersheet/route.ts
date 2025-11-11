@@ -8,11 +8,9 @@ import { existsSync, writeFileSync, mkdirSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
-const PY_BIN = process.env.PYTHON_BIN
+const PY_BIN = process.env.PYTHON_BIN || '/var/www/formmaker3/python/.venv-aruco/bin/python';
+const PY_CWD = process.env.PYTHON_CWD || path.join(process.cwd(), 'python');
 const MAX_UPLOAD_SIZE = 1 * 1024 * 1024; // 1MB
-|| '/var/www/formmaker3/python/.venv-aruco/bin/python';
-const PY_CWD = process.env.PYTHON_CWD
-|| path.join(process.cwd(), 'python');
 
 
 // Load database configuration
