@@ -489,7 +489,7 @@ function PrintExamContent() {
             qrOptions
           );
 
-          pdf.addImage(qrDataUrl1, "PNG", 15, 20, 25, 25);
+          pdf.addImage(qrDataUrl1, "PNG", 15, 20, 35, 35);
 
           // Add first student info with RTL text
           pdf.setFont("Vazirmatn", "normal");
@@ -534,7 +534,7 @@ function PrintExamContent() {
             qrOptions
           );
 
-          pdf.addImage(qrDataUrl2, "PNG", a5Width + 15, 20, 25, 25);
+          pdf.addImage(qrDataUrl2, "PNG", a5Width + 15, 20, 35, 35);
 
           // Add second student info with RTL text
           pdf.setFont("Vazirmatn", "normal");
@@ -674,7 +674,7 @@ function PrintExamContent() {
         const qrDataUrl = await qrcodeModule.toDataURL(qrCodeData, qrOptions);
 
         // Add QR code to the page - positioned lower to avoid border
-        pdf.addImage(qrDataUrl, "PNG", 15, 30, 25, 25);
+        pdf.addImage(qrDataUrl, "PNG", 15, 30, 33.33, 33.33);
 
         // Add student info with RTL text
         pdf.setFont("Vazirmatn", "normal");
