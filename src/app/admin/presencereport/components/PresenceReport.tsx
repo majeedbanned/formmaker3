@@ -148,6 +148,16 @@ type AbsenceStatusDialog = {
   applyToAllToday: boolean;
 };
 
+type DisciplinaryRecord = {
+  studentCode: string;
+  studentName: string;
+  studentFamily: string;
+  totalAbsences: number;
+  acceptableAbsences: number;
+  acceptableAbsenceNotes: string[];
+  totalLate: number;
+};
+
 // Helper function: Convert numbers to Persian digits.
 function toPersianDigits(num: number | string) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
@@ -521,6 +531,8 @@ const PresenceReport = ({
     isSubmitting: false,
     applyToAllToday: false
   });
+  const [disciplinaryRecords, setDisciplinaryRecords] = useState<DisciplinaryRecord[]>([]);
+  const [isLoadingDisciplinary, setIsLoadingDisciplinary] = useState(false);
   const { user } = useAuth();
 
   // Fetch SMS credit
@@ -952,6 +964,111 @@ const PresenceReport = ({
   useEffect(() => {
     fetchPresenceData();
   }, [fetchPresenceData]);
+
+  // Fetch disciplinary report data
+  const fetchDisciplinaryData = useCallback(async () => {
+    if (selectedClass.length === 0 && !schoolCode) return;
+
+    setIsLoadingDisciplinary(true);
+    try {
+      // Prepare API parameters
+      const params: Record<string, string> = {
+        schoolCode,
+      };
+
+      if (selectedClass.length > 0) {
+        params.classCode = selectedClass.join(",");
+      }
+
+      // Build query string
+      const queryString = Object.entries(params)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+        .join("&");
+
+      // Fetch disciplinary data
+      const response = await fetch(`/api/presence/disciplinary?${queryString}`, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch disciplinary data");
+      }
+
+      const disciplinaryData: {
+        studentCode: string;
+        totalAbsences: number;
+        acceptableAbsences: number;
+        acceptableAbsenceNotes: string[];
+        totalLate: number;
+      }[] = await response.json();
+
+      // Enrich with student names from classDocuments
+      const enrichedRecords: DisciplinaryRecord[] = disciplinaryData.map((data) => {
+        // Find student info from classDocuments
+        let studentName = "";
+        let studentFamily = "";
+
+        for (const classDoc of classDocuments) {
+          const student = classDoc.data.students.find(
+            (s) => s.studentCode === data.studentCode
+          );
+          if (student) {
+            studentName = student.studentName || "";
+            studentFamily = student.studentlname || "";
+            break;
+          }
+        }
+
+        // If student not found, use studentCode as fallback
+        if (!studentName && !studentFamily) {
+          studentName = data.studentCode;
+        }
+
+        return {
+          studentCode: data.studentCode,
+          studentName,
+          studentFamily,
+          totalAbsences: data.totalAbsences,
+          acceptableAbsences: data.acceptableAbsences,
+          acceptableAbsenceNotes: data.acceptableAbsenceNotes,
+          totalLate: data.totalLate,
+        };
+      });
+
+      // Sort by family name (last name), then by first name if family names are equal
+      enrichedRecords.sort((a, b) => {
+        const familyA = a.studentFamily || "";
+        const familyB = b.studentFamily || "";
+        const nameA = a.studentName || "";
+        const nameB = b.studentName || "";
+        
+        // First compare by family name
+        const familyCompare = familyA.localeCompare(familyB, "fa");
+        if (familyCompare !== 0) {
+          return familyCompare;
+        }
+        
+        // If family names are equal, compare by first name
+        return nameA.localeCompare(nameB, "fa");
+      });
+
+      setDisciplinaryRecords(enrichedRecords);
+    } catch (error) {
+      console.error("Error fetching disciplinary data:", error);
+      toast.error("خطا در دریافت داده‌های گزارش انضباطی");
+    } finally {
+      setIsLoadingDisciplinary(false);
+    }
+  }, [selectedClass, schoolCode, classDocuments]);
+
+  // Fetch disciplinary data when selection changes or tab is active
+  useEffect(() => {
+    if (activeTab === "disciplinary") {
+      fetchDisciplinaryData();
+    }
+  }, [activeTab, fetchDisciplinaryData]);
 
   // Add a print function after the fetchPresenceData function
   const handlePrint = () => {
@@ -2007,13 +2124,14 @@ const PresenceReport = ({
           dir="rtl"
         >
           <TabsList
-            className="grid grid-cols-4 w-full md:w-[800px] mx-auto rtl"
+            className="grid grid-cols-5 w-full md:w-[1000px] mx-auto rtl"
             dir="rtl"
           >
             <TabsTrigger value="today">گزارش امروز</TabsTrigger>
             <TabsTrigger value="students">آمار دانش‌آموزان</TabsTrigger>
             <TabsTrigger value="courses">آمار دروس</TabsTrigger>
             <TabsTrigger value="chart">نمودار غیبت روزانه</TabsTrigger>
+            <TabsTrigger value="disciplinary">گزارش انضباطی</TabsTrigger>
           </TabsList>
 
           {/* Today's Report */}
@@ -3015,6 +3133,91 @@ const PresenceReport = ({
                 ) : (
                   <div className="text-center p-6 text-gray-500 empty-message">
                     داده‌ای برای نمایش آمار وجود ندارد.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Disciplinary Report */}
+          <TabsContent
+            value="disciplinary"
+            className="space-y-6 tabs-content-wrapper"
+          >
+            <Card className="no-page-break">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl text-gray-800 flex justify-between items-center">
+                  <span>گزارش انضباطی</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    {selectedClass.length > 0
+                      ? `کلاس: ${selectedClass
+                          .map(
+                            (classCode) =>
+                              classDocuments.find(
+                                (doc) => doc.data.classCode === classCode
+                              )?.data.className || classCode
+                          )
+                          .join("، ")}`
+                      : "همه کلاس‌ها"}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingDisciplinary ? (
+                  <div className="flex items-center justify-center p-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                  </div>
+                ) : disciplinaryRecords.length > 0 ? (
+                  <div className="table-container overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-right">نام و نام خانوادگی</TableHead>
+                          <TableHead className="text-right">تعداد کل غیبت‌ها</TableHead>
+                          <TableHead className="text-right">تعداد غیبت‌های قابل قبول</TableHead>
+                          <TableHead className="text-right">توضیحات غیبت‌های قابل قبول</TableHead>
+                          <TableHead className="text-right">تعداد تاخیرها</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {disciplinaryRecords.map((record, index) => (
+                          <TableRow key={`disciplinary-${index}`}>
+                            <TableCell className="font-medium">
+                              {record.studentName} {record.studentFamily}
+                            </TableCell>
+                            <TableCell className="text-red-600 font-medium">
+                              {toPersianDigits(record.totalAbsences)}
+                            </TableCell>
+                            <TableCell className="text-green-600 font-medium">
+                              {toPersianDigits(record.acceptableAbsences)}
+                            </TableCell>
+                            <TableCell className="text-sm max-w-md">
+                              {record.acceptableAbsenceNotes.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {record.acceptableAbsenceNotes.map((note, noteIndex) => (
+                                    <span
+                                      key={noteIndex}
+                                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300"
+                                    >
+                                      {note}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-yellow-600 font-medium">
+                              {toPersianDigits(record.totalLate)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 text-gray-500 empty-message">
+                    داده‌ای برای نمایش وجود ندارد.
                   </div>
                 )}
               </CardContent>
