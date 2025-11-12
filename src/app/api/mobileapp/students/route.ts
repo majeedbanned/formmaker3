@@ -43,11 +43,13 @@ interface Student {
   studentName: string;
   studentFamily: string;
   studentCode: string;
-  classCode: string;
+  classCode: Array<{ label: string; value: string }>;
   schoolCode: string;
   phone?: string;
   phones?: Array<{ owner: string; number: string }>;
   isActive: boolean;
+  hasInstalledApp: boolean;
+  avatar: Record<string, unknown> | null;
   addedAt: string;
   lastUpdated: string;
 }
@@ -160,18 +162,22 @@ export async function GET(request: NextRequest) {
         // Check if student has installed the app by checking pushTokens
         const pushTokens = student.data?.pushTokens || [];
         const hasActiveTokens = pushTokens.some((token: any) => token.active === true);
+        const classCodeData = Array.isArray(student.data.classCode)
+          ? student.data.classCode
+          : [];
         
         return {
           id: student._id.toString(),
           studentName: student.data.studentName,
           studentFamily: student.data.studentFamily,
           studentCode: student.data.studentCode,
-          classCode: student.data.classCode,
+          classCode: classCodeData,
           schoolCode: student.data.schoolCode,
           phone: student.data.phone,
           phones: student.data.phones || [], // Include phones array
           isActive: student.data.isActive,
           hasInstalledApp: hasActiveTokens,
+          avatar: student.data.avatar || null,
           addedAt: student.createdAt ? new Date(student.createdAt).toISOString() : new Date().toISOString(),
           lastUpdated: student.updatedAt ? new Date(student.updatedAt).toISOString() : new Date().toISOString(),
         };
