@@ -88,11 +88,24 @@ export async function GET(request: NextRequest) {
 
       // Fetch student names from students collection
       const studentsCollection = connection.collection("students");
+      
+      // Build student query with class filter if provided
+      const studentQuery: Record<string, any> = {
+        "data.schoolCode": schoolCode,
+        "data.isActive": true,
+      };
+
+      // If classCode is provided, filter students by class
+      if (classCode) {
+        const classCodes = classCode.split(",").map(code => code.trim()).filter(Boolean);
+        if (classCodes.length > 0) {
+          studentQuery["data.classCode.value"] = { $in: classCodes };
+        }
+      }
+
+      // Fetch all students from the selected classes
       const students = await studentsCollection
-        .find({
-          "data.studentCode": { $in: studentCodes },
-          "data.schoolCode": schoolCode,
-        })
+        .find(studentQuery)
         .project({
           "data.studentCode": 1,
           "data.studentName": 1,
@@ -101,28 +114,60 @@ export async function GET(request: NextRequest) {
         })
         .toArray();
 
-      // Create a map of studentCode to student info
-      const studentInfoMap = new Map<string, { studentName: string; studentFamily: string }>();
+      // Create a map of studentCode to student info (handling both with and without leading zeros)
+      const studentInfoMap = new Map<string, { studentName: string; studentFamily: string; originalCode: string }>();
       students.forEach((student: any) => {
         const code = student.data.studentCode;
         const name = student.data.studentName || "";
         const family = student.data.studentFamily || student.data.studentlname || "";
-        studentInfoMap.set(code, { studentName: name, studentFamily: family });
+        
+        if (code && (name || family)) { // Only add students with names
+          // Store with original code
+          studentInfoMap.set(String(code), { studentName: name, studentFamily: family, originalCode: code });
+          // Also store normalized version (trimmed, and as number if possible)
+          const normalizedCode = String(code).trim();
+          studentInfoMap.set(normalizedCode, { studentName: name, studentFamily: family, originalCode: code });
+          // Store as number without leading zeros
+          const numericCode = String(parseInt(normalizedCode, 10));
+          if (numericCode !== "NaN" && numericCode !== normalizedCode) {
+            studentInfoMap.set(numericCode, { studentName: name, studentFamily: family, originalCode: code });
+          }
+        }
       });
 
-      // Enrich disciplinary data with student names
-      const enrichedData = disciplinaryData.map((data) => {
-        const studentInfo = studentInfoMap.get(data.studentCode) || {
-          studentName: data.studentCode, // Fallback to studentCode if not found
-          studentFamily: "",
-        };
+      // Enrich disciplinary data with student names and filter out students without names
+      const enrichedData = disciplinaryData
+        .map((data) => {
+          // Try to find student with exact match first
+          let studentInfo = studentInfoMap.get(String(data.studentCode));
+          
+          // If not found, try normalized version
+          if (!studentInfo) {
+            studentInfo = studentInfoMap.get(String(data.studentCode).trim());
+          }
+          
+          // If still not found, try numeric version (without leading zeros)
+          if (!studentInfo) {
+            const numericCode = String(parseInt(String(data.studentCode), 10));
+            if (numericCode !== "NaN") {
+              studentInfo = studentInfoMap.get(numericCode);
+            }
+          }
 
-        return {
-          ...data,
-          studentName: studentInfo.studentName,
-          studentFamily: studentInfo.studentFamily,
-        };
-      });
+          // If we found the student info, return enriched data
+          if (studentInfo && (studentInfo.studentName || studentInfo.studentFamily)) {
+            return {
+              ...data,
+              studentCode: studentInfo.originalCode, // Use the original code from students collection
+              studentName: studentInfo.studentName,
+              studentFamily: studentInfo.studentFamily,
+            };
+          }
+          
+          // Return null for students not found (will be filtered out)
+          return null;
+        })
+        .filter((data): data is NonNullable<typeof data> => data !== null); // Filter out null entries
 
       // Sort by family name, then by first name
       enrichedData.sort((a, b) => {
@@ -141,7 +186,7 @@ export async function GET(request: NextRequest) {
         return nameA.localeCompare(nameB, "fa");
       });
 
-      logger.info(`Found ${enrichedData.length} students with disciplinary records`);
+      logger.info(`Processed ${disciplinaryData.length} raw records, found ${enrichedData.length} students with names from selected classes`);
 
       return NextResponse.json(enrichedData);
     } catch (dbError) {
