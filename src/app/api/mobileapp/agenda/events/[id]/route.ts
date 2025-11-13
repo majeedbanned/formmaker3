@@ -161,13 +161,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const effectiveTeacherCode = decoded.userType === 'teacher' ? decoded.username : teacherCode;
 
+    // Normalize to arrays for multiple selection support
+    const classCodes = Array.isArray(classCode) ? classCode : classCode ? [classCode] : [];
+    const courseCodes = Array.isArray(courseCode) ? courseCode : courseCode ? [courseCode] : [];
+
     if (
       !title ||
       !persianDate ||
       !timeSlot ||
       !effectiveTeacherCode ||
-      !courseCode ||
-      !classCode
+      courseCodes.length === 0 ||
+      classCodes.length === 0
     ) {
       return NextResponse.json(
         { success: false, message: 'لطفاً تمام فیلدهای ضروری را تکمیل کنید' },
@@ -221,8 +225,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           date: gregorianDate,
           timeSlot,
           teacherCode: effectiveTeacherCode,
-          courseCode,
-          classCode,
+          courseCode: courseCodes, // Array
+          classCode: classCodes, // Array
           isSchoolEvent:
             existingEvent.isSchoolEvent ||
             decoded.userType === 'school' ||

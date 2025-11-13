@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
         // By default, teachers only see their own events
         // If showAll=true, they can see all events (teachers and school)
         if (!showAll) {
-        query.teacherCode = decoded.username;
+          query.teacherCode = decoded.username;
         }
         // If showAll=true, don't filter by teacherCode, allowing all events
       } else if (decoded.userType === 'school') {
@@ -198,14 +198,16 @@ export async function GET(request: NextRequest) {
         }
         // If showAll=true, don't filter by createdBy, allowing all events
       } else if (decoded.userType === 'student') {
-        const classCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
-        if (!classCodes.length) {
+        const studentClassCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
+        if (!studentClassCodes.length) {
           return NextResponse.json({
             success: true,
             data: { events: [] },
           });
         }
-        query.classCode = { $in: classCodes };
+        // Query events where classCode (array or single value) contains any of student's class codes
+        // MongoDB's $in operator works for both arrays and single values
+        query.classCode = { $in: studentClassCodes };
       }
 
       if (startDateParam || endDateParam) {
@@ -239,7 +241,23 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const events = await eventsCollection.find(query).sort({ date: 1, timeSlot: 1 }).toArray();
+      let events = await eventsCollection.find(query).sort({ date: 1, timeSlot: 1 }).toArray();
+
+      // Normalize classCode and courseCode to arrays for backward compatibility
+      events = events.map((event) => ({
+        ...event,
+        classCode: Array.isArray(event.classCode) ? event.classCode : event.classCode ? [event.classCode] : [],
+        courseCode: Array.isArray(event.courseCode) ? event.courseCode : event.courseCode ? [event.courseCode] : [],
+      }));
+
+      // For students, filter events where at least one classCode matches
+      if (decoded.userType === 'student') {
+        const studentClassCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
+        events = events.filter((event) => {
+          const eventClassCodes = Array.isArray(event.classCode) ? event.classCode : [event.classCode];
+          return eventClassCodes.some((code) => studentClassCodes.includes(code));
+        });
+      }
 
       return NextResponse.json({
         success: true,
@@ -301,13 +319,17 @@ export async function POST(request: NextRequest) {
 
     const effectiveTeacherCode = decoded.userType === 'teacher' ? decoded.username : teacherCode;
 
+    // Normalize to arrays for multiple selection support
+    const classCodes = Array.isArray(classCode) ? classCode : classCode ? [classCode] : [];
+    const courseCodes = Array.isArray(courseCode) ? courseCode : courseCode ? [courseCode] : [];
+
     if (
       !title ||
       !persianDate ||
       !timeSlot ||
       !effectiveTeacherCode ||
-      !courseCode ||
-      !classCode
+      courseCodes.length === 0 ||
+      classCodes.length === 0
     ) {
       return NextResponse.json(
         { success: false, message: 'لطفاً تمام فیلدهای ضروری را تکمیل کنید' },
@@ -337,29 +359,28 @@ export async function POST(request: NextRequest) {
     try {
       const eventsCollection = db.collection('events');
       const gregorianDate = convertPersianDateToGregorian(persianDate);
-
+      const normalizedPersianDate = normalisePersianDate(persianDate);
       const now = new Date();
 
+      // Create a single event with arrays for classCode and courseCode
       const newEvent = {
+        _id: new ObjectId(),
         schoolCode: decoded.schoolCode,
         teacherCode: effectiveTeacherCode,
-        courseCode,
-        classCode,
+        courseCode: courseCodes, // Array
+        classCode: classCodes, // Array
         date: gregorianDate,
         timeSlot,
         title,
         description: description || '',
-        persianDate: normalisePersianDate(persianDate),
+        persianDate: normalizedPersianDate,
         createdBy: decoded.username,
         isSchoolEvent: decoded.userType === 'school' || isSchoolEvent === true,
         createdAt: now,
         updatedAt: now,
       };
 
-      const insertResult = await eventsCollection.insertOne({
-        _id: new ObjectId(),
-        ...newEvent,
-      });
+      const insertResult = await eventsCollection.insertOne(newEvent);
 
       if (!insertResult.acknowledged) {
         throw new Error('Failed to insert event');
