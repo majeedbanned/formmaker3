@@ -224,39 +224,6 @@ export async function GET(request: NextRequest) {
               });
             }
 
-            // Get 3 random students with avatars for display
-            const randomThreeStudents: any[] = [];
-            if (classData.students && Array.isArray(classData.students) && classData.students.length > 0) {
-              // Shuffle array to get random selection
-              const shuffledStudents = [...classData.students].sort(() => Math.random() - 0.5);
-              
-              // Take first 3 from shuffled array (or all if less than 3)
-              const selectedStudents = shuffledStudents.slice(0, Math.min(3, shuffledStudents.length));
-              const studentCodes = selectedStudents.map((s: any) => s.studentCode);
-              
-              // Fetch student avatars from students collection
-              const studentDocs = await db.collection('students').find({
-                'data.schoolCode': decoded.schoolCode,
-                'data.studentCode': { $in: studentCodes }
-              }).toArray();
-              
-              // Create a map of studentCode to avatar
-              const avatarMap = new Map();
-              studentDocs.forEach((doc: any) => {
-                avatarMap.set(doc.data.studentCode, doc.data.avatar || null);
-              });
-              
-              // Build students array with avatars
-              selectedStudents.forEach((student: any) => {
-                randomThreeStudents.push({
-                  studentCode: student.studentCode || '',
-                  studentName: student.studentName || '',
-                  studentlname: student.studentlname || '',
-                  avatar: avatarMap.get(student.studentCode) || null
-                });
-              });
-            }
-
             const scheduleItem = {
               classCode: classData.classCode,
               className: classData.className,
@@ -268,8 +235,7 @@ export async function GET(request: NextRequest) {
               grade: classData.Grade,
               studentCount: classData.students?.length || 0,
               absentStudents: absentStudents,
-              delayedStudents: delayedStudents,
-              students: randomThreeStudents
+              delayedStudents: delayedStudents
             };
             
             console.log(`Adding schedule item:`, scheduleItem);

@@ -169,19 +169,6 @@ export async function GET(request: NextRequest) {
         return (a.studentName || '').localeCompare(b.studentName || '', 'fa');
       });
 
-      // Get student avatars from students collection
-      const studentCodes = sortedStudents.map((s: any) => s.studentCode);
-      const studentDocs = await db.collection('students').find({
-        'data.schoolCode': decoded.schoolCode,
-        'data.studentCode': { $in: studentCodes }
-      }).toArray();
-      
-      // Create a map of studentCode to avatar
-      const avatarMap = new Map();
-      studentDocs.forEach((doc: any) => {
-        avatarMap.set(doc.data.studentCode, doc.data.avatar || null);
-      });
-
       // Get all classsheet data for each student
       const studentsWithData = await Promise.all(
         sortedStudents.map(async (student: any) => {
@@ -200,7 +187,6 @@ export async function GET(request: NextRequest) {
             studentName: student.studentName || '',
             studentlname: student.studentlname || '',
             phone: student.phone || '',
-            avatar: avatarMap.get(student.studentCode) || null,
             presenceStatus: classsheetRecord?.presenceStatus || null,
             note: classsheetRecord?.note || '',
             grades: classsheetRecord?.grades || [],
