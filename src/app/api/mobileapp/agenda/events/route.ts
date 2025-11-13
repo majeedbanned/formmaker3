@@ -173,6 +173,7 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const monthParam = searchParams.get('month'); // expect YYYY-MM (jalali)
+    const showAll = searchParams.get('showAll') === 'true';
 
     const { client, db } = await getDbClient(domainConfig.connectionString);
 
@@ -183,7 +184,12 @@ export async function GET(request: NextRequest) {
       };
 
       if (decoded.userType === 'teacher') {
-        query.teacherCode = decoded.username;
+        // By default, teachers only see their own events
+        // If showAll=true, they can see all events (teachers and school)
+        if (!showAll) {
+          query.teacherCode = decoded.username;
+        }
+        // If showAll=true, don't filter by teacherCode, allowing all events
       } else if (decoded.userType === 'student') {
         const classCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
         if (!classCodes.length) {

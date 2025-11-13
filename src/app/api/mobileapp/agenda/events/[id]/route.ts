@@ -203,11 +203,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         );
       }
 
-      if (
-        decoded.userType === 'teacher' &&
-        existingEvent.teacherCode !== decoded.username &&
-        existingEvent.createdBy !== decoded.username
-      ) {
+      // Only allow editing events created by the current user
+      if (existingEvent.createdBy !== decoded.username) {
         return NextResponse.json(
           { success: false, message: 'شما اجازه ویرایش این رویداد را ندارید' },
           { status: 403 }
@@ -312,11 +309,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         );
       }
 
-      if (
-        decoded.userType === 'teacher' &&
-        existingEvent.teacherCode !== decoded.username &&
-        existingEvent.createdBy !== decoded.username
-      ) {
+      // Only allow deleting events created by the current user
+      if (existingEvent.createdBy !== decoded.username) {
         return NextResponse.json(
           { success: false, message: 'شما اجازه حذف این رویداد را ندارید' },
           { status: 403 }
