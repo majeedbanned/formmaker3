@@ -83,9 +83,67 @@ export async function GET(request: NextRequest) {
       // Convert map to array
       const disciplinaryData = Array.from(studentMap.values());
 
-      logger.info(`Found ${disciplinaryData.length} students with disciplinary records`);
+      // Get unique student codes
+      const studentCodes = Array.from(studentMap.keys());
 
-      return NextResponse.json(disciplinaryData);
+      // Fetch student names from students collection
+      const studentsCollection = connection.collection("students");
+      const students = await studentsCollection
+        .find({
+          "data.studentCode": { $in: studentCodes },
+          "data.schoolCode": schoolCode,
+        })
+        .project({
+          "data.studentCode": 1,
+          "data.studentName": 1,
+          "data.studentFamily": 1,
+          "data.studentlname": 1, // Some collections use studentlname instead of studentFamily
+        })
+        .toArray();
+
+      // Create a map of studentCode to student info
+      const studentInfoMap = new Map<string, { studentName: string; studentFamily: string }>();
+      students.forEach((student: any) => {
+        const code = student.data.studentCode;
+        const name = student.data.studentName || "";
+        const family = student.data.studentFamily || student.data.studentlname || "";
+        studentInfoMap.set(code, { studentName: name, studentFamily: family });
+      });
+
+      // Enrich disciplinary data with student names
+      const enrichedData = disciplinaryData.map((data) => {
+        const studentInfo = studentInfoMap.get(data.studentCode) || {
+          studentName: data.studentCode, // Fallback to studentCode if not found
+          studentFamily: "",
+        };
+
+        return {
+          ...data,
+          studentName: studentInfo.studentName,
+          studentFamily: studentInfo.studentFamily,
+        };
+      });
+
+      // Sort by family name, then by first name
+      enrichedData.sort((a, b) => {
+        const familyA = a.studentFamily || "";
+        const familyB = b.studentFamily || "";
+        const nameA = a.studentName || "";
+        const nameB = b.studentName || "";
+
+        // First compare by family name
+        const familyCompare = familyA.localeCompare(familyB, "fa");
+        if (familyCompare !== 0) {
+          return familyCompare;
+        }
+
+        // If family names are equal, compare by first name
+        return nameA.localeCompare(nameB, "fa");
+      });
+
+      logger.info(`Found ${enrichedData.length} students with disciplinary records`);
+
+      return NextResponse.json(enrichedData);
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(

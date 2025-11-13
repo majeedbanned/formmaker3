@@ -996,72 +996,17 @@ const PresenceReport = ({
         throw new Error("Failed to fetch disciplinary data");
       }
 
-      const disciplinaryData: {
-        studentCode: string;
-        totalAbsences: number;
-        acceptableAbsences: number;
-        acceptableAbsenceNotes: string[];
-        totalLate: number;
-      }[] = await response.json();
+      const disciplinaryData: DisciplinaryRecord[] = await response.json();
 
-      // Enrich with student names from classDocuments
-      const enrichedRecords: DisciplinaryRecord[] = disciplinaryData.map((data) => {
-        // Find student info from classDocuments
-        let studentName = "";
-        let studentFamily = "";
-
-        for (const classDoc of classDocuments) {
-          const student = classDoc.data.students.find(
-            (s) => s.studentCode === data.studentCode
-          );
-          if (student) {
-            studentName = student.studentName || "";
-            studentFamily = student.studentlname || "";
-            break;
-          }
-        }
-
-        // If student not found, use studentCode as fallback
-        if (!studentName && !studentFamily) {
-          studentName = data.studentCode;
-        }
-
-        return {
-          studentCode: data.studentCode,
-          studentName,
-          studentFamily,
-          totalAbsences: data.totalAbsences,
-          acceptableAbsences: data.acceptableAbsences,
-          acceptableAbsenceNotes: data.acceptableAbsenceNotes,
-          totalLate: data.totalLate,
-        };
-      });
-
-      // Sort by family name (last name), then by first name if family names are equal
-      enrichedRecords.sort((a, b) => {
-        const familyA = a.studentFamily || "";
-        const familyB = b.studentFamily || "";
-        const nameA = a.studentName || "";
-        const nameB = b.studentName || "";
-        
-        // First compare by family name
-        const familyCompare = familyA.localeCompare(familyB, "fa");
-        if (familyCompare !== 0) {
-          return familyCompare;
-        }
-        
-        // If family names are equal, compare by first name
-        return nameA.localeCompare(nameB, "fa");
-      });
-
-      setDisciplinaryRecords(enrichedRecords);
+      // Data is already enriched and sorted by the API
+      setDisciplinaryRecords(disciplinaryData);
     } catch (error) {
       console.error("Error fetching disciplinary data:", error);
       toast.error("خطا در دریافت داده‌های گزارش انضباطی");
     } finally {
       setIsLoadingDisciplinary(false);
     }
-  }, [selectedClass, schoolCode, classDocuments]);
+  }, [selectedClass, schoolCode]);
 
   // Fetch disciplinary data when selection changes or tab is active
   useEffect(() => {
