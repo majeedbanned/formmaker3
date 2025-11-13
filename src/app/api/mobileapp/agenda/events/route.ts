@@ -187,7 +187,11 @@ export async function GET(request: NextRequest) {
         // By default, teachers only see their own events
         // If showAll=true, they can see all events (teachers and school)
         if (!showAll) {
-          query.teacherCode = decoded.username;
+          // Check if teacherCode (array or single) contains this teacher's username
+          query.$or = [
+            { teacherCode: decoded.username }, // Single value (backward compatibility)
+            { teacherCode: { $in: [decoded.username] } }, // Array contains this teacher
+          ];
         }
         // If showAll=true, don't filter by teacherCode, allowing all events
       } else if (decoded.userType === 'school') {
@@ -208,6 +212,8 @@ export async function GET(request: NextRequest) {
         // Query events where classCode (array or single value) contains any of student's class codes
         // MongoDB's $in operator works for both arrays and single values
         query.classCode = { $in: studentClassCodes };
+        // Students should NOT see events with teacherCode as array (teacher-specific events)
+        // We'll filter these out in post-processing since MongoDB type checking is complex
       }
 
       if (startDateParam || endDateParam) {
@@ -243,19 +249,36 @@ export async function GET(request: NextRequest) {
 
       let events = await eventsCollection.find(query).sort({ date: 1, timeSlot: 1 }).toArray();
 
-      // Normalize classCode and courseCode to arrays for backward compatibility
+      // Normalize teacherCode, classCode and courseCode to arrays for backward compatibility
       events = events.map((event) => ({
         ...event,
+        teacherCode: Array.isArray(event.teacherCode) ? event.teacherCode : event.teacherCode ? [event.teacherCode] : [],
         classCode: Array.isArray(event.classCode) ? event.classCode : event.classCode ? [event.classCode] : [],
         courseCode: Array.isArray(event.courseCode) ? event.courseCode : event.courseCode ? [event.courseCode] : [],
       }));
 
+      // For teachers, filter events where teacherCode array contains their username
+      if (decoded.userType === 'teacher' && !showAll) {
+        events = events.filter((event) => {
+          const eventTeacherCodes = Array.isArray(event.teacherCode) ? event.teacherCode : [event.teacherCode];
+          return eventTeacherCodes.includes(decoded.username);
+        });
+      }
+
       // For students, filter events where at least one classCode matches
+      // Students can see:
+      // 1. Events with single teacherCode (regular events)
+      // 2. Events with empty teacherCode array (class-only events created by school users)
+      // Students should NOT see events with multiple teacherCodes (teacher-specific events)
       if (decoded.userType === 'student') {
         const studentClassCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
         events = events.filter((event) => {
           const eventClassCodes = Array.isArray(event.classCode) ? event.classCode : [event.classCode];
-          return eventClassCodes.some((code) => studentClassCodes.includes(code));
+          const eventTeacherCodes = Array.isArray(event.teacherCode) ? event.teacherCode : [event.teacherCode];
+          // Students can see events with single teacherCode OR empty teacherCode (class-only events)
+          const canSeeTeacher = eventTeacherCodes.length === 1 || eventTeacherCodes.length === 0;
+          const classMatches = eventClassCodes.some((code) => studentClassCodes.includes(code));
+          return canSeeTeacher && classMatches;
         });
       }
 
@@ -317,19 +340,26 @@ export async function POST(request: NextRequest) {
       isSchoolEvent,
     } = body;
 
-    const effectiveTeacherCode = decoded.userType === 'teacher' ? decoded.username : teacherCode;
-
     // Normalize to arrays for multiple selection support
     const classCodes = Array.isArray(classCode) ? classCode : classCode ? [classCode] : [];
     const courseCodes = Array.isArray(courseCode) ? courseCode : courseCode ? [courseCode] : [];
+    
+    // For teachers, ALWAYS use their username (ignore any teacherCode from request body)
+    // For school users, teacherCode can be an array or empty
+    let teacherCodes: string[] = [];
+    if (decoded.userType === 'teacher') {
+      // Always use the teacher's own username, regardless of what's in the request
+      teacherCodes = [decoded.username];
+    } else if (decoded.userType === 'school') {
+      // School users can select multiple teachers or leave empty for all teachers
+      teacherCodes = Array.isArray(teacherCode) ? teacherCode : teacherCode ? [teacherCode] : [];
+    }
 
+    // Validation: Basic required fields
     if (
       !title ||
       !persianDate ||
-      !timeSlot ||
-      !effectiveTeacherCode ||
-      courseCodes.length === 0 ||
-      classCodes.length === 0
+      !timeSlot
     ) {
       return NextResponse.json(
         { success: false, message: 'لطفاً تمام فیلدهای ضروری را تکمیل کنید' },
@@ -337,11 +367,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (decoded.userType === 'teacher' && teacherCode && teacherCode !== decoded.username) {
+    // School users must select at least teachers OR classes
+    if (decoded.userType === 'school' && teacherCodes.length === 0 && classCodes.length === 0) {
       return NextResponse.json(
-        { success: false, message: 'امکان ایجاد رویداد برای سایر اساتید وجود ندارد' },
-        { status: 403 }
+        { success: false, message: 'لطفاً حداقل استاد یا کلاس را انتخاب کنید' },
+        { status: 400 }
       );
+    }
+
+    // Teachers must have classes and courses
+    if (decoded.userType === 'teacher') {
+      if (courseCodes.length === 0 || classCodes.length === 0) {
+        return NextResponse.json(
+          { success: false, message: 'لطفاً کلاس و درس را انتخاب کنید' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // School users: if courses are provided, classes must also be provided
+    // But classes can be provided without courses
+    if (decoded.userType === 'school' && courseCodes.length > 0 && classCodes.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'برای انتخاب درس، باید کلاس نیز انتخاب شود' },
+        { status: 400 }
+      );
+    }
+
+    // For teachers, ensure they can't create events for other teachers
+    // (This check is redundant since we always use decoded.username above, but kept for extra security)
+    if (decoded.userType === 'teacher') {
+      const requestedTeacherCode = Array.isArray(teacherCode) ? teacherCode[0] : teacherCode;
+      if (requestedTeacherCode && requestedTeacherCode !== decoded.username) {
+        return NextResponse.json(
+          { success: false, message: 'امکان ایجاد رویداد برای سایر اساتید وجود ندارد' },
+          { status: 403 }
+        );
+      }
     }
 
     const dbConfig = getDatabaseConfig();
@@ -362,11 +424,11 @@ export async function POST(request: NextRequest) {
       const normalizedPersianDate = normalisePersianDate(persianDate);
       const now = new Date();
 
-      // Create a single event with arrays for classCode and courseCode
+      // Create a single event with arrays for teacherCode, classCode, and courseCode
       const newEvent = {
         _id: new ObjectId(),
         schoolCode: decoded.schoolCode,
-        teacherCode: effectiveTeacherCode,
+        teacherCode: teacherCodes, // Array - can be single or multiple teachers
         courseCode: courseCodes, // Array
         classCode: classCodes, // Array
         date: gregorianDate,

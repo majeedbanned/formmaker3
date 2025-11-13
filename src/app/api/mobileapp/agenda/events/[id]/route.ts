@@ -159,22 +159,56 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       isSchoolEvent,
     } = body;
 
-    const effectiveTeacherCode = decoded.userType === 'teacher' ? decoded.username : teacherCode;
-
     // Normalize to arrays for multiple selection support
     const classCodes = Array.isArray(classCode) ? classCode : classCode ? [classCode] : [];
     const courseCodes = Array.isArray(courseCode) ? courseCode : courseCode ? [courseCode] : [];
+    
+    // For teachers, ALWAYS use their username (ignore any teacherCode from request body)
+    // For school users, teacherCode can be an array
+    let teacherCodes: string[] = [];
+    if (decoded.userType === 'teacher') {
+      // Always use the teacher's own username, regardless of what's in the request
+      teacherCodes = [decoded.username];
+    } else if (decoded.userType === 'school') {
+      // School users can select multiple teachers
+      teacherCodes = Array.isArray(teacherCode) ? teacherCode : teacherCode ? [teacherCode] : [];
+    }
 
+    // Validation: Basic required fields
     if (
       !title ||
       !persianDate ||
-      !timeSlot ||
-      !effectiveTeacherCode ||
-      courseCodes.length === 0 ||
-      classCodes.length === 0
+      !timeSlot
     ) {
       return NextResponse.json(
         { success: false, message: 'لطفاً تمام فیلدهای ضروری را تکمیل کنید' },
+        { status: 400 }
+      );
+    }
+
+    // School users must select at least teachers OR classes
+    if (decoded.userType === 'school' && teacherCodes.length === 0 && classCodes.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'لطفاً حداقل استاد یا کلاس را انتخاب کنید' },
+        { status: 400 }
+      );
+    }
+
+    // Teachers must have classes and courses
+    if (decoded.userType === 'teacher') {
+      if (courseCodes.length === 0 || classCodes.length === 0) {
+        return NextResponse.json(
+          { success: false, message: 'لطفاً کلاس و درس را انتخاب کنید' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // School users: if courses are provided, classes must also be provided
+    // But classes can be provided without courses
+    if (decoded.userType === 'school' && courseCodes.length > 0 && classCodes.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'برای انتخاب درس، باید کلاس نیز انتخاب شود' },
         { status: 400 }
       );
     }
@@ -224,7 +258,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           persianDate: normalisePersianDate(persianDate),
           date: gregorianDate,
           timeSlot,
-          teacherCode: effectiveTeacherCode,
+          teacherCode: teacherCodes, // Array - can be single or multiple teachers
           courseCode: courseCodes, // Array
           classCode: classCodes, // Array
           isSchoolEvent:
