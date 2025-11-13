@@ -224,6 +224,48 @@ export async function GET(request: NextRequest) {
               });
             }
 
+            // Get three random student avatars for this class
+            let studentAvatars: Array<{ studentCode: string; avatar: any }> = [];
+            if (classData.students && Array.isArray(classData.students) && classData.students.length > 0) {
+              // Get student codes from class
+              const studentCodes = classData.students.map((s: any) => s.studentCode).filter(Boolean);
+              
+              if (studentCodes.length > 0) {
+                // Fetch student avatars from students collection
+                const studentsWithAvatars = await db.collection('students').find({
+                  'data.schoolCode': decoded.schoolCode,
+                  'data.studentCode': { $in: studentCodes },
+                  'data.avatar': { $exists: true, $ne: null }
+                }).project({
+                  'data.studentCode': 1,
+                  'data.avatar': 1
+                }).toArray();
+
+                // Create a map of studentCode to avatar
+                const avatarMap = new Map();
+                studentsWithAvatars.forEach((student: any) => {
+                  if (student.data?.avatar && student.data?.studentCode) {
+                    avatarMap.set(student.data.studentCode, student.data.avatar);
+                  }
+                });
+
+                // Get random student codes (up to 3)
+                const shuffledCodes = studentCodes.sort(() => 0.5 - Math.random());
+                const selectedCodes = shuffledCodes.slice(0, Math.min(3, shuffledCodes.length));
+
+                // Build avatar array
+                studentAvatars = selectedCodes
+                  .map((code: string) => {
+                    const avatar = avatarMap.get(code);
+                    if (avatar) {
+                      return { studentCode: code, avatar };
+                    }
+                    return null;
+                  })
+                  .filter(Boolean) as Array<{ studentCode: string; avatar: any }>;
+              }
+            }
+
             const scheduleItem = {
               classCode: classData.classCode,
               className: classData.className,
@@ -235,7 +277,8 @@ export async function GET(request: NextRequest) {
               grade: classData.Grade,
               studentCount: classData.students?.length || 0,
               absentStudents: absentStudents,
-              delayedStudents: delayedStudents
+              delayedStudents: delayedStudents,
+              studentAvatars: studentAvatars
             };
             
             console.log(`Adding schedule item:`, scheduleItem);
