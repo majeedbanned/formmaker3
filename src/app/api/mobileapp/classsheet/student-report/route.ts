@@ -156,6 +156,14 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Fetch student avatar from students collection
+      const studentDoc = await db.collection('students').findOne({
+        'data.schoolCode': decoded.schoolCode,
+        'data.studentCode': studentCode
+      });
+
+      const studentAvatar = studentDoc?.data?.avatar || null;
+
       // Fetch all classsheet records for this student in this course
       const records = await db.collection('classsheet').find({
         studentCode: studentCode,
@@ -240,7 +248,8 @@ export async function GET(request: NextRequest) {
           studentCode: student.studentCode,
           studentName: student.studentName,
           studentlname: student.studentlname,
-          phone: student.phone
+          phone: student.phone,
+          avatar: studentAvatar
         },
         stats: stats,
         allGrades: allGrades,
