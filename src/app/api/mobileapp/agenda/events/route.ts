@@ -190,6 +190,13 @@ export async function GET(request: NextRequest) {
           query.teacherCode = decoded.username;
         }
         // If showAll=true, don't filter by teacherCode, allowing all events
+      } else if (decoded.userType === 'school') {
+        // By default, school users see all events
+        // If showAll=false, they only see events they created
+        if (!showAll) {
+          query.createdBy = decoded.username;
+        }
+        // If showAll=true, don't filter by createdBy, allowing all events
       } else if (decoded.userType === 'student') {
         const classCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
         if (!classCodes.length) {
