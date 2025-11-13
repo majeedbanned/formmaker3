@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
         totalAbsences: number;
         distinctAbsenceDates: Set<string>; // Track distinct dates for absences
         acceptableAbsences: number;
+        distinctAcceptableAbsenceDates: Set<string>; // Track distinct dates for acceptable absences
         acceptableAbsenceNotes: string[];
         totalLate: number;
       }>();
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
             totalAbsences: 0,
             distinctAbsenceDates: new Set<string>(),
             acceptableAbsences: 0,
+            distinctAcceptableAbsenceDates: new Set<string>(),
             acceptableAbsenceNotes: [],
             totalLate: 0,
           });
@@ -85,6 +87,12 @@ export async function GET(request: NextRequest) {
           if (record.absenceAcceptable === true && record.absenceDescription) {
             studentData.acceptableAbsences++;
             studentData.acceptableAbsenceNotes.push(record.absenceDescription);
+            
+            // Track distinct dates for acceptable absences
+            if (dateStr) {
+              const dateOnly = dateStr.split('T')[0].split(' ')[0];
+              studentData.distinctAcceptableAbsenceDates.add(dateOnly);
+            }
           }
         } else if (record.presenceStatus === "late") {
           studentData.totalLate++;
@@ -97,6 +105,7 @@ export async function GET(request: NextRequest) {
         totalAbsences: data.totalAbsences,
         distinctAbsenceDatesCount: data.distinctAbsenceDates.size,
         acceptableAbsences: data.acceptableAbsences,
+        distinctAcceptableAbsenceDatesCount: data.distinctAcceptableAbsenceDates.size,
         acceptableAbsenceNotes: data.acceptableAbsenceNotes,
         totalLate: data.totalLate,
       }));

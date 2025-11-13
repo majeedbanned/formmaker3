@@ -155,6 +155,7 @@ type DisciplinaryRecord = {
   totalAbsences: number;
   distinctAbsenceDatesCount: number;
   acceptableAbsences: number;
+  distinctAcceptableAbsenceDatesCount: number;
   acceptableAbsenceNotes: string[];
   totalLate: number;
 };
@@ -3122,6 +3123,7 @@ const PresenceReport = ({
                           <TableHead className="text-right">تعداد کل غیبت‌ها</TableHead>
                           <TableHead className="text-right">تعداد روزهای غیبت</TableHead>
                           <TableHead className="text-right">تعداد غیبت‌های قابل قبول</TableHead>
+                          <TableHead className="text-right">تعداد روزهای غیبت قابل قبول</TableHead>
                           <TableHead className="text-right">توضیحات غیبت‌های قابل قبول</TableHead>
                           <TableHead className="text-right">تعداد تاخیرها</TableHead>
                         </TableRow>
@@ -3140,6 +3142,9 @@ const PresenceReport = ({
                             </TableCell>
                             <TableCell className="text-green-600 font-medium">
                               {toPersianDigits(record.acceptableAbsences)}
+                            </TableCell>
+                            <TableCell className="text-green-700 font-medium">
+                              {toPersianDigits(record.distinctAcceptableAbsenceDatesCount)}
                             </TableCell>
                             <TableCell className="text-sm max-w-md">
                               {record.acceptableAbsenceNotes.length > 0 ? (
