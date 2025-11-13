@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
         // By default, teachers only see their own events
         // If showAll=true, they can see all events (teachers and school)
         if (!showAll) {
-          query.teacherCode = decoded.username;
+        query.teacherCode = decoded.username;
         }
         // If showAll=true, don't filter by teacherCode, allowing all events
       } else if (decoded.userType === 'school') {

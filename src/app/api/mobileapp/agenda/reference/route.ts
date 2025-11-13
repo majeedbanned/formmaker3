@@ -152,7 +152,8 @@ export async function GET(request: NextRequest) {
       const coursesCollection = db.collection('courses');
 
       const [teachers, classes, courses] = await Promise.all([
-        decoded.userType === 'school'
+        // Fetch teachers for both school and teacher users (teachers need avatars when viewing all events)
+        ['school', 'teacher'].includes(decoded.userType)
           ? teachersCollection
               .find({ 'data.schoolCode': decoded.schoolCode })
               .project({
@@ -160,6 +161,7 @@ export async function GET(request: NextRequest) {
                 username: 1,
                 'data.teacherCode': 1,
                 'data.teacherName': 1,
+                'data.avatar': 1,
                 firstName: 1,
                 lastName: 1,
               })
@@ -191,7 +193,7 @@ export async function GET(request: NextRequest) {
       const teacherClassMap = buildTeacherClassMapping(classes);
 
       const normalisedTeachers =
-        decoded.userType === 'school'
+        ['school', 'teacher'].includes(decoded.userType)
           ? teachers.map((teacher) => ({
               id: teacher._id.toString(),
               teacherCode: ensureString(
@@ -206,6 +208,7 @@ export async function GET(request: NextRequest) {
                   extractDataProperty(teacher, 'teacherCode', ''),
                   'استاد بدون نام'
                 ),
+              avatar: extractDataProperty(teacher, 'avatar', null),
             }))
           : [];
 
