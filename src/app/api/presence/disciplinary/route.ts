@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       const studentMap = new Map<string, {
         studentCode: string;
         totalAbsences: number;
+        distinctAbsenceDates: Set<string>; // Track distinct dates for absences
         acceptableAbsences: number;
         acceptableAbsenceNotes: string[];
         totalLate: number;
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
           studentMap.set(studentCode, {
             studentCode,
             totalAbsences: 0,
+            distinctAbsenceDates: new Set<string>(),
             acceptableAbsences: 0,
             acceptableAbsenceNotes: [],
             totalLate: 0,
@@ -71,6 +73,15 @@ export async function GET(request: NextRequest) {
 
         if (record.presenceStatus === "absent") {
           studentData.totalAbsences++;
+          
+          // Extract date part (YYYY-MM-DD) from the date string
+          const dateStr = record.date;
+          if (dateStr) {
+            // Handle both ISO format (2024-01-15T00:00:00.000Z) and simple format (2024-01-15)
+            const dateOnly = dateStr.split('T')[0].split(' ')[0];
+            studentData.distinctAbsenceDates.add(dateOnly);
+          }
+          
           if (record.absenceAcceptable === true && record.absenceDescription) {
             studentData.acceptableAbsences++;
             studentData.acceptableAbsenceNotes.push(record.absenceDescription);
@@ -80,8 +91,15 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Convert map to array
-      const disciplinaryData = Array.from(studentMap.values());
+      // Convert map to array and convert Set to count
+      const disciplinaryData = Array.from(studentMap.values()).map(data => ({
+        studentCode: data.studentCode,
+        totalAbsences: data.totalAbsences,
+        distinctAbsenceDatesCount: data.distinctAbsenceDates.size,
+        acceptableAbsences: data.acceptableAbsences,
+        acceptableAbsenceNotes: data.acceptableAbsenceNotes,
+        totalLate: data.totalLate,
+      }));
 
       // Get unique student codes
       const studentCodes = Array.from(studentMap.keys());
