@@ -131,6 +131,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         username: string;
         role: string;
         userType: string;
+        avatar?: {
+          path?: string;
+          filename?: string;
+        } | null;
       }> = [];
 
       // Convert like IDs to ObjectIds for querying
@@ -165,6 +169,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             username: student.data?.studentCode || studentId,
             role: 'student',
             userType: 'student',
+            avatar: student.data?.avatar || null,
           });
         }
       });
@@ -188,6 +193,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             username: teacher.data?.teacherCode || teacherId,
             role: 'teacher',
             userType: 'teacher',
+            avatar: teacher.data?.avatar || null,
           });
         }
       });
