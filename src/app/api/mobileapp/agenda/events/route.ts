@@ -266,19 +266,18 @@ export async function GET(request: NextRequest) {
       }
 
       // For students, filter events where at least one classCode matches
-      // Students can see:
-      // 1. Events with single teacherCode (regular events)
+      // Students can see ALL events that match their classes, regardless of teacherCode:
+      // 1. Events with single teacherCode (regular teacher events)
       // 2. Events with empty teacherCode array (class-only events created by school users)
-      // Students should NOT see events with multiple teacherCodes (teacher-specific events)
+      // 3. Events with multiple teacherCodes (school user created for teachers, but student's class is included)
+      // The key is: if the event's classCode matches the student's classes, they should see it
       if (decoded.userType === 'student') {
         const studentClassCodes = await fetchStudentClassCodes(db, decoded.username, decoded.schoolCode);
         events = events.filter((event) => {
           const eventClassCodes = Array.isArray(event.classCode) ? event.classCode : [event.classCode];
-          const eventTeacherCodes = Array.isArray(event.teacherCode) ? event.teacherCode : [event.teacherCode];
-          // Students can see events with single teacherCode OR empty teacherCode (class-only events)
-          const canSeeTeacher = eventTeacherCodes.length === 1 || eventTeacherCodes.length === 0;
+          // Students see events if their class matches, regardless of teacherCode array length
           const classMatches = eventClassCodes.some((code) => studentClassCodes.includes(code));
-          return canSeeTeacher && classMatches;
+          return classMatches;
         });
       }
 
