@@ -155,15 +155,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Generate unique filename
+      // Generate unique filename (matching teacher-profile pattern)
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
       const fileExtension = file.name.split('.').pop() || 'jpg';
-      const filename = `${timestamp}-${randomString}.${fileExtension}`;
+      const filename = `avatar_${timestamp}_${randomString}.${fileExtension}`;
 
-      // Create upload directory
-      const uploadDir = path.join(process.cwd(), 'public', 'avatars');
-      await mkdir(uploadDir, { recursive: true });
+      // Create upload directory (matching teacher-profile: public/uploads/avatars)
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+      try {
+        await mkdir(uploadDir, { recursive: true });
+      } catch (error) {
+        // Directory might already exist, ignore error
+      }
 
       // Save file to disk
       const filePath = path.join(uploadDir, filename);
@@ -171,11 +175,11 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(bytes);
       await writeFile(filePath, buffer);
 
-      // Prepare avatar object
+      // Prepare avatar object (matching teacher-profile structure)
       const avatarData = {
         filename: filename,
         originalName: file.name,
-        path: `/avatars/${filename}`,
+        path: `/uploads/avatars/${filename}`, // Matching teacher-profile path format
         size: file.size,
         type: file.type,
         uploadedAt: new Date().toISOString(),
