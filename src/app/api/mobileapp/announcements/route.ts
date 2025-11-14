@@ -50,6 +50,9 @@ interface AnnouncementItem {
   };
   audienceType: 'all' | 'class' | 'teachers';
   classCodes: string[];
+  likes?: string[];
+  likeCount?: number;
+  isLiked?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -149,20 +152,29 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const announcements: AnnouncementItem[] = filtered.map((announcement) => ({
-        id: announcement._id instanceof ObjectId ? announcement._id.toHexString() : String(announcement._id),
-        message: announcement.message || '',
-        icon: announcement.icon || 'megaphone',
-        backgroundColor: announcement.backgroundColor || '#F1F5F9',
-        createdAt: announcement.createdAt ? new Date(announcement.createdAt).toISOString() : new Date().toISOString(),
-        expiresAt: announcement.expiresAt ? new Date(announcement.expiresAt).toISOString() : undefined,
-        createdBy: {
-          id: announcement.createdBy?.id || '',
-          name: announcement.createdBy?.name || 'مدرسه',
-        },
-        audienceType: announcement.audienceType || 'all',
-        classCodes: Array.isArray(announcement.classCodes) ? announcement.classCodes : [],
-      }));
+      const announcements: AnnouncementItem[] = filtered.map((announcement) => {
+        const likes = Array.isArray(announcement.likes) ? announcement.likes : [];
+        const likeCount = likes.length;
+        const isLiked = likes.includes(decoded.userId);
+        
+        return {
+          id: announcement._id instanceof ObjectId ? announcement._id.toHexString() : String(announcement._id),
+          message: announcement.message || '',
+          icon: announcement.icon || 'megaphone',
+          backgroundColor: announcement.backgroundColor || '#F1F5F9',
+          createdAt: announcement.createdAt ? new Date(announcement.createdAt).toISOString() : new Date().toISOString(),
+          expiresAt: announcement.expiresAt ? new Date(announcement.expiresAt).toISOString() : undefined,
+          createdBy: {
+            id: announcement.createdBy?.id || '',
+            name: announcement.createdBy?.name || 'مدرسه',
+          },
+          audienceType: announcement.audienceType || 'all',
+          classCodes: Array.isArray(announcement.classCodes) ? announcement.classCodes : [],
+          likes,
+          likeCount,
+          isLiked,
+        };
+      });
 
       return NextResponse.json({
         success: true,
