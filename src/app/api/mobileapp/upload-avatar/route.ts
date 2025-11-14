@@ -175,14 +175,15 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(bytes);
       await writeFile(filePath, buffer);
 
-      // Prepare avatar object (matching teacher-profile structure)
+      // Prepare avatar object (matching teacher-profile and student update-profile structure)
+      // Note: uploadedAt can be Date object or ISO string - both are accepted
       const avatarData = {
         filename: filename,
         originalName: file.name,
-        path: `/uploads/avatars/${filename}`, // Matching teacher-profile path format
+        path: `/uploads/avatars/${filename}`, // Matching /api/upload/avatars pattern
         size: file.size,
         type: file.type,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: new Date().toISOString(), // ISO string format (matches /api/upload/avatars)
       };
 
       // Update user record with new avatar
