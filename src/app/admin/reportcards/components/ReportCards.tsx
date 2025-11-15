@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -710,6 +710,12 @@ const ReportCards = ({
   const [showOverallStats, setShowOverallStats] = useState(false);
   // Add a new state variable for selected student
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
+  // Add state for visible columns (months) - default all visible
+  const [visibleColumns, setVisibleColumns] = useState<Set<number>>(
+    new Set([7, 8, 9, 10, 11, 12, 1, 2, 3, 4])
+  );
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const columnSelectorRef = useRef<HTMLDivElement>(null);
 
   // Add state for filtered documents based on user type
   const [filteredClassDocuments, setFilteredClassDocuments] =
@@ -2520,6 +2526,38 @@ const ReportCards = ({
     return position !== -1 ? position + 1 : null;
   };
 
+  // Function to check if a month column should be visible
+  const isMonthVisible = (monthNum: number): boolean => {
+    return visibleColumns.has(monthNum);
+  };
+
+  // Function to toggle month visibility
+  const toggleMonthVisibility = (monthNum: number) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(monthNum)) {
+        newSet.delete(monthNum);
+      } else {
+        newSet.add(monthNum);
+      }
+      return newSet;
+    });
+  };
+
+  // Function to toggle all months visibility
+  const toggleAllMonthsVisibility = () => {
+    const allMonths = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4];
+    const allVisible = allMonths.every((month) => visibleColumns.has(month));
+    
+    if (allVisible) {
+      // Hide all
+      setVisibleColumns(new Set());
+    } else {
+      // Show all
+      setVisibleColumns(new Set(allMonths));
+    }
+  };
+
   // Update useEffect to set all display options to checked for students
   useEffect(() => {
     if (authLoading) return;
@@ -2532,6 +2570,26 @@ const ReportCards = ({
       setShowOverallStats(true);
     }
   }, [user, authLoading]);
+
+  // Handle click outside to close column selector
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        columnSelectorRef.current &&
+        !columnSelectorRef.current.contains(event.target as Node)
+      ) {
+        setShowColumnSelector(false);
+      }
+    };
+
+    if (showColumnSelector) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showColumnSelector]);
 
   // Function to generate tooltip content for a grade
   const generateGradeTooltip = useCallback(
@@ -2913,6 +2971,145 @@ const ReportCards = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Column Visibility Selector */}
+                <div className="relative" ref={columnSelectorRef}>
+                  <div
+                    className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                      showColumnSelector
+                        ? "bg-teal-50 border-teal-200 shadow-sm"
+                        : "bg-white hover:bg-gray-50"
+                    }`}
+                    onClick={() => setShowColumnSelector(!showColumnSelector)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-teal-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 6h16M4 12h16M4 18h16"
+                          />
+                        </svg>
+                        <span
+                          className={`${
+                            showColumnSelector
+                              ? "text-teal-700 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          انتخاب ستون‌ها
+                        </span>
+                      </div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`h-4 w-4 transition-transform ${
+                          showColumnSelector ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {showColumnSelector && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 max-h-96 overflow-y-auto">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                        <span className="font-medium text-gray-700">
+                          انتخاب ستون‌های قابل نمایش
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleAllMonthsVisibility();
+                          }}
+                          className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                        >
+                          {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].every((month) =>
+                            visibleColumns.has(month)
+                          )
+                            ? "مخفی کردن همه"
+                            : "نمایش همه"}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { num: 7, persian: "مهر", gregorian: "Sep/Oct" },
+                          { num: 8, persian: "آبان", gregorian: "Oct/Nov" },
+                          { num: 9, persian: "آذر", gregorian: "Nov/Dec" },
+                          { num: 10, persian: "دی", gregorian: "Dec/Jan" },
+                          { num: 11, persian: "بهمن", gregorian: "Jan/Feb" },
+                          { num: 12, persian: "اسفند", gregorian: "Feb/Mar" },
+                          { num: 1, persian: "فروردین", gregorian: "Mar/Apr" },
+                          { num: 2, persian: "اردیبهشت", gregorian: "Apr/May" },
+                          { num: 3, persian: "خرداد", gregorian: "May/Jun" },
+                          { num: 4, persian: "تیر", gregorian: "Jun/Jul" },
+                        ].map((month) => (
+                          <div
+                            key={month.num}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleMonthVisibility(month.num);
+                            }}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded flex items-center justify-center border ${
+                                visibleColumns.has(month.num)
+                                  ? "bg-teal-500 border-teal-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {visibleColumns.has(month.num) && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3.5 w-3.5 text-white"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span
+                                className={`text-sm ${
+                                  visibleColumns.has(month.num)
+                                    ? "text-teal-700 font-medium"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {month.persian}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {month.gregorian}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -3114,19 +3311,21 @@ const ReportCards = ({
                                     persian: "اسفند",
                                     gregorian: "Feb/Mar",
                                   },
-                                ].map((month) => (
-                                  <TableHead
-                                    key={`month-head-${month.num}`}
-                                    className="custom-header-cell text-center month-header"
-                                  >
-                                    <span className="month-name">
-                                      {month.persian}
-                                    </span>
-                                    <span className="month-gregorian">
-                                      {month.gregorian}
-                                    </span>
-                                  </TableHead>
-                                ))}
+                                ]
+                                  .filter((month) => isMonthVisible(month.num))
+                                  .map((month) => (
+                                    <TableHead
+                                      key={`month-head-${month.num}`}
+                                      className="custom-header-cell text-center month-header"
+                                    >
+                                      <span className="month-name">
+                                        {month.persian}
+                                      </span>
+                                      <span className="month-gregorian">
+                                        {month.gregorian}
+                                      </span>
+                                    </TableHead>
+                                  ))}
                                 {/* Months 1-4 (Second half of school year) */}
                                 {[
                                   {
@@ -3149,19 +3348,21 @@ const ReportCards = ({
                                     persian: "تیر",
                                     gregorian: "Jun/Jul",
                                   },
-                                ].map((month) => (
-                                  <TableHead
-                                    key={`month-head-${month.num}`}
-                                    className="custom-header-cell text-center month-header"
-                                  >
-                                    <span className="month-name">
-                                      {month.persian}
-                                    </span>
-                                    <span className="month-gregorian">
-                                      {month.gregorian}
-                                    </span>
-                                  </TableHead>
-                                ))}
+                                ]
+                                  .filter((month) => isMonthVisible(month.num))
+                                  .map((month) => (
+                                    <TableHead
+                                      key={`month-head-${month.num}`}
+                                      className="custom-header-cell text-center month-header"
+                                    >
+                                      <span className="month-name">
+                                        {month.persian}
+                                      </span>
+                                      <span className="month-gregorian">
+                                        {month.gregorian}
+                                      </span>
+                                    </TableHead>
+                                  ))}
                                 <TableHead className="custom-header-cell text-center">
                                   میانگین کل
                                 </TableHead>
@@ -3217,8 +3418,13 @@ const ReportCards = ({
                                           {courseData.teacherName}
                                         </TableCell>
                                         {/* Months 7-12 (First half of school year) */}
-                                        {[7, 8, 9, 10, 11, 12].map(
-                                          (month, index) => (
+                                        {[7, 8, 9, 10, 11, 12]
+                                          .filter((month) => isMonthVisible(month))
+                                          .map((month, index) => {
+                                            // Calculate the original index for progress calculation
+                                            const originalMonths = [7, 8, 9, 10, 11, 12];
+                                            const originalIndex = originalMonths.indexOf(month);
+                                            return (
                                             <TableCell
                                               key={`month-${month}`}
                                               className={`text-center border-r px-2 py-3 ${getScoreColorClass(
@@ -3254,7 +3460,7 @@ const ReportCards = ({
 
                                                   {/* Progress percentage */}
                                                   {showProgress &&
-                                                    index > 0 && (
+                                                    originalIndex > 0 && (
                                                       <div
                                                         className={
                                                           getProgressColorClass(
@@ -3338,11 +3544,13 @@ const ReportCards = ({
                                                 "—"
                                               )}
                                             </TableCell>
-                                          )
-                                        )}
+                                            );
+                                          })}
 
                                         {/* Months 1-4 (Second half of school year) */}
-                                        {[1, 2, 3, 4].map((month) => (
+                                        {[1, 2, 3, 4]
+                                          .filter((month) => isMonthVisible(month))
+                                          .map((month) => (
                                           <TableCell
                                             key={`month-${month}`}
                                             className={`text-center border-r px-2 py-3 ${getScoreColorClass(
@@ -3529,7 +3737,13 @@ const ReportCards = ({
                                       {(showPresence || showAssessments) && (
                                         <TableRow className="border-b">
                                           <TableCell
-                                            colSpan={14}
+                                            colSpan={
+                                              2 + // subject and teacher columns
+                                              [7, 8, 9, 10, 11, 12, 1, 2, 3, 4].filter(
+                                                (month) => isMonthVisible(month)
+                                              ).length +
+                                              1 // average column
+                                            }
                                             className="px-2 py-0.5 border-r"
                                           >
                                             <CompactInfoDisplay
@@ -3559,8 +3773,9 @@ const ReportCards = ({
                                   میانگین کل (با احتساب واحد)
                                 </TableCell>
                                 {/* Calculate average for each month across all courses */}
-                                {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4].map(
-                                  (month) => {
+                                {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4]
+                                  .filter((month) => isMonthVisible(month))
+                                  .map((month) => {
                                     const monthKey = month.toString();
 
                                     // Calculate weighted average by course vahed
