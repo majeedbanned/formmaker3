@@ -61,6 +61,7 @@ interface StudentGradeRecord {
   className: string;
   teacherCode: string;
   teacherName: string;
+  teacherAvatarPath?: string;
   courseCode: string;
   courseName: string;
   timeSlot: string;
@@ -266,7 +267,8 @@ export async function GET(request: NextRequest) {
       teachers.forEach(teacher => {
         const teacherCode = teacher.data.teacherCode;
         teacherMap.set(teacherCode, {
-          teacherName: teacher.data.teacherName || teacherCode
+          teacherName: teacher.data.teacherName || teacherCode,
+          teacherAvatarPath: teacher.data?.avatar?.path || null
         });
       });
 
@@ -313,6 +315,7 @@ export async function GET(request: NextRequest) {
           className: classInfo?.className || 'نامشخص',
           teacherCode: record.teacherCode,
           teacherName: teacher?.teacherName || record.teacherCode,
+          teacherAvatarPath: teacher?.teacherAvatarPath || undefined,
           courseCode: record.courseCode,
           courseName: course?.courseName || record.courseCode,
           timeSlot: record.timeSlot,
