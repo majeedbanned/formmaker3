@@ -1998,7 +1998,7 @@ const PresenceReport = ({
                         درحال بارگیری...
                       </span>
                     ) : (
-                      `${Number(smsCredit).toLocaleString()} ریال`
+                      `${Number(smsCredit).toLocaleString()} پیامک`
                     )}
                   </p>
                   <p className="text-sm text-gray-500">اعتبار پیامک</p>

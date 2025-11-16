@@ -1209,7 +1209,7 @@ export default function SendSMS2Page() {
                   {isLoadingCredit ? (
                     <Loader2 className="h-6 w-6 animate-spin inline" />
                   ) : (
-                    `${Number(smsCredit).toLocaleString()} ریال`
+                    `${Number(smsCredit).toLocaleString()} پیامک`
                   )}
                 </p>
               </div>
