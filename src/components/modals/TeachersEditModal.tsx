@@ -152,7 +152,7 @@ export default function TeachersEditModal({
 
     setIsSaving(true);
     try {
-      console.log("Saving teachers content from modal:", content);
+      // console.log("Saving teachers content from modal:", content);
       await onSave(content);
       onClose();
     } catch (error) {
@@ -227,7 +227,7 @@ export default function TeachersEditModal({
     setUploadingTeachers(prev => [...prev, teacherId]);
     setIsUploading(true);
     try {
-      console.log("Uploading teacher image:", file.name, "for teacher ID:", teacherId);
+      // console.log("Uploading teacher image:", file.name, "for teacher ID:", teacherId);
       
       const formData = new FormData();
       formData.append("file", file);
@@ -238,7 +238,7 @@ export default function TeachersEditModal({
       });
 
       const data = await response.json();
-      console.log("Teacher image upload response:", data);
+      // console.log("Teacher image upload response:", data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || `Upload failed for ${file.name}`);
@@ -247,7 +247,7 @@ export default function TeachersEditModal({
       // Update the teacher with the new avatar URL
       handleTeacherUpdate(teacherId, { avatar: data.url });
       toast.success("تصویر با موفقیت آپلود شد");
-      console.log("Teacher image upload successful, URL:", data.url);
+      // console.log("Teacher image upload successful, URL:", data.url);
     } catch (error) {
       console.error("Teacher image upload error:", error);
       toast.error(
@@ -499,10 +499,10 @@ export default function TeachersEditModal({
                             alt={teacher.name}
                             className="w-16 h-16 rounded-full object-cover border"
                             onLoad={() => {
-                              console.log(
-                                "Teacher avatar preview loaded successfully:",
-                                teacher.avatar
-                              );
+                              // console.log(
+                              //   "Teacher avatar preview loaded successfully:",
+                              //   teacher.avatar
+                              // );
                             }}
                             onError={(e) => {
                               console.error(

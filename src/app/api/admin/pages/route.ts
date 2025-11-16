@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       content // For backward compatibility
     } = body;
     
-    console.log('Creating page with data:', body);
+    // console.log('Creating page with data:', body);
     
     if (!title) {
       return NextResponse.json(

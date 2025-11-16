@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         ...filter,
         "data.schoolCode": schoolCode 
       };
-      console.log("finalFilter", finalFilter);
+      // console.log("finalFilter", finalFilter);
       // Get collection directly from the connection
       const collection = connection.collection('onlineclasses');
       

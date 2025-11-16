@@ -354,14 +354,14 @@ function StudentsPageContent() {
           const validClassCodes = classCodesList.filter(
             (code: string) => code.trim() !== ""
           );
-          console.log("validClassCodes", validClassCodes);
+          // console.log("validClassCodes", validClassCodes);
           setTeacherClasses(validClassCodes);
 
           if (validClassCodes.length === 0) {
             toast.warning("شما به هیچ کلاسی اختصاص داده نشده‌اید");
           }
 
-          console.log("Teacher classes:", validClassCodes);
+          // console.log("Teacher classes:", validClassCodes);
         } catch (error) {
           console.error("Error fetching teacher classes:", error);
           toast.error("خطا در دریافت کلاس‌های مدرس");
@@ -401,9 +401,9 @@ function StudentsPageContent() {
           if (validTeacherCodes.length === 0) {
             toast.warning("شما با هیچ معلمی کلاس ندارید");
           } else {
-            console.log(
-              `دریافت ${validTeacherCodes.length} معلم برای دانش‌آموز`
-            );
+            // console.log(
+          ////    `دریافت ${validTeacherCodes.length} معلم برای دانش‌آموز`
+          //  );
           }
         } catch (error) {
           console.error("Error fetching student's teachers:", error);
@@ -417,7 +417,7 @@ function StudentsPageContent() {
     }
   }, [user, isLoading]);
 
-  console.log("user", user);
+  // console.log("user", user);
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -782,7 +782,7 @@ function StudentsPageContent() {
             layout={layout}
             rowActions={rowActions}
             onAfterAdd={async (entity: any) => {
-              console.log("Entity added:", entity);
+              // console.log("Entity added:", entity);
 
               try {
                 // Get the current Persian date
@@ -897,9 +897,9 @@ function StudentsPageContent() {
                       ).values()
                     );
 
-                    console.log(
-                      `Removed duplicates. Final recipient count: ${allRecipients.length}`
-                    );
+                    // console.log(
+                  //    `Removed duplicates. Final recipient count: ${allRecipients.length}`
+                  //  );
                   }
                 }
 
@@ -931,7 +931,7 @@ function StudentsPageContent() {
               }
             }}
             onAfterEdit={async (entity: any) => {
-              console.log("Entity updated:", entity);
+              // console.log("Entity updated:", entity);
 
               try {
                 // Delete all associated messages from messagelist collection
@@ -946,9 +946,9 @@ function StudentsPageContent() {
 
                 if (deleteResponse.ok) {
                   const result = await deleteResponse.json();
-                  console.log(
-                    `Deleted ${result.deletedCount} messages from messagelist`
-                  );
+                  // console.log(
+                   // `Deleted ${result.deletedCount} messages from messagelist`
+                //  );
                 } else {
                   console.error(
                     "Failed to delete associated messages from messagelist"
@@ -1072,9 +1072,9 @@ function StudentsPageContent() {
                       ).values()
                     );
 
-                    console.log(
-                      `Removed duplicates. Final recipient count: ${allRecipients.length}`
-                    );
+                    // console.log(
+                   //   `Removed duplicates. Final recipient count: ${allRecipients.length}`
+                  //  );
                   }
                 }
 
@@ -1106,7 +1106,7 @@ function StudentsPageContent() {
               }
             }}
             onAfterDelete={async (id) => {
-              console.log("Entity deleted:", id);
+              // console.log("Entity deleted:", id);
               try {
                 // Delete all associated messages from messagelist collection
                 const deleteResponse = await fetch(
@@ -1120,20 +1120,20 @@ function StudentsPageContent() {
 
                 if (deleteResponse.ok) {
                   const result = await deleteResponse.json();
-                  console.log(
-                    `Deleted ${result.deletedCount} messages from messagelist`
-                  );
+                  // console.log(
+                   // `Deleted ${result.deletedCount} messages from messagelist`
+                  //);
                 } else {
-                  console.error(
-                    "Failed to delete associated messages from messagelist"
-                  );
+                 // console.error(
+                 //   "Failed to delete associated messages from messagelist"
+                //  );
                 }
               } catch (error) {
-                console.error("Error deleting associated messages:", error);
+               // console.error("Error deleting associated messages:", error);
               }
             }}
             onAfterGroupDelete={async (ids) => {
-              console.log("Entities deleted:", ids);
+              // console.log("Entities deleted:", ids);
               try {
                 // Delete all associated messages from messagelist collection for each id in the array
                 const deleteResponse = await fetch(
@@ -1147,13 +1147,13 @@ function StudentsPageContent() {
 
                 if (deleteResponse.ok) {
                   const result = await deleteResponse.json();
-                  console.log(
-                    `Deleted ${result.deletedCount} messages from messagelist`
-                  );
+                  // console.log(
+                  //  `Deleted ${result.deletedCount} messages from messagelist`
+                //  );
                 } else {
-                  console.error(
-                    "Failed to delete associated messages from messagelist"
-                  );
+                  // console.error(
+                  //   "Failed to delete associated messages from messagelist"
+                  // );
                 }
               } catch (error) {
                 console.error("Error deleting associated messages:", error);

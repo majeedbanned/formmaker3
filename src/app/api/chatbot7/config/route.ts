@@ -41,7 +41,7 @@ export async function getCurrentUser() {
     return null;
   }
   //const yyy=await verifyJWT(token);
-//console.log("yxxy",yyy)
+// console.log("yxxy",yyy)
   try {
     const payload = await verifyJWT(token) as {
       userId: string;
@@ -173,16 +173,16 @@ const createAssistant = async (userId: string, domain: string) => {
     const configData = JSON.parse(loadConfigFile());
     
     // Step 1: Upload schema as a file
-    console.log('Uploading schema file to OpenAI...');
+    // console.log('Uploading schema file to OpenAI...');
     const fileId = await uploadFileToOpenAI(
       JSON.stringify(configData.schema),
       'mongodb_schema.json',
       'assistants'
     );
-    console.log('Schema file uploaded successfully with ID:', fileId);
+    // console.log('Schema file uploaded successfully with ID:', fileId);
 
     // Step 2: Create assistant with the uploaded file
-    console.log('Creating assistant with file ID:', fileId);
+    // console.log('Creating assistant with file ID:', fileId);
     const createAssistantResponse = await fetch(`${OPENAI_API_URL}/assistants`, {
       method: "POST",
       headers: {
@@ -215,7 +215,7 @@ const createAssistant = async (userId: string, domain: string) => {
     }
 
     const assistantData = await createAssistantResponse.json();
-    console.log('Assistant created successfully with ID:', assistantData.id);
+    // console.log('Assistant created successfully with ID:', assistantData.id);
 
     // Save assistant data to database
     const connection = await connectToDatabase(domain);
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
   try {
     // Get domain from headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    console.log('Updating assistant config for domain:', domain);
+    // console.log('Updating assistant config for domain:', domain);
     
     const user = await getCurrentUser();
     
@@ -252,21 +252,21 @@ export async function POST(request: Request) {
       );
     }
     
-    console.log('User authenticated:', user.id);
+    // console.log('User authenticated:', user.id);
 
     // Check if we already have an assistant
     const existingAssistant = await getExistingAssistant(user.id, domain);
     
     if (existingAssistant) {
-      console.log('Found existing assistant, deleting:', existingAssistant.id);
+      // console.log('Found existing assistant, deleting:', existingAssistant.id);
       // Delete the existing assistant
       await deleteAssistant(existingAssistant.id, existingAssistant.fileIds, domain);
     } else {
-      console.log('No existing assistant found');
+      // console.log('No existing assistant found');
     }
 
     // Create a new assistant with the updated configuration
-    console.log('Creating new assistant with updated configuration');
+    // console.log('Creating new assistant with updated configuration');
     const assistant = await createAssistant(user.id, domain);
     
     return NextResponse.json({ assistantId: assistant.id });

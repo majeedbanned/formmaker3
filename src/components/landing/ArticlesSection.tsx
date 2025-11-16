@@ -63,7 +63,7 @@ export default function ArticlesSection() {
 
   const fetchArticlesData = async () => {
     try {
-      console.log("Fetching articles data...");
+      // console.log("Fetching articles data...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/articles", {
         cache: "no-store",
@@ -74,10 +74,10 @@ export default function ArticlesSection() {
       });
       const data = await response.json();
       if (data.success) {
-        console.log("Articles data fetched successfully:", data.articles);
+        // console.log("Articles data fetched successfully:", data.articles);
         setArticlesData(data.articles);
       } else {
-        console.log("Using default articles data");
+        // console.log("Using default articles data");
       }
     } catch (error) {
       console.error("Error fetching articles data:", error);
@@ -162,7 +162,7 @@ export default function ArticlesSection() {
 
   const handleSaveArticles = async (data: ArticlesData) => {
     try {
-      console.log("Saving articles data:", data);
+      // console.log("Saving articles data:", data);
       
       const response = await fetch("/api/admin/articles", {
         method: "POST",
@@ -173,14 +173,14 @@ export default function ArticlesSection() {
       });
 
       const result = await response.json();
-      console.log("Articles save response:", result);
+      // console.log("Articles save response:", result);
 
       if (response.ok && result.success) {
         setArticlesData(data);
         setShowEditModal(false);
         // Refresh articles data to ensure fresh content
         await fetchArticlesData();
-        console.log("Articles data saved and refreshed successfully");
+        // console.log("Articles data saved and refreshed successfully");
       } else {
         console.error("Failed to save articles data:", result);
         alert("خطا در ذخیره اطلاعات: " + (result.error || "خطای نامشخص"));
@@ -327,7 +327,7 @@ export default function ArticlesSection() {
                       alt={article.title}
                       className="absolute inset-0 w-full h-full object-cover"
                       onLoad={() => {
-                        console.log("Article image loaded successfully:", article.image);
+                        // console.log("Article image loaded successfully:", article.image);
                         setImageLoadingStates(prev => ({...prev, [article.id]: false}));
                       }}
                       onLoadStart={() => {

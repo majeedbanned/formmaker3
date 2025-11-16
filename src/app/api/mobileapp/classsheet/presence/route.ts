@@ -111,7 +111,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Mobile classsheet presence update request received");
+    // console.log("Mobile classsheet presence update request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Mobile presence update request for user:", decoded.userType, decoded.username);
+    // console.log("Mobile presence update request for user:", decoded.userType, decoded.username);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -174,11 +174,11 @@ export async function POST(request: NextRequest) {
       date = requestedDate;
       const [year, month, day] = requestedDate.split('-').map(Number);
       workingDate = new Date(year, month - 1, day);
-      console.log("Using requested date for presence:", date);
+      // console.log("Using requested date for presence:", date);
     } else {
       workingDate = new Date();
       date = dayjs(workingDate).format('YYYY-MM-DD');
-      console.log("Using today's date for presence:", date);
+      // console.log("Using today's date for presence:", date);
     }
     
     // Get Persian date with Persian digits
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Verify teacher teaches this class
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
           }
         );
         
-        console.log("Updated presence status for existing record");
+        // console.log("Updated presence status for existing record");
       } else {
         // Create new record
         await db.collection('classsheet').insertOne({
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
           updatedAt: now
         });
         
-        console.log("Created new presence record");
+        // console.log("Created new presence record");
       }
 
       await client.close();

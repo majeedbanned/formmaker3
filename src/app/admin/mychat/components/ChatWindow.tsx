@@ -191,10 +191,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       setIsUploading(true);
       toast.info(`در حال آپلود فایل: ${file.name}`);
-      console.log("Uploading file:", file.name, file.type, file.size);
+      // console.log("Uploading file:", file.name, file.type, file.size);
 
       const { fileAttachment } = await uploadFile(file);
-      console.log("File uploaded successfully:", fileAttachment);
+      // console.log("File uploaded successfully:", fileAttachment);
       setFileAttachment(fileAttachment);
       toast.success("فایل با موفقیت آپلود شد");
     } catch (error) {
@@ -252,7 +252,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       replyTo: replyingTo,
     };
 
-    console.log("Sending message:", JSON.stringify(messageData, null, 2));
+    // console.log("Sending message:", JSON.stringify(messageData, null, 2));
 
     socket.emit(
       "send-message",
@@ -265,7 +265,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setIsSending(false);
 
         if (response.success) {
-          console.log("Message sent successfully:", response.message);
+          // console.log("Message sent successfully:", response.message);
           setMessageInput("");
           setFileAttachment(null);
           setReplyingTo(null); // Clear reply state after sending

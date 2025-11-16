@@ -118,7 +118,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Mobile classsheet save request received");
+    // console.log("Mobile classsheet save request received");
     
     const now = new Date();
     
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Mobile save request for user:", decoded.userType, decoded.username);
+    // console.log("Mobile save request for user:", decoded.userType, decoded.username);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -185,11 +185,11 @@ export async function POST(request: NextRequest) {
       date = requestedDate;
       const [year, month, day] = requestedDate.split('-').map(Number);
       workingDate = new Date(year, month - 1, day);
-      console.log("Using requested date for save:", date);
+      // console.log("Using requested date for save:", date);
     } else {
       workingDate = new Date();
       date = dayjs(workingDate).format('YYYY-MM-DD');
-      console.log("Using today's date for save:", date);
+      // console.log("Using today's date for save:", date);
     }
     
     // Get Persian date with Persian digits
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Verify teacher teaches this class
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
         { upsert: true }
       );
 
-      console.log("Save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
+      // console.log("Save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
 
       // Send automatic notifications (async, don't wait)
       // Use domain based on schoolCode

@@ -146,7 +146,7 @@ export default function PublicationEditor({
 
   // Handle content change from the editor with proper state updates
   const handleContentChange = (newContent: string) => {
-    console.log("Content changed from editor, new length:", newContent.length);
+    // console.log("Content changed from editor, new length:", newContent.length);
     // Force immediate state update for proper synchronization
     setContent(newContent);
 
@@ -159,7 +159,7 @@ export default function PublicationEditor({
       previewUpdateTimeout.current = setTimeout(() => {
         if (newContent && newContent.trim() !== "") {
           // Only regenerate if we have actual content
-          console.log("Auto-updating preview due to content change");
+          // console.log("Auto-updating preview due to content change");
           setHtmlContent(null); // Clear previous HTML content
           setPdfUrl(null); // Clear previous PDF
           generatePreview(); // Generate new preview
@@ -175,26 +175,26 @@ export default function PublicationEditor({
       return;
     }
 
-    console.log("Initial template loading:", initialTemplate.id);
+    // console.log("Initial template loading:", initialTemplate.id);
 
     // Set initial content and title once
     setTitle(initialTemplate.title || "");
     setContent(initialTemplate.content || "");
-    console.log(
-      "Content set from template (initial load):",
-      (initialTemplate.content || "").substring(0, 100) + "..."
-    );
+    // console.log(
+    //   "Content set from template (initial load):",
+    //   (initialTemplate.content || "").substring(0, 100) + "..."
+    // );
 
     // Load saved print options if they exist
     if (initialTemplate.printOptions) {
-      console.log("Loading saved print options:", initialTemplate.printOptions);
+      // console.log("Loading saved print options:", initialTemplate.printOptions);
       setPdfOptions(initialTemplate.printOptions);
     }
 
     // Determine if this is an edit operation
     const isEditModeActive = !!initialTemplate.id;
     setIsEditMode(isEditModeActive);
-    console.log("Edit mode:", isEditModeActive);
+    // console.log("Edit mode:", isEditModeActive);
 
     // Set template title and description for quick save
     if (initialTemplate.originalTitle) {
@@ -210,9 +210,9 @@ export default function PublicationEditor({
   useEffect(() => {
     // If preview is already open after a template was loaded, regenerate it with new settings
     if (isPdfPreviewOpen && selectedStudents.length > 0 && initialTemplate) {
-      console.log(
-        "Regenerating preview due to visibility or student selection changes"
-      );
+      // // console.log(
+      //   "Regenerating preview due to visibility or student selection changes"
+      // );
       // Don't reset content here - use the current content state
       setHtmlContent(null);
       setPdfUrl(null);
@@ -572,7 +572,7 @@ export default function PublicationEditor({
     let qrCodeDataUrl = "";
     try {
       qrCodeDataUrl = await generateQRCode(student.studentCode);
-      console.log("Generated QR code for student:", student.studentCode);
+      // console.log("Generated QR code for student:", student.studentCode);
     } catch (err) {
       console.error("Failed to generate QR code:", err);
     }
@@ -590,10 +590,10 @@ export default function PublicationEditor({
           },
         }
       );
-      console.log("response", response);
+      // console.log("response", response);
       if (response.ok) {
         const studentDetails = await response.json();
-        console.log("studentDetails", studentDetails);
+        // console.log("studentDetails", studentDetails);
         // Check if avatar path exists in the response
         if (studentDetails.student?.data?.avatar?.path) {
           // Extract the path part from the avatar URL
@@ -655,10 +655,10 @@ export default function PublicationEditor({
   const generatePreview = async () => {
     // Get the latest content directly from state to ensure we have current value
     const currentContent = content;
-    console.log(
-      "Generating preview with content length:",
-      currentContent.length
-    );
+    // console.log(
+    //   "Generating preview with content length:",
+    //   currentContent.length
+    // );
 
     if (!title.trim()) {
       toast.error("لطفاً عنوان نامه را وارد کنید");
@@ -693,10 +693,10 @@ export default function PublicationEditor({
         outputFormat: previewMode,
       };
 
-      console.log(
-        "Using latest editor content for preview, length:",
-        currentContent.length
-      );
+      // console.log(
+      //   "Using latest editor content for preview, length:",
+      //   currentContent.length
+      // );
 
       // Generate preview based on selected output type and format
       if (previewMode === "pdf") {
@@ -818,10 +818,10 @@ export default function PublicationEditor({
 
       // Get the latest content
       const currentContent = content;
-      console.log(
-        "Downloading individual PDFs with content length:",
-        currentContent.length
-      );
+      // console.log(
+      //   "Downloading individual PDFs with content length:",
+      //   currentContent.length
+      // );
 
       // Dynamic import of JSZip
       const JSZipModule = await import("jszip");
@@ -904,10 +904,10 @@ export default function PublicationEditor({
 
       // Get the latest content
       const currentContent = content;
-      console.log(
-        "Downloading combined PDF with content length:",
-        currentContent.length
-      );
+      // console.log(
+      //   "Downloading combined PDF with content length:",
+      //   currentContent.length
+      // );
 
       // Process the title with variables from the first student
       const processedTitle = await replaceVariables(
@@ -967,10 +967,10 @@ export default function PublicationEditor({
 
       // Get the latest content
       const currentContent = content;
-      console.log(
-        "Downloading individual HTML with content length:",
-        currentContent.length
-      );
+      // console.log(
+      //   "Downloading individual HTML with content length:",
+      //   currentContent.length
+      // );
 
       // Dynamic import of JSZip
       const JSZipModule = await import("jszip");
@@ -1055,10 +1055,10 @@ export default function PublicationEditor({
 
       // Get the latest content
       const currentContent = content;
-      console.log(
-        "Downloading combined HTML with content length:",
-        currentContent.length
-      );
+      // console.log(
+      //   "Downloading combined HTML with content length:",
+      //   currentContent.length
+      // );
 
       // Process the title with variables from the first student
       const processedTitle = await replaceVariables(
@@ -1253,9 +1253,9 @@ export default function PublicationEditor({
                   <Button
                     variant="outline"
                     onClick={() => {
-                      console.log("Template ID:", initialTemplate?.id);
-                      console.log("Initial Template:", initialTemplate);
-                      console.log("Is Edit Mode:", isEditMode);
+                      // console.log("Template ID:", initialTemplate?.id);
+                      // console.log("Initial Template:", initialTemplate);
+                      // console.log("Is Edit Mode:", isEditMode);
 
                       // Pre-populate fields if we're editing an existing template
                       if (initialTemplate && initialTemplate.id) {
@@ -1342,10 +1342,10 @@ export default function PublicationEditor({
                     e.preventDefault();
 
                     // Log the current content
-                    console.log(
-                      "Preview button clicked, content length:",
-                      content.length
-                    );
+                    // console.log(
+                    //   "Preview button clicked, content length:",
+                    //   content.length
+                    // );
 
                     // Explicitly force content update
                     const currentContent = content;
@@ -1362,7 +1362,7 @@ export default function PublicationEditor({
 
                       // Then generate the preview with a slight delay to ensure dialog is open
                       setTimeout(() => {
-                        console.log("Generating preview after button click");
+                        // console.log("Generating preview after button click");
                         // Clear previous content
                         setHtmlContent(null);
                         setPdfUrl(null);
@@ -1448,9 +1448,9 @@ export default function PublicationEditor({
                       </div>
                       <Button
                         onClick={() => {
-                          console.log(
-                            "Reload button clicked, getting latest content"
-                          );
+                          // console.log(
+                          //   "Reload button clicked, getting latest content"
+                          // );
                           // Clear previous content
                           setHtmlContent(null);
                           setPdfUrl(null);

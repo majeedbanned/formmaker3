@@ -222,14 +222,14 @@ function StudentsPageContent() {
           const validClassCodes = classCodesList.filter(
             (code: string) => code.trim() !== ""
           );
-          console.log("validClassCodes", validClassCodes);
+          // console.log("validClassCodes", validClassCodes);
           setTeacherClasses(validClassCodes);
 
           if (validClassCodes.length === 0) {
             toast.warning("شما به هیچ کلاسی اختصاص داده نشده‌اید");
           }
 
-          console.log("Teacher classes:", validClassCodes);
+          // console.log("Teacher classes:", validClassCodes);
         } catch (error) {
           console.error("Error fetching teacher classes:", error);
           toast.error("خطا در دریافت کلاس‌های مدرس");
@@ -285,7 +285,7 @@ function StudentsPageContent() {
     }
   }, [user, isLoading]);
 
-  console.log("user", user);
+  // console.log("user", user);
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -1355,13 +1355,13 @@ function StudentsPageContent() {
                       ).values()
                     );
 
-                    console.log(
-                      `Removed duplicates. Final recipient count: ${allRecipients.length}`
-                    );
+                    // console.log(
+                    //   `Removed duplicates. Final recipient count: ${allRecipients.length}`
+                    // );
                   }
                 }
 
-                console.log("allRecipients", allRecipients);
+                // console.log("allRecipients", allRecipients);
 
                 // NEW CODE: Retrieve phone numbers for all recipients from students and teachers collections
                 // Extract all recipient codes
@@ -1450,14 +1450,14 @@ function StudentsPageContent() {
                         ),
                       ];
 
-                      console.log(
-                        "All recipient phone numbers (unique):",
-                        uniquePhones
-                      );
-                      console.log(
-                        "Total unique phone numbers:",
-                        uniquePhones.length
-                      );
+                      // console.log(
+                      //   "All recipient phone numbers (unique):",
+                      //   uniquePhones
+                      // );
+                      // console.log(
+                      //   "Total unique phone numbers:",
+                      //   uniquePhones.length
+                      // );
 
                       // Send SMS to all unique phone numbers
                       if (uniquePhones.length > 0) {
@@ -1497,7 +1497,7 @@ function StudentsPageContent() {
 
                           if (smsResponse.ok) {
                             const smsResult = await smsResponse.json();
-                            console.log("SMS sent successfully:", smsResult);
+                            // console.log("SMS sent successfully:", smsResult);
 
                             // Save SMS log to database
                             await fetch("/api/messages/log-sms", {

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Return the URL path (accessible from public directory)
     const url = `/uploads/app-screenshots/${filename}`;
 
-    console.log("File uploaded successfully:", url);
+    // console.log("File uploaded successfully:", url);
 
     return NextResponse.json({
       success: true,

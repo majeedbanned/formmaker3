@@ -153,12 +153,12 @@ export default function MyClassPage() {
         }
         // For school admins (userType === "school"), show all classes in the school
 
-        console.log(
-          "Filter query for",
-          user.userType,
-          ":",
-          JSON.stringify(filterQuery, null, 2)
-        );
+        // console.log(
+        //   "Filter query for",
+        //   user.userType,
+        //   ":",
+        //   JSON.stringify(filterQuery, null, 2)
+        // );
 
         const response = await fetch("/api/data/onlineclasses", {
           method: "POST",
@@ -174,7 +174,7 @@ export default function MyClassPage() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log("data", data);
+          // console.log("data", data);
           setClasses(data);
         } else {
           console.error("Failed to fetch classes:", response.statusText);

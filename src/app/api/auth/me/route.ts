@@ -51,19 +51,19 @@ interface School {
 export async function GET() {
   try {
 
-    console.log('YYY')
-    console.log("GET /api/auth/me request received");
+    // console.log('YYY')
+    // console.log("GET /api/auth/me request received");
     const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
 
     if (!token) {
-      console.log("No auth token found in cookies");
+      // console.log("No auth token found in cookies");
       return NextResponse.json(
         { message: "Not authenticated" },
         { status: 401 }
       );
     }
-    console.log("Auth token found in cookies");
+    // console.log("Auth token found in cookies");
 
     const payload = await verifyJWT(token) as AuthPayload;
     // console.log("JWT verified successfully. Payload:", {
@@ -89,7 +89,7 @@ export async function GET() {
 
     // Add maghta and grade for school users
     if (payload.userType === 'school') {
-      console.log("User is a school, adding maghta and grade from payload");
+      // console.log("User is a school, adding maghta and grade from payload");
       user.maghta = payload.maghta;
       user.grade = payload.grade;
     } 
@@ -102,10 +102,10 @@ export async function GET() {
       const school = await SchoolModel.findOne({ 'data.schoolCode': payload.schoolCode });
       
       if (school) {
-        console.log("School found, adding maghta from school data");
+        // console.log("School found, adding maghta from school data");
         user.maghta = school.data.get('maghta') as string;
       } else {
-        console.log("No school found for user");
+        // console.log("No school found for user");
       }
     }
     

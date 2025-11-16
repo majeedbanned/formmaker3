@@ -64,7 +64,7 @@ const ModuleRenderer: React.FC<ModuleRendererProps> = ({
 
   // Handle module edit
   const handleEditModule = (moduleId: string) => {
-    console.log("Edit module requested:", moduleId);
+    // console.log("Edit module requested:", moduleId);
   };
 
   // Handle module save

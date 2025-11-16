@@ -25,14 +25,14 @@ export async function DELETE(request: Request) {
     // Access the messagelist collection directly
     const messagelistCollection = connection.collection('messagelist');
     
-    console.log("Deleting messages with mailId:", mailId);
+    // console.log("Deleting messages with mailId:", mailId);
     
     // Delete messages where data.mailId matches the given mailId
     const result = await messagelistCollection.deleteMany({
       "data.mailId": mailId
     });
     
-    console.log(`Deleted ${result.deletedCount} messages from messagelist`);
+    // console.log(`Deleted ${result.deletedCount} messages from messagelist`);
     
     return NextResponse.json({ 
       success: true,

@@ -40,7 +40,7 @@ function FormViewWrapper() {
   const [checkingSubmission, setCheckingSubmission] = useState(false);
 
   useEffect(() => {
-    console.log("Form ID from URL:", formId);
+    // console.log("Form ID from URL:", formId);
 
     if (!formId) {
       setError("شناسه فرم مشخص نشده است");
@@ -55,7 +55,7 @@ function FormViewWrapper() {
         setError(null);
 
         const apiUrl = `/api/formbuilder/${formId}`;
-        console.log("Fetching from API URL:", apiUrl);
+        // console.log("Fetching from API URL:", apiUrl);
 
         // Use a more detailed fetch with error handling
         const controller = new AbortController();
@@ -86,16 +86,16 @@ function FormViewWrapper() {
         }
 
         // Log response headers for debugging
-        console.log(
-          "Response headers:",
-          Object.fromEntries([...response.headers.entries()])
-        );
+        // console.log(
+        //  "Response headers:",
+        //  Object.fromEntries([...response.headers.entries()])
+       // );
 
         // Parse response carefully
         let data;
         try {
           data = await response.json();
-          console.log("Received form data:", data);
+          // console.log("Received form data:", data);
         } catch (jsonError) {
           console.error("JSON parse error:", jsonError);
           throw new Error("داده برگشتی از سرور قابل پردازش نیست");
@@ -164,10 +164,10 @@ function FormViewWrapper() {
       const data = await response.json();
 
       if (data && data.submissions && data.submissions.length > 0) {
-        console.log("Found existing entry:", data.submissions[0]);
+        // console.log("Found existing entry:", data.submissions[0]);
         setExistingEntry(data.submissions[0]);
       } else {
-        console.log("No existing entries found");
+        // console.log("No existing entries found");
       }
     } catch (error) {
       console.error("Error fetching existing entries:", error);
@@ -198,10 +198,10 @@ function FormViewWrapper() {
       const data = await response.json();
 
       if (data && data.submissions && data.submissions.length > 0) {
-        console.log("User has already submitted this form");
+        // console.log("User has already submitted this form");
         setUserAlreadySubmitted(true);
       } else {
-        console.log("User has not submitted this form yet");
+        // console.log("User has not submitted this form yet");
         setUserAlreadySubmitted(false);
       }
     } catch (error) {

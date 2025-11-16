@@ -242,7 +242,7 @@ function PrintExamContent() {
           setExamData(examData);
 
           // Fetch school information if schoolCode   is available
-          console.log("examData34", examData);
+          // console.log("examData34", examData);
           if (examData.data.schoolCode) {
             try {
               const schoolResponse = await fetch(
@@ -256,7 +256,7 @@ function PrintExamContent() {
               }
 
               // Fetch exam participants if recipients data exists
-              console.log("examData33", examData);
+              // console.log("examData33", examData);
               if (examData.data.recipients) {
                 try {
                   // Use the API route instead of the direct function call
@@ -273,7 +273,7 @@ function PrintExamContent() {
 
                   if (usersResponse.ok) {
                     const usersData = await usersResponse.json();
-                    console.log("usersData33", usersData);
+                    // console.log("usersData33", usersData);
                     setExamUsers(usersData);
                   } else {
                     console.error("Error fetching exam participants from API");
@@ -482,7 +482,7 @@ function PrintExamContent() {
           const student1 = studentsForQR[page * 2];
 
           // Generate and add QR code for first student with optimization
-          console.log("student1", student1);
+          // console.log("student1", student1);
           const qrCodeData1 = `${student1.username}-${examData?.data.examCode || ''}`;
           const qrDataUrl1 = await qrcodeModule.toDataURL(
             qrCodeData1,

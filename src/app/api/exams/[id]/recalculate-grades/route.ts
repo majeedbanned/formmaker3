@@ -127,7 +127,7 @@ export async function POST(
       examId: examId
     });
 
-    console.log(`Deleted ${deleteResult.deletedCount} previous records from examstudentsinfo`);
+    // console.log(`Deleted ${deleteResult.deletedCount} previous records from examstudentsinfo`);
 
     // Process each participant
     let updatedCount = 0;

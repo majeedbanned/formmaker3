@@ -151,9 +151,9 @@ export default function ChatbotV2Page() {
             }
           }
         } else {
-          console.log(
-            "No assistant config found, system will create default one on first use"
-          );
+          // console.log(
+         //   "No assistant config found, system will create default one on first use"
+         // );
         }
       } catch (err) {
         console.error("Error loading assistant data:", err);

@@ -46,7 +46,7 @@ interface JWTPayload {
 // GET - Fetch all comments for a specific class
 export async function GET(request: NextRequest) {
   try {
-    console.log("Mobile teacher comments fetch request received");
+    // console.log("Mobile teacher comments fetch request received");
     
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Verify teacher teaches this class
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
 
       await client.close();
 
-      console.log("Found comments:", comments.length);
+      // console.log("Found comments:", comments.length);
 
       return NextResponse.json({
         success: true,
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
 // POST - Add or update teacher comment for today
 export async function POST(request: NextRequest) {
   try {
-    console.log("Mobile teacher comment save request received");
+    // console.log("Mobile teacher comment save request received");
     
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -227,10 +227,10 @@ export async function POST(request: NextRequest) {
     
     if (requestedDate) {
       date = requestedDate;
-      console.log("Using requested date for comment:", date);
+      // console.log("Using requested date for comment:", date);
     } else {
       date = dayjs(now).format('YYYY-MM-DD');
-      console.log("Using today's date for comment:", date);
+      // console.log("Using today's date for comment:", date);
     }
 
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Verify teacher teaches this class
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
 
       await client.close();
 
-      console.log("Comment save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
+      // console.log("Comment save result:", { upserted: result.upsertedCount > 0, modified: result.modifiedCount > 0 });
 
       return NextResponse.json({
         success: true,

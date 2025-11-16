@@ -28,7 +28,7 @@ export const initializeSocket = (token: string): Socket => {
 
   // Log connection status
   socket.on('connect', () => {
-    console.log('Socket.IO connected');
+    // console.log('Socket.IO connected');
   });
 
   socket.on('connect_error', (error) => {
@@ -36,11 +36,11 @@ export const initializeSocket = (token: string): Socket => {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Socket.IO disconnected:', reason);
+    // console.log('Socket.IO disconnected:', reason);
   });
 
   socket.on('reconnect', (attempt) => {
-    console.log('Socket.IO reconnected after', attempt, 'attempts');
+    // console.log('Socket.IO reconnected after', attempt, 'attempts');
   });
 
   return socket;

@@ -40,7 +40,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Delete grade request received");
+    // console.log("Delete grade request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Delete grade request for recordId:", recordId);
+    // console.log("Delete grade request for recordId:", recordId);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();

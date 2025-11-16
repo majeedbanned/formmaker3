@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const StudentModel = getStudentModel(connection);
     const TeacherModel = getTeacherModel(connection);
     
-    console.log("Looking for phones for recipients:", recipientCodes);
+    // console.log("Looking for phones for recipients:", recipientCodes);
     
     // Find all students with the specified recipient codes
     const students = await StudentModel.find({
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       'data.schoolCode': schoolCode
     }).lean().exec();
     
-    console.log(`Found ${students.length} students`);
+    // console.log(`Found ${students.length} students`);
     
     // Find all teachers with the specified recipient codes
     const teachers = await TeacherModel.find({
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       'data.schoolCode': schoolCode
     }).lean().exec();
     
-    console.log(`Found ${teachers.length} teachers`);
+    // console.log(`Found ${teachers.length} teachers`);
     
     // Convert to plain objects for easier processing
     const studentObjects = students.map(s => {

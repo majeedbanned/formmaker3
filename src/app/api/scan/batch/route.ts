@@ -107,8 +107,8 @@ export async function POST(request: Request) {
     }
 
     const correctAnswers = questions.map(q => q.question?.correctoption || 1);
-    console.log("correctAnswers", correctAnswers);
-    console.log(`📋 Using scanner script: ${scannerScript}.py`);
+    // console.log("correctAnswers", correctAnswers);
+    // console.log(`📋 Using scanner script: ${scannerScript}.py`);
 
     // Exam details
     const examCollection = connection.collection('exam');

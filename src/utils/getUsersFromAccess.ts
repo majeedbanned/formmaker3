@@ -179,7 +179,7 @@ async function fetchStudents(domain: string, query: MongoQuery): Promise<Student
   try {
     const connection = await connectToDatabase(domain);
     const collection = connection.collection('students');
-    console.log("query33", query);
+    // console.log("query33", query);
     return await collection.find(query).toArray() as StudentDocument[];
   } catch (error) {
     console.error('Error fetching students:', error);

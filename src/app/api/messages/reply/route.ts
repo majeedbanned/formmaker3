@@ -64,12 +64,12 @@ export async function POST(request: Request) {
             const publicPath = `/${schoolCode}/messages/${fileName}`;
             files.push(publicPath);
             
-            console.log(`File saved successfully: ${fileName}`);
+            // console.log(`File saved successfully: ${fileName}`);
           } catch (fileError) {
             console.error("Error saving file:", fileError);
           }
         } else {
-          console.log("Invalid file data received:", typeof fileData);
+          // console.log("Invalid file data received:", typeof fileData);
         }
       }
     } else {

@@ -336,7 +336,7 @@ export default function SendSMS2Page() {
 
         if (currentTeacher?.data?.adminAccess === true) {
           setIsAdminTeacher(true);
-          console.log("Teacher has admin access");
+          // console.log("Teacher has admin access");
         } else {
           setIsAdminTeacher(false);
         }
@@ -380,16 +380,16 @@ export default function SendSMS2Page() {
   const fetchAllData = async () => {
     setIsLoadingData(true);
     try {
-      console.log("Fetching data for domain:", window.location.host);
+      // console.log("Fetching data for domain:", window.location.host);
       
       // Fetch classes
       const classesRes = await fetch("/api/crud/classes", {
         headers: { "x-domain": window.location.host },
       });
-      console.log("Classes response status:", classesRes.status);
+      // console.log("Classes response status:", classesRes.status);
       if (classesRes.ok) {
         const classesData = await classesRes.json();
-        console.log("Classes data:", classesData);
+        // console.log("Classes data:", classesData);
         setClasses(classesData || []);
       } else {
         console.error("Failed to fetch classes:", classesRes.statusText);
@@ -399,10 +399,10 @@ export default function SendSMS2Page() {
       const studentsRes = await fetch("/api/crud/students", {
         headers: { "x-domain": window.location.host },
       });
-      console.log("Students response status:", studentsRes.status);
+      // console.log("Students response status:", studentsRes.status);
       if (studentsRes.ok) {
         const studentsData = await studentsRes.json();
-        console.log("Students data:", studentsData);
+        // console.log("Students data:", studentsData);
         setStudents(studentsData || []);
       } else {
         console.error("Failed to fetch students:", studentsRes.statusText);
@@ -412,10 +412,10 @@ export default function SendSMS2Page() {
       const teachersRes = await fetch("/api/crud/teachers", {
         headers: { "x-domain": window.location.host },
       });
-      console.log("Teachers response status:", teachersRes.status);
+      // console.log("Teachers response status:", teachersRes.status);
       if (teachersRes.ok) {
         const teachersData = await teachersRes.json();
-        console.log("Teachers data:", teachersData);
+        // console.log("Teachers data:", teachersData);
         setTeachers(teachersData || []);
       } else {
         console.error("Failed to fetch teachers:", teachersRes.statusText);
@@ -425,10 +425,10 @@ export default function SendSMS2Page() {
       const groupsRes = await fetch("/api/crud/studentsgroups", {
         headers: { "x-domain": window.location.host },
       });
-      console.log("Groups response status:", groupsRes.status);
+      // console.log("Groups response status:", groupsRes.status);
       if (groupsRes.ok) {
         const groupsData = await groupsRes.json();
-        console.log("Groups data:", groupsData);
+        // console.log("Groups data:", groupsData);
         setGroups(groupsData || []);
       } else {
         console.error("Failed to fetch groups:", groupsRes.statusText);

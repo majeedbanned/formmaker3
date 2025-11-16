@@ -237,7 +237,7 @@ export default function NewsArticlePage() {
 
   const fetchContent = async () => {
     try {
-      console.log("Fetching news article content styles...");
+      // console.log("Fetching news article content styles...");
       // Fetch news content styles
       const response = await fetch("/api/admin/news", {
         cache: "no-store",
@@ -249,7 +249,7 @@ export default function NewsArticlePage() {
       const data = await response.json();
 
       if (data.success) {
-        console.log("News article content styles fetched successfully:", data.news);
+        // console.log("News article content styles fetched successfully:", data.news);
         setContent({
           backgroundColor:
             data.news.backgroundColor || defaultNewsContent.backgroundColor,
@@ -276,17 +276,17 @@ export default function NewsArticlePage() {
             data.news.readMoreColor || defaultNewsContent.readMoreColor,
         });
       } else {
-        console.log("Using default news article content styles");
+        // console.log("Using default news article content styles");
       }
 
-      console.log("Fetching news article with ID:", newsId);
+      // console.log("Fetching news article with ID:", newsId);
       // For now, use mock data. In production, you would fetch from API
       const foundArticle = mockNewsArticles[newsId];
       if (foundArticle) {
-        console.log("News article found:", foundArticle.title);
+        // console.log("News article found:", foundArticle.title);
         setArticle(foundArticle);
       } else {
-        console.log("News article not found for ID:", newsId);
+        // console.log("News article not found for ID:", newsId);
         setNotFound(true);
       }
     } catch (error) {
@@ -306,7 +306,7 @@ export default function NewsArticlePage() {
           url: window.location.href,
         });
       } catch (error) {
-        console.log("Error sharing:", error);
+        // console.log("Error sharing:", error);
       }
     } else {
       // Fallback: copy URL to clipboard
@@ -447,7 +447,7 @@ export default function NewsArticlePage() {
               alt={article.title}
               className="absolute inset-0 w-full h-full object-cover"
               onLoad={() => {
-                console.log("News article hero image loaded successfully:", article.image);
+                // console.log("News article hero image loaded successfully:", article.image);
               }}
               onError={(e) => {
                 console.error("News article hero image failed to load:", article.image);
@@ -609,7 +609,7 @@ export default function NewsArticlePage() {
                       alt={relatedItem.title}
                       className="absolute inset-0 w-full h-full object-cover"
                       onLoad={() => {
-                        console.log("Related news image loaded successfully:", relatedItem.image);
+                        // console.log("Related news image loaded successfully:", relatedItem.image);
                       }}
                       onError={(e) => {
                         console.error("Related news image failed to load:", relatedItem.image);

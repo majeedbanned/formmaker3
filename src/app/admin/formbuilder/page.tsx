@@ -46,7 +46,7 @@ export default function FormBuilderPage() {
 
         if (currentTeacher?.data?.adminAccess === true) {
           setIsAdminTeacher(true);
-          console.log("Teacher has admin access");
+          // console.log("Teacher has admin access");
         } else {
           setIsAdminTeacher(false);
         }

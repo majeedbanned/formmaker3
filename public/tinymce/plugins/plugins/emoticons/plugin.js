@@ -356,7 +356,7 @@
           const userEmojis = getUserDefinedEmoji(editor);
           processEmojis(merge(emojis, userEmojis));
         }, err => {
-          console.log(`Failed to load emojis: ${ err }`);
+          // console.log(`Failed to load emojis: ${ err }`);
           categories.set({});
           all.set([]);
         });
@@ -382,7 +382,7 @@
               } else {
                 numRetries--;
                 if (numRetries < 0) {
-                  console.log('Could not load emojis from url: ' + databaseUrl);
+                  // console.log('Could not load emojis from url: ' + databaseUrl);
                   clearInterval(interval);
                   reject(false);
                 }

@@ -212,7 +212,7 @@ export default function ImportStudentsModal({
         throw new Error("هیچ دانش آموزی پیدا نشد");
       }
 
-      console.log("Parsed students:", students);
+      // console.log("Parsed students:", students);
 
       // Call the onImport function with the parsed students
       await onImport(students);
@@ -255,7 +255,7 @@ export default function ImportStudentsModal({
         throw new Error("هیچ دانش آموزی در متن سیدا پیدا نشد");
       }
 
-      console.log("Parsed SIDA students:", students);
+      // console.log("Parsed SIDA students:", students);
 
       // Call the onImport function with the parsed students
       await onImport(students);

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const studentsCollection = connection.collection('students');
     const teachersCollection = connection.collection('teachers');
     
-    console.log(`Fetching statistics for mailId: ${mailId}`);
+    // console.log(`Fetching statistics for mailId: ${mailId}`);
     
     // Get all messages for this mailId
     const messages = await messagelistCollection
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
       ),
     };
     
-    console.log(`Found ${messages.length} recipients: ${readMessages.length} read, ${unreadMessages.length} unread`);
+    // console.log(`Found ${messages.length} recipients: ${readMessages.length} read, ${unreadMessages.length} unread`);
     
     return NextResponse.json(statistics);
     

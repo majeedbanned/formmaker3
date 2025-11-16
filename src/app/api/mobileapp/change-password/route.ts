@@ -40,7 +40,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Change password request received');
+    // console.log('Change password request received');
 
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`Password changed successfully for ${decoded.userType}: ${decoded.username}`);
+      // console.log(`Password changed successfully for ${decoded.userType}: ${decoded.username}`);
 
       return NextResponse.json({
         success: true,

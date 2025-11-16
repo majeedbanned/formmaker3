@@ -82,7 +82,7 @@ export async function PUT(
     
     // Get domain from request headers
     const domain = request.headers.get('x-domain') || 'localhost:3000';
-    console.log(`Updating form submission with ID: ${params.id} for domain: ${domain}`);
+    // console.log(`Updating form submission with ID: ${params.id} for domain: ${domain}`);
     
     // Validate required fields
     const requiredFields = ['formId', 'answers'];

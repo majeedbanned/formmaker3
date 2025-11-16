@@ -99,17 +99,17 @@ function loadCacheFromStorage(): void {
           if (age < MENU_CACHE_DURATION) {
             menuCache.set(key, cacheData);
             loadedCount++;
-            console.log(`📱 Loaded cached menu for ${key} from localStorage (${Math.round(age / 1000)}s old)`);
+            // console.log(`📱 Loaded cached menu for ${key} from localStorage (${Math.round(age / 1000)}s old)`);
           } else {
             expiredCount++;
           }
         });
         
         if (loadedCount > 0) {
-          console.log(`✅ Loaded ${loadedCount} valid menu caches from localStorage`);
+          // console.log(`✅ Loaded ${loadedCount} valid menu caches from localStorage`);
         }
         if (expiredCount > 0) {
-          console.log(`🗑️ Skipped ${expiredCount} expired menu caches`);
+          // console.log(`🗑️ Skipped ${expiredCount} expired menu caches`);
         }
       }
     }
@@ -502,10 +502,10 @@ async function fetchUserPermissions(userType: string, username: string): Promise
     // If permissions are empty, return default permissions based on user type
     if (permissions.length === 0) {
       if (userType === 'student') {
-        console.log('📚 No permissions found for student, using default permissions');
+        // console.log('📚 No permissions found for student, using default permissions');
         return DEFAULT_STUDENT_PERMISSIONS;
       } else if (userType === 'teacher') {
-        console.log('👨‍🏫 No permissions found for teacher, using default permissions');
+        // console.log('👨‍🏫 No permissions found for teacher, using default permissions');
         return DEFAULT_TEACHER_PERMISSIONS;
       }
     }
@@ -516,10 +516,10 @@ async function fetchUserPermissions(userType: string, username: string): Promise
     
     // If there's an error, return default permissions based on user type
     if (userType === 'student') {
-      console.log('📚 Error fetching student permissions, using default permissions as fallback');
+      // console.log('📚 Error fetching student permissions, using default permissions as fallback');
       return DEFAULT_STUDENT_PERMISSIONS;
     } else if (userType === 'teacher') {
-      console.log('👨‍🏫 Error fetching teacher permissions, using default permissions as fallback');
+      // console.log('👨‍🏫 Error fetching teacher permissions, using default permissions as fallback');
       return DEFAULT_TEACHER_PERMISSIONS;
     }
     
@@ -628,17 +628,17 @@ function buildMenuStructure(
       .map(p => p.systems)
   );
   
-  console.log('🔍 Building menu structure for user:', { userType: user?.userType, username: user?.username });
-  console.log('📋 User permissions from database:', userPermissions);
-  console.log('🔑 User accessible system IDs (with "show" access):', Array.from(userSystemIDs));
-  console.log('🏢 All admin systems available:', adminSystems.map(s => ({ systemID: s.data.systemID, systemName: s.data.systemName })));
+  // console.log('🔍 Building menu structure for user:', { userType: user?.userType, username: user?.username });
+  // console.log('📋 User permissions from database:', userPermissions);
+  // console.log('🔑 User accessible system IDs (with "show" access):', Array.from(userSystemIDs));
+  // console.log('🏢 All admin systems available:', adminSystems.map(s => ({ systemID: s.data.systemID, systemName: s.data.systemName })));
   
   // Filter admin systems to only include those the user has access to
   const accessibleSystems = adminSystems.filter(system => 
     userSystemIDs.has(system.data.systemID)
   );
   
-  console.log('✅ Accessible systems after permission filtering:', accessibleSystems.map(s => ({ 
+  // console.log('✅ Accessible systems after permission filtering:', accessibleSystems.map(s => ({
     systemID: s.data.systemID, 
     systemName: s.data.systemName,
     menuID: s.data.menuID
@@ -703,7 +703,7 @@ function buildMenuStructure(
   // Sort menu sections by menuIDOrder
   const sortedMenuSections = menuSections.sort((a, b) => a.menuIDOrder - b.menuIDOrder);
   
-  console.log('🎯 Final menu structure:', sortedMenuSections.map(section => ({
+  // console.log('🎯 Final menu structure:', sortedMenuSections.map(section => ({
     title: section.title,
     menuID: section.menuID,
     menuIDOrder: section.menuIDOrder,
@@ -750,7 +750,7 @@ export function useDynamicMenu(): DynamicMenuState {
         const isCacheValid = cached && (now - cached.timestamp < MENU_CACHE_DURATION);
         
         if (isCacheValid) {
-          console.log(`📦 Using cached menu data for ${userKey} (cached ${Math.round((now - cached!.timestamp) / 1000)}s ago)`);
+          // console.log(`📦 Using cached menu data for ${userKey} (cached ${Math.round((now - cached!.timestamp) / 1000)}s ago)`);
           setState(prev => {
             // Only update if menus are different to prevent unnecessary re-render
             if (JSON.stringify(prev.menus) !== JSON.stringify(cached!.menus)) {
@@ -762,7 +762,7 @@ export function useDynamicMenu(): DynamicMenuState {
         }
 
         // Cache expired or doesn't exist - need to fetch from database
-        console.log(`🔄 Cache expired or missing for ${userKey}, fetching from database...`);
+        // console.log(`🔄 Cache expired or missing for ${userKey}, fetching from database...`);
         
         // Set loading only if we don't have any cached data
         setState(prev => ({ 
@@ -826,8 +826,8 @@ export function useDynamicMenu(): DynamicMenuState {
         // Save to persistent storage
         saveCacheToStorage();
 
-        console.log(`💾 Menu data cached for ${userKey} - valid for next ${MENU_CACHE_DURATION / 1000}s`);
-        console.log(`📊 Generated ${menus.length} menu sections with ${menus.reduce((acc, section) => acc + section.items.length, 0)} total items`);
+        // console.log(`💾 Menu data cached for ${userKey} - valid for next ${MENU_CACHE_DURATION / 1000}s`);
+        // console.log(`📊 Generated ${menus.length} menu sections with ${menus.reduce((acc, section) => acc + section.items.length, 0)} total items`);
 
         setState({
           menus,
@@ -901,7 +901,7 @@ export function useRefreshMenu() {
   
   return useCallback(() => {
     if (user) {
-      console.log(`🔄 Manually refreshing menu cache for ${user.userType}-${user.username}`);
+      // console.log(`🔄 Manually refreshing menu cache for ${user.userType}-${user.username}`);
       clearMenuCache(user.userType, user.username);
       // Force a page refresh to reload menus with new permissions
       window.location.reload();
@@ -939,5 +939,5 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     }
   };
   
-  console.log('🔧 Menu cache debug utilities available at window.menuCacheDebug');
+  // console.log('🔧 Menu cache debug utilities available at window.menuCacheDebug');
 } 

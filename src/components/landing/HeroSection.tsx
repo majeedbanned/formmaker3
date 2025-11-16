@@ -71,8 +71,8 @@ export default function HeroSection() {
       const response = await fetch("/api/admin/hero");
       const data = await response.json();
       if (data.success) {
-        console.log("Fetched hero data:", data.hero);
-        console.log("Hero images:", data.hero.images);
+        // console.log("Fetched hero data:", data.hero);
+        // console.log("Hero images:", data.hero.images);
         setHeroData(data.hero);
       }
     } catch (error) {
@@ -114,8 +114,8 @@ export default function HeroSection() {
 
   const handleSaveHero = async (data: HeroData) => {
     try {
-      console.log("Saving hero data:", data);
-      console.log("Images being saved:", data.images);
+      // console.log("Saving hero data:", data);
+      // console.log("Images being saved:", data.images);
 
       const response = await fetch("/api/admin/hero", {
         method: "POST",
@@ -126,7 +126,7 @@ export default function HeroSection() {
       });
 
       const result = await response.json();
-      console.log("Save response:", result);
+      // console.log("Save response:", result);
 
       if (response.ok) {
         setHeroData(data);
@@ -352,10 +352,10 @@ export default function HeroSection() {
                     }
                     className="w-full h-full object-cover rounded-lg shadow-2xl transition-opacity duration-500"
                     onLoad={() => {
-                      console.log(
-                        "Image loaded successfully:",
-                        heroData.images[currentImageIndex]?.url
-                      );
+                      // console.log(
+                      //   "Image loaded successfully:",
+                      //   heroData.images[currentImageIndex]?.url
+                      // );
                     }}
                     onError={(e) => {
                       console.error(

@@ -1288,7 +1288,7 @@ const FormField = ({
 
     // Local search handler for this specific field
     const handleAutoCompleteSearch = async (query: string) => {
-      console.log(`Searching for ${query} in ${field.name}`);
+      // console.log(`Searching for ${query} in ${field.name}`);
       if (
         field.dataSource &&
         query.length >= (field.autoCompleteStyle?.minLength || 2)
@@ -1359,7 +1359,7 @@ const FormField = ({
             params.append("sortOrder", field.dataSource.sortOrder || "asc");
           }
 
-          console.log(`Fetching options from: ${apiUrl}?${params.toString()}`);
+          // console.log(`Fetching options from: ${apiUrl}?${params.toString()}`);
 
           // Make the API request
           const response = await fetch(`${apiUrl}?${params.toString()}`, {
@@ -1374,7 +1374,7 @@ const FormField = ({
           }
 
           const data = await response.json();
-          console.log("Received API response:", data);
+          // console.log("Received API response:", data);
 
           // Format options - the dropdown API returns array directly, not in an "options" property
           let formattedOptions;
@@ -1399,7 +1399,7 @@ const FormField = ({
             formattedOptions = [];
           }
 
-          console.log("Formatted options:", formattedOptions);
+          // console.log("Formatted options:", formattedOptions);
           setDynamicOptions(formattedOptions);
         } catch (error) {
           console.error("Error fetching autocomplete options:", error);

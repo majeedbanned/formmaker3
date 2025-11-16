@@ -374,9 +374,9 @@ const ClassSheet = ({
         teachersInfo[t.teacherCode] || `معلم ${t.teacherCode}`;
       const courseName = coursesInfo[t.courseCode] || `درس ${t.courseCode}`;
 
-      console.log(
-        `Building option for: courseCode=${t.courseCode}, courseName=${courseName}, teacherCode=${t.teacherCode}, teacherName=${teacherName}`
-      );
+      // console.log(
+      //  `Building option for: courseCode=${t.courseCode}, courseName=${courseName}, teacherCode=${t.teacherCode}, teacherName=${teacherName}`
+     // );
 
       courseOptions.push({
         value: `${t.teacherCode}-${t.courseCode}-${classDoc.data.classCode}`,
@@ -591,7 +591,7 @@ const ClassSheet = ({
         }
 
         const data = await response.json();
-        //console.log("Loaded data:", data);
+        // console.log("Loaded data:", data);
 
         // Convert array of cell data to a dictionary for easier access
         const cellsDataMap: Record<string, CellData> = {};
@@ -711,7 +711,7 @@ const ClassSheet = ({
         );
         if (coursesResponse.ok) {
           const coursesData = await coursesResponse.json();
-          console.log("Courses data:", coursesData);
+          // console.log("Courses data:", coursesData);
 
           // Create a map of course codes to names
           const courseMap: Record<string, string> = {};
@@ -773,11 +773,11 @@ const ClassSheet = ({
                 if (course.courseCode) {
                   courseMap[course.courseCode] =
                     course.courseName || course.courseCode;
-                  console.log(
-                    `Direct mapping: ${course.courseCode} -> ${
-                      courseMap[course.courseCode]
-                    }`
-                  );
+                  // console.log(
+                //    `Direct mapping: ${course.courseCode} -> ${
+                  //    courseMap[course.courseCode]
+                   // }`
+                 // );
                 }
                 // Fallback to our existing recursive search if needed
                 else {
@@ -787,14 +787,14 @@ const ClassSheet = ({
                   if (courseCode) {
                     // Use found courseName or fall back to courseCode
                     courseMap[courseCode] = courseName || courseCode;
-                    console.log(
-                      `Nested search mapping: ${courseCode} -> ${courseMap[courseCode]}`
-                    );
+                    // console.log(
+                   //   `Nested search mapping: ${courseCode} -> ${courseMap[courseCode]}`
+                   // );
                   } else {
-                    console.log(
-                      `No courseCode found in course ${index}:`,
-                      course
-                    );
+                    // console.log(
+                    //  `No courseCode found in course ${index}:`,
+                    //  course
+                 //   );
                   }
                 }
               } catch (e) {
@@ -803,7 +803,7 @@ const ClassSheet = ({
             });
           }
 
-          console.log("Final course map:", courseMap);
+          // console.log("Final course map:", courseMap);
           setCoursesInfo(courseMap);
         }
       } catch (error) {

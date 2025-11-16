@@ -71,7 +71,7 @@ async function sendExpoPushNotification(pushToken: string, title: string, body: 
     });
 
     const result = await response.json();
-    console.log('Expo push response:', result);
+    // console.log('Expo push response:', result);
 
     if (result.data && result.data[0]) {
       const ticket = result.data[0];
@@ -105,7 +105,7 @@ async function sendExpoPushNotification(pushToken: string, title: string, body: 
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log("Send notification request received");
+    // console.log("Send notification request received");
 
     // Extract JWT token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Send notification request from:", user.userType, user.username);
+    // console.log("Send notification request from:", user.userType, user.username);
 
     // Parse request body
     const body = await request.json();
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`Found ${usersToNotify.length} users to notify`);
+      // console.log(`Found ${usersToNotify.length} users to notify`);
 
       // Send notifications
       const results = {

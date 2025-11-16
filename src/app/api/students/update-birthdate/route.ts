@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       // "data.schoolCode": user.schoolCode,
     });
 
-    console.log(student,"student");
+    // console.log(student,"student");
 
     if (!student) {
       return NextResponse.json(

@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest) {
     const existingStudentIndex = students.findIndex(
       (s: { _id: string }) => s._id === studentId
     );
-    console.log("existingStudentIndex", existingStudentIndex);
+    // console.log("existingStudentIndex", existingStudentIndex);
     if (existingStudentIndex === -1) {
       // Student doesn't exist in this class
       logger.info(`Student with ID ${studentId} not found in class ${classCode}`, { domain });

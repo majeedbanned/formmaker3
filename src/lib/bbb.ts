@@ -100,10 +100,10 @@ export class BigBlueButtonAPI {
     const url = this.buildUrl('create', createParams);
 
     try {
-      console.log('Creating BBB meeting with URL:', url);
+      // console.log('Creating BBB meeting with URL:', url);
       const response = await fetch(url, { method: 'GET' });
       const text = await response.text();
-      console.log('BBB create response:', text);
+      // console.log('BBB create response:', text);
       
       // Parse XML response
       const successMatch = text.match(/<returncode>(.*?)<\/returncode>/);

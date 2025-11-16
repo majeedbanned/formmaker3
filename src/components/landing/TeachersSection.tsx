@@ -112,7 +112,7 @@ export default function TeachersSection() {
 
   const fetchTeachersContent = async () => {
     try {
-      console.log("Fetching teachers content...");
+      // console.log("Fetching teachers content...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/teachers", {
         cache: "no-store",
@@ -125,10 +125,10 @@ export default function TeachersSection() {
       const data = await response.json();
 
       if (data.success) {
-        console.log("Teachers content fetched successfully:", data.teachers);
+        // console.log("Teachers content fetched successfully:", data.teachers);
         setContent(data.teachers);
       } else {
-        console.log("Using default teachers content");
+        // console.log("Using default teachers content");
         setContent(defaultTeachersContent);
       }
     } catch (error) {
@@ -141,7 +141,7 @@ export default function TeachersSection() {
 
   const handleSave = async (updatedContent: TeachersContent) => {
     try {
-      console.log("Saving teachers content:", updatedContent);
+      // console.log("Saving teachers content:", updatedContent);
       
       const response = await fetch("/api/admin/teachers", {
         method: "POST",
@@ -153,14 +153,14 @@ export default function TeachersSection() {
       });
 
       const data = await response.json();
-      console.log("Teachers save response:", data);
+      // console.log("Teachers save response:", data);
 
       if (response.ok && data.success) {
         setContent(updatedContent);
         toast.success("تغییرات با موفقیت ذخیره شد");
         // Refresh content to ensure fresh data
         await fetchTeachersContent();
-        console.log("Teachers content saved and refreshed successfully");
+        // console.log("Teachers content saved and refreshed successfully");
       } else {
         console.error("Failed to save teachers content:", data);
         toast.error("خطا در ذخیره تغییرات: " + (data.error || "خطای نامشخص"));
@@ -316,7 +316,7 @@ export default function TeachersSection() {
                       alt={teacher.name}
                       className="absolute inset-0 w-full h-full object-cover"
                       onLoad={() => {
-                        console.log("Teacher avatar loaded successfully:", teacher.avatar);
+                        // console.log("Teacher avatar loaded successfully:", teacher.avatar);
                         setImageLoadingStates(prev => ({...prev, [teacher.id]: false}));
                       }}
                       onLoadStart={() => {

@@ -82,7 +82,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ user }) => {
       const handleUnreadCountsUpdated = (
         newUnreadCounts: Record<string, number>
       ) => {
-        console.log("Received unread counts update:", newUnreadCounts);
+        // console.log("Received unread counts update:", newUnreadCounts);
         setUnreadCounts(newUnreadCounts);
       };
 

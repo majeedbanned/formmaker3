@@ -82,11 +82,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Version check request:', {
-      currentVersion,
-      versionCode,
-      platform
-    });
+    // console.log('Version check request:', {
+    //   currentVersion,
+    //   versionCode,
+    //   platform
+    // });
 
     // Read version config from file
     const versionConfig = getVersionConfig();
@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
 
     // Check if update is available by comparing version codes
     const updateAvailable = versionCode < platformConfig.versionCode;
-    console.log('Current versionCode:', versionCode);
-    console.log('Latest versionCode:', platformConfig.versionCode);
-    console.log('Update available:', updateAvailable);
+    // console.log('Current versionCode:', versionCode);
+    // console.log('Latest versionCode:', platformConfig.versionCode);
+    // console.log('Update available:', updateAvailable);
 
     const response: VersionCheckResponse = {
       success: true,

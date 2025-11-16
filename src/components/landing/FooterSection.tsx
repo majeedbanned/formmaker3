@@ -175,7 +175,7 @@ export default function FooterSection() {
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle newsletter subscription
-    console.log("Newsletter subscription:", email);
+    // console.log("Newsletter subscription:", email);
     setEmail("");
     alert("با تشکر! ایمیل شما ثبت شد.");
   };

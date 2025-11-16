@@ -94,7 +94,7 @@ function getPersianDayNameForDate(date: Date): string {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Available dates request received");
+    // console.log("Available dates request received");
     
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      console.log("Teacher teaches on days:", Array.from(teacherDays));
+      // console.log("Teacher teaches on days:", Array.from(teacherDays));
 
       // Generate dates: 60 days back + today + 150 days forward, but only include days where teacher has classes
       const pastDates: any[] = [];
@@ -207,8 +207,8 @@ export async function GET(request: NextRequest) {
 
       await client.close();
 
-      console.log("Past dates count:", pastDates.length);
-      console.log("Current/Future dates count:", currentAndFutureDates.length);
+      // console.log("Past dates count:", pastDates.length);
+      // console.log("Current/Future dates count:", currentAndFutureDates.length);
 
       return NextResponse.json({
         success: true,

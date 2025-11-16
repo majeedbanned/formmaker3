@@ -231,7 +231,7 @@ export function TeacherStatistics({
           });
 
         // Debug: Log the chronological order and grading IDs
-        console.log(
+         console.log(
           "Table columns chronological order:",
           sortedGradings.map((key) => {
             const grading = selectedGradings.find(
@@ -314,7 +314,7 @@ export function TeacherStatistics({
           student.subjects.filter((s) => s.gradingTitle === grading.title)
             .length > 1
         ) {
-          console.log(
+           console.log(
             `Student ${student.studentName} - Multiple grades with title "${grading.title}":`,
             {
               lookingForGradingId: grading._id,

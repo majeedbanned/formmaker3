@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      console.log(`Successfully deleted question ${questionId} for domain: ${domain}`);
+      // console.log(`Successfully deleted question ${questionId} for domain: ${domain}`);
       return NextResponse.json({
         success: true,
         message: 'سوال با موفقیت حذف شد',

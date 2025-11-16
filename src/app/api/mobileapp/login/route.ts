@@ -84,11 +84,11 @@ export async function POST(request: NextRequest) {
         { status: 400, headers: corsHeaders }
       );
     }
-    console.log("role", role);
-    console.log("domain", domain);
-    console.log("schoolCode", schoolCode);
-    console.log("userCode", userCode);
-    console.log("password", password);
+    // console.log("role", role);
+    // console.log("domain", domain);
+    // console.log("schoolCode", schoolCode);
+    // console.log("userCode", userCode);
+    // console.log("password", password);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Using connection string for domain:", domain);
-    console.log("Connection string:", domainConfig.connectionString);
+    // console.log("Using connection string for domain:", domain);
+    // console.log("Connection string:", domainConfig.connectionString);
 
     // Connect to MongoDB using domain-specific connection string
     const client = new MongoClient(domainConfig.connectionString);

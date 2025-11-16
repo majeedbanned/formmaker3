@@ -235,7 +235,7 @@ export default function BlogArticlePage() {
 
   const fetchContent = async () => {
     try {
-      console.log("Fetching blog article content styles...");
+      // console.log("Fetching blog article content styles...");
       const response = await fetch("/api/admin/articles", {
         cache: "no-store",
         headers: {
@@ -245,7 +245,7 @@ export default function BlogArticlePage() {
       });
       const data = await response.json();
       if (data.success) {
-        console.log("Blog article content styles fetched successfully:", data.articles);
+        // console.log("Blog article content styles fetched successfully:", data.articles);
         setContent({
           backgroundColor: data.articles.backgroundColor || defaultArticlesContent.backgroundColor,
           titleColor: data.articles.titleColor || defaultArticlesContent.titleColor,
@@ -262,7 +262,7 @@ export default function BlogArticlePage() {
           tagTextColor: data.articles.tagTextColor || defaultArticlesContent.tagTextColor,
         });
       } else {
-        console.log("Using default blog article content styles");
+        // console.log("Using default blog article content styles");
       }
     } catch (error) {
       console.error("Error fetching blog article content:", error);
@@ -271,14 +271,14 @@ export default function BlogArticlePage() {
 
   const fetchArticle = async () => {
     try {
-      console.log("Fetching blog article with ID:", params.id);
+      // console.log("Fetching blog article with ID:", params.id);
       // For now, use mock data. In a real app, this would fetch from API
       const articleData = mockBlogArticles[params.id as string];
       if (articleData) {
-        console.log("Blog article found:", articleData.title);
+        // console.log("Blog article found:", articleData.title);
         setArticle(articleData);
       } else {
-        console.log("Blog article not found for ID:", params.id);
+        // console.log("Blog article not found for ID:", params.id);
         setNotFound(true);
       }
     } catch (error) {
@@ -298,7 +298,7 @@ export default function BlogArticlePage() {
           url: window.location.href,
         });
       } catch (error) {
-        console.log("Error sharing:", error);
+        // console.log("Error sharing:", error);
       }
     } else {
       // Fallback to copying URL to clipboard
@@ -365,7 +365,7 @@ export default function BlogArticlePage() {
             alt={article.title}
             className="absolute inset-0 w-full h-full object-cover"
             onLoad={() => {
-              console.log("Blog article hero image loaded successfully:", article.image);
+              // console.log("Blog article hero image loaded successfully:", article.image);
             }}
             onError={(e) => {
               console.error("Blog article hero image failed to load:", article.image);
@@ -549,7 +549,7 @@ export default function BlogArticlePage() {
                       alt={relatedItem.title}
                       className="absolute inset-0 w-full h-full object-cover"
                       onLoad={() => {
-                        console.log("Related article image loaded successfully:", relatedItem.image);
+                        // console.log("Related article image loaded successfully:", relatedItem.image);
                       }}
                       onError={(e) => {
                         console.error("Related article image failed to load:", relatedItem.image);

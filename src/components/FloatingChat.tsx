@@ -132,7 +132,7 @@ const FloatingChat: React.FC = () => {
       socketInstance.on("connect", () => {
         if (!mounted) return;
         setIsConnected(true);
-        console.log("Socket connected:", socketInstance.id);
+        // console.log("Socket connected:", socketInstance.id);
 
         // Join the floating chat room
         socketInstance.emit(
@@ -155,7 +155,7 @@ const FloatingChat: React.FC = () => {
       socketInstance.on("disconnect", () => {
         if (!mounted) return;
         setIsConnected(false);
-        console.log("Socket disconnected");
+        // console.log("Socket disconnected");
       });
 
       socketInstance.on("new-message", (message: ChatMessage) => {

@@ -62,7 +62,7 @@ export async function PUT(
     } = body;
     const { id } = params;
 
-    console.log('Updating page with data:', body);
+    // console.log('Updating page with data:', body);
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(

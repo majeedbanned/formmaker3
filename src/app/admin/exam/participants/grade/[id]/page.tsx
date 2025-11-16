@@ -171,7 +171,7 @@ export default function GradeParticipantAnswers({
       setExamInfo(examData);
 
       // Fetch all participants for this exam
-      console.log("xxx", participantData.examId);
+      // console.log("xxx", participantData.examId);
       const allParticipantsResponse = await fetch(
         `/api/examparticipants/${participantData.examId}`
       );

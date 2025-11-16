@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("User from token:", user);
+    // console.log("User from token:", user);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Using connection string for domain:", user.domain);
+    // console.log("Using connection string for domain:", user.domain);
 
     // Connect to MongoDB using domain-specific connection string
     const client = new MongoClient(domainConfig.connectionString);
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
             'data.schoolCode': user.schoolCode
           });
 
-          console.log("Student found:", student);
+          // console.log("Student found:", student);
 
           if (student && student.data && student.data.classCode && Array.isArray(student.data.classCode) && student.data.classCode.length > 0) {
             // Extract the 'value' from each classCode object
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
               .filter((classObj: any) => classObj && typeof classObj === 'object' && classObj.value)
               .map((classObj: any) => classObj.value);
             
-            console.log("Student class codes:", studentClassCodes);
+            // console.log("Student class codes:", studentClassCodes);
             
             if (studentClassCodes.length > 0) {
               eventsQuery.classCode = { $in: studentClassCodes };
@@ -196,14 +196,14 @@ export async function GET(request: NextRequest) {
             }
           } else {
             // If student has no classes, return empty events
-            console.log("Student has no classes assigned");
+            // console.log("Student has no classes assigned");
             events = [];
             break;
           }
           
-          console.log("Events query for student:", eventsQuery);
+          // console.log("Events query for student:", eventsQuery);
           events = await db.collection('events').find(eventsQuery).sort({ persianDate: 1, timeSlot: 1 }).toArray() as any[];
-          console.log("Events found for student:", events.length);
+          // console.log("Events found for student:", events.length);
           break;
 
         case 'teacher':

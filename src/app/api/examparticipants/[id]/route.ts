@@ -7,7 +7,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  //console.log("stage 0");
+  // console.log("stage 0");
   try {
     // Get the exam ID from params
     const examId = (await params).id;

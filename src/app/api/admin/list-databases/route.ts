@@ -23,7 +23,7 @@ export async function GET(): Promise<NextResponse<ListDatabasesResponse>> {
     client = new MongoClient(MONGODB_URI);
     await client.connect();
 
-    console.log("Connected to MongoDB for listing databases");
+    // console.log("Connected to MongoDB for listing databases");
 
     // Get list of databases
     const adminDb = client.db().admin();
@@ -40,7 +40,7 @@ export async function GET(): Promise<NextResponse<ListDatabasesResponse>> {
       }))
       .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
 
-    console.log(`Found ${userDatabases.length} user databases`);
+    // console.log(`Found ${userDatabases.length} user databases`);
 
     return NextResponse.json({
       success: true,
@@ -61,7 +61,7 @@ export async function GET(): Promise<NextResponse<ListDatabasesResponse>> {
     if (client) {
       try {
         await client.close();
-        console.log("MongoDB connection closed");
+        // console.log("MongoDB connection closed");
       } catch (error) {
         console.error("Error closing MongoDB connection:", error);
       }

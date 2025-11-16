@@ -98,25 +98,25 @@ export default function PublicationTemplates({
       }
 
       const data = await response.json();
-      console.log("Fetched templates:", data.templates);
+      // console.log("Fetched templates:", data.templates);
 
       // Add a check to ensure each template has an id
       if (data.templates && data.templates.length > 0) {
         const firstTemplate = data.templates[0];
-        console.log("First template:", firstTemplate);
-        console.log(
-          "First template ID:",
-          firstTemplate.id,
-          "Type:",
-          typeof firstTemplate.id
-        );
+        // console.log("First template:", firstTemplate);
+        // console.log(
+        //   "First template ID:",
+        //   firstTemplate.id,
+        //   "Type:",
+        //   typeof firstTemplate.id
+        // );
 
         // Map templates to ensure they have proper id field
         const processedTemplates = data.templates.map(
           (template: Partial<TemplateData> & { _id?: string }) => {
             // Make sure template has a proper id or _id property
             if (!template.id && template._id) {
-              console.log("Converting _id to id for template:", template._id);
+              // console.log("Converting _id to id for template:", template._id);
               return { ...template, id: template._id };
             }
             return template;
@@ -166,8 +166,8 @@ export default function PublicationTemplates({
   };
 
   const handleTemplateSelect = (template: TemplateData) => {
-    console.log("Selecting template:", template);
-    console.log("Template ID:", template.id);
+    // console.log("Selecting template:", template);
+    // console.log("Template ID:", template.id);
 
     // Ensure template has a valid ID
     if (!template.id) {
@@ -272,11 +272,11 @@ export default function PublicationTemplates({
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          console.log(
-                            "Edit button clicked for template:",
-                            template
-                          );
-                          console.log("Template ID:", template.id);
+                          // console.log(
+                          //   "Edit button clicked for template:",
+                          //   template
+                          // );
+                          // console.log("Template ID:", template.id);
 
                           // Ensure template has all necessary data for editing
                           if (!template.id) {

@@ -56,7 +56,7 @@ async function ensureParentFoldersExist(
     
     // If not, create it
     if (!existingFolder) {
-      console.log(`Creating parent folder: ${folderName} at path: ${parentPath}`);
+      // console.log(`Creating parent folder: ${folderName} at path: ${parentPath}`);
       await folderCollection.insertOne({
         name: folderName,
         path: parentPath,
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     // Get the formData
     const formData = await request.formData();
-    console.log("FormData received:", Object.fromEntries(formData.entries()));
+    // console.log("FormData received:", Object.fromEntries(formData.entries()));
     
     // Collect all files from the form data
     const files: FormDataFile[] = [];
@@ -205,15 +205,15 @@ export async function POST(request: NextRequest) {
     const rawFolderPath = formData.get("path") as string || "";
     const folderPath = normalizePath(rawFolderPath);
     
-    console.log(`Found ${files.length} files to process`);
+    // console.log(`Found ${files.length} files to process`);
     if (files.length > 0) {
-      console.log("First file:", {
-        name: files[0].name,
-        type: files[0].type,
-        size: files[0].size || 'unknown'
-      });
+      // console.log("First file:", {
+      //   name: files[0].name,
+      //   type: files[0].type,
+      //   size: files[0].size || 'unknown'
+      // });
     }
-    console.log("Folder path:", folderPath);
+    // console.log("Folder path:", folderPath);
 
     if (files.length === 0) {
       return new NextResponse(

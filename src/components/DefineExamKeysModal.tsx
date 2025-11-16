@@ -430,8 +430,8 @@ export default function DefineExamKeysModal({
       const data = await response.json();
       
       if (data.success && data.answers && Array.isArray(data.answers)) {
-        console.log('Scanned answers:', data.answers);
-        console.log(`Total: ${data.totalQuestions}, Answered: ${data.answeredQuestions}`);
+        // console.log('Scanned answers:', data.answers);
+        // console.log(`Total: ${data.totalQuestions}, Answered: ${data.answeredQuestions}`);
         
         // Get default values from user input
         const defaultScore = parseFloat(prompt("بارم پیش‌فرض برای همه سوالات:", "1") || "1");

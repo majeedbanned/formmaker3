@@ -355,7 +355,7 @@ function LoginForm() {
     const config = dbConfig[hostname] || dbConfig[domain];
     
     if (config && config.schoolCode) {
-      console.log('Auto-filling schoolCode from database.json:', config.schoolCode);
+      // console.log('Auto-filling schoolCode from database.json:', config.schoolCode);
       form.setValue("schoolCode", config.schoolCode);
       setHideSchoolCode(true);
     }

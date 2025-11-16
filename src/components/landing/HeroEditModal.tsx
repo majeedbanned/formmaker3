@@ -154,7 +154,7 @@ export default function HeroEditModal({
       });
 
       const data = await response.json();
-      console.log("Upload response:", data);
+      // console.log("Upload response:", data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Upload failed");
@@ -173,7 +173,7 @@ export default function HeroEditModal({
       newImages[index] = { ...currentImage, ...newImageData };
       setFormData({ ...formData, images: newImages });
 
-      console.log("Upload successful, URL:", data.url);
+      // console.log("Upload successful, URL:", data.url);
     } catch (error) {
       console.error("Upload error:", error);
       alert(
@@ -1095,10 +1095,10 @@ export default function HeroEditModal({
                                       target.style.display = "none";
                                     }}
                                     onLoad={() => {
-                                      console.log(
-                                        "Preview image loaded successfully:",
-                                        image.url
-                                      );
+                                      // console.log(
+                                      //   "Preview image loaded successfully:",
+                                      //   image.url
+                                      // );
                                     }}
                                   />
                                 </div>

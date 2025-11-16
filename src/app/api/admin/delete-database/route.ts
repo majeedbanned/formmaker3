@@ -43,7 +43,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteD
     client = new MongoClient(MONGODB_URI);
     await client.connect();
 
-    console.log(`Connected to MongoDB to delete database: ${databaseName}`);
+    // console.log(`Connected to MongoDB to delete database: ${databaseName}`);
 
     // Check if database exists
     const adminDb = client.db().admin();
@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteD
     const targetDb = client.db(databaseName);
     await targetDb.dropDatabase();
 
-    console.log(`Database ${databaseName} deleted successfully`);
+    // console.log(`Database ${databaseName} deleted successfully`);
 
     return NextResponse.json({
       success: true,
@@ -81,7 +81,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteD
     if (client) {
       try {
         await client.close();
-        console.log("MongoDB connection closed");
+        // console.log("MongoDB connection closed");
       } catch (error) {
         console.error("Error closing MongoDB connection:", error);
       }

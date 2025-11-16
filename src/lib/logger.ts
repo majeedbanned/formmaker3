@@ -38,7 +38,7 @@ const logToConsole = (level: LogLevel, message: string, optionalParams: unknown[
       break;
     case 'info':
     default:
-      console.log(`[INFO][${timestamp}]`, message, ...optionalParams);
+      // console.log(`[INFO][${timestamp}]`, message, ...optionalParams);
   }
 
   // Here we could add additional logging mechanisms like:

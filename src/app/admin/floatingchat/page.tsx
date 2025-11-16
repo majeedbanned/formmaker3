@@ -205,7 +205,7 @@ export default function FloatingChatAdmin() {
       socketInstance.on("disconnect", () => {
         if (!mounted) return;
         setIsConnected(false);
-        console.log("Socket disconnected");
+        // console.log("Socket disconnected");
       });
 
       socketInstance.on("new-message", (message: ChatMessage) => {

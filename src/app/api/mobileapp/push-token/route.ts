@@ -51,7 +51,7 @@ const getUserFromToken = (token: string): JWTPayload | null => {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Push token registration request received");
+    // console.log("Push token registration request received");
 
     // Extract JWT token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Push token request for user:", user.userType, user.username);
+    // console.log("Push token request for user:", user.userType, user.username);
 
     // Parse request body
     const body = await request.json();
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("User from token:", user);
+    // console.log("User from token:", user);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Using connection string for domain:", user.domain);
+    // console.log("Using connection string for domain:", user.domain);
 
     // Connect to MongoDB using domain-specific connection string
     const client = new MongoClient(domainConfig.connectionString);
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
 
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Determine collection based on user type
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         ? { 'data.studentCode': user.username, 'data.schoolCode': user.schoolCode }
         : { 'data.teacherCode': user.username, 'data.schoolCode': user.schoolCode };
 
-      console.log("Looking for user with query:", JSON.stringify(userQuery));
+      // console.log("Looking for user with query:", JSON.stringify(userQuery));
 
       const foundUser = await collection.findOne(userQuery);
 
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log("User found:", user.userType, user.username);
+      // console.log("User found:", user.userType, user.username);
 
       // Check if token already exists
       const existingTokens = foundUser.data?.pushTokens || [];
@@ -150,14 +150,14 @@ export async function POST(request: NextRequest) {
 
       if (tokenIndex >= 0) {
         // Update existing token
-        console.log("Updating existing push token");
+        // console.log("Updating existing push token");
         existingTokens[tokenIndex] = {
           ...existingTokens[tokenIndex],
           ...deviceToken
         };
       } else {
         // Add new token
-        console.log("Adding new push token");
+        // console.log("Adding new push token");
         existingTokens.push(deviceToken);
       }
 
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
       await client.close();
 
       if (updateResult.modifiedCount > 0 || updateResult.matchedCount > 0) {
-        console.log("Push token saved successfully");
+        // console.log("Push token saved successfully");
         return NextResponse.json({
           success: true,
           message: 'توکن نوتیفیکیشن با موفقیت ثبت شد',
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Get push tokens request for user:", user.userType, user.username);
+    // console.log("Get push tokens request for user:", user.userType, user.username);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -312,7 +312,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log("Delete push token request for user:", user.userType, user.username);
+    // console.log("Delete push token request for user:", user.userType, user.username);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();

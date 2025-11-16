@@ -41,7 +41,7 @@ interface JWTPayload {
 // GET - Fetch complete student report for a specific course
 export async function GET(request: NextRequest) {
   try {
-    console.log("Mobile student report request received");
+    // console.log("Mobile student report request received");
     
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -105,10 +105,10 @@ export async function GET(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
-      console.log("Fetching student report for:", { studentCode, classCode, courseCode, teacherCode: decoded.username, schoolCode: decoded.schoolCode });
+      // console.log("Fetching student report for:", { studentCode, classCode, courseCode, teacherCode: decoded.username, schoolCode: decoded.schoolCode });
       
       // Verify teacher teaches this class
       const classDoc = await db.collection('classes').findOne({
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         'data.schoolCode': decoded.schoolCode
       });
 
-      console.log("Class found:", !!classDoc);
+      // console.log("Class found:", !!classDoc);
 
       if (!classDoc) {
         await client.close();
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         (t: any) => t.teacherCode === decoded.username && t.courseCode === courseCode
       );
 
-      console.log("Teacher teaches class:", teacherTeachesClass);
+      // console.log("Teacher teaches class:", teacherTeachesClass);
 
       if (!teacherTeachesClass) {
         await client.close();
@@ -145,10 +145,10 @@ export async function GET(request: NextRequest) {
         (s: any) => s.studentCode === studentCode
       );
 
-      console.log("Student found in class:", !!student);
+      // console.log("Student found in class:", !!student);
 
       if (!student) {
-        console.log("Student not found in class with studentCode:", studentCode);
+        // console.log("Student not found in class with studentCode:", studentCode);
         await client.close();
         return NextResponse.json(
           { success: false, message: 'دانش‌آموز در این کلاس یافت نشد' },

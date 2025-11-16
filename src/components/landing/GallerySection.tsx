@@ -56,7 +56,7 @@ export default function GallerySection() {
 
   const fetchGalleryData = async () => {
     try {
-      console.log("Fetching gallery data...");
+      // console.log("Fetching gallery data...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/gallery", {
         cache: "no-store",
@@ -67,10 +67,10 @@ export default function GallerySection() {
       });
       const data = await response.json();
       if (data.success) {
-        console.log("Gallery data fetched successfully:", data.gallery);
+        // console.log("Gallery data fetched successfully:", data.gallery);
         setGalleryData(data.gallery);
       } else {
-        console.log("Using default gallery data");
+        // console.log("Using default gallery data");
       }
     } catch (error) {
       console.error("Error fetching gallery data:", error);
@@ -124,7 +124,7 @@ export default function GallerySection() {
 
   const handleSaveGallery = async (data: GalleryData) => {
     try {
-      console.log("Saving gallery data:", data);
+      // console.log("Saving gallery data:", data);
       
       const response = await fetch("/api/admin/gallery", {
         method: "POST",
@@ -135,14 +135,14 @@ export default function GallerySection() {
       });
 
       const result = await response.json();
-      console.log("Gallery save response:", result);
+      // console.log("Gallery save response:", result);
 
       if (response.ok && result.success) {
         setGalleryData(data);
         setShowEditModal(false);
         // Refresh gallery data to ensure fresh content
         await fetchGalleryData();
-        console.log("Gallery data saved and refreshed successfully");
+        // console.log("Gallery data saved and refreshed successfully");
       } else {
         console.error("Failed to save gallery data:", result);
         alert("خطا در ذخیره اطلاعات: " + (result.error || "خطای نامشخص"));
@@ -303,7 +303,7 @@ export default function GallerySection() {
                     alt={image.title}
                     className="absolute inset-0 w-full h-full object-cover"
                     onLoad={() => {
-                      console.log("Gallery image loaded successfully:", image.src);
+                      // console.log("Gallery image loaded successfully:", image.src);
                       setImageLoadingStates(prev => ({...prev, [image.id]: false}));
                     }}
                     onLoadStart={() => {
@@ -375,7 +375,7 @@ export default function GallerySection() {
                   alt={selectedImage.title}
                   className="w-full h-full object-contain"
                   onLoad={() => {
-                    console.log("Lightbox image loaded successfully:", selectedImage.src);
+                    // console.log("Lightbox image loaded successfully:", selectedImage.src);
                   }}
                   onError={(e) => {
                     console.error("Lightbox image failed to load:", selectedImage.src);

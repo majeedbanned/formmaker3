@@ -741,7 +741,7 @@ const detailedSchema = {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(req: Request) {
-  console.log("Fetching MongoDB schema...");
+  // console.log("Fetching MongoDB schema...");
   try {
     // We're now using the hardcoded schema instead of dynamically fetching it
     // This ensures consistent relationships and structure for the AI

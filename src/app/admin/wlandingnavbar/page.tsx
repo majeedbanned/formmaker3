@@ -178,7 +178,7 @@ export default function LandingNavbarManagement() {
         });
       }
 
-      console.log("Default navigation items saved to database");
+      // console.log("Default navigation items saved to database");
     } catch (error) {
       console.error("Error saving default navigation items:", error);
     }
@@ -194,9 +194,9 @@ export default function LandingNavbarManagement() {
 
         // If no items exist in the database, save default items
         if (items.length === 0) {
-          console.log(
-            "No navigation items found in database, saving default items"
-          );
+          // console.log(
+          //   "No navigation items found in database, saving default items"
+          // );
           await saveDefaultNavItems();
           // Fetch again after saving defaults
           const updatedResponse = await fetch("/api/admin/navigation");

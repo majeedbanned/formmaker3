@@ -107,7 +107,7 @@ const verifyAssistant = async (assistantId: string): Promise<boolean> => {
 
 const uploadFileToOpenAI = async (content: string, filename: string, purpose: string) => {
     try {
-      console.log(`Starting file upload process for ${filename} with size ${content.length} bytes`);
+      // console.log(`Starting file upload process for ${filename} with size ${content.length} bytes`);
   
       const tempFilePath = path.join(process.cwd(), filename);
       fs.writeFileSync(tempFilePath, content);
@@ -119,7 +119,7 @@ const uploadFileToOpenAI = async (content: string, filename: string, purpose: st
       });
       form.append("purpose", purpose);
   
-      console.log("Sending form-data to OpenAI with axios...");
+      // console.log("Sending form-data to OpenAI with axios...");
   
       const response = await axios.post(
         `${OPENAI_API_URL}/files`,
@@ -137,7 +137,7 @@ const uploadFileToOpenAI = async (content: string, filename: string, purpose: st
       fs.unlinkSync(tempFilePath);
   
       const data = response.data;
-      console.log(`Successfully uploaded file with ID: ${data.id}`);
+      // console.log(`Successfully uploaded file with ID: ${data.id}`);
       return data.id;
     } catch (error: any) {
       console.error("Error uploading file to OpenAI:", error.response?.data || error.message);
@@ -359,14 +359,14 @@ const uploadFileToOpenAI = async (content: string, filename: string, purpose: st
 
 const createAssistant = async (userId: string, domain: string) => {
     try {
-      console.log('📄 Loading configuration file...');
+      // console.log('📄 Loading configuration file...');
       const configFileContent = loadConfigFile();
-      console.log(`📄 Config file loaded. Size: ${configFileContent.length} bytes`);
+      // console.log(`📄 Config file loaded. Size: ${configFileContent.length} bytes`);
   
       let configData;
       try {
         configData = JSON.parse(configFileContent);
-        console.log('✅ Config file parsed successfully');
+        // console.log('✅ Config file parsed successfully');
       } catch (error) {
         console.error('❌ Failed to parse config file:', error);
         throw new Error(`Failed to parse configuration file: ${(error as Error).message}`);
@@ -395,17 +395,17 @@ const createAssistant = async (userId: string, domain: string) => {
             collections: simplifiedCollections,
             common_query_examples: schema.common_query_examples?.slice(0, 5),
           });
-          console.log(`✅ Simplified schema size: ${finalSchemaJSON.length} bytes`);
+          // console.log(`✅ Simplified schema size: ${finalSchemaJSON.length} bytes`);
         }
       }
   
       // Step 1: Upload file
-      console.log('📤 Uploading schema file to OpenAI...');
+      // console.log('📤 Uploading schema file to OpenAI...');
       const fileId = await uploadFileToOpenAI(finalSchemaJSON, "mongodb_schema.json", "assistants");
-      console.log(`✅ File uploaded successfully. File ID: ${fileId}`);
+      // console.log(`✅ File uploaded successfully. File ID: ${fileId}`);
   
       // Step 2: Create the assistant (v2 API)
-      console.log('🤖 Creating assistant...', JSON.stringify(userId));
+      // console.log('🤖 Creating assistant...', JSON.stringify(userId));
       const createAssistantResponse = await axios.post(
         `${OPENAI_API_URL}/assistants`,
         {
@@ -434,10 +434,10 @@ const createAssistant = async (userId: string, domain: string) => {
       );
   
       const assistantData = createAssistantResponse.data;
-      console.log(`✅ Assistant created successfully. ID: ${assistantData.id}`);
+      // console.log(`✅ Assistant created successfully. ID: ${assistantData.id}`);
   
       // Step 3: Save to DB
-      console.log("💾 Saving assistant info to database...");
+      // console.log("💾 Saving assistant info to database...");
       const connection = await connectToDatabase(domain);
       const collection = connection.collection("openai_assistants");
   
@@ -449,7 +449,7 @@ const createAssistant = async (userId: string, domain: string) => {
         fileIds: [fileId],
         createdAt: new Date(),
       });
-      console.log("✅ Assistant saved to database.");
+      // console.log("✅ Assistant saved to database.");
   
       return assistantData;
     } catch (error: any) {
@@ -463,10 +463,10 @@ export async function GET(request: Request) {
   try {
     // Get domain from headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    console.log('Initializing assistant for domain:', domain);
+    // console.log('Initializing assistant for domain:', domain);
     
     const user = await getCurrentUser();
-    console.log('User:', user);
+    // console.log('User:', user);
     if (!user || !user.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -474,23 +474,23 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log('User authenticated:', user.username);
+    // console.log('User authenticated:', user.username);
 
     // Check if we already have a valid assistant
     const existingAssistant = await getExistingAssistant(user.username, domain);
     
     if (existingAssistant) {
-      console.log('Found existing assistant:', existingAssistant.id);
+      // console.log('Found existing assistant:', existingAssistant.id);
       // Verify the assistant still exists in OpenAI
       const isValid = await verifyAssistant(existingAssistant.id);
       
       if (isValid) {
-        console.log('Assistant is valid, returning ID');
+        // console.log('Assistant is valid, returning ID');
         return NextResponse.json({ assistantId: existingAssistant.id });
       }
-      console.log('Assistant is no longer valid, creating new one');
+      // console.log('Assistant is no longer valid, creating new one');
     } else {
-      console.log('No existing assistant found, creating new one');
+      // console.log('No existing assistant found, creating new one');
     }
 
     // Create a new assistant if none exists or the existing one is invalid

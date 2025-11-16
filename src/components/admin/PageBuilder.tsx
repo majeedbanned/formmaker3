@@ -144,7 +144,7 @@ const PageBuilder: React.FC<PageBuilderProps> = ({
   const handleEditModule = (moduleId: string) => {
     // The DynamicModule component handles the edit modal internally
     // We'll need to pass an onSave callback to actually save the changes
-    console.log("Edit module requested:", moduleId);
+    // console.log("Edit module requested:", moduleId);
   };
 
   const handleSaveModule = (

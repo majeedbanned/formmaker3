@@ -167,10 +167,10 @@ export async function POST(request: NextRequest) {
 
     const dummyAnswers = Array(120).fill(1); // Dummy answers for initial scan
     
-    console.log("scriptPath", scriptPath);
-    console.log("absoluteFilePath", absoluteFilePath);
-    console.log("dummyAnswers", dummyAnswers);
-    console.log("pythonCwd", pythonCwd);
+    // console.log("scriptPath", scriptPath);
+    // console.log("absoluteFilePath", absoluteFilePath);
+    // console.log("dummyAnswers", dummyAnswers);
+    // console.log("pythonCwd", pythonCwd);
     
     const initialScan = await new Promise<ScanResult>((resolve, reject) => {
       // const py = spawn('python3', [
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       // ], { cwd: pythonCwd });
       const py = spawn(PY_BIN, [ scriptPath, absoluteFilePath, JSON.stringify(dummyAnswers) ], { cwd: pythonCwd });
    
-      console.log("py", py);
+      // console.log("py", py);
 
       let stdout = '', stderr = '';
       
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
 
       py.on('close', (code) => {
         if (code !== 0) {
-          console.log("Python error:", stderr);
+          // console.log("Python error:", stderr);
           reject({ error: stderr || 'خطا در اسکن پاسخنامه' });
         } else {
           try {
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     const studentCode = qrParts[0];
     const examCode = qrParts[1];
 
-    console.log(`Extracted from QR: studentCode=${studentCode}, examCode=${examCode}`);
+    // console.log(`Extracted from QR: studentCode=${studentCode}, examCode=${examCode}`);
 
     // STEP 3: Connect to database and find exam by examCode
     const client = new MongoClient(domainConfig.connectionString);
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
       const schoolCode = examDetails.schoolCode || decoded.schoolCode || '';
       const examName = examDetails.data?.examName || examCode;
 
-      console.log(`Found exam: ${examName} (ID: ${examId})`);
+      // console.log(`Found exam: ${examName} (ID: ${examId})`);
 
       // STEP 4: Get questions for this exam
       const questions = await db.collection('examquestions').find({ 
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
         return q.question?.correctoption || 1;
       });
 
-      console.log(`Found ${questions.length} questions for exam ${examName}`);
+      // console.log(`Found ${questions.length} questions for exam ${examName}`);
 
       // STEP 5: Re-scan with actual correct answers for grading
       const finalScan = await new Promise<ScanResult>((resolve, reject) => {
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
 
         py.on('close', (code) => {
           if (code !== 0) {
-            console.log("Python error:", stderr);
+            // console.log("Python error:", stderr);
             reject({ error: stderr || 'خطا در تصحیح پاسخنامه' });
           } else {
             try {

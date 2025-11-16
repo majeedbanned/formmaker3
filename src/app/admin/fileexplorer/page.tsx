@@ -777,7 +777,7 @@ function PermissionModal({
 
           if (classesRes.ok) {
             const classes: ClassData[] = await classesRes.json();
-            console.log("classesRes", classes);
+            // console.log("classesRes", classes);
             classes.forEach((cls: ClassData) => {
               permissionOptions.push({
                 type: "class",
@@ -790,7 +790,7 @@ function PermissionModal({
 
           if (groupsRes.ok) {
             const groups: GroupData[] = await groupsRes.json();
-            console.log("groupsRes", groups);
+            // console.log("groupsRes", groups);
             groups.forEach((group: GroupData) => {
               permissionOptions.push({
                 type: "group",
@@ -803,7 +803,7 @@ function PermissionModal({
 
           if (teachersRes.ok) {
             const teachers: TeacherData[] = await teachersRes.json();
-            console.log("teachersRes", teachers);
+            // console.log("teachersRes", teachers);
             teachers.forEach((teacher: TeacherData) => {
               permissionOptions.push({
                 type: "teacher",

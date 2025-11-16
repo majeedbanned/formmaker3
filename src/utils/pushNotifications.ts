@@ -139,11 +139,11 @@ export async function sendNotificationToUser(
     .map(t => t.token);
 
   if (activeTokens.length === 0) {
-    console.log('No active push tokens for user');
+    // console.log('No active push tokens for user');
     return;
   }
 
-  console.log(`Sending notification to ${activeTokens.length} device(s)`);
+  // console.log(`Sending notification to ${activeTokens.length} device(s)`);
   await sendBulkNotifications(activeTokens, title, body, data);
 }
 

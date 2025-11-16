@@ -263,7 +263,7 @@ function calculateFinalScore(
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Teacher monthly grades request received");
+    // console.log("Teacher monthly grades request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Teacher monthly grades request for:", { classCode, courseCode, teacherCode: decoded.username });
+    // console.log("Teacher monthly grades request for:", { classCode, courseCode, teacherCode: decoded.username });
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -410,7 +410,7 @@ export async function GET(request: NextRequest) {
       const classStudents = classDoc.data.students || [];
       const allStudentCodes = classStudents.map((s: any) => s.studentCode);
 
-      console.log("All students in class:", allStudentCodes.length);
+      // console.log("All students in class:", allStudentCodes.length);
 
       // Get student information for ALL students in class
       const students = await db.collection('students').find({
@@ -447,7 +447,7 @@ export async function GET(request: NextRequest) {
         schoolCode: decoded.schoolCode
       }).sort({ date: -1 }).toArray() as any[];
 
-      console.log("Found cell data records:", cellData.length);
+      // console.log("Found cell data records:", cellData.length);
 
       // Filter data for current school year
       const filteredCellData = cellData.filter((cell: any) => {
@@ -626,7 +626,7 @@ export async function GET(request: NextRequest) {
       // Sort by student family name
       studentGrades.sort((a, b) => a.studentFamily.localeCompare(b.studentFamily, 'fa'));
 
-      console.log("Returning student grades for:", studentGrades.length, "students");
+      // console.log("Returning student grades for:", studentGrades.length, "students");
 
       await client.close();
 

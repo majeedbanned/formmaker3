@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Access the chatrooms collection directly
     const chatroomsCollection = connection.collection('chatrooms');
     
-    console.log(`Fetching chatrooms for school: ${schoolCode}, user: ${payload.userId}, userType: ${payload.userType}`);
+    // console.log(`Fetching chatrooms for school: ${schoolCode}, user: ${payload.userId}, userType: ${payload.userType}`);
     
     // Get all chatrooms for the school first
     const allChatrooms = await chatroomsCollection
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
       filteredChatrooms = [];
     }
     
-    console.log(`Found ${filteredChatrooms.length} accessible chatrooms out of ${allChatrooms.length} total`);
+    // console.log(`Found ${filteredChatrooms.length} accessible chatrooms out of ${allChatrooms.length} total`);
     
     return NextResponse.json({ chatrooms: filteredChatrooms });
   } catch (error) {

@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       const studentName = `${student.data.studentName || ''} ${student.data.studentFamily || ''}`.trim();
       const classCode = student.data.classCode?.[0]?.value || '';
 
-      console.log(`Student: ${studentName}, Code: ${studentCode}, Class: ${classCode}`);
+      // console.log(`Student: ${studentName}, Code: ${studentCode}, Class: ${classCode}`);
 
       if (!classCode) {
         await client.close();
@@ -263,15 +263,15 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      console.log(`Filtered ${classheetCells.length} cells out of ${allClassheetCells.length} for school year ${selectedYear}`);
+      // console.log(`Filtered ${classheetCells.length} cells out of ${allClassheetCells.length} for school year ${selectedYear}`);
       
       if (classheetCells.length > 0) {
-        console.log('Sample filtered cell:', {
-          date: classheetCells[0].date,
-          persianMonth: classheetCells[0].persianMonth,
-          courseCode: classheetCells[0].courseCode,
-          grades: classheetCells[0].grades
-        });
+        // console.log('Sample filtered cell:', {
+        //   date: classheetCells[0].date,
+        //   persianMonth: classheetCells[0].persianMonth,
+        //   courseCode: classheetCells[0].courseCode,
+        //   grades: classheetCells[0].grades
+        // });
       }
 
       // Build report card data
@@ -287,7 +287,7 @@ export async function GET(request: NextRequest) {
       // Fetch custom assessment values for all teacher-course pairs
       const assessmentValues: Record<string, Record<string, number>> = {};
       
-      console.log(`Fetching custom assessment values for ${classDoc.data.teachers?.length || 0} courses...`);
+      // console.log(`Fetching custom assessment values for ${classDoc.data.teachers?.length || 0} courses...`);
       
       for (const tc of classDoc.data.teachers || []) {
         try {
@@ -309,7 +309,7 @@ export async function GET(request: NextRequest) {
 
               if (Object.keys(customValues).length > 0) {
                 assessmentValues[tc.courseCode] = customValues;
-                console.log(`  Custom assessments for ${tc.courseCode}:`, customValues);
+                // console.log(`  Custom assessments for ${tc.courseCode}:`, customValues);
               }
             }
           }
@@ -319,12 +319,12 @@ export async function GET(request: NextRequest) {
       }
 
       // Process each course
-      console.log(`Processing ${classDoc.data.teachers?.length || 0} courses for class ${classCode}`);
+      // console.log(`Processing ${classDoc.data.teachers?.length || 0} courses for class ${classCode}`);
       
       classDoc.data.teachers?.forEach((tc: any) => {
         const courseData = courseMap.get(tc.courseCode);
         if (!courseData) {
-          console.log(`  Skipping course ${tc.courseCode} - no course data found`);
+          // console.log(`  Skipping course ${tc.courseCode} - no course data found`);
           return;
         }
 
@@ -359,7 +359,7 @@ export async function GET(request: NextRequest) {
           (cell: any) => cell.courseCode === tc.courseCode && cell.teacherCode === tc.teacherCode
         );
 
-        console.log(`Processing course ${courseKey} (${courseName}): found ${studentCells.length} cells`);
+        // console.log(`Processing course ${courseKey} (${courseName}): found ${studentCells.length} cells`);
 
         studentCells.forEach((cell: any, cellIndex: number) => {
           const cellDate = new Date(cell.date);
@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
 
           const monthKey = jMonth.toString();
           
-          console.log(`  Cell ${cellIndex}: date=${cell.date}, persianMonth=${cell.persianMonth}, jMonth=${jMonth}, monthKey=${monthKey}, grades=${cell.grades?.length || 0}`);
+          // console.log(`  Cell ${cellIndex}: date=${cell.date}, persianMonth=${cell.persianMonth}, jMonth=${jMonth}, monthKey=${monthKey}, grades=${cell.grades?.length || 0}`);
 
           // Ensure arrays exist before pushing
           if (!reportCardData.courses[courseKey].monthlyRawGrades[monthKey]) {
@@ -383,13 +383,13 @@ export async function GET(request: NextRequest) {
 
           // Collect raw grades
           if (cell.grades && cell.grades.length > 0) {
-            console.log(`  Month ${monthKey}: Adding ${cell.grades.length} grades:`, cell.grades);
+            // console.log(`  Month ${monthKey}: Adding ${cell.grades.length} grades:`, cell.grades);
             reportCardData.courses[courseKey].monthlyRawGrades[monthKey].push(...cell.grades);
           }
 
           // Collect assessments
           if (cell.assessments && cell.assessments.length > 0) {
-            console.log(`  Month ${monthKey}: Adding ${cell.assessments.length} assessments:`, cell.assessments);
+            // console.log(`  Month ${monthKey}: Adding ${cell.assessments.length} assessments:`, cell.assessments);
             reportCardData.courses[courseKey].monthlyAssessments[monthKey].push(...cell.assessments);
           }
         });
@@ -409,7 +409,7 @@ export async function GET(request: NextRequest) {
             // Normalize to base 20: (achieved/possible) × 20
             const baseGrade = totalPoints > 0 ? (totalValue / totalPoints) * 20 : 0;
 
-            console.log(`Course ${courseKey}, Month ${monthKey}: rawGrades=${rawGrades.length}, totalValue=${totalValue}, totalPoints=${totalPoints}, baseGrade=${baseGrade}`);
+            // console.log(`Course ${courseKey}, Month ${monthKey}: rawGrades=${rawGrades.length}, totalValue=${totalValue}, totalPoints=${totalPoints}, baseGrade=${baseGrade}`);
 
             // Apply assessments with custom values
             reportCardData.courses[courseKey].monthlyGrades[monthKey] = calculateFinalScore(
@@ -419,7 +419,7 @@ export async function GET(request: NextRequest) {
               assessmentValues
             );
             
-            console.log(`Course ${courseKey}, Month ${monthKey}: finalGrade=${reportCardData.courses[courseKey].monthlyGrades[monthKey]}`);
+            // console.log(`Course ${courseKey}, Month ${monthKey}: finalGrade=${reportCardData.courses[courseKey].monthlyGrades[monthKey]}`);
           }
         }
 
@@ -452,14 +452,14 @@ export async function GET(request: NextRequest) {
       // Clean up raw data for mobile response and log final data
       Object.keys(reportCardData.courses).forEach((courseKey) => {
         const course = reportCardData.courses[courseKey];
-        console.log(`Final course ${courseKey}: yearAverage=${course.yearAverage}`);
-        console.log(`  Monthly grades:`, course.monthlyGrades);
+        // console.log(`Final course ${courseKey}: yearAverage=${course.yearAverage}`);
+        // console.log(`  Monthly grades:`, course.monthlyGrades);
         delete reportCardData.courses[courseKey].monthlyRawGrades;
         delete reportCardData.courses[courseKey].monthlyAssessments;
       });
 
-      console.log(`Overall weighted average: ${reportCardData.weightedAverage}`);
-      console.log(`Total courses: ${Object.keys(reportCardData.courses).length}`);
+      // console.log(`Overall weighted average: ${reportCardData.weightedAverage}`);
+      // console.log(`Total courses: ${Object.keys(reportCardData.courses).length}`);
 
       await client.close();
 

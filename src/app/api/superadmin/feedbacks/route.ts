@@ -181,7 +181,7 @@ export async function PATCH(request: NextRequest) {
               smsMessage
             );
 
-            console.log(`SMS notification sent to ${existingFeedback.phone} for feedback ${feedbackId}`);
+            // console.log(`SMS notification sent to ${existingFeedback.phone} for feedback ${feedbackId}`);
           } catch (smsError) {
             // Log error but don't fail the request
             console.error('Error sending SMS notification:', smsError);

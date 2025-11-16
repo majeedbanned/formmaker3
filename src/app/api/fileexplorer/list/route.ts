@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     const rawPath = searchParams.get("path") || "";
     const path = normalizePath(rawPath);
     
-    console.log(`Listing files for school: ${schoolCode}, path: "${path}"`);
+    // console.log(`Listing files for school: ${schoolCode}, path: "${path}"`);
 
     // Get domain from request headers or use default
     const domain = request.headers.get("x-domain") || "localhost:3000";
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
       // This allows them to manage all content in the school
       folderQuery = { schoolCode, path };
       fileQuery = { schoolCode, path };
-      console.log(`School admin can see all files for school: ${schoolCode}`);
+      // console.log(`School admin can see all files for school: ${schoolCode}`);
     }
 
     // Get folders for the current path
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
       .sort({ name: 1 })
       .toArray();
 
-    console.log(`Found ${folders.length} folders at path "${path}"`);
+    // console.log(`Found ${folders.length} folders at path "${path}"`);
 
     // Get files for the current path
     const files = await fileCollection
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
       .sort({ name: 1 })
       .toArray();
       
-    console.log(`Found ${files.length} files at path "${path}"`);
+    // console.log(`Found ${files.length} files at path "${path}"`);
 
     // Get unique creator usernames for efficient lookup
     const allItems = [...folders, ...files];

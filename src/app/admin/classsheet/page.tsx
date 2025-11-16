@@ -52,7 +52,7 @@ export default function ClassSheetPage() {
   // Get schoolCode from authenticated user
   const schoolCode = user?.schoolCode;
 
-  console.log("user", user);
+  // console.log("user", user);
 
   // Check if teacher has adminAccess
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function ClassSheetPage() {
 
         if (currentTeacher?.data?.adminAccess === true) {
           setIsAdminTeacher(true);
-          console.log("Teacher has admin access");
+          // console.log("Teacher has admin access");
         } else {
           setIsAdminTeacher(false);
         }

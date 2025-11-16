@@ -135,7 +135,7 @@ const ImagePopup = ({
 }) => {
   if (!images || images.length === 0) return null;
 
-  console.log("images", images);
+  // console.log("images", images);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
@@ -366,19 +366,19 @@ export default function ExamPage({
     )
       return;
 
-    console.log("Question time expired", {
-      currentQuestionIndex,
-      total: questions.length,
-    });
+    // console.log("Question time expired", {
+    //   currentQuestionIndex,
+    //   total: questions.length,
+    // });
 
     // Time's up for this question
     if (currentQuestionIndex >= questions.length - 1) {
       // If this is the last question, automatically finish the exam
-      console.log("Last question reached, finishing exam");
+      // console.log("Last question reached, finishing exam");
       saveExam(true);
     } else {
       // Otherwise move to the next question
-      console.log("Moving to next question", currentQuestionIndex + 1);
+      // console.log("Moving to next question", currentQuestionIndex + 1);
 
       // Save current answer first
       saveTemporarily(false);
@@ -389,7 +389,7 @@ export default function ExamPage({
 
       // Start the timer for the next question after a short delay
       setTimeout(() => {
-        console.log("Starting timer for next question", nextIndex);
+        // console.log("Starting timer for next question", nextIndex);
         startQuestionTimer(nextIndex);
       }, 300);
     }

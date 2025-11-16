@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       isAnswerKeyOnly: true,
     });
 
-    console.log(`Deleted ${deleteResult.deletedCount} existing answer keys for exam ${examId}`);
+    // console.log(`Deleted ${deleteResult.deletedCount} existing answer keys for exam ${examId}`);
 
     // Prepare questions to insert
     const questionsToInsert = keys.map((key: any) => {

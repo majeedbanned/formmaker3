@@ -748,7 +748,7 @@ const ReportCards = ({
 
         if (currentTeacher?.data?.adminAccess === true) {
           setIsAdminTeacher(true);
-          console.log("Teacher has admin access");
+          // console.log("Teacher has admin access");
         } else {
           setIsAdminTeacher(false);
         }
@@ -871,10 +871,10 @@ const ReportCards = ({
         const coursesResponse = await fetch(
           `/api/courses/sheet?schoolCode=${schoolCode}`
         );
-        console.log("coursesResponse", coursesResponse);
+        // console.log("coursesResponse", coursesResponse);
         if (coursesResponse.ok) {
           const coursesData = await coursesResponse.json();
-          console.log("coursesData", coursesData);
+          // console.log("coursesData", coursesData);
           // Create a map of course codes to course data
           const courseMap: Record<string, CourseData> = {};
 

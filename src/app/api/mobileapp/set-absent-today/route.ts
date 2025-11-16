@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     // console.log("jDay", jDay);
     // console.log("persianDate", persianDate);
     // console.log("persianMonth", persianMonth);
-    console.log("studentClass", studentClass);
+    // console.log("studentClass", studentClass);
     // Filter teachers/courses for today
     const todaysCourses = studentClass.data.teachers
       .filter((teacher: any) => 
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         }));
       })
       .flat();
-console.log("todaysCourses", todaysCourses);
+// console.log("todaysCourses", todaysCourses);
     // Fetch course names
     const courseCodes = [...new Set(todaysCourses.map((c: any) => c.courseCode))];
     const courses = await db.collection('courses').find({

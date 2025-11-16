@@ -250,9 +250,9 @@ export async function GET(request: NextRequest) {
       });
       
       // Log for debugging (remove in production)
-      console.log('Class codes to lookup:', uniqueAbsentClassCodes);
-      console.log('Class map size:', classMap.size);
-      console.log('Class map entries:', Array.from(classMap.entries()));
+      // console.log('Class codes to lookup:', uniqueAbsentClassCodes);
+      // console.log('Class map size:', classMap.size);
+      // console.log('Class map entries:', Array.from(classMap.entries()));
 
       // Separate courses with and without presence
       const coursesWithPresence: { courseCode: string; courseName: string }[] = [];
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
         
         // Log missing class names for debugging
         if (!className || className === record.classCode) {
-          console.log('Missing className for classCode:', record.classCode, 'Student:', record.studentCode);
+          // console.log('Missing className for classCode:', record.classCode, 'Student:', record.studentCode);
         }
         
         return {

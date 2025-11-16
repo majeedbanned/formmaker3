@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     // We'll use 120 as default (A4) - scanner will detect actual paper size
     const dummyCorrectAnswers = Array(120).fill(1);
 
-    console.log("Scanning answer sheet to extract all marked answers...");
+    // console.log("Scanning answer sheet to extract all marked answers...");
 
     // Create directory if it doesn't exist
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'scan');
@@ -133,8 +133,8 @@ export async function POST(request: Request) {
         } else {
           try {
             const result = JSON.parse(stdout) as ScanResult;
-            console.log("Scan result:", result);
-            console.log("User answers extracted:", result.Useranswers);
+            // console.log("Scan result:", result);
+            // console.log("User answers extracted:", result.Useranswers);
             
             // Extract user answers (these will become the correct answers for the keys)
             const userAnswers = result.Useranswers;
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
               answer: answer
             })).filter(item => item.answer > 0); // Only include answered questions
 
-            console.log(`Extracted ${extractedAnswers.length} answered questions out of ${userAnswers.length} total`);
+            // console.log(`Extracted ${extractedAnswers.length} answered questions out of ${userAnswers.length} total`);
             
             // Return the extracted answers (all of them, including 0 for unanswered)
             resolve(NextResponse.json({

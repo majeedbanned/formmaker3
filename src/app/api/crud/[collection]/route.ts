@@ -174,7 +174,7 @@ export async function GET(
     if (conditions.length > 0) {
       query.$and = conditions;
     }
-    console.log('>>>>', query)
+    // console.log('>>>>', query)
     const documents = await collection.find(query).sort({ createdAt: -1 }).toArray();
     logger.info(`Found ${documents.length} documents in ${params1.collection}`, { domain });
     return NextResponse.json(documents);
@@ -269,7 +269,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    console.log('>>>>>', id)
+    // console.log('>>>>>', id)
 
     const result = await collection.findOneAndUpdate(
       { _id: new mongoose.Types.ObjectId(id) },
@@ -281,7 +281,7 @@ export async function PUT(
       },
       { returnDocument: 'after' }
     );
-    //console.log('>>>>><<<', result.data)
+    // console.log('>>>>><<<', result.data)
 
     if (!result ) {
       const params1 = await params;

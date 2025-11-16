@@ -26,7 +26,7 @@ export async function DELETE(request: Request) {
     // Access the messagelist collection directly
     const messagelistCollection = connection.collection('messagelist');
     
-    console.log("Deleting message:", messageId);
+    // console.log("Deleting message:", messageId);
     
     // Convert string ID to ObjectId
     let objectId;
@@ -43,7 +43,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
     
-    console.log(`Message ${messageId} deleted successfully`);
+    // console.log(`Message ${messageId} deleted successfully`);
     
     return NextResponse.json({ 
       success: true,

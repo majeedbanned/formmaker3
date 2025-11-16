@@ -120,7 +120,7 @@ const DynamicHomePage: React.FC<DynamicHomePageProps> = ({
 
   const handleEditModule = (moduleId: string) => {
     // The DynamicModule component handles the edit modal internally
-    console.log("Edit module requested:", moduleId);
+    // console.log("Edit module requested:", moduleId);
   };
 
   const handleSaveModule = async (

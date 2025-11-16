@@ -105,7 +105,7 @@ export default function Home() {
     rowId: string,
     rowData?: Record<string, unknown>
   ) => {
-    console.log("Import students for row:", rowId, rowData);
+    // console.log("Import students for row:", rowId, rowData);
 
     if (!rowData) return;
 
@@ -670,7 +670,7 @@ export default function Home() {
       }
 
       const result = await response.json();
-      console.log("Import result:", result);
+      // console.log("Import result:", result);
 
       // Close the modal and refresh the data
       setImportModalOpen(false);
@@ -1192,13 +1192,13 @@ export default function Home() {
           ]}
           onAfterAdd={async (entity) => {
             return;
-            console.log("Entity added:", entity);
+            // console.log("Entity added:", entity);
 
             // Update students' classCode field
             await updateStudentsClassCode(entity as unknown as ClassData);
           }}
           onAfterEdit={async (editedEntity) => {
-            console.log("Entity updated:", editedEntity);
+            // console.log("Entity updated:", editedEntity);
 
             const typedEntity = editedEntity as unknown as ClassData;
 
@@ -1210,9 +1210,9 @@ export default function Home() {
               previousData &&
               previousData.className !== typedEntity.className
             ) {
-              console.log(
-                `Class name changed from "${previousData.className}" to "${typedEntity.className}"`
-              );
+              // console.log(
+              ////  `Class name changed from "${previousData.className}" to "${typedEntity.className}"`
+             // );
 
               // Update the class name in all students' records
               try {
@@ -1234,9 +1234,9 @@ export default function Home() {
 
                 if (updateResponse.ok) {
                   const result = await updateResponse.json();
-                  console.log(
-                    `Updated class name for ${result.updated} students`
-                  );
+                  // console.log(
+                  //  `Updated class name for ${result.updated} students`
+                 // );
                 } else {
                   console.error(
                     "Failed to update class name in student records:",
@@ -1255,7 +1255,7 @@ export default function Home() {
             // await updateStudentsClassCode(typedEntity);
           }}
           onAfterDelete={async (deletedEntity) => {
-            console.log("Entity deleted:", deletedEntity);
+            // console.log("Entity deleted:", deletedEntity);
 
             // Extract the class code from the deleted entity
             const classData = deletedEntity.data as unknown as ClassData;
@@ -1266,7 +1266,7 @@ export default function Home() {
             }
           }}
           onAfterGroupDelete={async (deletedEntities) => {
-            console.log("Entities deleted:", deletedEntities);
+            // console.log("Entities deleted:", deletedEntities);
 
             // Process each deleted class
             for (const deletedEntity of deletedEntities) {
@@ -1441,17 +1441,17 @@ interface ClassData {
 async function updateStudentsClassCode(entity: ClassData) {
   // Check if entity has students array
   if (!entity.students || !Array.isArray(entity.students)) {
-    console.log("No students to update");
+    // console.log("No students to update");
     return;
   }
 
   // Make sure we have the required data (classCode and className)
   if (!entity.classCode || !entity.className) {
-    console.log("Missing required class data (classCode or className)");
+    // console.log("Missing required class data (classCode or className)");
     return;
   }
 
-  console.log("entity.students", entity.students);
+  // console.log("entity.students", entity.students);
 
   try {
     // Create class info object to be assigned to each student
@@ -1460,13 +1460,13 @@ async function updateStudentsClassCode(entity: ClassData) {
       value: entity.classCode,
     };
 
-    console.log(
-      `Updating ${entity.students.length} students with class: ${entity.className} (${entity.classCode})`
-    );
+    // console.log(
+  //    `Updating ${entity.students.length} students with class: ${entity.className} (${entity.classCode})`
+  //  );
 
     // For checking which students were removed from the class
     // First, get all students who are currently assigned to this class
-    console.log("Finding students assigned to class", entity.classCode);
+    // console.log("Finding students assigned to class", entity.classCode);
     const findClassStudentsResponse = await fetch(
       `/api/students/findByClass?classCode=${entity.classCode}`,
       {
@@ -1501,9 +1501,9 @@ async function updateStudentsClassCode(entity: ClassData) {
           removedStudentCodes.includes(student.data.studentCode.toString())
         );
 
-        console.log(
-          `Found ${studentsToRemove.length} students to remove from class`
-        );
+        // console.log(
+       //   `Found ${studentsToRemove.length} students to remove from class`
+       // );
       }
     } else {
       console.error("Failed to find current students in class");
@@ -1512,7 +1512,7 @@ async function updateStudentsClassCode(entity: ClassData) {
     // Update each student in the students collection
     for (const student of entity.students) {
       if (!student.studentCode) {
-        console.log("Missing studentCode for a student, skipping", student);
+        // console.log("Missing studentCode for a student, skipping", student);
         continue;
       }
 
@@ -1533,11 +1533,11 @@ async function updateStudentsClassCode(entity: ClassData) {
         }
 
         const findResult = await findResponse.json();
-        console.log("findResult", findResult);
+        // console.log("findResult", findResult);
         if (!findResult.data || findResult.data.length === 0) {
-          console.log(
-            `Student with code ${student.studentCode} not found, will create new record`
-          );
+          // console.log(
+        //    `Student with code ${student.studentCode} not found, will create new record`
+         // );
 
           // Create new student record if not found
           const createResponse = await fetch("/api/crud/students", {
@@ -1590,9 +1590,9 @@ async function updateStudentsClassCode(entity: ClassData) {
               await createResponse.text()
             );
           } else {
-            console.log(
-              `Created new student ${student.studentCode} with classCode`
-            );
+            // console.log(
+            //  `Created new student ${student.studentCode} with classCode`
+        //    );
           }
 
           continue;
@@ -1618,7 +1618,7 @@ async function updateStudentsClassCode(entity: ClassData) {
             await updateResponse.text()
           );
         } else {
-          console.log(`Updated classCode for student ${student.studentCode}`);
+          // console.log(`Updated classCode for student ${student.studentCode}`);
         }
       } catch (error) {
         console.error(
@@ -1631,9 +1631,9 @@ async function updateStudentsClassCode(entity: ClassData) {
     // Remove class code from students who are no longer in the class
     for (const student of studentsToRemove) {
       try {
-        console.log(
-          `Removing class ${entity.classCode} from student ${student.data.studentCode}`
-        );
+        // console.log(
+     //     `Removing class ${entity.classCode} from student ${student.data.studentCode}`
+     //   );
         const removeResponse = await fetch("/api/students/removeClassCode", {
           method: "PUT",
           headers: {
@@ -1652,9 +1652,9 @@ async function updateStudentsClassCode(entity: ClassData) {
             await removeResponse.text()
           );
         } else {
-          console.log(
-            `Removed class code from student ${student.data.studentCode}`
-          );
+          // console.log(
+          //  `Removed class code from student ${student.data.studentCode}`
+         // );
         }
       } catch (error) {
         console.error(
@@ -1664,7 +1664,7 @@ async function updateStudentsClassCode(entity: ClassData) {
       }
     }
 
-    console.log("Finished updating students");
+    // console.log("Finished updating students");
   } catch (error) {
     console.error("Error updating students' class codes:", error);
   }
@@ -1673,11 +1673,11 @@ async function updateStudentsClassCode(entity: ClassData) {
 // Function to remove a class from all student records
 async function removeClassFromAllStudents(classCode: string) {
   if (!classCode) {
-    console.log("Missing required class code");
+    // console.log("Missing required class code");
     return;
   }
 
-  console.log(`Removing class ${classCode} from all student records`);
+  // console.log(`Removing class ${classCode} from all student records`);
 
   try {
     // Call the API to remove this class from all student records
@@ -1697,7 +1697,7 @@ async function removeClassFromAllStudents(classCode: string) {
 
     if (removeResponse.ok) {
       const result = await removeResponse.json();
-      console.log(`Removed class from ${result.updated} student records`);
+      // console.log(`Removed class from ${result.updated} student records`);
       return result;
     } else {
       console.error(

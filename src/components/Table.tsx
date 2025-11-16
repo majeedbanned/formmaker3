@@ -502,13 +502,13 @@ const renderCellContent = (
   //return;
   if (!value) return <span></span>;
   if (!field) return <span>{String(value)}</span>;
-  //console.log("value", field.type);
+  // console.log("value", field.type);
   // Handle special field types
   switch (field.type) {
     case "file":
       if (field.isMultiple) {
         const files = value as UploadedFile[];
-        console.log("filesx", files);
+        // console.log("filesx", files);
         return (
           <HoverCard>
             <HoverCardTrigger>

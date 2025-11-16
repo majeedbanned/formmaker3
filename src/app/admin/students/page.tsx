@@ -99,9 +99,9 @@ async function updateClassWithStudentInfo(
         await response.text()
       );
     } else {
-      console.log(
-        `Successfully updated class ${classEntry.value} with student ${student.studentCode}`
-      );
+      // console.log(
+      //   `Successfully updated class ${classEntry.value} with student ${student.studentCode}`
+      // );
     }
   } catch (error) {
     console.error(`Error updating class ${classEntry.value}:`, error);
@@ -133,9 +133,9 @@ async function removeStudentFromClass(
         await response.text()
       );
     } else {
-      console.log(
-        `Successfully removed student ${student.studentCode} from class ${classCode}`
-      );
+      // console.log(
+      //   `Successfully removed student ${student.studentCode} from class ${classCode}`
+      // );
     }
   } catch (error) {
     console.error(`Error removing student from class ${classCode}:`, error);
@@ -759,7 +759,7 @@ function StudentsPageContent() {
           //   },
           // ]}
           onAfterAdd={async (entity: StudentEntity) => {
-            console.log("Entity added:", entity);
+            // console.log("Entity added:", entity);
 
             // Check if the entity has classCode field
             const classCodeEntries = entity?.classCode;
@@ -770,13 +770,13 @@ function StudentsPageContent() {
             ) {
               // For each class code, update the corresponding class document
               for (const classEntry of classCodeEntries) {
-                console.log("classEntry", classEntry);
+                // console.log("classEntry", classEntry);
                 await updateClassWithStudentInfo(entity, classEntry);
               }
             }
           }}
           onAfterEdit={async (entity: StudentEntity) => {
-            console.log("Entity updated:", entity);
+            // console.log("Entity updated:", entity);
 
             // Check if the entity has classCode field
             const classCodeEntries = entity?.classCode;
@@ -822,7 +822,7 @@ function StudentsPageContent() {
             }
           }}
           onAfterDelete={async (entity) => {
-            console.log("Entity deleted:", entity);
+            // console.log("Entity deleted:", entity);
 
             // Check if the entity has classCode field
             const classCodeEntries = entity?.data?.classCode;
@@ -849,9 +849,9 @@ function StudentsPageContent() {
                   });
 
                   if (response.ok) {
-                    console.log(
-                      `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
-                    );
+                    // console.log(
+                    //   `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
+                    // );
                   } else {
                     console.error(
                       `Failed to remove student from class ${classEntry.value}:`,
@@ -868,7 +868,7 @@ function StudentsPageContent() {
             }
           }}
           onAfterGroupDelete={async (entities) => {
-            console.log("Entities deleted:", entities);
+            // console.log("Entities deleted:", entities);
 
             // Process each deleted entity
             for (const entity of entities) {
@@ -897,9 +897,9 @@ function StudentsPageContent() {
                     });
 
                     if (response.ok) {
-                      console.log(
-                        `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
-                      );
+                      // console.log(
+                      //   `Removed student ${entity.data.studentCode} from class ${classEntry.label}`
+                      // );
                     } else {
                       console.error(
                         `Failed to remove student from class ${classEntry.value}:`,

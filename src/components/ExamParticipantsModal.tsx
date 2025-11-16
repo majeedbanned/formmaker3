@@ -146,7 +146,7 @@ export function ExamParticipantsModal({
   const handleDownloadAnswers = async (participantId: string) => {
     try {
       // Implement download functionality
-      console.log(`Downloading answers for participant ${participantId}`);
+      // console.log(`Downloading answers for participant ${participantId}`);
     } catch (error) {
       console.error("Error downloading answers", error);
     }

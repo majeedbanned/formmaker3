@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       });
       
       if (!parentFolder) {
-        console.log(`Parent folder not found: ${parentFolderName} at path: ${grandparentPath}`);
+        // console.log(`Parent folder not found: ${parentFolderName} at path: ${grandparentPath}`);
         return new NextResponse(
           JSON.stringify({ message: "Parent folder does not exist" }),
           { status: 400 }
@@ -202,8 +202,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log(`Deleting folder: ${folder.name} at path: ${folder.path}`);
-    console.log(`This will also delete all subfolders and files in ${folder.path}/${folder.name}`);
+    // console.log(`Deleting folder: ${folder.name} at path: ${folder.path}`);
+    // console.log(`This will also delete all subfolders and files in ${folder.path}/${folder.name}`);
     
     // Check if the folder belongs to the user's school
     if (folder.schoolCode !== schoolCode) {

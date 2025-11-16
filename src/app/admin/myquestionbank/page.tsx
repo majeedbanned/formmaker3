@@ -125,7 +125,7 @@ const toPersianNumber = (num: number): string => {
 // Add a utility function to handle image paths
 const getImagePath = (path: string) => {
   // For debugging
-  console.log("Original image path:", path);
+  // console.log("Original image path:", path);
 
   // If already contains the prefix, return as is
   if (path.startsWith("https://file.farsamooz.ir/q/")) {
@@ -146,13 +146,13 @@ const renderHTML = (html: string | undefined) => {
   if (!html) return { __html: "" };
 
   // Logging original content for debugging
-  console.log("Processing HTML content");
+  // console.log("Processing HTML content");
 
   // First pattern: Match img tags with src attribute in single quotes
   let processed = html.replace(
     /<img([^>]*)\ssrc='([^']+)'([^>]*)>/g,
     (match, before, src, after) => {
-      console.log(`Found image with src='${src}'`);
+      // console.log(`Found image with src='${src}'`);
 
       // Don't add prefix if it already has the prefix or is a data URL
       if (
@@ -170,7 +170,7 @@ const renderHTML = (html: string | undefined) => {
   processed = processed.replace(
     /<img([^>]*)\ssrc="([^"]+)"([^>]*)>/g,
     (match, before, src, after) => {
-      console.log(`Found image with src="${src}"`);
+      // console.log(`Found image with src="${src}"`);
 
       // Don't add prefix if it already has the prefix or is a data URL
       if (
@@ -350,7 +350,7 @@ function QuestionBankContent(): React.ReactElement {
   const fetchQuestions = async (page: number, filterParams = filters) => {
     // Don't fetch if user isn't loaded yet
     if (isLoading || !user) {
-      console.log("User not loaded yet, skipping fetch");
+      // console.log("User not loaded yet, skipping fetch");
       return;
     }
 
@@ -397,7 +397,7 @@ function QuestionBankContent(): React.ReactElement {
   const fetchCategories = async (filterParams = filters) => {
     // Don't fetch if user isn't loaded yet
     if (isLoading || !user) {
-      console.log("User not loaded yet, skipping categories fetch");
+      // console.log("User not loaded yet, skipping categories fetch");
       return;
     }
 
@@ -438,7 +438,7 @@ function QuestionBankContent(): React.ReactElement {
   const fetchExamCategories = async (examId: string) => {
     // Don't fetch if user isn't loaded yet
     if (isLoading || !user) {
-      console.log("User not loaded yet, skipping exam categories fetch");
+      // console.log("User not loaded yet, skipping exam categories fetch");
       return;
     }
 

@@ -734,14 +734,14 @@ export function ReportPreviewStep({
     );
 
     // Debug: Log final student data
-    console.log(
-      "Final students array:",
-      studentsArray.map((s) => ({
-        name: s.studentName,
-        descriptiveGradesCount: s.descriptiveGrades?.length || 0,
-        descriptiveGrades: s.descriptiveGrades,
-      }))
-    );
+    // console.log(
+    //   "Final students array:",
+    //   studentsArray.map((s) => ({
+    //     name: s.studentName,
+    //     descriptiveGradesCount: s.descriptiveGrades?.length || 0,
+    //     descriptiveGrades: s.descriptiveGrades,
+    //   }))
+    // );
 
     // Ensure all grades are sorted by date before processing
     studentsArray.forEach((student) => {

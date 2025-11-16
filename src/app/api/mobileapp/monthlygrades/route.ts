@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("User from token:", user);
+    // console.log("User from token:", user);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Using connection string for domain:", user.domain);
+    // console.log("Using connection string for domain:", user.domain);
 
     // Connect to MongoDB using domain-specific connection string
     const client = new MongoClient(domainConfig.connectionString);
@@ -270,16 +270,16 @@ export async function GET(request: NextRequest) {
         .filter((classObj: any) => classObj && typeof classObj === 'object' && classObj.value)
         .map((classObj: any) => classObj.value);
 
-      console.log("Student class codes:", studentClassCodes);
-      console.log("Looking for studentCode:", user.username);
-      console.log("Looking for schoolCode:", user.schoolCode);
+      // console.log("Student class codes:", studentClassCodes);
+      // console.log("Looking for studentCode:", user.username);
+      // console.log("Looking for schoolCode:", user.schoolCode);
 
       // First, let's check if there are ANY records for this student
       const allStudentData = await db.collection('classsheet').find({
         studentCode: user.username,
         schoolCode: user.schoolCode
       }).toArray() as any[];
-      console.log("All data for student:", allStudentData.length);
+      // console.log("All data for student:", allStudentData.length);
 
       // Fetch all grade data for this student
       let cellData = await db.collection('classsheet').find({
@@ -292,7 +292,7 @@ export async function GET(request: NextRequest) {
         ]
       }).sort({ date: -1 }).toArray() as any[];
 
-      console.log("Found cell data with grades/assessments:", cellData.length);
+      // console.log("Found cell data with grades/assessments:", cellData.length);
 
       // If no data with grades/assessments, try to get any data for this student
       if (cellData.length === 0) {
@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
           classCode: { $in: studentClassCodes },
           schoolCode: user.schoolCode
         }).sort({ date: -1 }).toArray() as any[];
-        console.log("Found any cell data for student:", cellData.length);
+        // console.log("Found any cell data for student:", cellData.length);
       }
 
       // Get course and teacher information

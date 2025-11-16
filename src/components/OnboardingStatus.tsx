@@ -77,14 +77,14 @@ export default function OnboardingStatus({
   const fetchOnboardingStatus = async () => {
     try {
       setLoading(true);
-      console.log("Fetching onboarding status...");
+      // console.log("Fetching onboarding status...");
       const response = await fetch("/api/onboarding/status", {
         headers: {
           "x-domain": window.location.host,
         },
       });
 
-      console.log("Response status:", response.status);
+      // console.log("Response status:", response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -93,7 +93,7 @@ export default function OnboardingStatus({
       }
 
       const data = await response.json();
-      console.log("Onboarding status data:", data);
+      // console.log("Onboarding status data:", data);
       setStatus(data);
     } catch (err) {
       console.error("Error fetching onboarding status:", err);
@@ -134,21 +134,21 @@ export default function OnboardingStatus({
   }
 
   if (!status) {
-    console.log("No status data, returning null");
+    // console.log("No status data, returning null");
     return null;
   }
 
-  console.log("Status check:", {
-    completedSteps: status.completedSteps,
-    totalSteps: status.totalSteps,
-    hasTeachers: status.hasTeachers,
-    hasClasses: status.hasClasses,
-    hasStudents: status.hasStudents
-  });
+  // console.log("Status check:", {
+  //   completedSteps: status.completedSteps,
+  //   totalSteps: status.totalSteps,
+  //   hasTeachers: status.hasTeachers,
+  //   hasClasses: status.hasClasses,
+  //   hasStudents: status.hasStudents
+  // });
 
   // If all steps are completed, show a completion report
   if (status.completedSteps >= status.totalSteps) {
-    console.log("All steps completed, showing completion report");
+    // console.log("All steps completed, showing completion report");
     return (
       <motion.div
         initial={{ opacity: 0, y: -20 }}

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateSch
     client = new MongoClient(MONGODB_URI);
     await client.connect();
 
-    console.log("Connected to MongoDB successfully");
+    // console.log("Connected to MongoDB successfully");
 
     // Check if database already exists
     const adminDb = client.db().admin();
@@ -72,18 +72,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateSch
     const sourceDb = client.db(SOURCE_DATABASE);
     const targetDb = client.db(databaseName);
 
-    console.log(`Starting to copy collections from ${SOURCE_DATABASE} to ${databaseName}`);
+    // console.log(`Starting to copy collections from ${SOURCE_DATABASE} to ${databaseName}`);
 
     // Copy each collection with its data
     for (const collectionName of COLLECTIONS_TO_COPY) {
       try {
-        console.log(`Copying collection: ${collectionName}`);
+        // console.log(`Copying collection: ${collectionName}`);
         
         // Get all documents from source collection
         const sourceCollection = sourceDb.collection(collectionName);
         const documents = await sourceCollection.find({}).toArray();
         
-        console.log(`Found ${documents.length} documents in ${collectionName}`);
+        // console.log(`Found ${documents.length} documents in ${collectionName}`);
 
         if (documents.length > 0) {
           // Create target collection and insert documents
@@ -112,11 +112,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateSch
           });
           
           await targetCollection.insertMany(documentsToInsert);
-          console.log(`Successfully copied ${documents.length} documents to ${collectionName}`);
+          // console.log(`Successfully copied ${documents.length} documents to ${collectionName}`);
         } else {
           // Create empty collection even if source is empty
           await targetDb.createCollection(collectionName);
-          console.log(`Created empty collection: ${collectionName}`);
+          // console.log(`Created empty collection: ${collectionName}`);
         }
       } catch (error) {
         console.error(`Error copying collection ${collectionName}:`, error);
@@ -128,13 +128,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateSch
     try {
       // Example: Create index on schoolCode in schools collection
       await targetDb.collection("schools").createIndex({ "data.schoolCode": 1 }, { unique: true });
-      console.log("Created indexes successfully");
+      // console.log("Created indexes successfully");
     } catch (error) {
       console.error("Error creating indexes:", error);
       // Non-critical error, continue
     }
 
-    console.log(`Database ${databaseName} created successfully with all collections`);
+    // console.log(`Database ${databaseName} created successfully with all collections`);
 
     return NextResponse.json({
       success: true,
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateSch
     if (client) {
       try {
         await client.close();
-        console.log("MongoDB connection closed");
+        // console.log("MongoDB connection closed");
       } catch (error) {
         console.error("Error closing MongoDB connection:", error);
       }

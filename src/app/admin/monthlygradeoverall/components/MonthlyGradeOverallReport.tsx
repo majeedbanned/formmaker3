@@ -476,11 +476,11 @@ const MonthlyGradeOverallReport = ({
               `/api/courses?courseCode=${teacherCourse.courseCode}&schoolCode=${schoolCode}`
             );
 
-            //console.log("responsexx", response);
+            // console.log("responsexx", response);
             if (!response.ok) {
-              console.error(
-                `Failed to fetch course ${teacherCourse.courseCode}`
-              );
+              // console.error(
+              //   `Failed to fetch course ${teacherCourse.courseCode}`
+              // );
               return {
                 ...teacherCourse,
                 courseName: `درس ${teacherCourse.courseCode}`, // Fallback name
@@ -541,7 +541,7 @@ const MonthlyGradeOverallReport = ({
                       assessment.value &&
                       assessment.weight !== undefined
                     ) {
-                      console.log("assessmentxxx");
+                      // console.log("assessmentxxx");
 
                       customValues[assessment.value] = assessment.weight;
                     }
@@ -565,14 +565,14 @@ const MonthlyGradeOverallReport = ({
 
           // Wait for all course data to be fetched
           const coursesWithDetails = await Promise.all(coursePromises);
-          console.log(
-            "Fetched courses:",
-            coursesWithDetails.map((c) => ({
-              courseCode: c.courseCode,
-              courseName: c.courseName,
-              vahed: c.vahed,
-            }))
-          );
+          // console.log(
+          //   "Fetched courses:",
+          //   coursesWithDetails.map((c) => ({
+          //     courseCode: c.courseCode,
+          //     courseName: c.courseName,
+          //     vahed: c.vahed,
+          //   }))
+          // );
           setCourseInfo(coursesWithDetails);
 
           // Process custom assessment values

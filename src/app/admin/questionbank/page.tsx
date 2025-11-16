@@ -124,7 +124,7 @@ const toPersianNumber = (num: number): string => {
 // Add a utility function to handle image paths
 const getImagePath = (path: string) => {
   // For debugging
-  console.log("Original image path:", path);
+  // console.log("Original image path:", path);
 
   // If already contains the prefix, return as is
   if (path.startsWith("https://file.farsamooz.ir/q/")) {
@@ -145,13 +145,13 @@ const renderHTML = (html: string | undefined) => {
   if (!html) return { __html: "" };
 
   // Logging original content for debugging
-  console.log("Processing HTML content");
+  // console.log("Processing HTML content");
 
   // First pattern: Match img tags with src attribute in single quotes
   let processed = html.replace(
     /<img([^>]*)\ssrc='([^']+)'([^>]*)>/g,
     (match, before, src, after) => {
-      console.log(`Found image with src='${src}'`);
+      // console.log(`Found image with src='${src}'`);
 
       // Don't add prefix if it already has it
       if (src.startsWith("https://file.farsamooz.ir/q/")) {
@@ -166,7 +166,7 @@ const renderHTML = (html: string | undefined) => {
   processed = processed.replace(
     /<img([^>]*)\ssrc="([^"]+)"([^>]*)>/g,
     (match, before, src, after) => {
-      console.log(`Found image with src="${src}"`);
+      // console.log(`Found image with src="${src}"`);
 
       // Don't add prefix if it already has it
       if (src.startsWith("https://file.farsamooz.ir/q/")) {

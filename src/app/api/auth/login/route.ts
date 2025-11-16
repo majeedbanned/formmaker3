@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     let domain = request.headers.get("x-domain") ;
     const domaintype = request.headers.get("x-domaintype") ;
 
-//console.log("domaintype",domaintype);
+// console.log("domaintype",domaintype);
   
     
     logger.info("Login request received", { domain });
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const { userType, schoolCode, username, password } = body;
 
     if (domaintype==="mobileapp") {
-      console.log("mobileapp start");
+      // console.log("mobileapp start");
       // If domain is not provided in headers, try to find it from database.json based on schoolCode
       if (!schoolCode) {
         return NextResponse.json(
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
         //  console.log("config.schoolCode",config.schoolCode);
           if (config.schoolCode === schoolCode) {
-            console.log("domainKey",domainKey);
+            // console.log("domainKey",domainKey);
             domain = domainKey;
             logger.info("Domain found from schoolCode", { domain, schoolCode });
             break;

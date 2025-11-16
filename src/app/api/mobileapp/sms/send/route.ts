@@ -41,7 +41,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Mobile SMS send request received');
+    // console.log('Mobile SMS send request received');
 
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       const fromNumber= "9998762911";
 
       // Send SMS using the SMS service
-      console.log('Sending SMS to:', phoneNumbers, 'Message:', message);
+      // console.log('Sending SMS to:', phoneNumbers, 'Message:', message);
       const messageIds = await smsApi.sendSMS(
         decoded.domain,
         fromNumber,
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
 
       await client.close();
 
-      console.log(`SMS sent successfully by ${decoded.userType}: ${decoded.username}, count: ${phoneNumbers.length}`);
+      // console.log(`SMS sent successfully by ${decoded.userType}: ${decoded.username}, count: ${phoneNumbers.length}`);
 
       return NextResponse.json({
         success: true,

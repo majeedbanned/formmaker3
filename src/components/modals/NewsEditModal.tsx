@@ -147,7 +147,7 @@ export default function NewsEditModal({
 
     setIsSaving(true);
     try {
-      console.log("Saving news content from modal:", content);
+      // console.log("Saving news content from modal:", content);
       await onSave(content);
       onClose();
     } catch (error) {
@@ -203,7 +203,7 @@ export default function NewsEditModal({
       });
 
       const data = await response.json();
-      console.log("News image upload response:", data);
+      // console.log("News image upload response:", data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || data.error || "Upload failed");
@@ -212,7 +212,7 @@ export default function NewsEditModal({
       // Update the news item with the new image URL
       handleNewsUpdate(newsId, { image: data.url });
       toast.success("تصویر با موفقیت آپلود شد");
-      console.log("News image upload successful, URL:", data.url);
+      // console.log("News image upload successful, URL:", data.url);
     } catch (error) {
       console.error("News image upload error:", error);
       toast.error(
@@ -565,7 +565,7 @@ export default function NewsEditModal({
                                 target.style.display = "none";
                               }}
                               onLoad={() => {
-                                console.log(
+                                // console.log(
                                   "News preview image loaded successfully:",
                                   newsItem.image
                                 );

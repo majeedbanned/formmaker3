@@ -310,7 +310,7 @@ const MonthlyGradeReport = ({
 
         if (coursesResponse.ok) {
           const coursesData = await coursesResponse.json();
-          console.log("Courses data:", coursesData);
+          // console.log("Courses data:", coursesData);
 
           // Create a map of course codes to names
           const courseMap: Record<string, string> = {};
@@ -340,9 +340,9 @@ const MonthlyGradeReport = ({
               const courseInfo = extractCourseInfo(course);
               if (courseInfo) {
                 courseMap[courseInfo.code] = courseInfo.name;
-                console.log(
-                  `Mapped course: ${courseInfo.code} -> ${courseInfo.name}`
-                );
+                // console.log(
+                 // `Mapped course: ${courseInfo.code} -> ${courseInfo.name}`
+               // );
               }
             });
           }
@@ -462,7 +462,7 @@ const MonthlyGradeReport = ({
 
   // Add a new useEffect to fetch custom assessment values when teacherCourse changes
   useEffect(() => {
-    console.log("Assessment data", selectedTeacherCourse);
+    // console.log("Assessment data", selectedTeacherCourse);
     if (!selectedTeacherCourse) return;
 
     const [teacherCode, courseCode] = selectedTeacherCourse.split("-");
@@ -472,7 +472,7 @@ const MonthlyGradeReport = ({
         const response = await fetch(
           `/api/assessments?teacherCode=${teacherCode}&courseCode=${courseCode}&schoolCode=${schoolCode}`
         );
-        console.log("Assessment data:", "assessmentData");
+        // console.log("Assessment data:", "assessmentData");
         if (!response.ok) {
           // If there's an error, use default values
           setCourseSpecificAssessmentValues({});
@@ -481,7 +481,7 @@ const MonthlyGradeReport = ({
 
         const assessmentData = await response.json();
 
-        console.log("Assessment data:", assessmentData);
+        // console.log("Assessment data:", assessmentData);
         const customValues: Record<string, number> = {};
 
         if (
@@ -489,14 +489,14 @@ const MonthlyGradeReport = ({
           Array.isArray(assessmentData.data) &&
           assessmentData.data.length > 0
         ) {
-          console.log("Assessment value found:", "assessmentData");
+          // console.log("Assessment value found:", "assessmentData");
           // Process assessment data to extract custom values
           assessmentData.data.forEach((assessment: AssessmentDataItem) => {
             // Extract assessment data from the response
             const data = assessment.data || assessment;
 
             if (data && data.value && data.weight !== undefined) {
-              console.log("Assessment value found:", data.value, data.weight);
+              // console.log("Assessment value found:", data.value, data.weight);
               customValues[data.value] = data.weight;
             }
           });

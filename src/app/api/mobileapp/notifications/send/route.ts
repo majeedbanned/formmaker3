@@ -128,7 +128,7 @@ async function sendViaSoap(
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Mobile notification send request received');
+    // console.log('Mobile notification send request received');
 
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Send push notifications via ASMX
-      console.log(`Sending notification to ${tokens.length} tokens for student: ${studentName}`);
+      // console.log(`Sending notification to ${tokens.length} tokens for student: ${studentName}`);
       
       const soapResponse = await sendViaSoap(
         tokens,
@@ -296,7 +296,7 @@ export async function POST(request: NextRequest) {
 
       await client.close();
 
-      console.log(`Notification sent successfully by ${decoded.userType}: ${decoded.username} to student: ${studentCode}`);
+      // console.log(`Notification sent successfully by ${decoded.userType}: ${decoded.username} to student: ${studentCode}`);
 
       return NextResponse.json({
         success: true,

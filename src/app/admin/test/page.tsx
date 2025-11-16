@@ -633,15 +633,15 @@ function TestPage() {
             },
           ]}
           onAfterAdd={(entity) => {
-            console.log("Entity added:", entity);
+            // console.log("Entity added:", entity);
             updateFilterInURL({});
           }}
           onAfterEdit={(entity) => {
-            console.log("Entity updated:", entity);
+            // console.log("Entity updated:", entity);
             updateFilterInURL({});
           }}
           onAfterDelete={(id) => {
-            console.log("Entity deleted:", id);
+            // console.log("Entity deleted:", id);
             updateFilterInURL({});
           }}
         />

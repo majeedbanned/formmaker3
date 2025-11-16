@@ -7,7 +7,7 @@ export async function PUT(request: NextRequest) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    console.log(`Updating question for domain: ${domain}`);
+    // console.log(`Updating question for domain: ${domain}`);
 
     // Parse the request body
     const questionData = await request.json();
@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      console.log(`Successfully updated question ${questionId} for domain: ${domain}`);
+      // console.log(`Successfully updated question ${questionId} for domain: ${domain}`);
       return NextResponse.json({
         success: true,
         message: 'Question updated successfully',

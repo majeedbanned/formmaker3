@@ -52,7 +52,7 @@ function getPersianDayName(): string {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Mobile classsheet request received");
+    // console.log("Mobile classsheet request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const requestedDate = searchParams.get('date'); // Expected format: YYYY-MM-DD
 
-    console.log("Mobile classsheet request for user:", decoded.userType, decoded.username);
-    console.log("Requested date parameter:", requestedDate);
+    // console.log("Mobile classsheet request for user:", decoded.userType, decoded.username);
+    // console.log("Requested date parameter:", requestedDate);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Use requested date or today's date
@@ -144,9 +144,9 @@ export async function GET(request: NextRequest) {
       };
       
       const targetPersianDay = getPersianDayNameForDate(targetDate);
-      console.log("Target date:", date, "Persian day:", targetPersianDay);
-      console.log("Date object created:", targetDate.toString());
-      console.log("Day of week (JS):", targetDate.getDay());
+      // console.log("Target date:", date, "Persian day:", targetPersianDay);
+      // console.log("Date object created:", targetDate.toString());
+      // console.log("Day of week (JS):", targetDate.getDay());
 
       // Find all classes where this teacher teaches
       const classes = await db.collection('classes').find({
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         'data.teachers.teacherCode': decoded.username
       }).toArray();
 
-      console.log("Found classes for teacher:", classes.length);
+      // console.log("Found classes for teacher:", classes.length);
 
       // Extract today's schedule for this teacher
       const todaySchedule: any[] = [];
@@ -162,24 +162,24 @@ export async function GET(request: NextRequest) {
       for (const classDoc of classes) {
         const classData = classDoc.data;
         
-        console.log(`Processing class: ${classData.classCode} - ${classData.className}`);
+        // console.log(`Processing class: ${classData.classCode} - ${classData.className}`);
         
         // Find teacher's courses in this class
         const teacherCourses = classData.teachers.filter(
           (t: any) => t.teacherCode === decoded.username
         );
 
-        console.log(`Teacher courses in this class: ${teacherCourses.length}`);
+        // console.log(`Teacher courses in this class: ${teacherCourses.length}`);
 
         for (const teacherCourse of teacherCourses) {
-          console.log(`Checking course ${teacherCourse.courseCode}, weekly schedule:`, teacherCourse.weeklySchedule);
+          // console.log(`Checking course ${teacherCourse.courseCode}, weekly schedule:`, teacherCourse.weeklySchedule);
           
           // Filter schedule for target day
           const daySlots = teacherCourse.weeklySchedule.filter(
             (slot: any) => slot.day === targetPersianDay
           );
 
-          console.log(`Slots matching ${targetPersianDay}:`, daySlots.length, daySlots);
+          // console.log(`Slots matching ${targetPersianDay}:`, daySlots.length, daySlots);
 
           // Get course information
           const courseDoc = await db.collection('courses').findOne({
@@ -281,7 +281,7 @@ export async function GET(request: NextRequest) {
               studentAvatars: studentAvatars
             };
             
-            console.log(`Adding schedule item:`, scheduleItem);
+            // console.log(`Adding schedule item:`, scheduleItem);
             todaySchedule.push(scheduleItem);
           }
         }
@@ -294,8 +294,8 @@ export async function GET(request: NextRequest) {
         return slotA - slotB;
       });
 
-      console.log("Final schedule count:", todaySchedule.length);
-      console.log("Final schedule items:", JSON.stringify(todaySchedule, null, 2));
+      // console.log("Final schedule count:", todaySchedule.length);
+      // console.log("Final schedule items:", JSON.stringify(todaySchedule, null, 2));
 
       return NextResponse.json({
         success: true,

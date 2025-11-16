@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     // Access the messagelist collection directly
     const messagelistCollection = connection.collection('messagelist');
     
-    console.log(`Fetching messages for receiver: ${receivercode}, page: ${page}, limit: ${limit}`);
+    // console.log(`Fetching messages for receiver: ${receivercode}, page: ${page}, limit: ${limit}`);
     
     // Query messages for this receiver
     const messages = await messagelistCollection
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       "data.receivercode": receivercode 
     });
     
-    console.log(`Found ${messages.length} messages out of ${totalCount} total`);
+    // console.log(`Found ${messages.length} messages out of ${totalCount} total`);
     
     return NextResponse.json({ 
       messages,

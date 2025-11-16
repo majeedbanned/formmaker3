@@ -53,20 +53,20 @@ async function exampleUsage() {
     // Get unique users from the access object
     const users = await getUsersFromAccess(domain, accessObject);
     
-    console.log(`Retrieved ${users.length} unique users:`);
+    // console.log(`Retrieved ${users.length} unique users:`);
     console.table(users);
 
     // Example of filtering only students
     const students = users.filter(user => user.role === 'student');
-    console.log(`Found ${students.length} students`);
+    // console.log(`Found ${students.length} students`);
 
     // Example of filtering only teachers
     const teachers = users.filter(user => user.role === 'teacher');
-    console.log(`Found ${teachers.length} teachers`);
+    // console.log(`Found ${teachers.length} teachers`);
 
     // Example of getting users by class
     const usersInClass = users.filter(user => user.className === 'دهم ۱');
-    console.log(`Found ${usersInClass.length} users in class دهم ۱`);
+    // console.log(`Found ${usersInClass.length} users in class دهم ۱`);
 
     return users;
   } catch (error) {

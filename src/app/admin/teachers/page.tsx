@@ -307,7 +307,7 @@ export default function Home({
       _id: rowId,
     };
     updateFilterInURL(combinedFilter);
-    console.log("Share clicked for row:", rowId);
+    // console.log("Share clicked for row:", rowId);
   };
 
   // Function to apply filter and navigate
@@ -1260,16 +1260,16 @@ excelExport={{
           //   },
           // ]}
           onAfterAdd={(entity) => {
-            console.log("Entity added:", entity);
+            // console.log("Entity added:", entity);
           }}
           onAfterEdit={(entity) => {
-            console.log("Entity updated:", entity);
+            // console.log("Entity updated:", entity);
           }}
           onAfterDelete={(id) => {
-            console.log("Entity deleted:", id);
+            // console.log("Entity deleted:", id);
           }}
           onAfterGroupDelete={(ids) => {
-            console.log("Entities deleted:", ids);
+            // console.log("Entities deleted:", ids);
           }}
         />
       </div>

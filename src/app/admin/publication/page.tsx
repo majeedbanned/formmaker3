@@ -69,8 +69,8 @@ function PublicationPageContent() {
 
   // Handle template selection
   const handleSelectTemplate = (template: TemplateData) => {
-    console.log("Selected template for editing:", template);
-    console.log("Template ID:", template.id);
+    // console.log("Selected template for editing:", template);
+    // console.log("Template ID:", template.id);
 
     // Set the template with an artificial delay to ensure component re-renders properly
     setTimeout(() => {

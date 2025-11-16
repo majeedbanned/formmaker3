@@ -2052,11 +2052,11 @@
             },
             match,
             log: label => {
-              console.log(label, {
-                constructors,
-                constructor: key,
-                params: args
-              });
+              // console.log(label, {
+              //   constructors,
+              //   constructor: key,
+              //   params: args
+              // });
             }
           };
         };
@@ -3316,22 +3316,22 @@
             ], eventName)) {
             return;
           }
-          console.log(eventName, {
-            event: eventName,
-            time: finishTime - startTime,
-            target: initialTarget.dom,
-            sequence: map$2(sequence, s => {
-              if (!contains$2([
-                  'cut',
-                  'stopped',
-                  'response'
-                ], s.outcome)) {
-                return s.outcome;
-              } else {
-                return '{' + s.purpose + '} ' + s.outcome + ' at (' + element(s.target) + ')';
-              }
-            })
-          });
+          // console.log(eventName, {
+          //   event: eventName,
+          //   time: finishTime - startTime,
+          //   target: initialTarget.dom,
+          //   sequence: map$2(sequence, s => {
+          //     if (!contains$2([
+          //         'cut',
+          //         'stopped',
+          //         'response'
+          //       ], s.outcome)) {
+          //       return s.outcome;
+          //     } else {
+          //       return '{' + s.purpose + '} ' + s.outcome + ' at (' + element(s.target) + ')';
+          //     }
+          //   })
+          // });
         }
       };
     };
@@ -10771,7 +10771,7 @@
     const menuHasIcons = xs => exists(xs, item => 'icon' in item && item.icon !== undefined);
     const handleError = error => {
       console.error(formatError(error));
-      console.log(error);
+      // console.log(error);
       return Optional.none();
     };
     const createHorizontalPartialMenuWithAlloyItems = (value, _hasIcons, items, _columns, _menuLayout) => {
@@ -16131,7 +16131,7 @@
             const picker = memPicker.get(comp);
             const optRgbForm = Composing.getCurrent(picker);
             optRgbForm.fold(() => {
-              console.log('Can not find form');
+              // console.log('Can not find form');
             }, rgbForm => {
               Representing.setValue(rgbForm, { hex: valOpt.getOr('') });
               Form.getField(rgbForm, 'hex').each(hexField => {
@@ -20022,13 +20022,13 @@
         history = JSON.parse(unparsedHistory);
       } catch (e) {
         if (e instanceof SyntaxError) {
-          console.log('Local storage ' + STORAGE_KEY + ' was not valid JSON', e);
+          // console.log('Local storage ' + STORAGE_KEY + ' was not valid JSON', e);
           return {};
         }
         throw e;
       }
       if (!isRecordOfUrlArray(history)) {
-        console.log('Local storage ' + STORAGE_KEY + ' was not valid format', history);
+        // console.log('Local storage ' + STORAGE_KEY + ' was not valid format', history);
         return {};
       }
       return history;

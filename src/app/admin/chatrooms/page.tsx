@@ -83,7 +83,7 @@ function StudentsPageContent() {
             toast.warning("شما به هیچ کلاسی اختصاص داده نشده‌اید");
           }
 
-          console.log("Teacher classes:", validClassCodes);
+          // console.log("Teacher classes:", validClassCodes);
         } catch (error) {
           console.error("Error fetching teacher classes:", error);
           toast.error("خطا در دریافت کلاس‌های مدرس");
@@ -123,9 +123,9 @@ function StudentsPageContent() {
           if (validTeacherCodes.length === 0) {
             toast.warning("شما با هیچ معلمی کلاس ندارید");
           } else {
-            console.log(
-              `دریافت ${validTeacherCodes.length} معلم برای دانش‌آموز`
-            );
+            // console.log(
+          //    `دریافت ${validTeacherCodes.length} معلم برای دانش‌آموز`
+          //  );
           }
         } catch (error) {
           console.error("Error fetching student's teachers:", error);
@@ -139,7 +139,7 @@ function StudentsPageContent() {
     }
   }, [user, isLoading]);
 
-  console.log("user", user);
+  // console.log("user", user);
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">

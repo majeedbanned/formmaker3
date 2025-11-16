@@ -15,7 +15,7 @@ export default function AutocompleteDemoPage() {
   const handleSubmit = async (data: Record<string, unknown>) => {
     setLoading(true);
     try {
-      console.log("Form data submitted:", data);
+      // console.log("Form data submitted:", data);
       toast.success("Form data submitted successfully");
       setIsFormOpen(false);
     } catch (error) {

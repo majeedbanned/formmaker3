@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     // Get Student model
     const StudentModel = getStudentModel(connection);
     
-    console.log("Looking for students in classes:", classCodes);
+    // console.log("Looking for students in classes:", classCodes);
     
     // Find all students in the specified classes
     const students = await StudentModel.find({
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       'data.schoolCode': schoolCode
     }).exec();
     
-    console.log(`Found ${students.length} students matching the criteria`);
+    // console.log(`Found ${students.length} students matching the criteria`);
     
     if (!students || students.length === 0) {
       return NextResponse.json({ students: [] });
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     // Remove duplicates
     const uniqueStudentCodes = [...new Set(studentCodes)];
     
-    console.log(`Returning ${uniqueStudentCodes.length} unique student codes`);
+    // console.log(`Returning ${uniqueStudentCodes.length} unique student codes`);
     
     return NextResponse.json({ 
       students: uniqueStudentCodes,

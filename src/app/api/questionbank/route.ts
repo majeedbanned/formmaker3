@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    console.log(`Adding new question for domain: ${domain}`);
+    // console.log(`Adding new question for domain: ${domain}`);
 
     // Parse the request body
     const questionData = await request.json();
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       const result = await questionsCollection.insertOne(newQuestion);
 
       if (result.acknowledged) {
-        console.log(`Successfully added question with ID: ${nextId} for domain: ${domain}`);
+        // console.log(`Successfully added question with ID: ${nextId} for domain: ${domain}`);
         return NextResponse.json({
           success: true,
           message: 'Question added successfully',

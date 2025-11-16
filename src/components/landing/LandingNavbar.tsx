@@ -59,9 +59,9 @@ export default function LandingNavbar() {
         // If no items exist in the database (collection doesn't exist or is empty),
         // use default navigation items
         if (items.length === 0) {
-          console.log(
-            "No navigation items found in database, using default items"
-          );
+          // console.log(
+          //   "No navigation items found in database, using default items"
+          // );
           setNavItems(getDefaultNavItems());
         } else {
           const organizedItems = organizeNavItems(items);
@@ -97,17 +97,17 @@ export default function LandingNavbar() {
 
   const organizeNavItems = (items: NavItem[]) => {
     const activeItems = items.filter((item) => item.isActive);
-    console.log("Active items count:", activeItems.length);
+    // console.log("Active items count:", activeItems.length);
 
     const mainItems = activeItems.filter(
       (item) => !item.parent && item.type === "main"
     );
-    console.log("Main items:", mainItems);
+    // console.log("Main items:", mainItems);
 
     const dropdownItems = activeItems.filter(
       (item) => item.parent && item.type === "dropdown"
     );
-    console.log("Dropdown items:", dropdownItems);
+    // console.log("Dropdown items:", dropdownItems);
 
     const result = mainItems
       .map((item) => ({
@@ -116,7 +116,7 @@ export default function LandingNavbar() {
       }))
       .sort((a, b) => a.order - b.order);
 
-    console.log("Final organized result:", result);
+    // console.log("Final organized result:", result);
     return result;
   };
 

@@ -105,7 +105,7 @@ export default function AboutEditModal({
     setIsSaving(true);
     setLoading(true);
     try {
-      console.log("Saving about data from modal:", formData);
+      // console.log("Saving about data from modal:", formData);
       await onSave(formData);
       const mockEvent = {
         preventDefault: () => {},
@@ -170,7 +170,7 @@ export default function AboutEditModal({
 
     setIsUploading(true);
     try {
-      console.log("Uploading about section image:", file.name);
+      // console.log("Uploading about section image:", file.name);
       
       const formDataToSend = new FormData();
       formDataToSend.append("file", file);
@@ -181,7 +181,7 @@ export default function AboutEditModal({
       });
 
       const data = await response.json();
-      console.log("About image upload response:", data);
+      // console.log("About image upload response:", data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || `Upload failed for ${file.name}`);
@@ -192,7 +192,7 @@ export default function AboutEditModal({
         ...formData,
         image: { ...formData.image, url: data.url },
       });
-      console.log("About image upload successful, URL:", data.url);
+      // console.log("About image upload successful, URL:", data.url);
     } catch (error) {
       console.error("About image upload error:", error);
       alert(
@@ -491,10 +491,10 @@ export default function AboutEditModal({
                               alt={formData.image.alt}
                               className="w-full h-full object-cover"
                               onLoad={() => {
-                                console.log(
-                                  "About preview image loaded successfully:",
-                                  formData.image.url
-                                );
+                                // console.log(
+                                //   "About preview image loaded successfully:",
+                                //   formData.image.url
+                                // );
                               }}
                               onError={(e) => {
                                 console.error(

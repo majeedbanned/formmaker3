@@ -40,7 +40,7 @@ interface JWTPayload {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Mobile forms request received");
+    // console.log("Mobile forms request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Mobile forms request for user:", decoded.userType, decoded.username);
+    // console.log("Mobile forms request for user:", decoded.userType, decoded.username);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Build the query filter based on user type
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
             .filter((classObj: any) => classObj && typeof classObj === 'object' && classObj.value)
             .map((classObj: any) => classObj.value);
 
-          console.log("Student class codes from database:", studentClassCodes);
+          // console.log("Student class codes from database:", studentClassCodes);
 
           if (studentClassCodes.length > 0) {
             filter.assignedClassCodes = { $in: studentClassCodes };
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         filter._id = { $exists: false };
       }
 
-      console.log("Forms filter:", JSON.stringify(filter));
+      // console.log("Forms filter:", JSON.stringify(filter));
 
       // Get forms collection
       const collection = db.collection('forms');
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         .sort({ updatedAt: -1 })
         .toArray() as any[];
 
-      console.log("Found forms with filter:", forms.length);
+      // console.log("Found forms with filter:", forms.length);
 
       // Get submission counts for each form
       const submissionCounts: Record<string, number> = {};

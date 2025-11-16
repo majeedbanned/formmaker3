@@ -43,7 +43,7 @@ interface ContactData {
 export async function GET(req: NextRequest) {
   try {
     const domain = req.headers.get("x-domain") || "default";
-    console.log("Contact GET request for domain:", domain);
+    // console.log("Contact GET request for domain:", domain);
 
     const { db } = await connectToDatabase(domain);
     const collection = db.collection("contactConfig");
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const domain = req.headers.get("x-domain") || "default";
-    console.log("Contact POST request for domain:", domain);
+    // console.log("Contact POST request for domain:", domain);
 
     // Check if user is authenticated
     const currentUser = await getCurrentUser(req);
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
 
     const contactData: ContactData = await req.json();
-    console.log("Saving contact data:", contactData);
+    // console.log("Saving contact data:", contactData);
 
     const { db } = await connectToDatabase(domain);
     const collection = db.collection("contactConfig");
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       { upsert: true }
     );
 
-    console.log("Contact save result:", result);
+    // console.log("Contact save result:", result);
 
     return NextResponse.json({
       success: true,

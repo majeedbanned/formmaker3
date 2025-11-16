@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('Installation report request from school:', decoded.schoolCode, 'domain:', decoded.domain);
+    // console.log('Installation report request from school:', decoded.schoolCode, 'domain:', decoded.domain);
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
         })
         .toArray();
 
-      console.log(`Found ${allTeachers.length} teachers in school ${decoded.schoolCode}`);
+      // console.log(`Found ${allTeachers.length} teachers in school ${decoded.schoolCode}`);
 
       // Fetch all students for this school
       const studentsCollection = db.collection('students');
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         })
         .toArray();
 
-      console.log(`Found ${allStudents.length} students in school ${decoded.schoolCode}`);
+      // console.log(`Found ${allStudents.length} students in school ${decoded.schoolCode}`);
 
       // Process teachers data
       const teachersWithApp = allTeachers
@@ -212,15 +212,15 @@ export async function GET(request: NextRequest) {
       const studentInstallationRate = totalStudents > 0 ? (studentsWithAppCount / totalStudents) * 100 : 0;
       const overallInstallationRate = totalUsers > 0 ? (totalWithApp / totalUsers) * 100 : 0;
 
-      console.log('Installation report stats:', {
-        totalTeachers,
-        teachersWithAppCount,
-        teacherInstallationRate: teacherInstallationRate.toFixed(2) + '%',
-        totalStudents,
-        studentsWithAppCount,
-        studentInstallationRate: studentInstallationRate.toFixed(2) + '%',
-        overallInstallationRate: overallInstallationRate.toFixed(2) + '%',
-      });
+      // console.log('Installation report stats:', {
+      //   totalTeachers,
+      //   teachersWithAppCount,
+      //   teacherInstallationRate: teacherInstallationRate.toFixed(2) + '%',
+      //   totalStudents,
+      //   studentsWithAppCount,
+      //   studentInstallationRate: studentInstallationRate.toFixed(2) + '%',
+      //   overallInstallationRate: overallInstallationRate.toFixed(2) + '%',
+      // });
 
       // Combine teachers (installed first, then not installed)
       const allTeachersData = [...teachersWithApp, ...teachersWithoutApp];

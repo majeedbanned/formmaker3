@@ -156,10 +156,10 @@ const addMessageToThread = async (threadId: string, message: string) => {
 // };
 
 const runAssistant = async (threadId: string, assistantId: string): Promise<AssistantMessage> => {
-    console.log(`Starting runAssistant with threadId: ${threadId} and assistantId: ${assistantId}`);
+    // console.log(`Starting runAssistant with threadId: ${threadId} and assistantId: ${assistantId}`);
   
     // Step 1: Create a run
-    console.log('Creating a new run for the thread...');
+    // console.log('Creating a new run for the thread...');
     const createRunResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/runs`, {
       method: "POST",
       headers: {
@@ -178,11 +178,11 @@ const runAssistant = async (threadId: string, assistantId: string): Promise<Assi
   
     const runData = await createRunResponse.json();
     const runId = runData.id;
-    console.log(`Run created successfully with runId: ${runId}`);
+    // console.log(`Run created successfully with runId: ${runId}`);
   
     // Step 2: Poll the run status until completion
     let runStatus = "queued";
-    console.log('Polling run status...');
+    // console.log('Polling run status...');
     while (runStatus === "queued" || runStatus === "in_progress") {
       await new Promise((resolve) => setTimeout(resolve, 1000));
   
@@ -202,7 +202,7 @@ const runAssistant = async (threadId: string, assistantId: string): Promise<Assi
   
       const statusData = await runStatusResponse.json();
       runStatus = statusData.status;
-      console.log(`Current run status: ${runStatus}`);
+      // console.log(`Current run status: ${runStatus}`);
   
       if (runStatus === "failed" || runStatus === "cancelled" || runStatus === "expired") {
         console.error(`Run terminated with status: ${runStatus}. Error: ${statusData.last_error?.message || "Unknown error"}`);
@@ -211,7 +211,7 @@ const runAssistant = async (threadId: string, assistantId: string): Promise<Assi
     }
   
     // Step 3: Retrieve the latest messages
-    console.log('Retrieving messages from the thread...');
+    // console.log('Retrieving messages from the thread...');
     const messagesResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/messages`, {
       method: "GET",
       headers: {
@@ -234,7 +234,7 @@ const runAssistant = async (threadId: string, assistantId: string): Promise<Assi
       throw new Error("No assistant message found");
     }
   
-    console.log('Assistant message retrieved successfully.');
+    // console.log('Assistant message retrieved successfully.');
     return assistantMessage;
   };
   

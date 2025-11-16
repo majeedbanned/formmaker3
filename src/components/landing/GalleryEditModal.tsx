@@ -99,7 +99,7 @@ export default function GalleryEditModal({
     setIsSaving(true);
     setLoading(true);
     try {
-      console.log("Saving gallery data from modal:", formData);
+      // console.log("Saving gallery data from modal:", formData);
       await onSave(formData);
       const mockEvent = {
         preventDefault: () => {},
@@ -222,10 +222,10 @@ export default function GalleryEditModal({
     setUploadingImages((prev) => ({ ...prev, [galleryId]: true }));
 
     try {
-      console.log(`Starting bulk upload of ${files.length} images for gallery ${galleryId}`);
+      // console.log(`Starting bulk upload of ${files.length} images for gallery ${galleryId}`);
       
       const uploadPromises = Array.from(files).map(async (file) => {
-        console.log(`Uploading file: ${file.name}`);
+        // console.log(`Uploading file: ${file.name}`);
         const formDataToSend = new FormData();
         formDataToSend.append("file", file);
 
@@ -235,7 +235,7 @@ export default function GalleryEditModal({
         });
 
         const data = await response.json();
-        console.log(`Upload response for ${file.name}:`, data);
+        // console.log(`Upload response for ${file.name}:`, data);
 
         if (!response.ok || !data.success) {
           throw new Error(data.error || `Upload failed for ${file.name}`);
@@ -264,7 +264,7 @@ export default function GalleryEditModal({
         galleries: updatedGalleries,
       });
 
-      console.log(`Successfully uploaded ${uploadedImages.length} images to gallery ${galleryId}`);
+      // console.log(`Successfully uploaded ${uploadedImages.length} images to gallery ${galleryId}`);
     } catch (error) {
       console.error("Gallery bulk upload error:", error);
       alert(
@@ -659,16 +659,16 @@ export default function GalleryEditModal({
                                         alt={image.title}
                                         className="w-full h-full object-cover"
                                         onLoad={() => {
-                                          console.log(
-                                            "Gallery preview image loaded successfully:",
-                                            image.src
-                                          );
+                                          // console.log(
+                                          //   "Gallery preview image loaded successfully:",
+                                          //   image.src
+                                          // );
                                         }}
                                         onError={(e) => {
-                                          console.error(
-                                            "Gallery preview image failed to load:",
-                                            image.src
-                                          );
+                                          // console.error(
+                                          //   "Gallery preview image failed to load:",
+                                          //   image.src
+                                          // );
                                           // Fallback to placeholder image instead of hiding
                                           const target = e.target as HTMLImageElement;
                                           target.src = "/images/placeholder.jpg";

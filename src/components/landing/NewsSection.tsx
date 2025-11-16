@@ -113,7 +113,7 @@ export default function NewsSection() {
 
   const fetchNewsContent = async () => {
     try {
-      console.log("Fetching news content...");
+      // console.log("Fetching news content...");
       // Add cache busting to ensure fresh data after uploads
       const response = await fetch("/api/admin/news", {
         cache: "no-store",
@@ -125,10 +125,10 @@ export default function NewsSection() {
       const data = await response.json();
 
       if (data.success) {
-        console.log("News content fetched successfully:", data.news);
+        // console.log("News content fetched successfully:", data.news);
         setContent(data.news);
       } else {
-        console.log("Using default news content");
+        // console.log("Using default news content");
         setContent(defaultNewsContent);
       }
     } catch (error) {
@@ -141,7 +141,7 @@ export default function NewsSection() {
 
   const handleSave = async (updatedContent: NewsContent) => {
     try {
-      console.log("Saving news content:", updatedContent);
+      // console.log("Saving news content:", updatedContent);
       
       const response = await fetch("/api/admin/news", {
         method: "POST",
@@ -152,7 +152,7 @@ export default function NewsSection() {
       });
 
       const data = await response.json();
-      console.log("News save response:", data);
+      // console.log("News save response:", data);
 
       if (response.ok && data.success) {
         setContent(updatedContent);
@@ -304,7 +304,7 @@ export default function NewsSection() {
                   alt={item.title}
                   className="w-full h-full object-cover"
                   onLoad={() => {
-                    console.log("News image loaded successfully:", item.image);
+                    // console.log("News image loaded successfully:", item.image);
                     setImageLoadingStates(prev => ({...prev, [item.id]: false}));
                   }}
                   onLoadStart={() => {

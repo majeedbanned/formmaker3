@@ -40,7 +40,7 @@ interface JWTPayload {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Mobile classsheet students request received");
+    // console.log("Mobile classsheet students request received");
     
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("Mobile classsheet students request for user:", decoded.userType, decoded.username);
+    // console.log("Mobile classsheet students request for user:", decoded.userType, decoded.username);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -92,14 +92,14 @@ export async function GET(request: NextRequest) {
       let date: string;
       if (requestedDate) {
         date = requestedDate;
-        console.log("Using requested date:", date);
+        // console.log("Using requested date:", date);
       } else {
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         date = `${year}-${month}-${day}`;
-        console.log("Using today's date:", date);
+        // console.log("Using today's date:", date);
       }
 
     // Load database configuration
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Find the class
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
         })
       );
 
-      console.log("Found students:", studentsWithData.length);
+      // console.log("Found students:", studentsWithData.length);
 
       return NextResponse.json({
         success: true,

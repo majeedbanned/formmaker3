@@ -17,14 +17,14 @@ interface OnboardingStatus {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Onboarding status API called");
+    // console.log("Onboarding status API called");
     
     // Get current authenticated user
     const user = await getCurrentUser();
-    console.log("User from getCurrentUser:", user);
+    // console.log("User from getCurrentUser:", user);
     
     if (!user) {
-      console.log("No user found, returning 401");
+      // console.log("No user found, returning 401");
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Only school users should access this endpoint
     if (user.userType !== "school") {
-      console.log("User type is not school:", user.userType);
+      // console.log("User type is not school:", user.userType);
       return NextResponse.json(
         { error: `Access denied. Only school users can access onboarding status. Current user type: ${user.userType}` },
         { status: 403 }
@@ -42,30 +42,30 @@ export async function GET(request: NextRequest) {
 
     // Get domain from request headers
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    console.log("Domain:", domain);
-    console.log("School code:", user.schoolCode);
+    // console.log("Domain:", domain);
+    // console.log("School code:", user.schoolCode);
     
     // Connect to the domain-specific database
     const connection = await connectToDatabase(domain);
-    console.log("Database connection established");
+    // console.log("Database connection established");
     
     // Check teachers count
     const teachersCount = await connection
       .collection("teachers")
       .countDocuments({ "data.schoolCode": user.schoolCode });
-    console.log("Teachers count:", teachersCount);
+    // console.log("Teachers count:", teachersCount);
 
     // Check classes count
     const classesCount = await connection
       .collection("classes")
       .countDocuments({ "data.schoolCode": user.schoolCode });
-    console.log("Classes count:", classesCount);
+    // console.log("Classes count:", classesCount);
 
     // Check students count
     const studentsCount = await connection
       .collection("students")
       .countDocuments({ "data.schoolCode": user.schoolCode });
-    console.log("Students count:", studentsCount);
+    // console.log("Students count:", studentsCount);
 
     // Check classes with weekly programs (classes that have teachers with weeklySchedule)
     const weeklyProgramsCount = await connection
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         "data.schoolCode": user.schoolCode,
         "data.teachers.weeklySchedule": { $exists: true, $ne: [] }
       });
-    console.log("Weekly programs count:", weeklyProgramsCount);
+    // console.log("Weekly programs count:", weeklyProgramsCount);
 
     // Determine completion status
     const hasTeachers = teachersCount > 0;
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       nextStep,
     };
 
-    console.log("Returning status:", status);
+    // console.log("Returning status:", status);
     return NextResponse.json(status);
   } catch (error) {
     console.error("Error fetching onboarding status:", error);

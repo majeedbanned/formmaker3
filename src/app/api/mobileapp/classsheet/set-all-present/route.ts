@@ -111,7 +111,7 @@ interface JWTPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Mobile classsheet set-all-present request received");
+    // console.log("Mobile classsheet set-all-present request received");
     
     const now = new Date();
     
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Mobile set-all-present request for user:", decoded.userType, decoded.username);
+    // console.log("Mobile set-all-present request for user:", decoded.userType, decoded.username);
 
     // Check if user is teacher
     if (decoded.userType !== 'teacher') {
@@ -167,11 +167,11 @@ export async function POST(request: NextRequest) {
       date = requestedDate;
       const [year, month, day] = requestedDate.split('-').map(Number);
       workingDate = new Date(year, month - 1, day);
-      console.log("Using requested date for set-all-present:", date);
+      // console.log("Using requested date for set-all-present:", date);
     } else {
       workingDate = new Date();
       date = dayjs(workingDate).format('YYYY-MM-DD');
-      console.log("Using today's date for set-all-present:", date);
+      // console.log("Using today's date for set-all-present:", date);
     }
     
     // Get Persian date with Persian digits
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
     const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
     const db = client.db(dbName);
     
-    console.log("Connected to database:", dbName);
+    // console.log("Connected to database:", dbName);
 
     try {
       // Verify teacher teaches this class
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`Setting ${students.length} students as present for date: ${date}`);
+      // console.log(`Setting ${students.length} students as present for date: ${date}`);
 
       // Prepare bulk operations
       const bulkOps = students.map((student: any) => ({
@@ -295,12 +295,12 @@ export async function POST(request: NextRequest) {
 
       await client.close();
 
-      console.log("Set-all-present result:", {
-        inserted: result.upsertedCount,
-        modified: result.modifiedCount,
-        matched: result.matchedCount,
-        total: students.length
-      });
+      // console.log("Set-all-present result:", {
+      //   inserted: result.upsertedCount,
+      //   modified: result.modifiedCount,
+      //   matched: result.matchedCount,
+      //   total: students.length
+      // });
 
       return NextResponse.json({
         success: true,

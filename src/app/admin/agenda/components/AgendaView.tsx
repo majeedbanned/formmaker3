@@ -298,7 +298,7 @@ export default function AgendaView({
           event.teacherCode === "school" ||
           event.isSchoolEvent === true,
       }));
-      console.log("processedEvents", processedEvents);
+      // console.log("processedEvents", processedEvents);
       setEvents(processedEvents);
 
       // Initialize current month from today's date
@@ -655,7 +655,7 @@ export default function AgendaView({
         ...(userType === "school" ? { isSchoolEvent: true } : {}),
       };
 
-      console.log("Submitting event data:", eventData);
+      // console.log("Submitting event data:", eventData);
 
       const response = await fetch(endpoint, {
         method,

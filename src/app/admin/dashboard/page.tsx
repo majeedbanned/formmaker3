@@ -110,14 +110,14 @@ function DashboardContent() {
           password: password,
         });
 
-        console.log('Generating QR code with data:', {
-          domain: currentDomain,
-          userType: user.userType,
-          username: user.username,
-          schoolCode: user.schoolCode,
-          hasPassword: !!password,
-          passwordLength: password?.length || 0,
-        });
+        // console.log('Generating QR code with data:', {
+        //   domain: currentDomain,
+        //   userType: user.userType,
+        //   username: user.username,
+        //   schoolCode: user.schoolCode,
+        //   hasPassword: !!password,
+        //   passwordLength: password?.length || 0,
+        // });
 
         // Generate QR code
         const url = await QRCode.toDataURL(qrData, {
@@ -129,7 +129,7 @@ function DashboardContent() {
           },
         });
 
-        console.log('QR Code generated successfully');
+        // console.log('QR Code generated successfully');
         setQRCodeDataURL(url);
       } catch (err) {
         console.error("Error generating QR code:", err);

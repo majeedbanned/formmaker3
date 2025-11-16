@@ -43,7 +43,7 @@ export async function authenticateUser(
     // Find the matching user using the query
     const user = await collection.findOne(query);
 
-     console.log("user", user);
+     // console.log("user", user);
 
     if (!user) {
       logger.warn('No user found with provided credentials', { domain, userType, schoolCode });
@@ -68,8 +68,8 @@ export async function authenticateUser(
       throw new Error("اطلاعات وارد شده اشتباه است");
     }
 
-    //console.log("user._id", user._id);
-    //console.log("user._id.toString()", user._id.toString());
+    // console.log("user._id", user._id);
+    // console.log("user._id.toString()", user._id.toString());
     // Generate token with user info
     const token = await signJWT({
       userId: user._id.toString(),

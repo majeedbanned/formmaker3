@@ -338,7 +338,7 @@ export default function FormPreview({
       setTimeout(() => {
         // Reset form with existing data
         methods.reset(formattedData);
-        console.log("Form reset with data:", formattedData);
+        // console.log("Form reset with data:", formattedData);
       }, 0);
     }
   }, [existingEntry, isEditable]);
@@ -660,21 +660,21 @@ export default function FormPreview({
   // Add debug logging for edit mode
   useEffect(() => {
     if (isEditMode && process.env.NODE_ENV !== "production") {
-      console.log("Edit mode active");
-      console.log("Current form values:", methods.getValues());
+      // console.log("Edit mode active");
+      // console.log("Current form values:", methods.getValues());
 
       // Log when radio and select fields are rendered
       const selectFields = form.fields.filter(
         (f) => f.type === "select" || f.type === "radio"
       );
       if (selectFields.length > 0) {
-        console.log(
-          "Select/Radio fields:",
-          selectFields.map((f) => f.name)
-        );
+        // console.log(
+       //   "Select/Radio fields:",
+       //   selectFields.map((f) => f.name)
+       // );
         selectFields.forEach((field) => {
           const value = methods.getValues(field.name);
-          console.log(`Field ${field.name} value:`, value);
+          // console.log(`Field ${field.name} value:`, value);
         });
       }
     }
@@ -725,17 +725,17 @@ export default function FormPreview({
 
         // Add debug log for file fields in edit mode
         if (isEditMode) {
-          console.log("Form data before submission:", completeFormData);
+          // console.log("Form data before submission:", completeFormData);
           const fileFieldsInForm = currentStepFields
             .filter((f) => f.type === "file")
             .map((f) => f.name);
           if (fileFieldsInForm.length > 0) {
-            console.log("File fields in form:", fileFieldsInForm);
+            // console.log("File fields in form:", fileFieldsInForm);
             fileFieldsInForm.forEach((fieldName) => {
-              console.log(
-                `Field ${fieldName} value:`,
-                completeFormData[fieldName]
-              );
+              // console.log(
+             //   `Field ${fieldName} value:`,
+             //   completeFormData[fieldName]
+             // );
             });
           }
         }
@@ -1391,7 +1391,7 @@ export default function FormPreview({
                                 const reader = new FileReader();
                                 reader.onload = () => {
                                   // Display image preview if needed
-                                  console.log("Image loaded:", reader.result);
+                                  // console.log("Image loaded:", reader.result);
                                 };
                                 reader.readAsDataURL(file);
                               }

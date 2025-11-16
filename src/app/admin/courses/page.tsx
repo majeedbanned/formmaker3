@@ -437,16 +437,16 @@ export default function Home() {
             },
           ]}
           onAfterAdd={(entity) => {
-            console.log("Entity added:", entity);
+            // console.log("Entity added:", entity);
           }}
           onAfterEdit={(entity) => {
-            console.log("Entity updated:", entity);
+            // console.log("Entity updated:", entity);
           }}
           onAfterDelete={(id) => {
-            console.log("Entity deleted:", id);
+            // console.log("Entity deleted:", id);
           }}
           onAfterGroupDelete={(ids) => {
-            console.log("Entities deleted:", ids);
+            // console.log("Entities deleted:", ids);
           }}
         />
       </div>

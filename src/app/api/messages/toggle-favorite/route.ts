@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     // Access the messagelist collection directly
     const messagelistCollection = connection.collection('messagelist');
     
-    console.log(`Setting favorite status for message ${messageId} to ${isFavorite}`);
+    // console.log(`Setting favorite status for message ${messageId} to ${isFavorite}`);
     
     // Convert string ID to ObjectId if needed
     let objectId;
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
     
-    console.log(`Message ${messageId} favorite status updated to ${isFavorite}`);
+    // console.log(`Message ${messageId} favorite status updated to ${isFavorite}`);
     
     return NextResponse.json({ 
       success: true,

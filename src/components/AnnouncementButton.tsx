@@ -46,12 +46,12 @@ export default function AnnouncementButton({ variant = "inline" }: AnnouncementB
   const handleOpenAnnouncements = async () => {
     setIsLoading(true);
     try {
-      console.log("📢 [AnnouncementButton] Fetching all announcements...");
+      // console.log("📢 [AnnouncementButton] Fetching all announcements...");
       const response = await fetch("/api/announcements/all");
       
       if (response.ok) {
         const data = await response.json();
-        console.log("📢 [AnnouncementButton] Received announcements:", data.announcements?.length);
+        // console.log("📢 [AnnouncementButton] Received announcements:", data.announcements?.length);
         
         if (data.announcements && data.announcements.length > 0) {
           setAnnouncements(data.announcements);
@@ -84,7 +84,7 @@ export default function AnnouncementButton({ variant = "inline" }: AnnouncementB
       });
 
       if (response.ok) {
-        console.log("Announcements dismissed successfully");
+        // console.log("Announcements dismissed successfully");
         // Update unread count
         fetchUnreadCount();
       }

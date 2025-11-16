@@ -308,19 +308,19 @@ function SchoolsPageContent() {
   };
 
   const handleAfterAdd = (entity: Entity) => {
-    console.log("Added:", entity);
+    // console.log("Added:", entity);
   };
 
   const handleAfterEdit = (entity: Entity) => {
-    console.log("Edited:", entity);
+    // console.log("Edited:", entity);
   };
 
   const handleAfterDelete = (id: string) => {
-    console.log("Deleted:", id);
+    // console.log("Deleted:", id);
   };
 
   const handleAfterGroupDelete = (ids: string[]) => {
-    console.log("Group deleted:", ids);
+    // console.log("Group deleted:", ids);
   };
 
   if (isLoading ) {

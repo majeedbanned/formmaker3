@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .sort({ gradingTime: -1 })
       .toArray();
 
-    console.log(`📋 [API] Found ${scannedRecords.length} scanned records for exam ${examId}`);
+    // console.log(`📋 [API] Found ${scannedRecords.length} scanned records for exam ${examId}`);
 
     // Extract scan results
     const results = scannedRecords.map((record: any) => ({

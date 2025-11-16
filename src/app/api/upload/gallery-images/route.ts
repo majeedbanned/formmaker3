@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Return the URL that can be used in the frontend
     const fileUrl = `/uploads/gallery/${filename}`;
 
-    console.log("Gallery image uploaded successfully:", fileUrl);
+    // console.log("Gallery image uploaded successfully:", fileUrl);
 
     return NextResponse.json({
       success: true,

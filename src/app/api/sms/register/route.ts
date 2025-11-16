@@ -53,7 +53,7 @@ const parseSoapResponse = (xml: string): string[] | null => {
         return result;
       }
 
-      console.log("returnElement" ,returnElement.textContent);
+      // console.log("returnElement" ,returnElement.textContent);
       
       // Single return value as array
       return returnElement.textContent ? [returnElement.textContent] : null;
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     
     // Create SOAP envelope
     const soapEnvelope = createRegisterUserSoapEnvelope(registrationData);
-    console.log("soapEnvelope" ,soapEnvelope);
+    // console.log("soapEnvelope" ,soapEnvelope);
     // Make SOAP request
     const response = await axios.post(SMS_API_URL, soapEnvelope, {
       headers: {
@@ -110,8 +110,8 @@ export async function POST(request: Request) {
     // Parse response
     const result = parseSoapResponse(response.data);
    
-    console.log("result" ,result);
-    console.log("response.data" ,response.data);
+    // console.log("result" ,result);
+    // console.log("response.data" ,response.data);
 
     if (!result) {
       return NextResponse.json(

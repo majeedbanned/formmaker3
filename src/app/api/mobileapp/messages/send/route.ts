@@ -52,7 +52,7 @@ function getPersianDate(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Mobile message send request received');
+    // console.log('Mobile message send request received');
 
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
 
       await client.close();
 
-      console.log(`Message sent successfully by ${decoded.userType}: ${decoded.username} to student: ${studentCode}`);
+      // console.log(`Message sent successfully by ${decoded.userType}: ${decoded.username} to student: ${studentCode}`);
 
       return NextResponse.json({
         success: true,

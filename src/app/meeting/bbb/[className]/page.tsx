@@ -16,25 +16,25 @@ export default function BBBMeetingPage() {
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("BBB Meeting Page - Auth Loading:", authLoading);
-    console.log("BBB Meeting Page - User:", user);
+    // console.log("BBB Meeting Page - Auth Loading:", authLoading);
+    // console.log("BBB Meeting Page - User:", user);
     
     // Wait for auth to finish loading
     if (authLoading) {
-      console.log("BBB Meeting Page - Waiting for auth to load...");
+      // console.log("BBB Meeting Page - Waiting for auth to load...");
       return;
     }
     
     // After auth is loaded, check if user exists
     if (!user) {
-      console.log("BBB Meeting Page - No user after auth loaded, redirecting to login");
+      // console.log("BBB Meeting Page - No user after auth loaded, redirecting to login");
       toast.error("لطفاً ابتدا وارد شوید");
       router.push("/login");
       return;
     }
 
-    console.log("BBB Meeting Page - User type:", user.userType);
-    console.log("BBB Meeting Page - Class name:", className);
+    // console.log("BBB Meeting Page - User type:", user.userType);
+    // console.log("BBB Meeting Page - Class name:", className);
 
     const joinMeeting = async () => {
       try {
@@ -42,7 +42,7 @@ export default function BBBMeetingPage() {
         setError(null);
 
         // Fetch class details
-        console.log("BBB - Fetching class details for:", className, "schoolCode:", user.schoolCode);
+        // console.log("BBB - Fetching class details for:", className, "schoolCode:", user.schoolCode);
         
         const classResponse = await fetch("/api/data/onlineclasses", {
           method: "POST",
@@ -58,14 +58,14 @@ export default function BBBMeetingPage() {
           }),
         });
 
-        console.log("BBB - Class fetch response status:", classResponse.status);
+        // console.log("BBB - Class fetch response status:", classResponse.status);
 
         if (!classResponse.ok) {
           throw new Error("کلاس مورد نظر یافت نشد");
         }
 
         const classData = await classResponse.json();
-        console.log("BBB - Class data received:", classData);
+        // console.log("BBB - Class data received:", classData);
         
         if (!classData || classData.length === 0) {
           throw new Error("کلاس مورد نظر یافت نشد");
@@ -73,14 +73,14 @@ export default function BBBMeetingPage() {
 
         const classInfo = classData[0];
         const classCode = classInfo.data.onlineClassCode;
-        console.log("BBB - Class code:", classCode);
+        // console.log("BBB - Class code:", classCode);
 
         // Get user's full name
         const fullName = user.name || user.username;
-        console.log("BBB - User full name:", fullName);
+        // console.log("BBB - User full name:", fullName);
 
         // Request to join/create meeting
-        console.log("BBB - Requesting to join meeting...");
+        // console.log("BBB - Requesting to join meeting...");
         const joinResponse = await fetch("/api/bbb/join", {
           method: "POST",
           headers: {
@@ -97,9 +97,9 @@ export default function BBBMeetingPage() {
           }),
         });
 
-        console.log("BBB - Join response status:", joinResponse.status);
+        // console.log("BBB - Join response status:", joinResponse.status);
         const joinData = await joinResponse.json();
-        console.log("BBB - Join response data:", joinData);
+        // console.log("BBB - Join response data:", joinData);
 
         if (!joinResponse.ok || !joinData.success) {
           console.error("BBB - Join failed:", joinData);
@@ -107,7 +107,7 @@ export default function BBBMeetingPage() {
         }
 
         setJoinUrl(joinData.joinUrl);
-        console.log("BBB - Join URL:", joinData.joinUrl);
+        // console.log("BBB - Join URL:", joinData.joinUrl);
 
         // Show appropriate message
         if (joinData.isNewMeeting) {
@@ -117,7 +117,7 @@ export default function BBBMeetingPage() {
         }
 
         // Redirect to BBB meeting
-        console.log("BBB - Redirecting to meeting...");
+        // console.log("BBB - Redirecting to meeting...");
         window.location.href = joinData.joinUrl;
 
       } catch (err) {

@@ -59,20 +59,20 @@ export default function ScanAnswerSheetModal({
   const fetchScanHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      console.log(`📋 [ScanModal] Fetching scan history for examId: ${examId}`);
+      // console.log(`📋 [ScanModal] Fetching scan history for examId: ${examId}`);
       const response = await fetch(`/api/scan/history?examId=${examId}`);
-      console.log(`📋 [ScanModal] Response status:`, response.status);
+      // console.log(`📋 [ScanModal] Response status:`, response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log(`📋 [ScanModal] Response data:`, data);
+        // console.log(`📋 [ScanModal] Response data:`, data);
         
         if (data.success && data.results) {
-          console.log(`📋 [ScanModal] Setting ${data.results.length} results to state`);
+          // console.log(`📋 [ScanModal] Setting ${data.results.length} results to state`);
           setResults(data.results);
-          console.log(`📋 [ScanModal] Results state updated, length:`, data.results.length);
+          // console.log(`📋 [ScanModal] Results state updated, length:`, data.results.length);
         } else {
-          console.log(`📋 [ScanModal] No results in response or success=false`);
+          // console.log(`📋 [ScanModal] No results in response or success=false`);
         }
       } else {
         const errorData = await response.json();
@@ -82,7 +82,7 @@ export default function ScanAnswerSheetModal({
       console.error("📋 [ScanModal] Error fetching scan history:", error);
     } finally {
       setIsLoadingHistory(false);
-      console.log(`📋 [ScanModal] Loading finished, current results count:`, results.length);
+      // console.log(`📋 [ScanModal] Loading finished, current results count:`, results.length);
     }
   };
 
@@ -176,7 +176,7 @@ export default function ScanAnswerSheetModal({
   };
 
   const renderResultsList = () => {
-    console.log(`📋 [ScanModal] renderResultsList called, results.length:`, results.length);
+    // console.log(`📋 [ScanModal] renderResultsList called, results.length:`, results.length);
     return (
       <div className="bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-300 rounded-lg p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
@@ -479,7 +479,7 @@ export default function ScanAnswerSheetModal({
   };
 
   // Debug log in render
-  console.log(`📋 [ScanModal] Rendering - results.length: ${results.length}, viewMode: ${viewMode}, isLoadingHistory: ${isLoadingHistory}`);
+  // console.log(`📋 [ScanModal] Rendering - results.length: ${results.length}, viewMode: ${viewMode}, isLoadingHistory: ${isLoadingHistory}`);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

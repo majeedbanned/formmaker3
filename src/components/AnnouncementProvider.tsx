@@ -25,20 +25,20 @@ export default function AnnouncementProvider() {
 
   const fetchAnnouncements = async () => {
     try {
-      console.log("📢 [AnnouncementProvider] Fetching announcements...");
+      // console.log("📢 [AnnouncementProvider] Fetching announcements...");
       const response = await fetch("/api/announcements");
-      console.log("📢 [AnnouncementProvider] Response status:", response.status);
+      // console.log("📢 [AnnouncementProvider] Response status:", response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log("📢 [AnnouncementProvider] Data received:", data);
+        // console.log("📢 [AnnouncementProvider] Data received:", data);
         
         if (data.announcements && data.announcements.length > 0) {
-          console.log("📢 [AnnouncementProvider] Found", data.announcements.length, "announcements. Showing modal...");
+          // console.log("📢 [AnnouncementProvider] Found", data.announcements.length, "announcements. Showing modal...");
           setAnnouncements(data.announcements);
           setShowModal(true);
         } else {
-          console.log("📢 [AnnouncementProvider] No announcements to show");
+          // console.log("📢 [AnnouncementProvider] No announcements to show");
         }
       } else {
         const errorData = await response.json();
@@ -48,7 +48,7 @@ export default function AnnouncementProvider() {
       console.error("📢 [AnnouncementProvider] Error fetching announcements:", error);
     } finally {
       setIsLoading(false);
-      console.log("📢 [AnnouncementProvider] Loading finished");
+      // console.log("📢 [AnnouncementProvider] Loading finished");
     }
   };
 
@@ -63,7 +63,7 @@ export default function AnnouncementProvider() {
       });
 
       if (response.ok) {
-        console.log("Announcements dismissed successfully");
+        // console.log("Announcements dismissed successfully");
       }
     } catch (error) {
       console.error("Error dismissing announcements:", error);

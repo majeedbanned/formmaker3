@@ -1970,11 +1970,11 @@
             },
             match,
             log: label => {
-              console.log(label, {
-                constructors,
-                constructor: key,
-                params: args
-              });
+              // console.log(label, {
+              //   constructors,
+              //   constructor: key,
+              //   params: args
+              // });
             }
           };
         };

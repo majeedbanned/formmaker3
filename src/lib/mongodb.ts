@@ -45,7 +45,7 @@ export const connectToDatabase = async (domain: string) => {
   // Check if we already have a connection for this domain
   if (connectionCache[domain]?.isConnected) {
     logger.info(`Using existing MongoDB connection for domain: ${domain}`);
-    //console.log('connectionCache[domain]', connectionCache[domain])
+    // console.log('connectionCache[domain]', connectionCache[domain])
     return connectionCache[domain].connection;
   }
 
@@ -223,7 +223,7 @@ export const getDynamicModel = (connection: mongoose.Connection, collectionName:
     // Add indexes for better query performance
     schema.index({ 'data.schoolCode': 1 });
     schema.index({ 'data.username': 1 });
-    //console.log("collectionName", collectionName);
+    // console.log("collectionName", collectionName);
     return connection.model(collectionName, schema);
   }
 }; 
