@@ -1,0 +1,167 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { MongoClient } from 'mongodb';
+import path from 'path';
+import fs from 'fs';
+import jwt from 'jsonwebtoken';
+
+// Load database configuration
+const getDatabaseConfig = () => {
+  try {
+    const configPath = path.join(process.cwd(), 'src', 'config', 'database.json');
+    const configData = fs.readFileSync(configPath, 'utf8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('Error loading database config:', error);
+    return {};
+  }
+};
+
+interface DatabaseConfig {
+  [domain: string]: {
+    schoolCode: string;
+    connectionString: string;
+    description: string;
+  };
+}
+
+// JWT Configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+
+interface JWTPayload {
+  userId: string;
+  domain: string;
+  schoolCode: string;
+  role: string;
+  userType: string;
+  username: string;
+  iat?: number;
+  exp?: number;
+}
+
+// CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get token from Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, message: 'توکن احراز هویت الزامی است' },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const token = authHeader.substring(7);
+
+    // Verify JWT token
+    let decoded: JWTPayload;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    } catch (jwtError) {
+      return NextResponse.json(
+        { success: false, message: 'توکن نامعتبر یا منقضی شده است' },
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Load database configuration
+    const dbConfig: DatabaseConfig = getDatabaseConfig();
+    const domainConfig = dbConfig[decoded.domain];
+    
+    if (!domainConfig) {
+      return NextResponse.json(
+        { success: false, message: 'دامنه مدرسه یافت نشد' },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // Verify school code matches
+    if (domainConfig.schoolCode !== decoded.schoolCode) {
+      return NextResponse.json(
+        { success: false, message: 'کد مدرسه با دامنه مطابقت ندارد' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Connect to MongoDB
+    const client = new MongoClient(domainConfig.connectionString);
+    await client.connect();
+    
+    // Extract database name from connection string
+    const dbName = domainConfig.connectionString.split('/')[3].split('?')[0];
+    const db = client.db(dbName);
+
+    try {
+      let user: any = null;
+      let isActive: boolean = false;
+
+      // Check user status based on user type (don't filter by isActive, we need to check it)
+      if (decoded.userType === 'student') {
+        user = await db.collection('students').findOne({
+          'data.studentCode': decoded.username,
+          'data.schoolCode': decoded.schoolCode,
+        });
+      } else if (decoded.userType === 'teacher') {
+        user = await db.collection('teachers').findOne({
+          'data.teacherCode': decoded.username,
+          'data.schoolCode': decoded.schoolCode,
+        });
+      } else if (decoded.userType === 'school') {
+        user = await db.collection('schools').findOne({
+          $or: [
+            { 'data.username': decoded.username },
+            { 'data.schoolCode': decoded.username }
+          ],
+          'data.schoolCode': decoded.schoolCode,
+          'data.domain': decoded.domain
+        });
+      }
+
+      await client.close();
+
+      if (!user) {
+        return NextResponse.json(
+          { success: false, message: 'کاربر یافت نشد' },
+          { status: 404, headers: corsHeaders }
+        );
+      }
+
+      isActive = user.data.isActive === true;
+
+      return NextResponse.json({
+        success: true,
+        isActive,
+        userType: decoded.userType,
+      }, { headers: corsHeaders });
+
+    } catch (dbError) {
+      await client.close();
+      console.error('Database error:', dbError);
+      return NextResponse.json(
+        { success: false, message: 'خطا در اتصال به پایگاه داده' },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+  } catch (error) {
+    console.error('Check user status API error:', error);
+    return NextResponse.json(
+      { success: false, message: 'خطای سرور داخلی' },
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
