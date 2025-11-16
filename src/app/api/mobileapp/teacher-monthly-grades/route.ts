@@ -54,6 +54,7 @@ interface AssessmentEntry {
 
 interface GradeDetail extends GradeEntry {
   normalizedValue: number | null;
+  recordId?: string; // MongoDB _id of the classsheet record
 }
 
 type AssessmentWeightSource = 'explicit' | 'custom' | 'default';
@@ -527,9 +528,13 @@ export async function GET(request: NextRequest) {
 
             const monthKey = cellMonth.toString();
             
-            // Add grades
+            // Add grades with recordId
             if (cell.grades && cell.grades.length > 0) {
-              monthlyData[monthKey].grades.push(...cell.grades);
+              const gradesWithRecordId = cell.grades.map((grade: GradeEntry) => ({
+                ...grade,
+                recordId: cell._id?.toString()
+              }));
+              monthlyData[monthKey].grades.push(...gradesWithRecordId);
             }
 
             // Add assessments

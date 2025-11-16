@@ -3314,18 +3314,18 @@ const ReportCards = ({
                                 ]
                                   .filter((month) => isMonthVisible(month.num))
                                   .map((month) => (
-                                    <TableHead
-                                      key={`month-head-${month.num}`}
-                                      className="custom-header-cell text-center month-header"
-                                    >
-                                      <span className="month-name">
-                                        {month.persian}
-                                      </span>
-                                      <span className="month-gregorian">
-                                        {month.gregorian}
-                                      </span>
-                                    </TableHead>
-                                  ))}
+                                  <TableHead
+                                    key={`month-head-${month.num}`}
+                                    className="custom-header-cell text-center month-header"
+                                  >
+                                    <span className="month-name">
+                                      {month.persian}
+                                    </span>
+                                    <span className="month-gregorian">
+                                      {month.gregorian}
+                                    </span>
+                                  </TableHead>
+                                ))}
                                 {/* Months 1-4 (Second half of school year) */}
                                 {[
                                   {
@@ -3351,18 +3351,18 @@ const ReportCards = ({
                                 ]
                                   .filter((month) => isMonthVisible(month.num))
                                   .map((month) => (
-                                    <TableHead
-                                      key={`month-head-${month.num}`}
-                                      className="custom-header-cell text-center month-header"
-                                    >
-                                      <span className="month-name">
-                                        {month.persian}
-                                      </span>
-                                      <span className="month-gregorian">
-                                        {month.gregorian}
-                                      </span>
-                                    </TableHead>
-                                  ))}
+                                  <TableHead
+                                    key={`month-head-${month.num}`}
+                                    className="custom-header-cell text-center month-header"
+                                  >
+                                    <span className="month-name">
+                                      {month.persian}
+                                    </span>
+                                    <span className="month-gregorian">
+                                      {month.gregorian}
+                                    </span>
+                                  </TableHead>
+                                ))}
                                 <TableHead className="custom-header-cell text-center">
                                   میانگین کل
                                 </TableHead>
