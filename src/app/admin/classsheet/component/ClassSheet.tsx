@@ -456,6 +456,13 @@ const ClassSheet = ({
   // Add new state for monthly report modal
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
   const [monthlyReportData, setMonthlyReportData] = useState<any>(null);
+  // State for delete feature hint banner
+  const [showDeleteHint, setShowDeleteHint] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("classsheet_delete_hint_dismissed") !== "true";
+    }
+    return true;
+  });
 
   // State for student full report
   const [isStudentReportOpen, setIsStudentReportOpen] = useState(false);
@@ -1373,6 +1380,109 @@ const ClassSheet = ({
       toast.error(
         error instanceof Error ? error.message : "خطا در افزودن مقدار ارزیابی"
       );
+    }
+  };
+
+  // Handler to delete a grade from monthly report
+  const handleDeleteGradeFromMonthlyReport = async (
+    gradeToDelete: GradeEntry,
+    gradeIndex: number
+  ) => {
+    if (!monthlyReportData || !selectedOption) return;
+
+    // Confirm deletion
+    if (
+      !window.confirm(
+        `آیا از حذف این نمره اطمینان دارید؟\nنمره: ${gradeToDelete.value} از ${gradeToDelete.totalPoints || 20}\nتوضیحات: ${gradeToDelete.description || "-"}`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Find the cell that contains this grade
+      const cellContainingGrade = monthlyReportData.cells.find((cell: CellData) =>
+        cell.grades?.some(
+          (g: GradeEntry) =>
+            g.value === gradeToDelete.value &&
+            g.description === gradeToDelete.description &&
+            g.date === gradeToDelete.date &&
+            (g.totalPoints || 20) === (gradeToDelete.totalPoints || 20)
+        )
+      );
+
+      if (!cellContainingGrade) {
+        toast.error("نتوانستیم سلول مربوط به این نمره را پیدا کنیم");
+        return;
+      }
+
+      // Remove the grade from the cell's grades array
+      const updatedGrades = cellContainingGrade.grades.filter(
+        (g: GradeEntry) =>
+          !(
+            g.value === gradeToDelete.value &&
+            g.description === gradeToDelete.description &&
+            g.date === gradeToDelete.date &&
+            (g.totalPoints || 20) === (gradeToDelete.totalPoints || 20)
+          )
+      );
+
+      // Prepare updated cell data
+      const updatedCellData = {
+        ...cellContainingGrade,
+        grades: updatedGrades,
+      };
+
+      // Save the updated cell data
+      const response = await fetch("/api/classsheet/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedCellData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete grade");
+      }
+
+      // Update local state
+      const matchingColumn = allColumns.find(
+        (col) =>
+          col.date.toISOString().split("T")[0] ===
+          cellContainingGrade.date &&
+          col.timeSlot === cellContainingGrade.timeSlot
+      );
+      
+      if (matchingColumn) {
+        const cellKey = getCellKey(
+          cellContainingGrade.studentCode,
+          matchingColumn
+        );
+
+        setCellsData((prev) => ({
+          ...prev,
+          [cellKey]: updatedCellData as CellData,
+        }));
+      }
+
+      // Refresh the monthly report data
+      handleMonthlyCellClick(
+        monthlyReportData.student,
+        monthlyReportData.month,
+        monthlyReportData.cells.map((cell: CellData) =>
+          cell === cellContainingGrade ? updatedCellData : cell
+        )
+      );
+
+      toast.success("نمره با موفقیت حذف شد");
+    } catch (error) {
+      console.error("Error deleting grade:", error);
+      toast.error("خطا در حذف نمره");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -3273,6 +3383,80 @@ const ClassSheet = ({
         </div>
       </div>
 
+      {/* Delete Feature Hint Banner */}
+      {showDeleteHint && (
+        <div className="mx-4 mb-4 mt-4">
+          <div className="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-r-4 border-blue-500 rounded-lg p-4 shadow-md animate-in fade-in slide-in-from-top duration-500">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-1">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-lg font-bold text-gray-800 mb-1">
+                  💡 نکته مهم
+                </h4>
+                <p className="text-gray-700 mb-3 leading-relaxed">
+                  در گزارش ماهانه (با کلیک روی سلول‌های ماهانه)، می‌توانید با کلیک روی آیکون{" "}
+                  <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded mx-1">
+                    <XMarkIcon className="w-4 h-4" />
+                  </span>{" "}
+                  در ستون "عملیات"، هر نمره را حذف کنید. این کار به شما امکان
+                  اصلاح و مدیریت بهتر نمرات را می‌دهد.
+                  <br />
+                  <span className="font-medium text-gray-800 mt-2 block">
+                    💡 نکته: اگر نمره‌ای را در سلول‌ها پیدا نمی‌کنید، می‌توانید آن را در گزارش ماهانه حذف کنید.
+                  </span>
+                </p>
+                <button
+                  onClick={() => {
+                    setShowDeleteHint(false);
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem(
+                        "classsheet_delete_hint_dismissed",
+                        "true"
+                      );
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm hover:shadow-md"
+                >
+                  متوجه شدم
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeleteHint(false);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem(
+                      "classsheet_delete_hint_dismissed",
+                      "true"
+                    );
+                  }
+                }}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                title="بستن"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Schedule Sheet */}
       <div className="bg-white   p-0 overflow-x-auto">
         <table className="min-w-full bg-white border-collapse rounded-lg overflow-hidden">
@@ -4423,10 +4607,11 @@ const ClassSheet = ({
                             <th className="p-2 text-right">نمره</th>
                             <th className="p-2 text-right">از</th>
                             <th className="p-2 text-right">توضیحات</th>
+                            <th className="p-2 text-right">عملیات</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {monthlyReportData.allGrades.map((grade, idx) => {
+                          {monthlyReportData.allGrades.map((grade: GradeEntry, idx: number) => {
                             // Format the date from ISO string
                             const gradeDate = new Date(grade.date);
                             const formattedDate = gradeDate
@@ -4445,6 +4630,16 @@ const ClassSheet = ({
                                 </td>
                                 <td className="p-2">
                                   {grade.description || "-"}
+                                </td>
+                                <td className="p-2">
+                                  <button
+                                    onClick={() => handleDeleteGradeFromMonthlyReport(grade, idx)}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors"
+                                    title="حذف نمره"
+                                    disabled={isLoading}
+                                  >
+                                    <XMarkIcon className="w-5 h-5" />
+                                  </button>
                                 </td>
                               </tr>
                             );
