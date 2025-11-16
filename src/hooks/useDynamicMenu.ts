@@ -639,10 +639,10 @@ function buildMenuStructure(
   );
   
   // console.log('✅ Accessible systems after permission filtering:', accessibleSystems.map(s => ({
-    systemID: s.data.systemID, 
-    systemName: s.data.systemName,
-    menuID: s.data.menuID
-  })));
+  //   systemID: s.data.systemID, 
+  //   systemName: s.data.systemName,
+  //   menuID: s.data.menuID
+  // })));
   
   // Group accessible admin systems by menuID
   const systemGroups = new Map<string, AdminSystemDoc[]>();
@@ -704,12 +704,12 @@ function buildMenuStructure(
   const sortedMenuSections = menuSections.sort((a, b) => a.menuIDOrder - b.menuIDOrder);
   
   // console.log('🎯 Final menu structure:', sortedMenuSections.map(section => ({
-    title: section.title,
-    menuID: section.menuID,
-    menuIDOrder: section.menuIDOrder,
-    itemCount: section.items.length,
-    items: section.items.map(item => ({ title: item.title, url: item.url }))
-  })));
+  //   title: section.title,
+  //   menuID: section.menuID,
+  //   menuIDOrder: section.menuIDOrder,
+  //   itemCount: section.items.length,
+  //   items: section.items.map(item => ({ title: item.title, url: item.url }))
+  // })));
   
   return sortedMenuSections;
 }

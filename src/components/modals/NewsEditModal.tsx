@@ -566,9 +566,9 @@ export default function NewsEditModal({
                               }}
                               onLoad={() => {
                                 // console.log(
-                                  "News preview image loaded successfully:",
-                                  newsItem.image
-                                );
+                                 // "News preview image loaded successfully:",
+                                 // newsItem.image
+                               // );
                               }}
                             />
                           </div>
