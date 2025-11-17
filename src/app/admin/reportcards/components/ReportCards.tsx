@@ -21,100 +21,282 @@ import Excel from "exceljs";
 import { saveAs } from "file-saver";
 import { useAuth } from "@/hooks/useAuth";
 
-// Define the print styles for report cards
-const printStyles = `
-  @media print {
-    body {
-      background-color: white !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-      font-size: 9pt !important;
-    }
-    .printing {
-      padding: 0.5rem !important;
-    }
-    .printing .card {
-      box-shadow: none !important;
-      border: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    .print\\:hidden {
-      display: none !important;
-    }
-    .printing .overflow-x-auto {
-      overflow: visible !important;
-    }
-    .printing table {
-      width: 100%;
-      page-break-inside: auto;
-      border-collapse: collapse !important;
-    }
-    .printing tr {
-      page-break-inside: avoid;
-      page-break-after: auto;
-    }
-    .printing th, .printing td {
-      page-break-inside: avoid;
-      padding: 3px 5px !important;
-      font-size: 8pt !important;
-    }
-    .printing thead {
-      display: table-header-group;
-    }
-    .printing tfoot {
-      display: table-footer-group;
-    }
-    .printing .student-name {
-      font-size: 10pt !important;
-      padding: 6px !important;
-      margin-bottom: 4px !important;
-    }
-    .printing .month-gregorian {
-      font-size: 6pt !important;
-    }
-    .printing .grade-value {
-      font-size: 8pt !important;
-    }
-    .printing .progress-indicator, .printing .rank-indicator {
-      font-size: 6pt !important;
-      padding: 0px 3px !important;
-      margin-top: 1px !important;
-    }
-    .printing .subject-cell, .printing .teacher-cell {
-      max-width: 100px !important;
-      white-space: normal !important;
-    }
-    .printing .report-card-wrapper {
-      margin-bottom: 8px !important;
-      padding: 2px !important;
-      page-break-before: always !important;
-      page-break-after: always !important;
-      break-before: page !important;
-      break-after: page !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-      min-height: calc(100vh - 1cm) !important;
-      display: block !important;
-    }
-    .printing .report-card-wrapper:first-of-type {
-      page-break-before: avoid !important;
-      break-before: auto !important;
-    }
-    .printing .report-card-wrapper:last-of-type {
-      page-break-after: avoid !important;
-      break-after: auto !important;
-    }
-    .printing .card-content {
-      padding: 0 !important;
-    }
-    @page {
-      size: landscape;
-      margin: 0.5cm;
-    }
+// Helper function to get report card wrapper styles based on cards per page
+const getReportCardWrapperStyles = (cardsPerPage: 1 | 2, margin: string, padding: string, minHeight: string) => {
+  if (cardsPerPage === 1) {
+    return `
+      .printing .report-card-wrapper {
+        margin-bottom: ${margin} !important;
+        padding: ${padding} !important;
+        page-break-before: always !important;
+        page-break-after: always !important;
+        break-before: page !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        min-height: ${minHeight} !important;
+        display: block !important;
+      }
+    `;
+  } else {
+    // 2 cards per page
+    return `
+      .printing .report-card-wrapper {
+        margin-bottom: ${margin} !important;
+        padding: ${padding} !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        min-height: ${minHeight} !important;
+        display: block !important;
+      }
+      .printing .report-card-wrapper:nth-child(2n+1):not(:first-child) {
+        page-break-before: always !important;
+        break-before: page !important;
+      }
+      .printing .report-card-wrapper:first-of-type {
+        page-break-before: avoid !important;
+        break-before: auto !important;
+      }
+    `;
   }
-`;
+};
+
+// Define the print styles for report cards based on template
+const getPrintStyles = (template: "normal" | "compact" | "ultra-compact", cardsPerPage: 1 | 2) => {
+  const baseStyles = `
+    @media print {
+      body {
+        background-color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      .print\\:hidden {
+        display: none !important;
+      }
+      .printing .overflow-x-auto {
+        overflow: visible !important;
+      }
+      .printing table {
+        width: 100%;
+        page-break-inside: auto;
+        border-collapse: collapse !important;
+      }
+      .printing tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+      .printing thead {
+        display: table-header-group;
+      }
+      .printing tfoot {
+        display: table-footer-group;
+      }
+      .printing .card-content {
+        padding: 0 !important;
+      }
+      .printing .report-card-wrapper:first-of-type {
+        page-break-before: avoid !important;
+        break-before: auto !important;
+      }
+      .printing .report-card-wrapper:last-of-type {
+        page-break-after: avoid !important;
+        break-after: auto !important;
+      }
+    }
+  `;
+
+  if (template === "normal") {
+    return baseStyles + `
+      @media print {
+        body {
+          font-size: 9pt !important;
+        }
+        .printing {
+          padding: 0.5rem !important;
+        }
+        .printing .card {
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .printing th, .printing td {
+          page-break-inside: avoid;
+          padding: 3px 5px !important;
+          font-size: 8pt !important;
+        }
+        .printing .student-name {
+          font-size: 10pt !important;
+          padding: 6px !important;
+          margin-bottom: 4px !important;
+        }
+        .printing .month-gregorian {
+          font-size: 6pt !important;
+        }
+        .printing .grade-value {
+          font-size: 8pt !important;
+        }
+        .printing .progress-indicator, .printing .rank-indicator {
+          font-size: 6pt !important;
+          padding: 0px 3px !important;
+          margin-top: 1px !important;
+        }
+        .printing .subject-cell, .printing .teacher-cell {
+          max-width: 100px !important;
+          white-space: normal !important;
+        }
+        ${getReportCardWrapperStyles(
+          cardsPerPage,
+          "8px",
+          "2px",
+          cardsPerPage === 1 ? "calc(100vh - 1cm)" : "calc(50vh - 0.6cm)"
+        )}
+        @page {
+          size: landscape;
+          margin: 0.5cm;
+        }
+      }
+    `;
+  } else if (template === "compact") {
+    return baseStyles + `
+      @media print {
+        body {
+          font-size: 8pt !important;
+        }
+        .printing {
+          padding: 0.25rem !important;
+        }
+        .printing .card {
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .printing th, .printing td {
+          page-break-inside: avoid;
+          padding: 2px 3px !important;
+          font-size: 7pt !important;
+        }
+        .printing .student-name {
+          font-size: 9pt !important;
+          padding: 4px !important;
+          margin-bottom: 2px !important;
+        }
+        .printing .student-name-text {
+          font-size: 9pt !important;
+        }
+        .printing .student-code {
+          font-size: 6pt !important;
+        }
+        .printing .student-details {
+          font-size: 6pt !important;
+          margin-top: 0.1rem !important;
+        }
+        .printing .month-gregorian {
+          font-size: 5pt !important;
+        }
+        .printing .month-name {
+          font-size: 7pt !important;
+        }
+        .printing .grade-value {
+          font-size: 7pt !important;
+        }
+        .printing .progress-indicator, .printing .rank-indicator {
+          font-size: 5pt !important;
+          padding: 0px 2px !important;
+          margin-top: 0px !important;
+        }
+        .printing .subject-cell, .printing .teacher-cell {
+          max-width: 80px !important;
+          white-space: normal !important;
+          font-size: 7pt !important;
+        }
+        ${getReportCardWrapperStyles(
+          cardsPerPage,
+          "4px",
+          "1px",
+          cardsPerPage === 1 ? "calc(100vh - 0.5cm)" : "calc(50vh - 0.4cm)"
+        )}
+        @page {
+          size: landscape;
+          margin: 0.3cm;
+        }
+      }
+    `;
+  } else { // ultra-compact
+    return baseStyles + `
+      @media print {
+        body {
+          font-size: 7pt !important;
+        }
+        .printing {
+          padding: 0.1rem !important;
+        }
+        .printing .card {
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .printing th, .printing td {
+          page-break-inside: avoid;
+          padding: 1px 2px !important;
+          font-size: 6pt !important;
+          line-height: 1.2 !important;
+        }
+        .printing .student-name {
+          font-size: 8pt !important;
+          padding: 3px !important;
+          margin-bottom: 1px !important;
+        }
+        .printing .student-name-text {
+          font-size: 8pt !important;
+        }
+        .printing .student-code {
+          font-size: 5pt !important;
+        }
+        .printing .student-details {
+          font-size: 5pt !important;
+          margin-top: 0.05rem !important;
+          gap: 0.5rem !important;
+        }
+        .printing .month-gregorian {
+          display: none !important;
+        }
+        .printing .month-name {
+          font-size: 6pt !important;
+        }
+        .printing .grade-value {
+          font-size: 6pt !important;
+        }
+        .printing .progress-indicator, .printing .rank-indicator {
+          font-size: 4pt !important;
+          padding: 0px 1px !important;
+          margin-top: 0px !important;
+        }
+        .printing .subject-cell, .printing .teacher-cell {
+          max-width: 60px !important;
+          white-space: normal !important;
+          font-size: 6pt !important;
+        }
+        ${getReportCardWrapperStyles(
+          cardsPerPage,
+          "2px",
+          "0px",
+          cardsPerPage === 1 ? "calc(100vh - 0.3cm)" : "calc(50vh - 0.25cm)"
+        )}
+        .printing .presence-container, .printing .assessment-container {
+          display: none !important;
+        }
+        @page {
+          size: landscape;
+          margin: 0.2cm;
+        }
+      }
+    `;
+  }
+};
 
 // Add custom styles for better UI
 const customStyles = `
@@ -691,6 +873,9 @@ const ReportCards = ({
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [printTemplate, setPrintTemplate] = useState<"normal" | "compact" | "ultra-compact">("normal");
+  const [cardsPerPage, setCardsPerPage] = useState<1 | 2>(1);
+  const [schoolName, setSchoolName] = useState<string>("");
   const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
   const [coursesInfo, setCoursesInfo] = useState<Record<string, CourseData>>(
     {}
@@ -708,6 +893,8 @@ const ReportCards = ({
   const [showAssessments, setShowAssessments] = useState(false);
   // Add a new state for showing overall statistics
   const [showOverallStats, setShowOverallStats] = useState(false);
+  // Add a new state for hiding empty grade rows
+  const [hideEmptyRows, setHideEmptyRows] = useState(false);
   // Add a new state variable for selected student
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
   // Add state for visible columns (months) - default all visible
@@ -840,6 +1027,17 @@ const ReportCards = ({
       if (!schoolCode) return;
 
       try {
+        // Fetch school name
+        try {
+          const schoolResponse = await fetch(`/api/schools/${schoolCode}`);
+          if (schoolResponse.ok) {
+            const schoolData = await schoolResponse.json();
+            setSchoolName(schoolData.data?.schoolName || "sss");
+          }
+        } catch (err) {
+          console.error("Error fetching school name:", err);
+        }
+
         // Fetch teachers
         const teachersResponse = await fetch(
           `/api/formbuilder/classes-teachers`,
@@ -2658,7 +2856,7 @@ const ReportCards = ({
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: printStyles + customStyles }} />
+      <style dangerouslySetInnerHTML={{ __html: getPrintStyles(printTemplate, cardsPerPage) + customStyles }} />
       <div className={`space-y-6 ${isPrinting ? "printing" : ""}`} dir="rtl">
         <Card className="print:hidden filter-card shadow-sm">
           <CardHeader className="pb-2">
@@ -2972,6 +3170,49 @@ const ReportCards = ({
                   </div>
                 </div>
 
+                <div
+                  className={`rounded-lg border border-gray-200 p-3 cursor-pointer transition-all ${
+                    hideEmptyRows
+                      ? "bg-red-50 border-red-200 shadow-sm"
+                      : "bg-white hover:bg-gray-50"
+                  }`}
+                  onClick={() => setHideEmptyRows(!hideEmptyRows)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        hideEmptyRows
+                          ? "bg-red-500 border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {hideEmptyRows && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3.5 w-3.5 text-white"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className={`${
+                        hideEmptyRows
+                          ? "text-red-700 font-medium"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      مخفی کردن ردیف‌های خالی
+                    </span>
+                  </div>
+                </div>
+
                 {/* Column Visibility Selector */}
                 <div className="relative" ref={columnSelectorRef}>
                   <div
@@ -3124,11 +3365,12 @@ const ReportCards = ({
             <CardHeader className="pb-2 border-b">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-xl text-gray-800">
-                  کارنامه تحصیلی -{" "}
+                  کارنامه تحصیلی{" "}
+                  {schoolName && `- ${schoolName}`}{" "}
                   {selectedClass &&
-                    filteredClassDocuments.find(
+                    `- ${filteredClassDocuments.find(
                       (doc) => doc.data.classCode === selectedClass
-                    )?.data.className}{" "}
+                    )?.data.className}`}{" "}
                   - سال تحصیلی{" "}
                   {selectedYear &&
                     yearOptions.find((y) => y.value === selectedYear)?.label}
@@ -3141,6 +3383,57 @@ const ReportCards = ({
                     <ExcelIcon />
                     خروجی اکسل
                   </button>
+                  <div className="print:hidden flex items-center gap-2">
+                    <Label
+                      htmlFor="print-template-select"
+                      className="text-sm text-gray-700 whitespace-nowrap"
+                    >
+                      قالب چاپ:
+                    </Label>
+                    <Select
+                      value={printTemplate}
+                      onValueChange={(value: "normal" | "compact" | "ultra-compact") =>
+                        setPrintTemplate(value)
+                      }
+                    >
+                      <SelectTrigger
+                        id="print-template-select"
+                        className="w-[140px] h-9 text-sm border-gray-300"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">عادی</SelectItem>
+                        <SelectItem value="compact">فشرده</SelectItem>
+                        <SelectItem value="ultra-compact">فوق فشرده</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="print:hidden flex items-center gap-2">
+                    <Label
+                      htmlFor="cards-per-page-select"
+                      className="text-sm text-gray-700 whitespace-nowrap"
+                    >
+                      تعداد کارنامه در صفحه:
+                    </Label>
+                    <Select
+                      value={cardsPerPage.toString()}
+                      onValueChange={(value) =>
+                        setCardsPerPage(value === "1" ? 1 : 2)
+                      }
+                    >
+                      <SelectTrigger
+                        id="cards-per-page-select"
+                        className="w-[100px] h-9 text-sm border-gray-300"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <button
                     onClick={handlePrint}
                     className="print:hidden action-button print-button"
@@ -3238,6 +3531,27 @@ const ReportCards = ({
                                   }
                                 </span>
                               </div>
+                              {schoolName && (
+                                <div className="student-detail-item">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                  </svg>
+                                  <span style={{ fontSize: '19px' }}>
+                                    مدرسه: {schoolName}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="hidden md:block header-stats">
@@ -3369,8 +3683,19 @@ const ReportCards = ({
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {Object.entries(student.courses).map(
-                                ([courseCode, courseData]) => {
+                              {Object.entries(student.courses)
+                                .filter(([, courseData]) => {
+                                  // If hideEmptyRows is enabled, filter out courses with no grades
+                                  if (hideEmptyRows) {
+                                    // Check if course has any grades in any month
+                                    const hasGrades = Object.values(
+                                      courseData.monthlyGrades
+                                    ).some((grade) => grade !== null);
+                                    return hasGrades;
+                                  }
+                                  return true; // Show all courses if option is disabled
+                                })
+                                .map(([courseCode, courseData]) => {
                                   // Calculate course ranking among all students
                                   let courseRanking: number | null = null;
 
@@ -3782,8 +4107,18 @@ const ReportCards = ({
                                     let totalWeight = 0;
                                     let weightedSum = 0;
 
-                                    Object.values(student.courses).forEach(
-                                      (course) => {
+                                    Object.values(student.courses)
+                                      .filter((course) => {
+                                        // If hideEmptyRows is enabled, filter out courses with no grades
+                                        if (hideEmptyRows) {
+                                          const hasGrades = Object.values(
+                                            course.monthlyGrades
+                                          ).some((grade) => grade !== null);
+                                          return hasGrades;
+                                        }
+                                        return true;
+                                      })
+                                      .forEach((course) => {
                                         const grade =
                                           course.monthlyGrades[monthKey];
                                         const vahed = Number(course.vahed ?? 1) || 1;
@@ -3792,8 +4127,7 @@ const ReportCards = ({
                                           weightedSum += grade * vahed;
                                           totalWeight += vahed;
                                         }
-                                      }
-                                    );
+                                      });
 
                                     const weightedAvg =
                                       totalWeight > 0
@@ -3814,8 +4148,18 @@ const ReportCards = ({
                                     let prevTotalWeight = 0;
                                     let prevWeightedSum = 0;
 
-                                    Object.values(student.courses).forEach(
-                                      (course) => {
+                                    Object.values(student.courses)
+                                      .filter((course) => {
+                                        // If hideEmptyRows is enabled, filter out courses with no grades
+                                        if (hideEmptyRows) {
+                                          const hasGrades = Object.values(
+                                            course.monthlyGrades
+                                          ).some((grade) => grade !== null);
+                                          return hasGrades;
+                                        }
+                                        return true;
+                                      })
+                                      .forEach((course) => {
                                         const grade =
                                           course.monthlyGrades[prevMonthKey];
                                         const vahed = Number(course.vahed ?? 1) || 1;
@@ -3824,8 +4168,7 @@ const ReportCards = ({
                                           prevWeightedSum += grade * vahed;
                                           prevTotalWeight += vahed;
                                         }
-                                      }
-                                    );
+                                      });
 
                                     const prevWeightedAvg =
                                       prevTotalWeight > 0
@@ -3853,16 +4196,27 @@ const ReportCards = ({
 
                                           Object.values(
                                             otherStudent.courses
-                                          ).forEach((course) => {
-                                            const grade =
-                                              course.monthlyGrades[monthKey];
-                                            const vahed = Number(course.vahed ?? 1) || 1;
+                                          )
+                                            .filter((course) => {
+                                              // If hideEmptyRows is enabled, filter out courses with no grades
+                                              if (hideEmptyRows) {
+                                                const hasGrades = Object.values(
+                                                  course.monthlyGrades
+                                                ).some((grade) => grade !== null);
+                                                return hasGrades;
+                                              }
+                                              return true;
+                                            })
+                                            .forEach((course) => {
+                                              const grade =
+                                                course.monthlyGrades[monthKey];
+                                              const vahed = Number(course.vahed ?? 1) || 1;
 
-                                            if (grade !== null) {
-                                              otherWeightedSum += grade * vahed;
-                                              otherTotalWeight += vahed;
-                                            }
-                                          });
+                                              if (grade !== null) {
+                                                otherWeightedSum += grade * vahed;
+                                                otherTotalWeight += vahed;
+                                              }
+                                            });
 
                                           return {
                                             studentCode:
