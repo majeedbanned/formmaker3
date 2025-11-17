@@ -103,6 +103,23 @@ const getPrintStyles = (template: "normal" | "compact" | "ultra-compact", cardsP
         page-break-after: avoid !important;
         break-after: auto !important;
       }
+      /* Force overall statistics grid to display 3 columns in one row when printing */
+      .printing .overall-stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        display: grid !important;
+        gap: 0.5rem !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      /* Ensure monthly trend section spans full width */
+      .printing .overall-stats-grid > div[class*="md:col-span-2"][class*="lg:col-span-3"] {
+        grid-column: 1 / -1 !important;
+      }
+      /* Prevent page breaks within individual stat cards */
+      .printing .overall-stats-grid > div {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     }
   `;
 
@@ -2410,7 +2427,7 @@ const ReportCards = ({
           آمار کلی عملکرد دانش‌آموز
         </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overall-stats-grid">
           {/* Presence Statistics */}
           {overallPresence.total > 0 && (
             <div className="border rounded-md p-3 bg-white shadow-sm">
