@@ -682,6 +682,34 @@
               "schoolCode":"95095846",
               "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/moalem?authSource=admin",
               "description": "moalem.farsamooz.ir"
+            },
+
+            "rahra.farsamooz.ir": {
+              "schoolCode":"63622109",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/rahra?authSource=admin",
+              "description": "rahra.farsamooz.ir"
+            },
+          
+            "toosi.farsamooz.ir": {
+              "schoolCode":"44630005",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/toosi?authSource=admin",
+              "description": "toosi.farsamooz.ir"
             }
-  
+
+
+           
+,
+
+
+            "khatam.farsamooz.ir": {
+              "schoolCode":"96101221",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/khateem?authSource=admin",
+              "description": "khateem.farsamooz.ir"
+            }
+
+
+
+
+
+
 } 
