@@ -703,8 +703,8 @@
 
             "khatam.farsamooz.ir": {
               "schoolCode":"96101221",
-              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/khateem?authSource=admin",
-              "description": "khateem.farsamooz.ir"
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/khatam?authSource=admin",
+              "description": "khatam.farsamooz.ir"
             }
 
 
