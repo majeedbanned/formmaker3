@@ -45,8 +45,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Helper function to get date range based on timeframe
+const getDateRange = (timeframe: string): { start: string; end: string } => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  switch (timeframe) {
+    case 'today': {
+      const todayStart = now.toISOString().split('T')[0];
+      return { start: todayStart, end: tomorrowStr };
+    }
+    case 'week': {
+      // Get start of week (Saturday in Persian calendar)
+      // JavaScript Date: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      // Persian week starts on Saturday (day 6)
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+      let daysToSubtract = dayOfWeek;
+      // If Sunday (0), subtract 1 day to get Saturday
+      // If Monday (1), subtract 2 days to get Saturday, etc.
+      if (dayOfWeek === 0) {
+        daysToSubtract = 1; // Go back to Saturday
+      } else if (dayOfWeek === 6) {
+        daysToSubtract = 0; // Already Saturday
+      } else {
+        daysToSubtract = dayOfWeek + 1; // Add 1 because we want to go back to Saturday
+      }
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - daysToSubtract);
+      const weekStart = startOfWeek.toISOString().split('T')[0];
+      return { start: weekStart, end: tomorrowStr };
+    }
+    case 'month': {
+      // Start of current month
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split('T')[0];
+      return { start: monthStartStr, end: tomorrowStr };
+    }
+    case 'year': {
+      // Start of current year
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const yearStartStr = yearStart.toISOString().split('T')[0];
+      return { start: yearStartStr, end: tomorrowStr };
+    }
+    default:
+      // Default to today
+      const todayStart = now.toISOString().split('T')[0];
+      return { start: todayStart, end: tomorrowStr };
+  }
+};
+
 export async function GET(request: NextRequest) {
   try {
+    // Get timeframe from query parameter (default to 'today')
+    const { searchParams } = new URL(request.url);
+    const timeframe = searchParams.get('timeframe') || 'today';
+
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -107,88 +163,18 @@ export async function GET(request: NextRequest) {
     try {
       const teacherCode = decoded.username;
 
-      // Get today's date range (start and end of today)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStart = today.toISOString().split('T')[0];
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const todayEndStr = tomorrow.toISOString().split('T')[0]; // Use tomorrow for $lt comparison
+      // Get date range based on timeframe
+      const { start: dateStart, end: dateEnd } = getDateRange(timeframe);
 
-      // Get overall date range (from beginning of school year to today)
-      // School year starts from month 7 (Mehr) of previous year
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1; // 1-12
-      
-      let schoolYearStart: Date;
-      if (currentMonth >= 7) {
-        // Current year is the school year (Mehr to Shahrivar)
-        schoolYearStart = new Date(currentYear, 6, 1); // July 1st
-      } else {
-        // Previous year is the school year start
-        schoolYearStart = new Date(currentYear - 1, 6, 1); // July 1st of previous year
-      }
-      const overallStart = schoolYearStart.toISOString().split('T')[0];
-      const overallEnd = tomorrow.toISOString().split('T')[0]; // Use tomorrow for $lt comparison
-
-      // Fetch today's statistics
-      const todayStats = await db.collection('classsheet').aggregate([
+      // Fetch statistics for the selected timeframe
+      const stats = await db.collection('classsheet').aggregate([
         {
           $match: {
             schoolCode: decoded.schoolCode,
             teacherCode: teacherCode,
             date: {
-              $gte: todayStart,
-              $lt: todayEndStr
-            }
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            gradeCounts: {
-              $sum: {
-                $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0]
-              }
-            },
-            presenceRecords: {
-              $sum: {
-                $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0]
-              }
-            },
-            assessments: {
-              $sum: {
-                $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0]
-              }
-            },
-            comments: {
-              $sum: {
-                $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0]
-              }
-            }
-          }
-        }
-      ]).toArray();
-
-      // Fetch today's events
-      const todayEvents = await db.collection('events').countDocuments({
-        schoolCode: decoded.schoolCode,
-        teacherCode: teacherCode,
-        date: {
-          $gte: todayStart,
-          $lt: todayEndStr
-        }
-      });
-
-      // Fetch overall statistics
-      const overallStats = await db.collection('classsheet').aggregate([
-        {
-          $match: {
-            schoolCode: decoded.schoolCode,
-            teacherCode: teacherCode,
-            date: {
-              $gte: overallStart,
-              $lt: overallEnd
+              $gte: dateStart,
+              $lt: dateEnd
             }
           }
         },
@@ -220,59 +206,39 @@ export async function GET(request: NextRequest) {
         }
       ]).toArray();
 
-      // Fetch overall events
-      const overallEvents = await db.collection('events').countDocuments({
+      // Fetch events for the selected timeframe
+      const events = await db.collection('events').countDocuments({
         schoolCode: decoded.schoolCode,
         teacherCode: teacherCode,
         date: {
-          $gte: overallStart,
-          $lt: overallEnd
+          $gte: dateStart,
+          $lt: dateEnd
         }
       });
 
       await client.close();
 
-      // Process today's stats
-      const todayData = todayStats[0] || {
-        gradeCounts: 0,
-        presenceRecords: 0,
-        assessments: 0,
-        comments: 0
-      };
-      const todayTotal = todayData.gradeCounts + todayData.presenceRecords + 
-                        todayData.assessments + todayData.comments + todayEvents;
-
-      // Process overall stats
-      const overallData = overallStats[0] || {
+      // Process stats
+      const data = stats[0] || {
         gradeCounts: 0,
         presenceRecords: 0,
         assessments: 0,
         comments: 0,
         lastActivity: null
       };
-      const overallTotal = overallData.gradeCounts + overallData.presenceRecords + 
-                          overallData.assessments + overallData.comments + overallEvents;
+      const total = data.gradeCounts + data.presenceRecords + 
+                    data.assessments + data.comments + events;
 
       return NextResponse.json({
         success: true,
         data: {
-          today: {
-            gradeCounts: todayData.gradeCounts || 0,
-            presenceRecords: todayData.presenceRecords || 0,
-            assessments: todayData.assessments || 0,
-            comments: todayData.comments || 0,
-            events: todayEvents || 0,
-            totalActivities: todayTotal
-          },
-          overall: {
-            gradeCounts: overallData.gradeCounts || 0,
-            presenceRecords: overallData.presenceRecords || 0,
-            assessments: overallData.assessments || 0,
-            comments: overallData.comments || 0,
-            events: overallEvents || 0,
-            totalActivities: overallTotal,
-            lastActivity: overallData.lastActivity || null
-          }
+          gradeCounts: data.gradeCounts || 0,
+          presenceRecords: data.presenceRecords || 0,
+          assessments: data.assessments || 0,
+          comments: data.comments || 0,
+          events: events || 0,
+          totalActivities: total,
+          lastActivity: data.lastActivity || null
         }
       }, { headers: corsHeaders });
 
