@@ -293,6 +293,74 @@ export async function GET(request: NextRequest) {
         { $sort: { _id: 1 } }
       ]).toArray();
 
+      // Fetch all teacher activities per day
+      const teachersDailyActivities = await db.collection('classsheet').aggregate([
+        {
+          $match: {
+            schoolCode: decoded.schoolCode,
+            date: {
+              $gte: dateStart,
+              $lt: dateEnd
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              date: '$date',
+              teacherCode: '$teacherCode'
+            },
+            activities: {
+              $sum: {
+                $add: [
+                  { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
+                  { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
+                  { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
+                  { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
+                ]
+              }
+            }
+          }
+        }
+      ]).toArray();
+
+      // Fetch events per teacher per day
+      const teachersDailyEvents = await db.collection('events').aggregate([
+        {
+          $match: {
+            schoolCode: decoded.schoolCode,
+            date: {
+              $gte: dateStart,
+              $lt: dateEnd
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              date: '$date',
+              teacherCode: '$teacherCode'
+            },
+            events: { $sum: 1 }
+          }
+        }
+      ]).toArray();
+
+      // Get all teachers info for avatar lookup
+      const teachers = await db.collection('teachers').find({
+        'data.schoolCode': decoded.schoolCode,
+        'data.isActive': { $ne: false }
+      }).toArray();
+
+      // Create teacher map for quick lookup
+      const teacherMap: Record<string, any> = {};
+      teachers.forEach((teacher: any) => {
+        teacherMap[teacher.data.teacherCode] = {
+          name: teacher.data.teacherName || teacher.data.teacherCode,
+          avatar: teacher.data.avatar || null
+        };
+      });
+
       await client.close();
 
       // Create maps for easier lookup
@@ -321,6 +389,64 @@ export async function GET(request: NextRequest) {
         userEventsMap[item._id] = item.events || 0;
       });
 
+      // Create maps for teacher activities and events
+      const teacherActivitiesMap: Record<string, Record<string, number>> = {};
+      teachersDailyActivities.forEach((item: any) => {
+        const date = item._id.date;
+        const teacherCode = item._id.teacherCode;
+        if (!teacherActivitiesMap[date]) {
+          teacherActivitiesMap[date] = {};
+        }
+        teacherActivitiesMap[date][teacherCode] = item.activities || 0;
+      });
+
+      const teacherEventsMap: Record<string, Record<string, number>> = {};
+      teachersDailyEvents.forEach((item: any) => {
+        const date = item._id.date;
+        const teacherCode = item._id.teacherCode;
+        if (!teacherEventsMap[date]) {
+          teacherEventsMap[date] = {};
+        }
+        teacherEventsMap[date][teacherCode] = item.events || 0;
+      });
+
+      // Calculate top teacher per day (teacher with highest total activities + events)
+      const topTeacherMap: Record<string, { teacherCode: string; total: number }> = {};
+      Object.keys(teacherActivitiesMap).forEach(date => {
+        const teachersForDay = teacherActivitiesMap[date];
+        let topTeacher = null;
+        let topTotal = -1;
+
+        Object.keys(teachersForDay).forEach(teacherCode => {
+          const activities = teachersForDay[teacherCode] || 0;
+          const events = teacherEventsMap[date]?.[teacherCode] || 0;
+          const total = activities + events;
+
+          if (total > topTotal) {
+            topTotal = total;
+            topTeacher = teacherCode;
+          }
+        });
+
+        // Also check teachers who only have events
+        if (teacherEventsMap[date]) {
+          Object.keys(teacherEventsMap[date]).forEach(teacherCode => {
+            if (!teachersForDay[teacherCode]) {
+              // Teacher only has events, no classsheet activities
+              const events = teacherEventsMap[date][teacherCode] || 0;
+              if (events > topTotal) {
+                topTotal = events;
+                topTeacher = teacherCode;
+              }
+            }
+          });
+        }
+
+        if (topTeacher) {
+          topTeacherMap[date] = { teacherCode: topTeacher, total: topTotal };
+        }
+      });
+
       // Generate all dates in range
       const dates: string[] = [];
       const startDate = new Date(dateStart);
@@ -330,7 +456,7 @@ export async function GET(request: NextRequest) {
         dates.push(d.toISOString().split('T')[0]);
       }
 
-      // Build daily data
+      // Build daily data with top teacher info
       const dailyData = dates.map(date => {
         const totalActivities = (activitiesMap[date] || 0) + (eventsMap[date] || 0);
         const teacherCount = teacherCountMap[date] || 1;
@@ -338,10 +464,20 @@ export async function GET(request: NextRequest) {
         
         const userTotal = (userActivitiesMap[date] || 0) + (userEventsMap[date] || 0);
 
+        // Get top teacher for this day
+        const topTeacherInfo = topTeacherMap[date];
+        const topTeacherData = topTeacherInfo ? teacherMap[topTeacherInfo.teacherCode] : null;
+
         return {
           date,
           schoolAverage,
-          userActivity: userTotal
+          userActivity: userTotal,
+          topTeacher: topTeacherData ? {
+            teacherCode: topTeacherInfo.teacherCode,
+            teacherName: topTeacherData.name,
+            avatar: topTeacherData.avatar,
+            activities: topTeacherInfo.total
+          } : null
         };
       });
 
