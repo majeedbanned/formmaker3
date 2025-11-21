@@ -192,9 +192,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get classCode from query params (for school users)
+    // Get classCode, month, and year from query params
     const { searchParams } = new URL(request.url);
     const classCode = searchParams.get('classCode');
+    const monthParam = searchParams.get('month'); // 1-12 (Jalali month)
+    const yearParam = searchParams.get('year'); // Jalali year
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -279,13 +281,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Get current Persian year
+      // Get current Persian year and month
       const currentDate = new Date();
-      const [currentJYear] = gregorian_to_jalali(
+      const [currentJYear, currentJMonth] = gregorian_to_jalali(
         currentDate.getFullYear(),
         currentDate.getMonth() + 1,
         currentDate.getDate()
       );
+
+      // Determine the school year to use (default to current year)
+      const selectedYear = yearParam ? parseInt(yearParam) : currentJYear;
+      const selectedMonth = monthParam ? parseInt(monthParam) : null;
 
       // Get all students in the specified class(es)
       const allStudents = await db.collection('students').find({
@@ -314,13 +320,13 @@ export async function GET(request: NextRequest) {
 
       const allStudentCodes = Array.from(studentMap.keys());
 
-      // Fetch all grade data for these students in current school year
+      // Fetch all grade data for these students
       const cellData = await db.collection('classsheet').find({
         studentCode: { $in: allStudentCodes },
         schoolCode: decoded.schoolCode
       }).sort({ date: -1 }).toArray() as any[];
 
-      // Filter data for current school year
+      // Filter data for selected school year and month
       const filteredCellData = cellData.filter((cell: any) => {
         if (!cell.date) return false;
 
@@ -334,39 +340,106 @@ export async function GET(request: NextRequest) {
             cellDate.getDate()
           );
 
-          // School year logic: months 7-12 from current year, months 1-6 from next year
+          // School year logic: months 7-12 from selected year, months 1-6 from next year
+          let matchesYear = false;
           if (cellMonth >= 7) {
-            return cellYear.toString() === currentJYear.toString();
+            matchesYear = cellYear.toString() === selectedYear.toString();
           } else {
-            return cellYear.toString() === (currentJYear + 1).toString();
+            matchesYear = cellYear.toString() === (selectedYear + 1).toString();
           }
+
+          // If month is specified, also filter by month
+          if (selectedMonth !== null) {
+            return matchesYear && cellMonth === selectedMonth;
+          }
+
+          return matchesYear;
         } catch (err) {
           return false;
         }
       });
 
-      // Fetch custom assessment values
-      const customAssessmentValues: Record<string, number> = {};
+      // Fetch assessment values (matching ReportCards logic)
+      // ReportCards fetches assessment values per teacher-course via /api/assessments
+      // Since we group by courseCode only, we'll fetch all global assessment values
+      // and teacher-specific ones that might apply
+      const courseAssessmentValues: Record<string, Record<string, number>> = {};
+      
+      // Get unique teacher-course pairs from cellData for more accurate assessment values
+      const teacherCoursePairs = new Set<string>();
+      filteredCellData.forEach((cell: any) => {
+        if (cell.courseCode && cell.teacherCode) {
+          teacherCoursePairs.add(`${cell.teacherCode}_${cell.courseCode}`);
+        }
+      });
+
+      // Get unique course codes
+      const uniqueCourseCodes = new Set<string>();
+      filteredCellData.forEach((cell: any) => {
+        if (cell.courseCode) {
+          uniqueCourseCodes.add(cell.courseCode);
+        }
+      });
+
+      // Get unique teacher codes
+      const uniqueTeacherCodes = new Set<string>();
+      filteredCellData.forEach((cell: any) => {
+        if (cell.teacherCode) {
+          uniqueTeacherCodes.add(cell.teacherCode);
+        }
+      });
+
+      // Fetch global assessment values
+      const globalAssessments: Record<string, number> = {};
       try {
-        const assessmentsData = await db.collection('assessments').find({
+        const globalAssessmentsData = await db.collection('assessments').find({
           schoolCode: decoded.schoolCode,
           type: 'value',
-          $or: [
-            { isGlobal: true },
-            { teacherCode: { $exists: false } }
-          ]
+          isGlobal: true
         }).toArray();
 
-        assessmentsData.forEach((assessment: any) => {
+        globalAssessmentsData.forEach((assessment: any) => {
           const valueKey = assessment?.value ?? assessment?.data?.value;
           const valueWeight = assessment?.weight ?? assessment?.data?.weight;
 
           if (valueKey && valueWeight !== undefined) {
-            customAssessmentValues[valueKey] = Number(valueWeight);
+            globalAssessments[valueKey] = Number(valueWeight);
           }
         });
-      } catch (assessmentError) {
-        console.error('Error fetching custom assessments:', assessmentError);
+      } catch (err) {
+        console.error('Error fetching global assessments:', err);
+      }
+
+      // For each course, fetch teacher-specific assessment values and merge with global
+      // ReportCards stores per courseCode, with teacher-specific ones overriding
+      for (const courseCode of uniqueCourseCodes) {
+        const courseValues: Record<string, number> = { ...globalAssessments }; // Start with global
+
+        // Fetch teacher-specific assessment values for teachers that teach this course
+        try {
+          const teacherAssessmentsData = await db.collection('assessments').find({
+            schoolCode: decoded.schoolCode,
+            type: 'value',
+            teacherCode: { $in: Array.from(uniqueTeacherCodes) }
+          }).toArray();
+
+          // Add teacher-specific values (they override global)
+          teacherAssessmentsData.forEach((assessment: any) => {
+            // Only use if this teacher teaches this course (we can't easily check, so include all)
+            const valueKey = assessment?.value ?? assessment?.data?.value;
+            const valueWeight = assessment?.weight ?? assessment?.data?.weight;
+
+            if (valueKey && valueWeight !== undefined) {
+              courseValues[valueKey] = Number(valueWeight);
+            }
+          });
+        } catch (err) {
+          console.error(`Error fetching teacher assessments for course ${courseCode}:`, err);
+        }
+
+        if (Object.keys(courseValues).length > 0) {
+          courseAssessmentValues[courseCode] = courseValues;
+        }
       }
 
       // Get all courses
@@ -383,8 +456,13 @@ export async function GET(request: NextRequest) {
       }).toArray();
 
       const courseMap = new Map();
+      const courseVahedMap = new Map<string, number>(); // Store vahed (credits) per course
       courses.forEach((course: any) => {
-        courseMap.set(course.data.courseCode, course.data.courseName || course.data.courseCode);
+        const courseCode = course.data.courseCode;
+        const courseName = course.data.courseName || courseCode;
+        const vahed = Number(course.data.vahed ?? 1) || 1; // Default to 1 if not specified (matching ReportCards)
+        courseMap.set(courseCode, courseName);
+        courseVahedMap.set(courseCode, vahed);
       });
 
       // Calculate averages for each student and course
@@ -413,8 +491,11 @@ export async function GET(request: NextRequest) {
       });
 
       // Calculate course averages and overall averages
+      // Match ReportCards logic:
+      // 1. Course average (yearAverage) = average of monthly finalScores for that course
+      // 2. Overall average (weightedAverage) = weighted average of course averages based on vahed (credits)
       studentCourseData.forEach((coursesData, studentCode) => {
-        const courseAverages: number[] = [];
+        const courseAverages: Array<{ average: number; vahed: number }> = [];
 
         coursesData.forEach((cells, courseCode) => {
           // Group by month
@@ -449,31 +530,68 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          // Calculate monthly scores and average
-          let yearTotal = 0;
-          let monthsWithScores = 0;
+          // Get course-specific assessment values (matching ReportCards logic)
+          // ReportCards uses: courseValues = assessmentValues[courseKey] || {}
+          const courseSpecificAssessments = courseAssessmentValues[courseCode] || {};
 
-          for (let i = 1; i <= 12; i++) {
-            const monthKey = i.toString();
+          // Calculate monthly finalScores for this course
+          // Match ReportCards logic: collect all raw grades per month, then calculate
+          const monthlyFinalScores: number[] = [];
+
+          // If a specific month is selected, only calculate that month
+          if (selectedMonth !== null) {
+            const monthKey = selectedMonth.toString();
             const { grades, assessments } = monthlyData[monthKey];
-            const calculation = calculateFinalScore(grades, assessments, customAssessmentValues);
+            const calculation = calculateFinalScore(grades, assessments, courseSpecificAssessments);
 
             if (calculation.finalScore !== null) {
-              yearTotal += calculation.finalScore;
-              monthsWithScores++;
+              monthlyFinalScores.push(calculation.finalScore);
+            }
+          } else {
+            // Calculate for all months (year average)
+            // Match ReportCards: loop through all months 1-12, calculate finalScore for each
+            for (let i = 1; i <= 12; i++) {
+              const monthKey = i.toString();
+              const { grades, assessments } = monthlyData[monthKey];
+              const calculation = calculateFinalScore(grades, assessments, courseSpecificAssessments);
+
+              if (calculation.finalScore !== null) {
+                monthlyFinalScores.push(calculation.finalScore);
+              }
             }
           }
 
-          const courseAverage = monthsWithScores > 0 ? yearTotal / monthsWithScores : null;
-          if (courseAverage !== null) {
+          // Calculate course average = average of monthly finalScores (matching ReportCards logic)
+          // ReportCards: yearAverage = grades.reduce((sum, grade) => sum + grade, 0) / grades.length
+          if (monthlyFinalScores.length > 0) {
+            const courseAverage = monthlyFinalScores.reduce((sum, score) => sum + score, 0) / monthlyFinalScores.length;
             studentAverages[studentCode].courses[courseCode] = courseAverage;
-            courseAverages.push(courseAverage);
+            // Store course average with vahed for weighted average calculation
+            const vahed = courseVahedMap.get(courseCode) || 1;
+            courseAverages.push({
+              average: courseAverage,
+              vahed: vahed
+            });
           }
         });
 
-        // Calculate overall average (average of all course averages)
+        // Calculate overall average = weighted average of all course averages (matching ReportCards weightedAverage logic)
+        // ReportCards: weightedAverage = (sum of course.yearAverage * vahed) / (sum of vahed)
+        // Math.round((weightedSum / totalWeight) * 100) / 100
         if (courseAverages.length > 0) {
-          studentAverages[studentCode].overall = courseAverages.reduce((sum, avg) => sum + avg, 0) / courseAverages.length;
+          let weightedSum = 0;
+          let totalWeight = 0;
+          
+          courseAverages.forEach(({ average, vahed }) => {
+            const numericVahed = Number(vahed ?? 1) || 1;
+            weightedSum += average * numericVahed;
+            totalWeight += numericVahed;
+          });
+
+          if (totalWeight > 0) {
+            // Match ReportCards rounding: Math.round((weightedSum / totalWeight) * 100) / 100
+            studentAverages[studentCode].overall = Math.round((weightedSum / totalWeight) * 100) / 100;
+          }
         }
       });
 
