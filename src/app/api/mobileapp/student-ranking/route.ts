@@ -184,13 +184,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user is student
-    if (decoded.userType !== 'student') {
+    // Check if user is student or school
+    if (decoded.userType !== 'student' && decoded.userType !== 'school') {
       return NextResponse.json(
-        { success: false, message: 'فقط دانش‌آموزان می‌توانند این بخش را مشاهده کنند' },
+        { success: false, message: 'دسترسی غیرمجاز' },
         { status: 403 }
       );
     }
+
+    // Get classCode from query params (for school users)
+    const { searchParams } = new URL(request.url);
+    const classCode = searchParams.get('classCode');
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -220,44 +224,59 @@ export async function GET(request: NextRequest) {
     const db = client.db(dbName);
 
     try {
-      const currentStudentCode = decoded.username;
+      let classCodes: string[] = [];
 
-      // Get current student information
-      const currentStudent = await db.collection('students').findOne({
-        'data.studentCode': currentStudentCode,
-        'data.schoolCode': decoded.schoolCode
-      });
+      // For school users, use the provided classCode
+      if (decoded.userType === 'school') {
+        if (!classCode) {
+          await client.close();
+          return NextResponse.json(
+            { success: false, message: 'کد کلاس الزامی است' },
+            { status: 400 }
+          );
+        }
+        classCodes = [classCode];
+      } else {
+        // For students, get their class codes
+        const currentStudentCode = decoded.username;
 
-      if (!currentStudent) {
-        await client.close();
-        return NextResponse.json(
-          { success: false, message: 'اطلاعات دانش‌آموز یافت نشد' },
-          { status: 404 }
-        );
-      }
-
-      // Get student's class codes
-      const classCodes = (currentStudent.data.classCode || [])
-        .filter((c: any) => c && typeof c === 'object' && c.value)
-        .map((c: any) => c.value);
-
-      if (classCodes.length === 0) {
-        await client.close();
-        return NextResponse.json({
-          success: true,
-          data: {
-            overallRanking: [],
-            currentUserRank: 0,
-            currentUser: null,
-            courseRankings: {},
-            classStats: {
-              totalStudents: 0,
-              classAverage: null,
-              studentRank: 0,
-              totalCourses: 0
-            }
-          }
+        // Get current student information
+        const currentStudent = await db.collection('students').findOne({
+          'data.studentCode': currentStudentCode,
+          'data.schoolCode': decoded.schoolCode
         });
+
+        if (!currentStudent) {
+          await client.close();
+          return NextResponse.json(
+            { success: false, message: 'اطلاعات دانش‌آموز یافت نشد' },
+            { status: 404 }
+          );
+        }
+
+        // Get student's class codes
+        classCodes = (currentStudent.data.classCode || [])
+          .filter((c: any) => c && typeof c === 'object' && c.value)
+          .map((c: any) => c.value);
+
+        if (classCodes.length === 0) {
+          await client.close();
+          return NextResponse.json({
+            success: true,
+            data: {
+              overallRanking: [],
+              currentUserRank: 0,
+              currentUser: null,
+              courseRankings: {},
+              classStats: {
+                totalStudents: 0,
+                classAverage: null,
+                studentRank: 0,
+                totalCourses: 0
+              }
+            }
+          });
+        }
       }
 
       // Get current Persian year
@@ -268,7 +287,7 @@ export async function GET(request: NextRequest) {
         currentDate.getDate()
       );
 
-      // Get all students in the same class(es)
+      // Get all students in the specified class(es)
       const allStudents = await db.collection('students').find({
         'data.schoolCode': decoded.schoolCode,
         'data.classCode.value': { $in: classCodes }
@@ -282,7 +301,7 @@ export async function GET(request: NextRequest) {
           .map((c: any) => c.value);
         
         // Only include students who share at least one class
-        const hasCommonClass = studentClassCodes.some(code => classCodes.includes(code));
+        const hasCommonClass = studentClassCodes.some((code: string) => classCodes.includes(code));
         if (hasCommonClass) {
           studentMap.set(student.data.studentCode, {
             studentCode: student.data.studentCode,
@@ -499,14 +518,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Find current user in overall ranking
-      const currentUserOverall = overallRankingData.find(s => s.studentCode === currentStudentCode);
+      // Find current user in overall ranking (only for students)
+      const currentStudentCode = decoded.userType === 'student' ? decoded.username : null;
+      const currentUserOverall = currentStudentCode ? overallRankingData.find(s => s.studentCode === currentStudentCode) : null;
       const currentUserRank = currentUserOverall?.rank || 0;
 
       // Build course-specific rankings with course names
       const courseRankings: Record<string, any> = {};
 
-      Array.from(courseCodes).forEach(courseCode => {
+      Array.from(courseCodes).forEach((courseCode) => {
         const courseName = courseMap.get(courseCode) || courseCode;
         
         const courseRankingData = allStudentCodes
