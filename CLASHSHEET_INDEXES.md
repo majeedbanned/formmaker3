@@ -222,3 +222,4 @@ db.classsheet.find({
 Look for `"stage" : "IXSCAN"` which indicates the index is being used.
 
 
+

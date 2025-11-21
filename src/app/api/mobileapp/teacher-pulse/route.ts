@@ -126,10 +126,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Only allow teachers
-    if (decoded.userType !== 'teacher') {
+    // Only allow teachers and school users
+    if (decoded.userType !== 'teacher' && decoded.userType !== 'school') {
       return NextResponse.json(
-        { success: false, message: 'فقط معلمان می‌توانند این اطلاعات را مشاهده کنند' },
+        { success: false, message: 'دسترسی غیرمجاز' },
         { status: 403, headers: corsHeaders }
       );
     }
