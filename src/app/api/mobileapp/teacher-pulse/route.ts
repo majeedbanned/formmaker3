@@ -45,54 +45,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Helper function: Format date as YYYY-MM-DD without timezone conversion
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper function to get date range based on timeframe
 const getDateRange = (timeframe: string): { start: string; end: string; days: number } => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = formatLocalDate(tomorrow);
 
   switch (timeframe) {
     case 'today': {
-      const todayStart = now.toISOString().split('T')[0];
+      const todayStart = formatLocalDate(now);
       return { start: todayStart, end: tomorrowStr, days: 1 };
     }
     case 'week': {
       // Get start of week (Saturday in Persian calendar)
+      // JavaScript Date: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      // Persian week starts on Saturday (day 6)
       const dayOfWeek = now.getDay();
       let daysToSubtract = dayOfWeek;
       if (dayOfWeek === 0) {
-        daysToSubtract = 1;
+        daysToSubtract = 1; // Go back to Saturday
       } else if (dayOfWeek === 6) {
-        daysToSubtract = 0;
+        daysToSubtract = 0; // Already Saturday
       } else {
-        daysToSubtract = dayOfWeek + 1;
+        daysToSubtract = dayOfWeek + 1; // Add 1 because we want to go back to Saturday
       }
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - daysToSubtract);
-      const weekStart = startOfWeek.toISOString().split('T')[0];
-      return { start: weekStart, end: tomorrowStr, days: 7 };
+      const weekStart = formatLocalDate(startOfWeek);
+      
+      // Week end should be 7 days after week start (next Saturday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+      const weekEnd = formatLocalDate(endOfWeek);
+      
+      return { start: weekStart, end: weekEnd, days: 7 };
     }
     case 'month': {
       // Start of current month - last 30 days
       const monthStart = new Date(now);
       monthStart.setDate(monthStart.getDate() - 30);
-      const monthStartStr = monthStart.toISOString().split('T')[0];
+      const monthStartStr = formatLocalDate(monthStart);
       return { start: monthStartStr, end: tomorrowStr, days: 30 };
     }
     case 'year': {
       // Last 12 months - 365 days
       const yearStart = new Date(now);
       yearStart.setDate(yearStart.getDate() - 365);
-      const yearStartStr = yearStart.toISOString().split('T')[0];
+      const yearStartStr = formatLocalDate(yearStart);
       return { start: yearStartStr, end: tomorrowStr, days: 365 };
     }
     default: {
       // Default to week (7 days)
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - 7);
-      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekStartStr = formatLocalDate(weekStart);
       return { start: weekStartStr, end: tomorrowStr, days: 7 };
     }
   }
@@ -166,6 +182,16 @@ export async function GET(request: NextRequest) {
 
       // Get date range based on timeframe
       const { start: dateStart, end: dateEnd, days } = getDateRange(timeframe);
+      
+      // Debug logging
+      console.log('[TeacherPulse] Query params:', {
+        userType: decoded.userType,
+        username: decoded.username,
+        schoolCode: decoded.schoolCode,
+        timeframe,
+        dateStart,
+        dateEnd
+      });
 
       // Fetch all teachers' daily activity statistics
       const allTeachersDaily = await db.collection('classsheet').aggregate([
@@ -243,55 +269,63 @@ export async function GET(request: NextRequest) {
       ]).toArray();
 
       // Fetch current user's daily activity
-      const currentUserDaily = await db.collection('classsheet').aggregate([
-        {
-          $match: {
-            schoolCode: decoded.schoolCode,
-            teacherCode: currentTeacherCode,
-            date: {
-              $gte: dateStart,
-              $lt: dateEnd
-            }
-          }
-        },
-        {
-          $group: {
-            _id: '$date',
-            activities: {
-              $sum: {
-                $add: [
-                  { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
-                  { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
-                  { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
-                  { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
-                ]
+      // Only fetch user activity for actual teachers
+      // School users don't have personal activity records
+      let currentUserDaily: any[] = [];
+      let currentUserEvents: any[] = [];
+      
+      if (decoded.userType === 'teacher') {
+        // Fetch teacher's daily activity
+        currentUserDaily = await db.collection('classsheet').aggregate([
+          {
+            $match: {
+              schoolCode: decoded.schoolCode,
+              teacherCode: currentTeacherCode,
+              date: {
+                $gte: dateStart,
+                $lt: dateEnd
               }
             }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]).toArray();
-
-      // Fetch current user's events per day
-      const currentUserEvents = await db.collection('events').aggregate([
-        {
-          $match: {
-            schoolCode: decoded.schoolCode,
-            teacherCode: currentTeacherCode,
-            date: {
-              $gte: dateStart,
-              $lt: dateEnd
+          },
+          {
+            $group: {
+              _id: '$date',
+              activities: {
+                $sum: {
+                  $add: [
+                    { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
+                    { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
+                    { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
+                    { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
+                  ]
+                }
+              }
             }
-          }
-        },
-        {
-          $group: {
-            _id: '$date',
-            events: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]).toArray();
+          },
+          { $sort: { _id: 1 } }
+        ]).toArray();
+
+        // Fetch teacher's events per day
+        currentUserEvents = await db.collection('events').aggregate([
+          {
+            $match: {
+              schoolCode: decoded.schoolCode,
+              teacherCode: currentTeacherCode,
+              date: {
+                $gte: dateStart,
+                $lt: dateEnd
+              }
+            }
+          },
+          {
+            $group: {
+              _id: '$date',
+              events: { $sum: 1 }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ]).toArray();
+      }
 
       // Fetch all teacher activities per day
       const teachersDailyActivities = await db.collection('classsheet').aggregate([

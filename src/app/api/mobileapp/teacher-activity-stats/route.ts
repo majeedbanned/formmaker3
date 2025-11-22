@@ -101,17 +101,25 @@ function formatPersianDateTime(date: Date): string {
   return `${persianDate} - ${persianTime}`;
 }
 
+// Helper function: Format date as YYYY-MM-DD without timezone conversion
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper function to get date range based on timeframe
 const getDateRange = (timeframe: string): { start: string; end: string } => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = formatLocalDate(tomorrow);
 
   switch (timeframe) {
     case 'today': {
-      const todayStart = now.toISOString().split('T')[0];
+      const todayStart = formatLocalDate(now);
       return { start: todayStart, end: tomorrowStr };
     }
     case 'week': {
@@ -131,24 +139,30 @@ const getDateRange = (timeframe: string): { start: string; end: string } => {
       }
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - daysToSubtract);
-      const weekStart = startOfWeek.toISOString().split('T')[0];
-      return { start: weekStart, end: tomorrowStr };
+      const weekStart = formatLocalDate(startOfWeek);
+      
+      // Week end should be 7 days after week start (next Saturday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+      const weekEnd = formatLocalDate(endOfWeek);
+      
+      return { start: weekStart, end: weekEnd };
     }
     case 'month': {
       // Start of current month
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthStartStr = monthStart.toISOString().split('T')[0];
+      const monthStartStr = formatLocalDate(monthStart);
       return { start: monthStartStr, end: tomorrowStr };
     }
     case 'year': {
       // Start of current year
       const yearStart = new Date(now.getFullYear(), 0, 1);
-      const yearStartStr = yearStart.toISOString().split('T')[0];
+      const yearStartStr = formatLocalDate(yearStart);
       return { start: yearStartStr, end: tomorrowStr };
     }
     default:
       // Default to today
-      const todayStart = now.toISOString().split('T')[0];
+      const todayStart = formatLocalDate(now);
       return { start: todayStart, end: tomorrowStr };
   }
 };
@@ -217,22 +231,40 @@ export async function GET(request: NextRequest) {
     const db = client.db(dbName);
 
     try {
-      const teacherCode = decoded.username;
-
       // Get date range based on timeframe
       const { start: dateStart, end: dateEnd } = getDateRange(timeframe);
+      
+      // Build match filter based on user type
+      const matchFilter: any = {
+        schoolCode: decoded.schoolCode,
+        date: {
+          $gte: dateStart,
+          $lt: dateEnd
+        }
+      };
+      
+      // For teachers, filter by their teacherCode
+      // For school users, show all teachers' aggregated stats
+      if (decoded.userType === 'teacher') {
+        matchFilter.teacherCode = decoded.username;
+      }
+      // For school users, don't filter by teacherCode (show all teachers)
+      
+      // Debug logging (remove in production if needed)
+      console.log('[TeacherActivityStats] Query params:', {
+        userType: decoded.userType,
+        username: decoded.username,
+        schoolCode: decoded.schoolCode,
+        timeframe,
+        dateStart,
+        dateEnd,
+        matchFilter
+      });
 
       // Fetch statistics for the selected timeframe
       const stats = await db.collection('classsheet').aggregate([
         {
-          $match: {
-            schoolCode: decoded.schoolCode,
-            teacherCode: teacherCode,
-            date: {
-              $gte: dateStart,
-              $lt: dateEnd
-            }
-          }
+          $match: matchFilter
         },
         {
           $group: {
@@ -261,16 +293,33 @@ export async function GET(request: NextRequest) {
           }
         }
       ]).toArray();
+      
+      // Debug logging
+      console.log('[TeacherActivityStats] Query result:', {
+        statsFound: stats.length,
+        statsData: stats[0] || null
+      });
 
-      // Fetch events for the selected timeframe
-      const events = await db.collection('events').countDocuments({
+      // Build events match filter
+      const eventsMatchFilter: any = {
         schoolCode: decoded.schoolCode,
-        teacherCode: teacherCode,
         date: {
           $gte: dateStart,
           $lt: dateEnd
         }
-      });
+      };
+      
+      // For teachers, filter events by their teacherCode
+      // For school users, show all events
+      if (decoded.userType === 'teacher') {
+        eventsMatchFilter.teacherCode = decoded.username;
+      } else if (decoded.userType === 'school') {
+        // For school users, include both teacher-specific and school-wide events
+        // Don't filter by teacherCode to get all events
+      }
+      
+      // Fetch events for the selected timeframe
+      const events = await db.collection('events').countDocuments(eventsMatchFilter);
 
       await client.close();
 
@@ -287,8 +336,19 @@ export async function GET(request: NextRequest) {
 
       // Get current server time in Persian format
       const serverTime = formatPersianDateTime(new Date());
+      
+      // Debug: Log the final response data
+      console.log('[TeacherActivityStats] Final response data:', {
+        gradeCounts: data.gradeCounts || 0,
+        presenceRecords: data.presenceRecords || 0,
+        assessments: data.assessments || 0,
+        comments: data.comments || 0,
+        events: events || 0,
+        totalActivities: total,
+        lastActivity: data.lastActivity || null
+      });
 
-      return NextResponse.json({
+      const responseData = {
         success: true,
         data: {
           gradeCounts: data.gradeCounts || 0,
@@ -300,7 +360,9 @@ export async function GET(request: NextRequest) {
           lastActivity: data.lastActivity || null,
           serverTime: serverTime
         }
-      }, { headers: corsHeaders });
+      };
+      
+      return NextResponse.json(responseData, { headers: corsHeaders });
 
     } catch (dbError) {
       await client.close();

@@ -61,23 +61,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Helper function: Format date as YYYY-MM-DD without timezone conversion
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper function to get date range based on timeframe
 const getDateRange = (timeframe: string): { start: string; end: string } => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = formatLocalDate(tomorrow);
 
   switch (timeframe) {
     case 'today': {
-      const todayStart = now.toISOString().split('T')[0];
+      const todayStart = formatLocalDate(now);
       return { start: todayStart, end: tomorrowStr };
     }
     case 'week': {
       // Get start of week (Saturday in Persian calendar)
+      // JavaScript Date: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      // Persian week starts on Saturday (day 6)
       const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
       let daysToSubtract = dayOfWeek;
+      // If Sunday (0), subtract 1 day to get Saturday
+      // If Monday (1), subtract 2 days to get Saturday, etc.
       if (dayOfWeek === 0) {
         daysToSubtract = 1; // Go back to Saturday
       } else if (dayOfWeek === 6) {
@@ -87,24 +99,30 @@ const getDateRange = (timeframe: string): { start: string; end: string } => {
       }
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - daysToSubtract);
-      const weekStart = startOfWeek.toISOString().split('T')[0];
-      return { start: weekStart, end: tomorrowStr };
+      const weekStart = formatLocalDate(startOfWeek);
+      
+      // Week end should be 7 days after week start (next Saturday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+      const weekEnd = formatLocalDate(endOfWeek);
+      
+      return { start: weekStart, end: weekEnd };
     }
     case 'month': {
       // Start of current month
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthStartStr = monthStart.toISOString().split('T')[0];
+      const monthStartStr = formatLocalDate(monthStart);
       return { start: monthStartStr, end: tomorrowStr };
     }
     case 'year': {
       // Start of current year
       const yearStart = new Date(now.getFullYear(), 0, 1);
-      const yearStartStr = yearStart.toISOString().split('T')[0];
+      const yearStartStr = formatLocalDate(yearStart);
       return { start: yearStartStr, end: tomorrowStr };
     }
     default:
       // Default to today
-      const todayStart = now.toISOString().split('T')[0];
+      const todayStart = formatLocalDate(now);
       return { start: todayStart, end: tomorrowStr };
   }
 };
@@ -177,6 +195,16 @@ export async function GET(request: NextRequest) {
 
       // Get date range based on timeframe
       const { start: dateStart, end: dateEnd } = getDateRange(timeframe);
+      
+      // Debug logging
+      console.log('[TeacherRanking] Query params:', {
+        userType: decoded.userType,
+        username: decoded.username,
+        schoolCode: decoded.schoolCode,
+        timeframe,
+        dateStart,
+        dateEnd
+      });
 
       // Fetch all teachers' activity statistics
       const teacherActivities = await db.collection('classsheet').aggregate([
@@ -307,16 +335,31 @@ export async function GET(request: NextRequest) {
         rank: index + 1
       }));
 
-      // Find current user's rank
-      const currentUserRank = rankedTeachers.findIndex(
-        (t: any) => t.teacherCode === currentTeacherCode
-      ) + 1;
-
-      const currentUser = rankedTeachers.find(
-        (t: any) => t.teacherCode === currentTeacherCode
-      );
+      // Find current user's rank (only for actual teachers, not school users)
+      let currentUserRank = 0;
+      let currentUser = null;
+      
+      if (decoded.userType === 'teacher') {
+        // For teachers, find their rank in the ranking
+        const userIndex = rankedTeachers.findIndex(
+          (t: any) => t.teacherCode === currentTeacherCode
+        );
+        if (userIndex >= 0) {
+          currentUserRank = userIndex + 1;
+          currentUser = rankedTeachers[userIndex];
+        }
+      }
+      // For school users, there's no "current user" in the ranking (they're not teachers)
+      // So currentUserRank remains 0 and currentUser remains null
 
       await client.close();
+      
+      // Debug logging
+      console.log('[TeacherRanking] Query result:', {
+        totalTeachers: rankedTeachers.length,
+        currentUserRank,
+        hasCurrentUser: !!currentUser
+      });
 
       return NextResponse.json({
         success: true,
