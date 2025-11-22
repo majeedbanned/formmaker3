@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     const domain = request.headers.get("x-domain") || "localhost:3000";
-    const { title, description, departmentId, priority, attachments } = await request.json();
+    const { title, description, departmentId, priority, attachments, maghta, paye, roomNumber, sex } = await request.json();
 
     if (!title || !title.trim()) {
       return NextResponse.json(
@@ -180,6 +180,10 @@ export async function POST(request: NextRequest) {
         status: "Open",
         priority: priority || "Medium",
         attachments: attachments || [],
+        maghta: maghta || "",
+        paye: paye || "",
+        roomNumber: roomNumber || "",
+        sex: sex || "",
         createdAt: new Date(),
         updatedAt: new Date()
       }

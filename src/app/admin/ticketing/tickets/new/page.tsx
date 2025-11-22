@@ -57,7 +57,11 @@ export default function NewTicketPage() {
     title: "",
     description: "",
     departmentId: "",
-    priority: "Medium" as "Low" | "Medium" | "High"
+    priority: "Medium" as "Low" | "Medium" | "High",
+    maghta: "",
+    paye: "",
+    roomNumber: "",
+    sex: "" as "man" | "woman" | ""
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -335,6 +339,59 @@ export default function NewTicketPage() {
               {errors.departmentId && (
                 <p className="text-red-500 text-sm mt-1">{errors.departmentId}</p>
               )}
+            </div>
+
+            {/* Maghta */}
+            <div>
+              <Label htmlFor="maghta">مقطع</Label>
+              <Input
+                id="maghta"
+                value={formData.maghta}
+                onChange={(e) => setFormData({ ...formData, maghta: e.target.value })}
+                placeholder="مقطع تحصیلی"
+              />
+            </div>
+
+            {/* Paye */}
+            <div>
+              <Label htmlFor="paye">پایه</Label>
+              <Input
+                id="paye"
+                value={formData.paye}
+                onChange={(e) => setFormData({ ...formData, paye: e.target.value })}
+                placeholder="پایه تحصیلی"
+              />
+            </div>
+
+            {/* Room Number */}
+            <div>
+              <Label htmlFor="roomNumber">شماره کلاس</Label>
+              <Input
+                id="roomNumber"
+                type="text"
+                value={formData.roomNumber}
+                onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+                placeholder="شماره کلاس"
+              />
+            </div>
+
+            {/* Sex */}
+            <div>
+              <Label htmlFor="sex">جنسیت</Label>
+              <Select
+                value={formData.sex}
+                onValueChange={(value: "man" | "woman" | "") => 
+                  setFormData({ ...formData, sex: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="جنسیت را انتخاب کنید" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="man">مرد</SelectItem>
+                  <SelectItem value="woman">زن</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Priority */}
