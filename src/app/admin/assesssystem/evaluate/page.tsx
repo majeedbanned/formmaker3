@@ -761,13 +761,13 @@ export default function EvaluateTeacherPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-12 text-center">#</TableHead>
-                          <TableHead className="min-w-[200px] text-right">
+                          <TableHead className="max-w-[300px] text-right">
                             نام شاخص
                           </TableHead>
-                          <TableHead className="min-w-[150px] text-center">
+                          <TableHead className="w-24 text-center">
                             حداکثر نمره
                           </TableHead>
-                          <TableHead className="min-w-[120px] text-center">نمره</TableHead>
+                          <TableHead className="w-32 text-center">نمره</TableHead>
                           <TableHead className="text-right">توضیحات/نظرات</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -790,23 +790,23 @@ export default function EvaluateTeacherPage() {
                                   {index + 1}
                                 </span>
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div>
-                                  <div className="font-semibold text-gray-900">
+                              <TableCell className="text-right max-w-[300px]">
+                                <div className="truncate">
+                                  <div style={{textWrap: "wrap"}} className="font-semibold text-gray-900 " title={indicator.data.indicatorName}>
                                     {indicator.data.indicatorName}
                                   </div>
                                   {indicator.data.description && (
-                                    <div className="text-sm text-gray-500 mt-1 leading-relaxed">
+                                    <div className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2" title={indicator.data.description}>
                                       {indicator.data.description}
                                     </div>
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-center">
-                                {indicator.data.maxScore}
+                              <TableCell className="text-center w-24">
+                                <span className="font-medium">{indicator.data.maxScore}</span>
                               </TableCell>
-                              <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-2">
+                              <TableCell className="text-center w-32">
+                                <div className="flex items-center justify-center gap-1">
                                   <div className="relative">
                                     <Input
                                       type="number"
@@ -819,7 +819,7 @@ export default function EvaluateTeacherPage() {
                                           e.target.value
                                         )
                                       }
-                                      className={`w-28 text-right font-semibold text-lg ${
+                                      className={`w-20 text-right font-semibold text-base ${
                                         item.score >= indicator.data.maxScore * 0.8
                                           ? "border-green-400 bg-green-50"
                                           : item.score >= indicator.data.maxScore * 0.6
@@ -831,8 +831,8 @@ export default function EvaluateTeacherPage() {
                                       dir="rtl"
                                     />
                                   </div>
-                                  <span className="text-sm text-gray-500 font-medium">
-                                    / {indicator.data.maxScore}
+                                  <span className="text-xs text-gray-500 font-medium">
+                                    /{indicator.data.maxScore}
                                   </span>
                                 </div>
                                 {item.score > indicator.data.maxScore && (
@@ -852,7 +852,7 @@ export default function EvaluateTeacherPage() {
                                   }
                                   placeholder="توضیحات یا نظرات..."
                                   rows={2}
-                                  className="min-w-[300px] text-right"
+                                  className="w-full text-right"
                                   dir="rtl"
                                 />
                               </TableCell>
