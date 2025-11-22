@@ -392,6 +392,36 @@ export async function GET(request: NextRequest) {
       }
       
       const classes = await db.collection('classes').find(queryFilter).toArray();
+      
+      // If a specific course is selected, fetch teacher avatars for that course
+      const teacherAvatarMap = new Map<string, { path: string; filename?: string; originalName?: string } | null>();
+      if (courseCodeParam) {
+        // Collect all teacher codes who teach the selected course in these classes
+        const teacherCodes = new Set<string>();
+        classes.forEach((cls: any) => {
+          const classData = cls.data || cls;
+          const teachers = classData.teachers || [];
+          teachers.forEach((teacher: any) => {
+            if (teacher.courseCode === courseCodeParam && teacher.teacherCode) {
+              teacherCodes.add(teacher.teacherCode);
+            }
+          });
+        });
+        
+        // Fetch teacher avatars
+        if (teacherCodes.size > 0) {
+          const teachers = await db.collection('teachers').find({
+            'data.schoolCode': decoded.schoolCode,
+            'data.teacherCode': { $in: Array.from(teacherCodes) }
+          }).toArray();
+          
+          teachers.forEach((teacher: any) => {
+            if (teacher.data?.teacherCode) {
+              teacherAvatarMap.set(teacher.data.teacherCode, teacher.data.avatar || null);
+            }
+          });
+        }
+      }
 
       // If no classes found, return empty comparison groups but still return combinations
       if (!classes || classes.length === 0) {
@@ -604,6 +634,7 @@ export async function GET(request: NextRequest) {
           classAverage: number | null;
           studentsWithGrades: number;
           monthlyAverages?: Array<{ month: number; average: number | null }>; // Monthly breakdown when selectedMonth is null
+          teacherAvatar?: { path: string; filename?: string; originalName?: string } | null; // Teacher avatar when course is selected
         }>;
       }> = [];
 
@@ -616,6 +647,7 @@ export async function GET(request: NextRequest) {
           classAverage: number | null;
           studentsWithGrades: number;
           monthlyAverages?: Array<{ month: number; average: number | null }>;
+          teacherAvatar?: { path: string; filename?: string; originalName?: string } | null;
         }> = [];
 
         classList.forEach((classInfo) => {
@@ -852,6 +884,26 @@ export async function GET(request: NextRequest) {
                 })()
               : undefined;
 
+          // Find teacher avatar for this class and selected course
+          let teacherAvatar: { path: string; filename?: string; originalName?: string } | null = null;
+          if (courseCodeParam) {
+            // Find the class document
+            const classDoc = classes.find((cls: any) => {
+              const clsData = cls.data || cls;
+              return clsData.classCode === classCode;
+            });
+            
+            if (classDoc) {
+              const classData = classDoc.data || classDoc;
+              const teachers = classData.teachers || [];
+              // Find the teacher who teaches the selected course
+              const courseTeacher = teachers.find((t: any) => t.courseCode === courseCodeParam);
+              if (courseTeacher && courseTeacher.teacherCode) {
+                teacherAvatar = teacherAvatarMap.get(courseTeacher.teacherCode) || null;
+              }
+            }
+          }
+          
           classStats.push({
             classCode,
             className: classInfo.className,
@@ -859,6 +911,7 @@ export async function GET(request: NextRequest) {
             classAverage,
             studentsWithGrades: studentAverages.length,
             monthlyAverages: monthlyClassAverages,
+            teacherAvatar: teacherAvatar, // Include teacher avatar when course is selected
           });
         });
 
