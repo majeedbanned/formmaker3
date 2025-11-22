@@ -603,6 +603,7 @@ export async function GET(request: NextRequest) {
           totalStudents: number;
           classAverage: number | null;
           studentsWithGrades: number;
+          monthlyAverages?: Array<{ month: number; average: number | null }>; // Monthly breakdown when selectedMonth is null
         }>;
       }> = [];
 
@@ -614,6 +615,7 @@ export async function GET(request: NextRequest) {
           totalStudents: number;
           classAverage: number | null;
           studentsWithGrades: number;
+          monthlyAverages?: Array<{ month: number; average: number | null }>;
         }> = [];
 
         classList.forEach((classInfo) => {
@@ -645,9 +647,15 @@ export async function GET(request: NextRequest) {
 
           // Calculate averages for each student in this class
           const studentAverages: number[] = [];
+          
+          // For monthly progress chart: store monthly averages per student
+          const studentMonthlyAverages: Map<string, Array<{ month: number; average: number | null }>> = new Map();
 
           studentCourseData.forEach((coursesData, studentCode) => {
             const courseAverages: Array<{ average: number; vahed: number }> = [];
+            
+            // For monthly breakdown: store course monthly scores
+            const courseMonthlyScores: Map<string, Map<number, number | null>> = new Map(); // courseCode -> month -> score
 
             coursesData.forEach((cells, courseCode) => {
               // Filter by courseCode if provided
@@ -689,6 +697,7 @@ export async function GET(request: NextRequest) {
 
               // Calculate monthly finalScores
               const monthlyFinalScores: number[] = [];
+              const monthlyScoresMap: Map<number, number | null> = new Map(); // month -> score
 
               if (selectedMonth !== null) {
                 const monthKey = selectedMonth.toString();
@@ -697,6 +706,7 @@ export async function GET(request: NextRequest) {
 
                 if (calculation.finalScore !== null) {
                   monthlyFinalScores.push(calculation.finalScore);
+                  monthlyScoresMap.set(selectedMonth, calculation.finalScore);
                 }
               } else {
                 // Calculate for all months (year average)
@@ -707,9 +717,15 @@ export async function GET(request: NextRequest) {
 
                   if (calculation.finalScore !== null) {
                     monthlyFinalScores.push(calculation.finalScore);
+                    monthlyScoresMap.set(i, calculation.finalScore);
+                  } else {
+                    monthlyScoresMap.set(i, null);
                   }
                 }
               }
+              
+              // Store monthly scores for this course
+              courseMonthlyScores.set(courseCode, monthlyScoresMap);
 
               // Calculate course average = average of monthly finalScores (matching ReportCards)
               if (monthlyFinalScores.length > 0) {
@@ -749,6 +765,51 @@ export async function GET(request: NextRequest) {
               }
               
               studentAverages.push(overallAverage);
+              
+              // Calculate monthly averages for this student (when all year is selected)
+              if (selectedMonth === null) {
+                const monthlyAverages: Array<{ month: number; average: number | null }> = [];
+                
+                for (let month = 1; month <= 12; month++) {
+                  const monthlyCourseAverages: Array<{ average: number; vahed: number }> = [];
+                  
+                  courseMonthlyScores.forEach((monthlyScores, courseCode) => {
+                    const monthScore = monthlyScores.get(month);
+                    if (monthScore !== null && monthScore !== undefined) {
+                      const vahed = courseVahedMap.get(courseCode) || 1;
+                      monthlyCourseAverages.push({
+                        average: monthScore,
+                        vahed: vahed
+                      });
+                    }
+                  });
+                  
+                  if (monthlyCourseAverages.length > 0) {
+                    // Calculate weighted average for this month
+                    let weightedSum = 0;
+                    let totalWeight = 0;
+                    
+                    monthlyCourseAverages.forEach(({ average, vahed }) => {
+                      const numericVahed = Number(vahed ?? 1) || 1;
+                      weightedSum += average * numericVahed;
+                      totalWeight += numericVahed;
+                    });
+                    
+                    if (totalWeight > 0) {
+                      monthlyAverages.push({
+                        month,
+                        average: Math.round((weightedSum / totalWeight) * 100) / 100
+                      });
+                    } else {
+                      monthlyAverages.push({ month, average: null });
+                    }
+                  } else {
+                    monthlyAverages.push({ month, average: null });
+                  }
+                }
+                
+                studentMonthlyAverages.set(studentCode, monthlyAverages);
+              }
             }
           });
 
@@ -757,12 +818,47 @@ export async function GET(request: NextRequest) {
             ? studentAverages.reduce((sum, avg) => sum + avg, 0) / studentAverages.length
             : null;
 
+          // Calculate monthly class averages (when all year is selected)
+          const monthlyClassAverages: Array<{ month: number; average: number | null }> | undefined = 
+            selectedMonth === null && studentMonthlyAverages.size > 0
+              ? (() => {
+                  const monthlyClassStats: Map<number, number[]> = new Map(); // month -> array of student averages
+                  
+                  // Collect all student monthly averages
+                  studentMonthlyAverages.forEach((monthlyAvgs) => {
+                    monthlyAvgs.forEach(({ month, average }) => {
+                      if (average !== null) {
+                        if (!monthlyClassStats.has(month)) {
+                          monthlyClassStats.set(month, []);
+                        }
+                        monthlyClassStats.get(month)!.push(average);
+                      }
+                    });
+                  });
+                  
+                  // Calculate class average for each month
+                  const result: Array<{ month: number; average: number | null }> = [];
+                  for (let month = 1; month <= 12; month++) {
+                    const monthStudentAverages = monthlyClassStats.get(month) || [];
+                    if (monthStudentAverages.length > 0) {
+                      const monthClassAverage = monthStudentAverages.reduce((sum, avg) => sum + avg, 0) / monthStudentAverages.length;
+                      result.push({ month, average: Math.round(monthClassAverage * 100) / 100 });
+                    } else {
+                      result.push({ month, average: null });
+                    }
+                  }
+                  
+                  return result;
+                })()
+              : undefined;
+
           classStats.push({
             classCode,
             className: classInfo.className,
             totalStudents,
             classAverage,
             studentsWithGrades: studentAverages.length,
+            monthlyAverages: monthlyClassAverages,
           });
         });
 
