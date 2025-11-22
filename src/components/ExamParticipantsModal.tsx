@@ -22,11 +22,23 @@ import {
   EyeIcon,
   ArrowDownTrayIcon,
   ChartBarIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface Participant {
   _id: string;
@@ -73,6 +85,8 @@ export function ExamParticipantsModal({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -149,6 +163,43 @@ export function ExamParticipantsModal({
       // console.log(`Downloading answers for participant ${participantId}`);
     } catch (error) {
       console.error("Error downloading answers", error);
+    }
+  };
+
+  const handleDeleteClick = (participant: Participant) => {
+    setDeletingParticipant(participant);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingParticipant) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/examparticipant/${deletingParticipant._id}`, {
+        method: "DELETE",
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete participant");
+      }
+
+      toast.success("شرکت‌کننده با موفقیت حذف شد");
+      setDeletingParticipant(null);
+      // Refresh participants list
+      await fetchParticipants();
+    } catch (error) {
+      console.error("Error deleting participant:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "خطا در حذف شرکت‌کننده"
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -319,6 +370,15 @@ export function ExamParticipantsModal({
                             >
                               <ArrowDownTrayIcon className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteClick(participant)}
+                              title="حذف شرکت‌کننده"
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -330,6 +390,57 @@ export function ExamParticipantsModal({
           </>
         )}
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deletingParticipant !== null}
+        onOpenChange={(open) => !open && setDeletingParticipant(null)}
+      >
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-red-600">
+              <TrashIcon className="h-5 w-5 ml-2" />
+              تایید حذف شرکت‌کننده
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              <div className="space-y-3 mt-4">
+                <p className="text-gray-700">
+                  آیا از حذف این شرکت‌کننده اطمینان دارید؟ این عملیات قابل بازگشت نیست.
+                </p>
+                {deletingParticipant && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      <strong>نام کاربر:</strong>{" "}
+                      {deletingParticipant.userName || deletingParticipant.userId}
+                    </p>
+                    {deletingParticipant.persianEntryDate && (
+                      <p className="text-sm text-red-800">
+                        <strong>زمان شرکت:</strong> {deletingParticipant.persianEntryDate}
+                      </p>
+                    )}
+                    {deletingParticipant.sumScore !== undefined && (
+                      <p className="text-sm text-red-800">
+                        <strong>نمره:</strong> {deletingParticipant.sumScore} از{" "}
+                        {deletingParticipant.maxScore || 0}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {isDeleting ? "در حال حذف..." : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

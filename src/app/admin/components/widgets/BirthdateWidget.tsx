@@ -624,7 +624,7 @@ export default function BirthdateWidget({ user }: BirthdateWidgetProps) {
           </div>
 
           <div className="flex items-center space-x-2 space-x-reverse text-xs text-gray-600">
-            <span>{person.age + 1} ساله می‌شود</span>
+            {/* <span>{person.age + 1} ساله می‌شود</span> */}
             {person.className && (
               <>
                 <span>•</span>

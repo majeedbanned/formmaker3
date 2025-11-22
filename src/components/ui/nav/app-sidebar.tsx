@@ -493,8 +493,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ]
     };
     
-    if (user.userType!="student")
-    allMenus.push(ticketingMenu);
+    // Add static assessment system menu
+    const assessmentMenu = {
+      title: "سیستم ارزیابی معلمان",
+      url: "#",
+      menuID: "assesssystem",
+      menuIDOrder: 998, // Put before ticketing
+      items: [
+        ...(user.userType === "school" ? [{
+          title: "مدیریت شاخص‌های ارزیابی",
+          url: "/admin/assesssystem",
+          order: 1
+        }] : []),
+        ...((user.userType === "school" || user.userType === "teacher") ? [{
+          title: "ارزیابی معلمان",
+          url: "/admin/assesssystem/evaluate",
+          order: 2
+        }] : [])
+      ]
+    };
+    
+    if (user.userType !== "student") {
+      // Only add assessment menu if it has items
+      if (assessmentMenu.items.length > 0) {
+        allMenus.push(assessmentMenu);
+      }
+      allMenus.push(ticketingMenu);
+    }
 
     return allMenus.map((section, index) => ({
       title: section.title,

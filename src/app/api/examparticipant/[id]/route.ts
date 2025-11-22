@@ -173,4 +173,61 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+// DELETE a participant
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Get the participant ID from params
+    const participantId = (await params).id;
+    
+    // Get current user and verify authentication
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is a teacher or admin
+    // if (user.userType !== "admin" && user.userType !== "teacher") {
+    //   return NextResponse.json(
+    //     { message: "Not authorized to delete participant" },
+    //     { status: 403 }
+    //   );
+    // }
+
+    // Get domain from request headers or use default
+    const domain = request.headers.get("x-domain") || "localhost:3000";
+
+    // Connect to database
+    const connection = await connectToDatabase(domain);
+    
+    // Get collections
+    const examStudentsInfoCollection = connection.collection("examstudentsinfo");
+
+    // Delete the participant
+    const result = await examStudentsInfoCollection.deleteOne({
+      _id: new ObjectId(participantId)
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { message: "Participant not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ 
+      message: "Participant deleted successfully",
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    console.error("Error deleting participant:", err);
+    return NextResponse.json(
+      { message: "Failed to delete participant" },
+      { status: 500 }
+    );
+  }
 } 

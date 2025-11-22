@@ -111,6 +111,8 @@ export default function EvaluateTeacherPage() {
     Array<{ month: string; totalScore: number; evaluationId: string }>
   >([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   // Get current Persian year
   useEffect(() => {
@@ -122,11 +124,16 @@ export default function EvaluateTeacherPage() {
 
   // Check if user is a field assessor or admin
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setCheckingAccess(false);
+      return;
+    }
 
     // Admin users (school) have full access
     if (user.userType === "school") {
-      return; // Allow access
+      setHasAccess(true);
+      setCheckingAccess(false);
+      return;
     }
 
     if (user.userType === "teacher") {
@@ -140,22 +147,29 @@ export default function EvaluateTeacherPage() {
         .then((data) => {
           if (data.teachers && data.teachers.length > 0) {
             const teacher = data.teachers[0];
-            if (!teacher.data?.fieldAssessor) {
+            // Check if fieldAssessor is explicitly true
+            const isFieldAssessor = teacher.data?.fieldAssessor === true;
+            setHasAccess(isFieldAssessor);
+            if (!isFieldAssessor) {
               toast.error("شما مجوز ارزیابی معلمان را ندارید");
-              router.push("/admin");
             }
           } else {
+            setHasAccess(false);
             toast.error("اطلاعات معلم یافت نشد");
-            router.push("/admin");
           }
         })
         .catch((err) => {
           console.error("Error checking assessor status:", err);
+          setHasAccess(false);
           toast.error("خطا در بررسی مجوز ارزیابی");
+        })
+        .finally(() => {
+          setCheckingAccess(false);
         });
     } else {
+      setHasAccess(false);
+      setCheckingAccess(false);
       toast.error("فقط مدیران و معلمان با مجوز ارزیابی می‌توانند از این صفحه استفاده کنند");
-      router.push("/admin");
     }
   }, [user, router]);
 
@@ -249,7 +263,7 @@ export default function EvaluateTeacherPage() {
         activeIndicators.forEach((ind: EvaluationIndicator) => {
           initialItems[ind._id] = {
             indicatorId: ind._id,
-            score: 0,
+            score: 0, // Ensure it's a number
             comment: "",
           };
         });
@@ -287,10 +301,13 @@ export default function EvaluateTeacherPage() {
         const data = await response.json();
         if (data.evaluation) {
           setExistingEvaluation(data.evaluation);
-          // Populate evaluation items
+          // Populate evaluation items - ensure scores are numbers
           const items: Record<string, EvaluationItem> = {};
           data.evaluation.data.items.forEach((item: EvaluationItem) => {
-            items[item.indicatorId] = item;
+            items[item.indicatorId] = {
+              ...item,
+              score: Number(item.score) || 0, // Ensure score is a number
+            };
           });
           setEvaluationItems(items);
           toast.success("ارزیابی موجود بارگذاری شد");
@@ -303,7 +320,7 @@ export default function EvaluateTeacherPage() {
             indicators.forEach((ind: EvaluationIndicator) => {
               initialItems[ind._id] = {
                 indicatorId: ind._id,
-                score: 0,
+                score: 0, // Ensure it's a number
                 comment: "",
               };
             });
@@ -354,9 +371,10 @@ export default function EvaluateTeacherPage() {
   };
 
   const handleScoreChange = (indicatorId: string, score: string) => {
-    const numScore = parseFloat(score) || 0;
+    // Parse as number and handle empty string
+    const numScore = score === "" ? 0 : parseFloat(score) || 0;
     const indicator = indicators.find((ind) => ind._id === indicatorId);
-    const maxScore = indicator?.data?.maxScore || 100;
+    const maxScore = Number(indicator?.data?.maxScore) || 100;
     const clampedScore = Math.max(0, Math.min(numScore, maxScore));
 
     setEvaluationItems((prev) => ({
@@ -364,7 +382,7 @@ export default function EvaluateTeacherPage() {
       [indicatorId]: {
         ...prev[indicatorId],
         indicatorId,
-        score: clampedScore,
+        score: clampedScore, // Store as number
       },
     }));
   };
@@ -459,8 +477,9 @@ export default function EvaluateTeacherPage() {
 
     sortedIndicators.forEach((indicator) => {
       const item = evaluationItems[indicator._id];
-      const score = item?.score || 0;
-      const max = indicator.data?.maxScore || 0;
+      // Ensure values are numbers, not strings
+      const score = Number(item?.score) || 0;
+      const max = Number(indicator.data?.maxScore) || 0;
 
       totalScore += score;
       maxScore += max;
@@ -470,7 +489,7 @@ export default function EvaluateTeacherPage() {
 
     return {
       totalScore: Math.round(totalScore * 100) / 100, // Round to 2 decimal places
-      maxScore,
+      maxScore: Math.round(maxScore * 100) / 100,
       percentage: Math.round(percentage * 100) / 100,
     };
   }, [sortedIndicators, evaluationItems]);
@@ -493,7 +512,7 @@ export default function EvaluateTeacherPage() {
     });
   }, [monthlyHistory]);
 
-  if (isLoading) {
+  if (isLoading || checkingAccess) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -501,6 +520,52 @@ export default function EvaluateTeacherPage() {
           <p className="mt-4 text-lg text-gray-600">در حال بارگذاری...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show access denied if user doesn't have permission
+  if (hasAccess === false) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-8" dir="rtl">
+        <div className="max-w-7xl mx-auto px-4">
+          <PageHeader
+            title="ارزیابی عملکرد معلمان"
+            subtitle="ارزیابی عملکرد معلمان بر اساس شاخص‌های تعریف شده"
+            icon={<ClipboardDocumentCheckIcon className="w-6 h-6" />}
+            gradient={true}
+          />
+          <div className="mt-8 bg-white rounded-xl shadow-md p-8">
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                <svg
+                  className="w-12 h-12 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                دسترسی محدود شده است
+              </h2>
+             
+              <Button
+                onClick={() => router.push("/admin/dashboard")}
+                className="mt-4"
+                size="lg"
+              >
+                بازگشت به داشبورد
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
     );
   }
 
@@ -777,9 +842,11 @@ export default function EvaluateTeacherPage() {
                             evaluationItems[indicator._id] ||
                             ({
                               indicatorId: indicator._id,
-                              score: 0,
+                              score: 0, // Ensure it's a number
                               comment: "",
                             } as EvaluationItem);
+                          // Ensure score is always a number
+                          const itemScore = Number(item.score) || 0;
                           return (
                             <TableRow 
                               key={indicator._id}
@@ -812,7 +879,7 @@ export default function EvaluateTeacherPage() {
                                       type="number"
                                       min="0"
                                       max={indicator.data.maxScore}
-                                      value={item.score || 0}
+                                      value={itemScore}
                                       onChange={(e) =>
                                         handleScoreChange(
                                           indicator._id,
@@ -820,11 +887,11 @@ export default function EvaluateTeacherPage() {
                                         )
                                       }
                                       className={`w-20 text-right font-semibold text-base ${
-                                        item.score >= indicator.data.maxScore * 0.8
+                                        itemScore >= indicator.data.maxScore * 0.8
                                           ? "border-green-400 bg-green-50"
-                                          : item.score >= indicator.data.maxScore * 0.6
+                                          : itemScore >= indicator.data.maxScore * 0.6
                                           ? "border-yellow-400 bg-yellow-50"
-                                          : item.score > 0
+                                          : itemScore > 0
                                           ? "border-orange-400 bg-orange-50"
                                           : ""
                                       }`}
@@ -835,7 +902,7 @@ export default function EvaluateTeacherPage() {
                                     /{indicator.data.maxScore}
                                   </span>
                                 </div>
-                                {item.score > indicator.data.maxScore && (
+                                {itemScore > indicator.data.maxScore && (
                                   <p className="text-xs text-red-500 mt-1">
                                     بیش از حد مجاز
                                   </p>
