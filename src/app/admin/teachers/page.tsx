@@ -535,6 +535,22 @@ export default function Home({
         requiredMessage: "لطفا یک تصویر آپلود کنید",
       },
     },
+
+
+
+{
+  name: "fieldAssessor",
+  title: " کادبر ارزیاب",
+  type: "checkbox",
+  isShowInList: true,
+  isSearchable: true,
+  required: false,
+  enabled: true,
+  visible: true,
+  readonly: false,
+  defaultValue: true,
+},
+
     {
       enabled: true,
       visible: true,
