@@ -101,16 +101,11 @@ export async function GET(request: NextRequest) {
       const dbName = schoolConfig.connectionString.split('/')[3].split('?')[0];
       const db = client.db(dbName);
 
-      const now = new Date();
-
+      // Note: Expiration dates are ignored - all announcements are shown regardless of expiresAt
       const rawAnnouncements = await db
         .collection('announcements')
         .find({
           schoolCode: decoded.schoolCode,
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: { $gt: now } },
-          ],
         })
         .sort({ createdAt: -1 })
         .limit(50)
