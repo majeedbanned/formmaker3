@@ -332,13 +332,15 @@ export async function GET(request: NextRequest) {
         lastActivity: null
       };
       
-      // Calculate weighted total using the scoring system:
-      // presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points, events: 4 points
-      const weightedTotal = 
-        (data.presenceRecords || 0) * 0.5 +
-        (data.gradeCounts || 0) * 1.0 +
-        (data.assessments || 0) * 2.0 +
-        (events || 0) * 4.0;
+      // Calculate weighted total using the scoring system from config
+      const { calculateWeightedScore, TEACHER_ACTIVITY_WEIGHTS } = await import('@/config/teacherActivityWeights');
+      const weightedTotal = calculateWeightedScore({
+        presenceRecords: data.presenceRecords || 0,
+        grades: data.gradeCounts || 0,
+        assessments: data.assessments || 0,
+        comments: data.comments || 0,
+        events: events || 0,
+      });
       
       // Keep unweighted total for display purposes
       const total = data.gradeCounts + data.presenceRecords + 

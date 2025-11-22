@@ -281,18 +281,21 @@ export async function GET(request: NextRequest) {
         teacherMap[teacher.data.teacherCode] = teacher;
       });
 
-      // Calculate weighted total activities and create ranking data
-      // Weighting: presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points, events: 4 points
+      // Calculate weighted total activities and create ranking data using config weights
+      const { calculateWeightedScore } = await import('@/config/teacherActivityWeights');
+      
       const rankingData = teacherActivities.map((activity: any) => {
         const teacherCode = activity._id;
         const events = eventsMap[teacherCode] || 0;
         
-        // Calculate weighted score
-        const weightedScore = 
-          (activity.presenceRecords || 0) * 0.5 +
-          (activity.gradeCounts || 0) * 1.0 +
-          (activity.assessments || 0) * 2.0 +
-          events * 4.0;
+        // Calculate weighted score using config function
+        const weightedScore = calculateWeightedScore({
+          presenceRecords: activity.presenceRecords || 0,
+          grades: activity.gradeCounts || 0,
+          assessments: activity.assessments || 0,
+          comments: activity.comments || 0,
+          events: events,
+        });
         
         // Keep unweighted total for display purposes
         const totalActivities = 
