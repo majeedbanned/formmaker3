@@ -45,6 +45,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Helper function: Convert Gregorian to Jalali (Persian)
+function gregorian_to_jalali(gy: number, gm: number, gd: number): [number, number, number] {
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let jy = gy <= 1600 ? 0 : 979;
+  gy = gy <= 1600 ? gy - 621 : gy - 1600;
+  const gy2 = gm > 2 ? gy + 1 : gy;
+  let days =
+    365 * gy +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400) -
+    80 +
+    gd +
+    g_d_m[gm - 1];
+  jy += 33 * Math.floor(days / 12053);
+  days %= 12053;
+  jy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  jy += Math.floor((days - 1) / 365);
+  if (days > 0) days = (days - 1) % 365;
+  const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+  const jd = days < 186 ? (days % 31) + 1 : ((days - 186) % 30) + 1;
+  return [jy, jm, jd];
+}
+
+// Helper function: Convert digits to Persian
+function toPersianDigits(num: number | string): string {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  return String(num)
+    .split('')
+    .map((digit) => persianDigits[parseInt(digit, 10)] || digit)
+    .join('');
+}
+
+// Helper function: Format current date and time in Persian
+function formatPersianDateTime(date: Date): string {
+  const [jy, jm, jd] = gregorian_to_jalali(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate()
+  );
+  
+  const persianMonths = [
+    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+  ];
+  
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  
+  const persianDate = `${toPersianDigits(jd)} ${persianMonths[jm - 1]} ${toPersianDigits(jy)}`;
+  const persianTime = `${toPersianDigits(hour.toString().padStart(2, '0'))}:${toPersianDigits(minute.toString().padStart(2, '0'))}`;
+  
+  return `${persianDate} - ${persianTime}`;
+}
+
 // Helper function to get date range based on timeframe
 const getDateRange = (timeframe: string): { start: string; end: string } => {
   const now = new Date();
@@ -229,6 +285,9 @@ export async function GET(request: NextRequest) {
       const total = data.gradeCounts + data.presenceRecords + 
                     data.assessments + data.comments + events;
 
+      // Get current server time in Persian format
+      const serverTime = formatPersianDateTime(new Date());
+
       return NextResponse.json({
         success: true,
         data: {
@@ -238,7 +297,8 @@ export async function GET(request: NextRequest) {
           comments: data.comments || 0,
           events: events || 0,
           totalActivities: total,
-          lastActivity: data.lastActivity || null
+          lastActivity: data.lastActivity || null,
+          serverTime: serverTime
         }
       }, { headers: corsHeaders });
 
