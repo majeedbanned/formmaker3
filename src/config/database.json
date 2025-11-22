@@ -707,7 +707,19 @@
               "description": "khatam.farsamooz.ir"
             }
 
-
+,
+            "jz.farsamooz.ir": {
+              "schoolCode":"95118432",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/jz?authSource=admin",
+              "description": "jz.farsamooz.ir"
+            }
+            
+            ,
+            "bahrami.farsamooz.ir": {
+              "schoolCode":"68260603",
+              "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bahrami?authSource=admin",
+              "description": "bahrami.farsamooz.ir"
+            }
 
 
 
