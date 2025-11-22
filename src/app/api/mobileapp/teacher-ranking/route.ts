@@ -281,10 +281,20 @@ export async function GET(request: NextRequest) {
         teacherMap[teacher.data.teacherCode] = teacher;
       });
 
-      // Calculate total activities and create ranking data
+      // Calculate weighted total activities and create ranking data
+      // Weighting: presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points, events: 4 points
       const rankingData = teacherActivities.map((activity: any) => {
         const teacherCode = activity._id;
         const events = eventsMap[teacherCode] || 0;
+        
+        // Calculate weighted score
+        const weightedScore = 
+          (activity.presenceRecords || 0) * 0.5 +
+          (activity.gradeCounts || 0) * 1.0 +
+          (activity.assessments || 0) * 2.0 +
+          events * 4.0;
+        
+        // Keep unweighted total for display purposes
         const totalActivities = 
           (activity.gradeCounts || 0) + 
           (activity.presenceRecords || 0) + 
@@ -298,7 +308,8 @@ export async function GET(request: NextRequest) {
           teacherCode,
           teacherName: teacher?.data?.teacherName || teacherCode,
           avatar: teacher?.data?.avatar || null,
-          totalActivities,
+          totalActivities, // Unweighted count for display
+          weightedScore, // Weighted score for ranking
           gradeCounts: activity.gradeCounts || 0,
           presenceRecords: activity.presenceRecords || 0,
           assessments: activity.assessments || 0,
@@ -317,6 +328,7 @@ export async function GET(request: NextRequest) {
             teacherName: teacher.data.teacherName || teacherCode,
             avatar: teacher.data.avatar || null,
             totalActivities: 0,
+            weightedScore: 0,
             gradeCounts: 0,
             presenceRecords: 0,
             assessments: 0,
@@ -326,8 +338,8 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Sort by totalActivities descending
-      rankingData.sort((a: any, b: any) => b.totalActivities - a.totalActivities);
+      // Sort by weightedScore descending (use weighted score for ranking)
+      rankingData.sort((a: any, b: any) => (b.weightedScore || 0) - (a.weightedScore || 0));
 
       // Add rank to each teacher
       const rankedTeachers = rankingData.map((teacher: any, index: number) => ({

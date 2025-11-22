@@ -331,6 +331,16 @@ export async function GET(request: NextRequest) {
         comments: 0,
         lastActivity: null
       };
+      
+      // Calculate weighted total using the scoring system:
+      // presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points, events: 4 points
+      const weightedTotal = 
+        (data.presenceRecords || 0) * 0.5 +
+        (data.gradeCounts || 0) * 1.0 +
+        (data.assessments || 0) * 2.0 +
+        (events || 0) * 4.0;
+      
+      // Keep unweighted total for display purposes
       const total = data.gradeCounts + data.presenceRecords + 
                     data.assessments + data.comments + events;
 
@@ -345,6 +355,7 @@ export async function GET(request: NextRequest) {
         comments: data.comments || 0,
         events: events || 0,
         totalActivities: total,
+        weightedScore: weightedTotal,
         lastActivity: data.lastActivity || null
       });
 
@@ -356,7 +367,8 @@ export async function GET(request: NextRequest) {
           assessments: data.assessments || 0,
           comments: data.comments || 0,
           events: events || 0,
-          totalActivities: total,
+          totalActivities: total, // Unweighted count for display
+          weightedScore: weightedTotal, // Weighted score for ranking/comparison
           lastActivity: data.lastActivity || null,
           serverTime: serverTime
         }

@@ -207,13 +207,14 @@ export async function GET(request: NextRequest) {
         {
           $group: {
             _id: '$date',
+            // Calculate weighted activity score:
+            // presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points
             activities: {
               $sum: {
                 $add: [
-                  { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
-                  { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
-                  { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
-                  { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
+                  { $multiply: [{ $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] }, 1.0] }, // grades: 1 point
+                  { $multiply: [{ $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] }, 0.5] }, // presenceRecords: 0.5 points
+                  { $multiply: [{ $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] }, 2.0] } // assessments: 2 points
                 ]
               }
             }
@@ -290,13 +291,14 @@ export async function GET(request: NextRequest) {
           {
             $group: {
               _id: '$date',
+              // Calculate weighted activity score:
+              // presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points
               activities: {
                 $sum: {
                   $add: [
-                    { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
-                    { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
-                    { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
-                    { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
+                    { $multiply: [{ $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] }, 1.0] }, // grades: 1 point
+                    { $multiply: [{ $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] }, 0.5] }, // presenceRecords: 0.5 points
+                    { $multiply: [{ $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] }, 2.0] } // assessments: 2 points
                   ]
                 }
               }
@@ -344,13 +346,14 @@ export async function GET(request: NextRequest) {
               date: '$date',
               teacherCode: '$teacherCode'
             },
+            // Calculate weighted activity score:
+            // presenceRecords: 0.5 points, grades: 1 point, assessments: 2 points
             activities: {
               $sum: {
                 $add: [
-                  { $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] },
-                  { $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] },
-                  { $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] },
-                  { $cond: [{ $gt: [{ $strLenCP: '$note' }, 0] }, 1, 0] }
+                  { $multiply: [{ $cond: [{ $isArray: '$grades' }, { $size: '$grades' }, 0] }, 1.0] }, // grades: 1 point
+                  { $multiply: [{ $cond: [{ $ne: ['$presenceStatus', null] }, 1, 0] }, 0.5] }, // presenceRecords: 0.5 points
+                  { $multiply: [{ $cond: [{ $isArray: '$assessments' }, { $size: '$assessments' }, 0] }, 2.0] } // assessments: 2 points
                 ]
               }
             }
@@ -444,7 +447,7 @@ export async function GET(request: NextRequest) {
         teacherEventsMap[date][teacherCode] = item.events || 0;
       });
 
-      // Calculate top teacher per day (teacher with highest total activities + events)
+      // Calculate top teacher per day (teacher with highest weighted score: activities + events * 4)
       const topTeacherMap: Record<string, { teacherCode: string; total: number }> = {};
       Object.keys(teacherActivitiesMap).forEach(date => {
         const teachersForDay = teacherActivitiesMap[date];
@@ -452,9 +455,10 @@ export async function GET(request: NextRequest) {
         let topTotal = -1;
 
         Object.keys(teachersForDay).forEach(teacherCode => {
-          const activities = teachersForDay[teacherCode] || 0;
+          const activities = teachersForDay[teacherCode] || 0; // Already weighted
           const events = teacherEventsMap[date]?.[teacherCode] || 0;
-          const total = activities + events;
+          // Events are worth 4 points each
+          const total = activities + (events * 4);
 
           if (total > topTotal) {
             topTotal = total;
@@ -467,9 +471,11 @@ export async function GET(request: NextRequest) {
           Object.keys(teacherEventsMap[date]).forEach(teacherCode => {
             if (!teachersForDay[teacherCode]) {
               // Teacher only has events, no classsheet activities
+              // Events are worth 4 points each
               const events = teacherEventsMap[date][teacherCode] || 0;
-              if (events > topTotal) {
-                topTotal = events;
+              const eventsScore = events * 4;
+              if (eventsScore > topTotal) {
+                topTotal = eventsScore;
                 topTeacher = teacherCode;
               }
             }
@@ -492,11 +498,13 @@ export async function GET(request: NextRequest) {
 
       // Build daily data with top teacher info
       const dailyData = dates.map(date => {
-        const totalActivities = (activitiesMap[date] || 0) + (eventsMap[date] || 0);
+        // activitiesMap already contains weighted scores, events need to be weighted (4 points each)
+        const totalActivities = (activitiesMap[date] || 0) + ((eventsMap[date] || 0) * 4);
         const teacherCount = teacherCountMap[date] || 1;
         const schoolAverage = Math.round((totalActivities / teacherCount) * 10) / 10; // Round to 1 decimal
         
-        const userTotal = (userActivitiesMap[date] || 0) + (userEventsMap[date] || 0);
+        // userActivitiesMap already contains weighted scores, events need to be weighted (4 points each)
+        const userTotal = (userActivitiesMap[date] || 0) + ((userEventsMap[date] || 0) * 4);
 
         // Get top teacher for this day
         const topTeacherInfo = topTeacherMap[date];
