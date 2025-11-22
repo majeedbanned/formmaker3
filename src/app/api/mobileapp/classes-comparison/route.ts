@@ -190,10 +190,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get month and year from query params
+    // Get query params
     const { searchParams } = new URL(request.url);
-    const monthParam = searchParams.get('month'); // 1-12 (Jalali month)
-    const yearParam = searchParams.get('year'); // Jalali year
+    const monthParam = searchParams.get('month'); // 1-12 (Jalali month), null means all months (year average)
+    const gradeParam = searchParams.get('grade'); // Grade level (required)
+    const majorParam = searchParams.get('major'); // Major code (required)
+    const courseCodeParam = searchParams.get('courseCode'); // Course code (optional)
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -231,14 +233,198 @@ export async function GET(request: NextRequest) {
         currentDate.getDate()
       );
 
-      // Determine the school year to use (default to current year)
-      const selectedYear = yearParam ? parseInt(yearParam) : currentJYear;
+      // Use current year (year selection removed per requirements)
+      const selectedYear = currentJYear;
       const selectedMonth = monthParam ? parseInt(monthParam) : null;
 
-      // Fetch all classes for the school
-      const classes = await db.collection('classes').find({
+      // Optimized: Use aggregation to extract grade-major combinations and courses efficiently
+      // This avoids loading all class documents into memory
+      const gradeMajorAggregation = await db.collection('classes').aggregate([
+        {
+          $match: {
+            'data.schoolCode': decoded.schoolCode
+          }
+        },
+        {
+          $project: {
+            grade: '$data.Grade',
+            major: '$data.major',
+            teachers: {
+              $ifNull: ['$data.teachers', []]
+            }
+          }
+        },
+        {
+          $unwind: {
+            path: '$teachers',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $group: {
+            _id: {
+              grade: '$grade',
+              major: '$major'
+            },
+            courses: {
+              $addToSet: '$teachers.courseCode'
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            grade: '$_id.grade',
+            major: '$_id.major',
+            courses: {
+              $filter: {
+                input: '$courses',
+                as: 'course',
+                cond: { $ne: ['$$course', null] }
+              }
+            }
+          }
+        }
+      ]).toArray();
+
+      // Build grade-major map and collect all unique course codes
+      const gradeMajorCoursesMap = new Map<string, Set<string>>();
+      const gradeMajorMap = new Map<string, { grade: string; major: string; displayName: string }>();
+      const allCourseCodes = new Set<string>();
+
+      gradeMajorAggregation.forEach((item: any) => {
+        const grade = item.grade || '';
+        const major = item.major || '';
+        const key = `${grade}_${major}`;
+        
+        // Track grade-major combinations
+        if (!gradeMajorMap.has(key)) {
+          gradeMajorMap.set(key, {
+            grade,
+            major,
+            displayName: `${grade ? `پایه ${grade}` : 'بدون پایه'}${major ? ` - ${major}` : ''}`
+          });
+        }
+        
+        // Track courses for this grade-major
+        if (item.courses && Array.isArray(item.courses)) {
+          if (!gradeMajorCoursesMap.has(key)) {
+            gradeMajorCoursesMap.set(key, new Set());
+          }
+          item.courses.forEach((courseCode: string) => {
+            if (courseCode) {
+              gradeMajorCoursesMap.get(key)!.add(courseCode);
+              allCourseCodes.add(courseCode);
+            }
+          });
+        }
+      });
+
+      // Only fetch course names for courses that exist in classes (not all courses)
+      const courseMap = new Map<string, string>();
+      if (allCourseCodes.size > 0) {
+        const courses = await db.collection('courses').find(
+          {
+            'data.schoolCode': decoded.schoolCode,
+            'data.courseCode': { $in: Array.from(allCourseCodes) }
+          },
+          {
+            projection: {
+              'data.courseCode': 1,
+              'data.courseName': 1
+            }
+          }
+        ).toArray();
+        
+        courses.forEach((course: any) => {
+          const courseData = course.data || course;
+          if (courseData.courseCode && courseData.courseName) {
+            courseMap.set(courseData.courseCode, courseData.courseName);
+          }
+        });
+      }
+
+      // If no grade/major filters, return early with just combinations (lightweight response)
+      if (!gradeParam && !majorParam) {
+        // Prepare available grade-major combinations with their courses
+        const gradeMajorCombinations = Array.from(gradeMajorMap.entries()).map(([key, info]) => {
+          const courseCodes = Array.from(gradeMajorCoursesMap.get(key) || []);
+          const courses = courseCodes.map(courseCode => ({
+            courseCode,
+            courseName: courseMap.get(courseCode) || courseCode,
+          })).sort((a, b) => a.courseName.localeCompare(b.courseName));
+          
+          return {
+            grade: info.grade,
+            major: info.major,
+            displayName: info.displayName,
+            courses,
+          };
+        }).sort((a, b) => {
+          // Sort by grade first, then major
+          if (a.grade !== b.grade) {
+            return a.grade.localeCompare(b.grade);
+          }
+          return a.major.localeCompare(b.major);
+        });
+
+        await client.close();
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            gradeMajorCombinations,
+          }
+        });
+      }
+
+      // Only load full class data if we need to calculate statistics (filters provided)
+      const queryFilter: any = {
         'data.schoolCode': decoded.schoolCode
-      }).toArray();
+      };
+      
+      if (gradeParam) {
+        queryFilter['data.Grade'] = gradeParam;
+      }
+      
+      if (majorParam) {
+        queryFilter['data.major'] = majorParam;
+      }
+      
+      const classes = await db.collection('classes').find(queryFilter).toArray();
+
+      // If no classes found, return empty comparison groups but still return combinations
+      if (!classes || classes.length === 0) {
+        await client.close();
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            comparisonGroups: [],
+            selectedYear,
+            selectedMonth,
+            gradeMajorCombinations: Array.from(gradeMajorMap.entries()).map(([key, info]) => {
+              const courseCodes = Array.from(gradeMajorCoursesMap.get(key) || []);
+              const courses = courseCodes.map(courseCode => ({
+                courseCode,
+                courseName: courseMap.get(courseCode) || courseCode,
+              })).sort((a, b) => a.courseName.localeCompare(b.courseName));
+              
+              return {
+                grade: info.grade,
+                major: info.major,
+                displayName: info.displayName,
+                courses,
+              };
+            }).sort((a, b) => {
+              if (a.grade !== b.grade) {
+                return a.grade.localeCompare(b.grade);
+              }
+              return a.major.localeCompare(b.major);
+            }),
+          }
+        });
+      }
 
       // Group classes by major and Grade
       const classesByMajorGrade = new Map<string, any[]>();
@@ -259,7 +445,7 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      // Get all students for all classes
+      // Get all students for filtered classes only
       const allClassCodes = classes.map((cls: any) => (cls.data || cls).classCode);
       
       const allStudents = await db.collection('students').find({
@@ -464,6 +650,8 @@ export async function GET(request: NextRequest) {
             const courseAverages: Array<{ average: number; vahed: number }> = [];
 
             coursesData.forEach((cells, courseCode) => {
+              // Filter by courseCode if provided
+              if (courseCodeParam && courseCode !== courseCodeParam) return;
               // Group by month
               const monthlyData: Record<string, { grades: GradeEntry[], assessments: AssessmentEntry[] }> = {};
               
@@ -534,21 +722,33 @@ export async function GET(request: NextRequest) {
               }
             });
 
-            // Calculate overall average = weighted average (matching ReportCards)
+            // Calculate overall average
             if (courseAverages.length > 0) {
-              let weightedSum = 0;
-              let totalWeight = 0;
+              let overallAverage: number;
               
-              courseAverages.forEach(({ average, vahed }) => {
-                const numericVahed = Number(vahed ?? 1) || 1;
-                weightedSum += average * numericVahed;
-                totalWeight += numericVahed;
-              });
+              // If a specific course is selected, use only that course's average
+              if (courseCodeParam) {
+                // Just use the single course average (should be only one in courseAverages)
+                overallAverage = courseAverages[0].average;
+              } else {
+                // Calculate weighted average (matching ReportCards)
+                let weightedSum = 0;
+                let totalWeight = 0;
+                
+                courseAverages.forEach(({ average, vahed }) => {
+                  const numericVahed = Number(vahed ?? 1) || 1;
+                  weightedSum += average * numericVahed;
+                  totalWeight += numericVahed;
+                });
 
-              if (totalWeight > 0) {
-                const overallAverage = Math.round((weightedSum / totalWeight) * 100) / 100;
-                studentAverages.push(overallAverage);
+                if (totalWeight > 0) {
+                  overallAverage = Math.round((weightedSum / totalWeight) * 100) / 100;
+                } else {
+                  return; // Skip if no valid average
+                }
               }
+              
+              studentAverages.push(overallAverage);
             }
           });
 
@@ -574,13 +774,12 @@ export async function GET(request: NextRequest) {
           return b.classAverage - a.classAverage;
         });
 
-        if (classStats.length > 0) {
-          comparisonGroups.push({
-            major,
-            grade,
-            classes: classStats,
-          });
-        }
+        // Always push the group, even if stats are empty (shows 0 students)
+        comparisonGroups.push({
+          major,
+          grade,
+          classes: classStats,
+        });
       });
 
       // Sort groups by major and grade
@@ -591,14 +790,57 @@ export async function GET(request: NextRequest) {
         return a.grade.localeCompare(b.grade);
       });
 
+      // Prepare available grade-major combinations with their courses
+      const gradeMajorCombinations = Array.from(gradeMajorMap.entries()).map(([key, info]) => {
+        const courseCodes = Array.from(gradeMajorCoursesMap.get(key) || []);
+        const courses = courseCodes.map(courseCode => ({
+          courseCode,
+          courseName: courseMap.get(courseCode) || courseCode,
+        })).sort((a, b) => a.courseName.localeCompare(b.courseName));
+        
+        return {
+          grade: info.grade,
+          major: info.major,
+          displayName: info.displayName,
+          courses,
+        };
+      }).sort((a, b) => {
+        // Sort by grade first, then major
+        if (a.grade !== b.grade) {
+          return a.grade.localeCompare(b.grade);
+        }
+        return a.major.localeCompare(b.major);
+      });
+
       await client.close();
 
+      // If no grade/major filter, only return combinations (lightweight response)
+      if (!gradeParam && !majorParam) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            gradeMajorCombinations, // Available combinations with courses
+          }
+        });
+      }
+
+      // Otherwise, return full comparison data
+      console.log('Returning comparison data:', {
+        comparisonGroupsCount: comparisonGroups.length,
+        selectedYear,
+        selectedMonth,
+        gradeParam,
+        majorParam,
+        courseCodeParam
+      });
+      
       return NextResponse.json({
         success: true,
         data: {
           comparisonGroups,
           selectedYear,
           selectedMonth,
+          gradeMajorCombinations, // Available combinations with courses
         }
       });
 
