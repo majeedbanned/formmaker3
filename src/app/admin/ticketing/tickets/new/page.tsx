@@ -61,7 +61,7 @@ export default function NewTicketPage() {
     maghta: "",
     paye: "",
     roomNumber: "",
-    sex: "" as "man" | "woman" | ""
+    sex: "" as "پسرانه" | "دخترانه" | ""
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -344,23 +344,47 @@ export default function NewTicketPage() {
             {/* Maghta */}
             <div>
               <Label htmlFor="maghta">مقطع</Label>
-              <Input
-                id="maghta"
+              <Select
                 value={formData.maghta}
-                onChange={(e) => setFormData({ ...formData, maghta: e.target.value })}
-                placeholder="مقطع تحصیلی"
-              />
+                onValueChange={(value) => setFormData({ ...formData, maghta: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="مقطع تحصیلی را انتخاب کنید" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="پیش دبستانی">پیش دبستانی</SelectItem>
+                  <SelectItem value="ابتدایی">ابتدایی</SelectItem>
+                  <SelectItem value="متوسطه اول">متوسطه اول</SelectItem>
+                  <SelectItem value="متوسطه دوم">متوسطه دوم</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Paye */}
             <div>
               <Label htmlFor="paye">پایه</Label>
-              <Input
-                id="paye"
+              <Select
                 value={formData.paye}
-                onChange={(e) => setFormData({ ...formData, paye: e.target.value })}
-                placeholder="پایه تحصیلی"
-              />
+                onValueChange={(value) => setFormData({ ...formData, paye: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="پایه تحصیلی را انتخاب کنید" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="اول">اول</SelectItem>
+                  <SelectItem value="دوم">دوم</SelectItem>
+                  <SelectItem value="سوم">سوم</SelectItem>
+                  <SelectItem value="چهارم">چهارم</SelectItem>
+                  <SelectItem value="پنجم">پنجم</SelectItem>
+                  <SelectItem value="ششم">ششم</SelectItem>
+                  <SelectItem value="هفتم">هفتم</SelectItem>
+                  <SelectItem value="هشتم">هشتم</SelectItem>
+                  <SelectItem value="نهم">نهم</SelectItem>
+                  <SelectItem value="دهم">دهم</SelectItem>
+                  <SelectItem value="یازدهم">یازدهم</SelectItem>
+                  <SelectItem value="دوازدهم">دوازدهم</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Room Number */}
@@ -380,7 +404,7 @@ export default function NewTicketPage() {
               <Label htmlFor="sex">جنسیت</Label>
               <Select
                 value={formData.sex}
-                onValueChange={(value: "man" | "woman" | "") => 
+                onValueChange={(value: "پسرانه" | "دخترانه" | "") => 
                   setFormData({ ...formData, sex: value })
                 }
               >
@@ -388,8 +412,8 @@ export default function NewTicketPage() {
                   <SelectValue placeholder="جنسیت را انتخاب کنید" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="man">مرد</SelectItem>
-                  <SelectItem value="woman">زن</SelectItem>
+                  <SelectItem value="پسرانه">پسرانه</SelectItem>
+                  <SelectItem value="دخترانه">دخترانه</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -47,6 +47,10 @@ interface Ticket {
     createdAt: string;
     updatedAt: string;
     departmentId: string;
+    maghta?: string;
+    paye?: string;
+    sex?: string;
+    roomNumber?: string;
   };
   departmentName: string;
   creatorName: string;
@@ -368,6 +372,26 @@ export default function TicketsPage() {
                           <User className="w-4 h-4" />
                           <span>ایجاد شده توسط: {ticket.creatorName}</span>
                         </div>
+                        {ticket.data.maghta && (
+                          <div className="flex items-center gap-1">
+                            <span>مقطع: {ticket.data.maghta}</span>
+                          </div>
+                        )}
+                        {ticket.data.paye && (
+                          <div className="flex items-center gap-1">
+                            <span>پایه: {ticket.data.paye}</span>
+                          </div>
+                        )}
+                        {ticket.data.sex && (
+                          <div className="flex items-center gap-1">
+                            <span>جنسیت: {ticket.data.sex}</span>
+                          </div>
+                        )}
+                        {ticket.data.roomNumber && (
+                          <div className="flex items-center gap-1">
+                            <span>شماره کلاس: {ticket.data.roomNumber}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           <span>
