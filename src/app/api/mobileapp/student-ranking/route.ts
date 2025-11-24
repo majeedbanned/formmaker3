@@ -192,11 +192,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get classCode, month, and year from query params
+    // Get classCode, month, year, and pagination params from query params
     const { searchParams } = new URL(request.url);
     const classCode = searchParams.get('classCode');
     const monthParam = searchParams.get('month'); // 1-12 (Jalali month)
     const yearParam = searchParams.get('year'); // Jalali year
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    
+    // Validate pagination parameters
+    const validatedLimit = Math.min(Math.max(limit, 1), 100); // Between 1 and 100
+    const validatedOffset = Math.max(offset, 0); // Non-negative
 
     // Load database configuration
     const dbConfig: DatabaseConfig = getDatabaseConfig();
@@ -636,10 +642,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Find current user in overall ranking (only for students)
+      // Find current user in overall ranking (only for students) - before pagination
       const currentStudentCode = decoded.userType === 'student' ? decoded.username : null;
       const currentUserOverall = currentStudentCode ? overallRankingData.find(s => s.studentCode === currentStudentCode) : null;
       const currentUserRank = currentUserOverall?.rank || 0;
+
+      // Apply pagination to overall ranking
+      const totalCount = overallRankingData.length;
+      const paginatedOverallRanking = overallRankingData.slice(validatedOffset, validatedOffset + validatedLimit);
+      const hasMore = validatedOffset + validatedLimit < totalCount;
 
       // Build course-specific rankings with course names
       const courseRankings: Record<string, any> = {};
@@ -712,7 +723,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          overallRanking: overallRankingData,
+          overallRanking: paginatedOverallRanking,
           currentUserRank,
           currentUser: currentUserOverall || null,
           courseRankings,
@@ -721,6 +732,12 @@ export async function GET(request: NextRequest) {
             classAverage,
             studentRank: currentUserRank,
             totalCourses
+          },
+          pagination: {
+            total: totalCount,
+            offset: validatedOffset,
+            limit: validatedLimit,
+            hasMore
           }
         }
       });

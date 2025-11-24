@@ -129,9 +129,11 @@ const getDateRange = (timeframe: string): { start: string; end: string } => {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get timeframe from query parameter (default to 'today')
+    // Get timeframe and pagination parameters from query
     const { searchParams } = new URL(request.url);
     const timeframe = searchParams.get('timeframe') || 'today';
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization');
@@ -192,6 +194,10 @@ export async function GET(request: NextRequest) {
 
     try {
       const currentTeacherCode = decoded.username;
+
+      // Validate pagination parameters (limit already parsed above)
+      const validatedLimit = Math.min(Math.max(limit, 1), 100); // Between 1 and 100
+      const validatedOffset = Math.max(offset, 0); // Non-negative
 
       // Get date range based on timeframe
       const { start: dateStart, end: dateEnd } = getDateRange(timeframe);
@@ -355,7 +361,7 @@ export async function GET(request: NextRequest) {
       let currentUser = null;
       
       if (decoded.userType === 'teacher') {
-        // For teachers, find their rank in the ranking
+        // For teachers, find their rank in the FULL ranking (before pagination)
         const userIndex = rankedTeachers.findIndex(
           (t: any) => t.teacherCode === currentTeacherCode
         );
@@ -367,11 +373,20 @@ export async function GET(request: NextRequest) {
       // For school users, there's no "current user" in the ranking (they're not teachers)
       // So currentUserRank remains 0 and currentUser remains null
 
+      // Apply pagination
+      const totalCount = rankedTeachers.length;
+      const paginatedTeachers = rankedTeachers.slice(validatedOffset, validatedOffset + validatedLimit);
+      const hasMore = validatedOffset + validatedLimit < totalCount;
+
       await client.close();
       
       // Debug logging
       console.log('[TeacherRanking] Query result:', {
-        totalTeachers: rankedTeachers.length,
+        totalTeachers: totalCount,
+        paginatedCount: paginatedTeachers.length,
+        offset: validatedOffset,
+        limit: validatedLimit,
+        hasMore,
         currentUserRank,
         hasCurrentUser: !!currentUser
       });
@@ -379,9 +394,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          teachers: rankedTeachers,
+          teachers: paginatedTeachers,
           currentUserRank,
-          currentUser: currentUser || null
+          currentUser: currentUser || null,
+          pagination: {
+            total: totalCount,
+            offset: validatedOffset,
+            limit: validatedLimit,
+            hasMore
+          }
         }
       }, { headers: corsHeaders });
 
