@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
       // Get all classsheet data for each student
       const studentsWithData = await Promise.all(
         sortedStudents.map(async (student: any) => {
+          // Get today's classsheet record for current session data
           const classsheetRecord = await db.collection('classsheet').findOne({
             classCode: classCode,
             studentCode: student.studentCode,
@@ -202,6 +203,24 @@ export async function GET(request: NextRequest) {
             timeSlot: timeSlot
           });
 
+          // Get all previous grades for this student in this course (all dates) for display only
+          const allClasssheetRecords = await db.collection('classsheet').find({
+            classCode: classCode,
+            studentCode: student.studentCode,
+            teacherCode: decoded.username,
+            courseCode: courseCode,
+            schoolCode: decoded.schoolCode,
+            grades: { $exists: true, $ne: [], $not: { $size: 0 } }
+          }).sort({ date: -1, timeSlot: 1 }).toArray();
+
+          // Collect all grades from all records for display
+          const allPreviousGrades: any[] = [];
+          allClasssheetRecords.forEach((record: any) => {
+            if (record.grades && Array.isArray(record.grades)) {
+              allPreviousGrades.push(...record.grades);
+            }
+          });
+
           return {
             studentCode: student.studentCode || '',
             studentName: student.studentName || '',
@@ -210,7 +229,8 @@ export async function GET(request: NextRequest) {
             avatar: avatarMap.get(student.studentCode) || null,
             presenceStatus: classsheetRecord?.presenceStatus || null,
             note: classsheetRecord?.note || '',
-            grades: classsheetRecord?.grades || [],
+            grades: classsheetRecord?.grades || [], // Only grades for current date/timeSlot (for saving)
+            allPreviousGrades: allPreviousGrades, // All previous grades from all dates (for display only)
             descriptiveStatus: classsheetRecord?.descriptiveStatus || '',
             assessments: classsheetRecord?.assessments || []
           };

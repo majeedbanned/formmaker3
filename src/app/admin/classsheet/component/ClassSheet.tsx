@@ -551,17 +551,23 @@ const ClassSheet = ({
 
   // Create a unique key for each cell
   const getCellKey = (studentCode: string, column: Column) => {
-    // Format the date as YYYY-MM-DD to ensure consistency
-    const dateStr = column.date.toISOString().split("T")[0];
+    // Use Persian date from formattedDate to ensure consistency
+    const dateStr = column.formattedDate;
 
     return `${selectedClassDocument.data.classCode}_${studentCode}_${selectedOption?.teacherCode}_${selectedOption?.courseCode}_${schoolCode}_${dateStr}_${column.timeSlot}`;
   };
 
   // Format a cell key from database record
   const formatCellKeyFromDB = (cell: CellData) => {
-    // Ensure consistent date format by creating a new Date and extracting YYYY-MM-DD
-    const date = new Date(cell.date);
-    const dateStr = date.toISOString().split("T")[0];
+    // Use Persian date if available, otherwise convert from Gregorian date for backward compatibility
+    let dateStr: string;
+    if (cell.persianDate) {
+      dateStr = cell.persianDate;
+    } else {
+      // Fallback: convert Gregorian date to Persian date for backward compatibility
+      const date = new Date(cell.date);
+      dateStr = formatJalaliDate(date);
+    }
 
     return `${cell.classCode}_${cell.studentCode}_${cell.teacherCode}_${cell.courseCode}_${cell.schoolCode}_${dateStr}_${cell.timeSlot}`;
   };
@@ -819,12 +825,12 @@ const ClassSheet = ({
     studentCode: string,
     column: Column
   ): CellData | null => {
-    // Get the standard cell key
+    // Get the standard cell key (now using Persian date)
     const cellKey = getCellKey(studentCode, column);
 
     // Debug: Log the cell key we're trying to find
     if (process.env.NODE_ENV === "development") {
-      const simpleDateStr = column.date.toISOString().split("T")[0];
+      const simpleDateStr = column.formattedDate;
       //   console.log(
       //     `Looking for cell: ${studentCode}-${simpleDateStr}-${column.timeSlot}`,
       //     `Key: ${cellKey}`,
@@ -841,12 +847,12 @@ const ClassSheet = ({
     // Create a prefix to match the beginning of the key (everything except date and time slot)
     const prefix = `${selectedClassDocument.data.classCode}_${studentCode}_${selectedOption?.teacherCode}_${selectedOption?.courseCode}_${schoolCode}_`;
 
-    // Get just the YYYY-MM-DD part of the date for matching
-    const datePart = column.date.toISOString().split("T")[0];
+    // Get the Persian date part for matching
+    const datePart = column.formattedDate;
 
     // Search through all keys for a match
     for (const key of Object.keys(cellsData)) {
-      // Check if the key starts with our prefix, contains our date, and ends with our time slot
+      // Check if the key starts with our prefix, contains our Persian date, and ends with our time slot
       if (
         key.startsWith(prefix) &&
         key.includes(datePart) &&
