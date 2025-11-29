@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
@@ -54,6 +54,7 @@ interface EvaluationIndicator {
     maxScore: number;
     isActive: boolean;
     order?: number;
+    category?: string;
   };
 }
 
@@ -90,6 +91,16 @@ const PERSIAN_MONTHS = [
   { value: "11", label: "بهمن" },
   { value: "12", label: "اسفند" },
 ];
+
+// Category labels mapping
+const CATEGORY_LABELS: Record<string, string> = {
+  educational: "آموزشی",
+  behavioral: "رفتاری",
+  cultural: "فرهنگی",
+  sports: "ورزشی",
+  technology: "فناوری",
+  general: "عمومی",
+};
 
 export default function EvaluateTeacherPage() {
   const { user, isLoading } = useAuth();
@@ -470,6 +481,38 @@ export default function EvaluateTeacherPage() {
     });
   }, [indicators]);
 
+  // Group indicators by category
+  const groupedIndicators = useMemo(() => {
+    const groups: Record<string, EvaluationIndicator[]> = {};
+    
+    sortedIndicators.forEach((indicator) => {
+      const category = indicator.data?.category || "general";
+      const categoryKey = category || "general";
+      
+      if (!groups[categoryKey]) {
+        groups[categoryKey] = [];
+      }
+      groups[categoryKey].push(indicator);
+    });
+
+    // Sort categories: first show categories with labels, then "general" or uncategorized
+    const sortedCategories = Object.keys(groups).sort((a, b) => {
+      // Put "general" at the end
+      if (a === "general") return 1;
+      if (b === "general") return -1;
+      // Sort alphabetically by label
+      const labelA = CATEGORY_LABELS[a] || a;
+      const labelB = CATEGORY_LABELS[b] || b;
+      return labelA.localeCompare(labelB, "fa");
+    });
+
+    return sortedCategories.map((category) => ({
+      category,
+      label: CATEGORY_LABELS[category] || category || "عمومی",
+      indicators: groups[category],
+    }));
+  }, [sortedIndicators]);
+
   // Calculate real-time total score and max score
   const scoreSummary = useMemo(() => {
     let totalScore = 0;
@@ -837,93 +880,121 @@ export default function EvaluateTeacherPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sortedIndicators.map((indicator, index) => {
-                          const item =
-                            evaluationItems[indicator._id] ||
-                            ({
-                              indicatorId: indicator._id,
-                              score: 0, // Ensure it's a number
-                              comment: "",
-                            } as EvaluationItem);
-                          // Ensure score is always a number
-                          const itemScore = Number(item.score) || 0;
+                        {groupedIndicators.map((group, groupIndex) => {
+                          let globalIndex = 0;
+                          // Calculate global index for this group
+                          for (let i = 0; i < groupIndex; i++) {
+                            globalIndex += groupedIndicators[i].indicators.length;
+                          }
+                          
                           return (
-                            <TableRow 
-                              key={indicator._id}
-                              className="hover:bg-gray-50 transition-colors"
-                            >
-                              <TableCell className="text-center">
-                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm">
-                                  {index + 1}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right max-w-[300px]">
-                                <div className="truncate">
-                                  <div style={{textWrap: "wrap"}} className="font-semibold text-gray-900 " title={indicator.data.indicatorName}>
-                                    {indicator.data.indicatorName}
+                            <React.Fragment key={group.category}>
+                              {/* Category Header Row */}
+                              <TableRow className="bg-blue-50 hover:bg-blue-100">
+                                <TableCell colSpan={5} className="py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+                                    <h4 className="font-bold text-lg text-blue-900">
+                                      {group.label}
+                                    </h4>
+                                    <span className="text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                                      {group.indicators.length} شاخص
+                                    </span>
                                   </div>
-                                  {indicator.data.description && (
-                                    <div className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2" title={indicator.data.description}>
-                                      {indicator.data.description}
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center w-24">
-                                <span className="font-medium">{indicator.data.maxScore}</span>
-                              </TableCell>
-                              <TableCell className="text-center w-32">
-                                <div className="flex items-center justify-center gap-1">
-                                  <div className="relative">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      max={indicator.data.maxScore}
-                                      value={itemScore}
-                                      onChange={(e) =>
-                                        handleScoreChange(
-                                          indicator._id,
-                                          e.target.value
-                                        )
-                                      }
-                                      className={`w-20 text-right font-semibold text-base ${
-                                        itemScore >= indicator.data.maxScore * 0.8
-                                          ? "border-green-400 bg-green-50"
-                                          : itemScore >= indicator.data.maxScore * 0.6
-                                          ? "border-yellow-400 bg-yellow-50"
-                                          : itemScore > 0
-                                          ? "border-orange-400 bg-orange-50"
-                                          : ""
-                                      }`}
-                                      dir="rtl"
-                                    />
-                                  </div>
-                                  <span className="text-xs text-gray-500 font-medium">
-                                    /{indicator.data.maxScore}
-                                  </span>
-                                </div>
-                                {itemScore > indicator.data.maxScore && (
-                                  <p className="text-xs text-red-500 mt-1">
-                                    بیش از حد مجاز
-                                  </p>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Textarea
-                                  value={item.comment || ""}
-                                  onChange={(e) =>
-                                    handleCommentChange(
-                                      indicator._id,
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="توضیحات یا نظرات..."
-                                  rows={2}
-                                  className="w-full text-right"
-                                  dir="rtl"
-                                />
-                              </TableCell>
-                            </TableRow>
+                                </TableCell>
+                              </TableRow>
+                              {/* Indicators in this category */}
+                              {group.indicators.map((indicator, localIndex) => {
+                                const item =
+                                  evaluationItems[indicator._id] ||
+                                  ({
+                                    indicatorId: indicator._id,
+                                    score: 0,
+                                    comment: "",
+                                  } as EvaluationItem);
+                                const itemScore = Number(item.score) || 0;
+                                const currentIndex = globalIndex + localIndex;
+                                
+                                return (
+                                  <TableRow 
+                                    key={indicator._id}
+                                    className="hover:bg-gray-50 transition-colors"
+                                  >
+                                    <TableCell className="text-center">
+                                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm">
+                                        {currentIndex + 1}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right max-w-[300px]">
+                                      <div className="truncate">
+                                        <div style={{textWrap: "wrap"}} className="font-semibold text-gray-900 " title={indicator.data.indicatorName}>
+                                          {indicator.data.indicatorName}
+                                        </div>
+                                        {indicator.data.description && (
+                                          <div className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2" title={indicator.data.description}>
+                                            {indicator.data.description}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center w-24">
+                                      <span className="font-medium">{indicator.data.maxScore}</span>
+                                    </TableCell>
+                                    <TableCell className="text-center w-32">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <div className="relative">
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max={indicator.data.maxScore}
+                                            value={itemScore}
+                                            onChange={(e) =>
+                                              handleScoreChange(
+                                                indicator._id,
+                                                e.target.value
+                                              )
+                                            }
+                                            className={`w-20 text-right font-semibold text-base ${
+                                              itemScore >= indicator.data.maxScore * 0.8
+                                                ? "border-green-400 bg-green-50"
+                                                : itemScore >= indicator.data.maxScore * 0.6
+                                                ? "border-yellow-400 bg-yellow-50"
+                                                : itemScore > 0
+                                                ? "border-orange-400 bg-orange-50"
+                                                : ""
+                                            }`}
+                                            dir="rtl"
+                                          />
+                                        </div>
+                                        <span className="text-xs text-gray-500 font-medium">
+                                          /{indicator.data.maxScore}
+                                        </span>
+                                      </div>
+                                      {itemScore > indicator.data.maxScore && (
+                                        <p className="text-xs text-red-500 mt-1">
+                                          بیش از حد مجاز
+                                        </p>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <Textarea
+                                        value={item.comment || ""}
+                                        onChange={(e) =>
+                                          handleCommentChange(
+                                            indicator._id,
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="توضیحات یا نظرات..."
+                                        rows={2}
+                                        className="w-full text-right"
+                                        dir="rtl"
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </React.Fragment>
                           );
                         })}
                       </TableBody>

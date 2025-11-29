@@ -86,6 +86,24 @@ export default function AssessmentSystemPage() {
       },
     },
     {
+      name: "category",
+      title: "دسته‌بندی",
+      type: "dropdown",
+      isShowInList: true,
+      isSearchable: true,
+      required: false,
+      enabled: true,
+      visible: true,
+      readonly: false,
+      options: [
+        { label: "توانمندی و تسلط علمی", value: "توانمندی و تسلط علمی" },
+        { label: "مهارت¬های آموزشی", value: "مهارت¬های آموزشی" },
+        { label: "مدیریت و روابط انسانی", value: "مدیریت و روابط انسانی" },
+        { label: "سنجش و ارزشیابی", value: "سنجش و ارزشیابی" },
+        { label: "تعهد و توسعه حرفه¬ای", value: "تعهد و توسعه حرفه¬ای" }]
+       
+    },
+    {
       name: "description",
       title: "توضیحات",
       type: "textarea",
