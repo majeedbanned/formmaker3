@@ -535,7 +535,8 @@ const PresenceReport = ({
   });
   const [disciplinaryRecords, setDisciplinaryRecords] = useState<DisciplinaryRecord[]>([]);
   const [isLoadingDisciplinary, setIsLoadingDisciplinary] = useState(false);
-  const { user } = useAuth();
+  const [isAdminTeacher, setIsAdminTeacher] = useState(false);
+  const { user, isLoading } = useAuth();
 
   // Fetch SMS credit
   const fetchSmsCredit = async () => {
@@ -638,6 +639,42 @@ const PresenceReport = ({
     checkSmsStatus();
   }, [user?.userType, schoolCode]);
 
+  // Check if teacher has adminAccess
+  useEffect(() => {
+    const checkTeacherAdminAccess = async () => {
+      if (isLoading) return;
+      if (!user || user.userType !== "teacher" || !user.username) {
+        setIsAdminTeacher(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/teachers?schoolCode=${schoolCode}`);
+        if (!response.ok) {
+          console.error("Failed to fetch teacher data");
+          setIsAdminTeacher(false);
+          return;
+        }
+
+        const teachers = await response.json();
+        const currentTeacher = teachers.find(
+          (t: any) => t.data?.teacherCode === user.username
+        );
+
+        if (currentTeacher?.data?.adminAccess === true) {
+          setIsAdminTeacher(true);
+        } else {
+          setIsAdminTeacher(false);
+        }
+      } catch (err) {
+        console.error("Error checking teacher admin access:", err);
+        setIsAdminTeacher(false);
+      }
+    };
+
+    checkTeacherAdminAccess();
+  }, [user, isLoading, schoolCode]);
+
   // Fetch teachers and courses info
   useEffect(() => {
     const fetchTeachersAndCourses = async () => {
@@ -715,8 +752,9 @@ const PresenceReport = ({
       label: doc.data.className,
     }));
 
-    // If teacherCode is provided, only show classes where this teacher teaches
-    if (teacherCode) {
+    // If teacherCode is provided and teacher doesn't have admin access, only show classes where this teacher teaches
+    // Teachers with adminAccess should see all classes (like school users)
+    if (teacherCode && !isAdminTeacher) {
       options = options.filter((option) => {
         const classDoc = classDocuments.find(
           (doc) => doc.data.classCode === option.value
@@ -752,7 +790,9 @@ const PresenceReport = ({
         params.classCode = selectedClass.join(",");
       }
 
-      if (teacherCode) {
+      // Only include teacherCode if teacher doesn't have admin access
+      // Teachers with adminAccess should see everything like school users
+      if (teacherCode && !isAdminTeacher) {
         params.teacherCode = teacherCode;
       }
 
@@ -957,6 +997,7 @@ const PresenceReport = ({
     selectedDate,
     schoolCode,
     teacherCode,
+    isAdminTeacher,
     classDocuments,
     teachersInfo,
     coursesInfo,
