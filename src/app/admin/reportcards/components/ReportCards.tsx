@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -880,6 +881,7 @@ const ReportCards = ({
 }) => {
   // Get auth data
   const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
 
   // Component state
   const [selectedClass, setSelectedClass] = useState<string>("");
@@ -1626,6 +1628,92 @@ const ReportCards = ({
         setIsPrinting(false);
       }, 500);
     }, 100);
+  };
+
+  // Handle print-friendly navigation
+  const handlePrintFriendly = () => {
+    if (!selectedClass || !selectedYear) {
+      alert("لطفاً کلاس و سال تحصیلی را انتخاب کنید");
+      return;
+    }
+
+    if (studentReportCards.length === 0) {
+      alert("هیچ کارنامه‌ای برای نمایش وجود ندارد");
+      return;
+    }
+
+    // Filter students based on selection
+    const filteredStudents =
+      selectedStudent === "all"
+        ? studentReportCards
+        : studentReportCards.filter(
+            (student) => student.studentCode === selectedStudent
+          );
+
+    if (filteredStudents.length === 0) {
+      alert("هیچ دانش‌آموزی برای نمایش وجود ندارد");
+      return;
+    }
+
+    // Get class name
+    const className =
+      filteredClassDocuments.find(
+        (doc) => doc.data.classCode === selectedClass
+      )?.data.className || "";
+
+    // Get year label
+    const yearLabel =
+      yearOptions.find((y) => y.value === selectedYear)?.label || "";
+
+    // Collect all data and settings (only serializable data)
+    const printData = {
+      studentReportCards: filteredStudents,
+      selectedClass,
+      selectedYear,
+      schoolName,
+      className,
+      yearLabel,
+      showProgress,
+      showRanking,
+      showPresence,
+      showAssessments,
+      showOverallStats,
+      hideEmptyRows,
+      visibleColumns: Array.from(visibleColumns),
+      printTemplate,
+      cardsPerPage,
+    };
+
+    // Debug: Log the data being stored
+    console.log("Storing print data:", {
+      studentCount: filteredStudents.length,
+      selectedClass,
+      selectedYear,
+      className,
+      yearLabel,
+    });
+
+    // Store in sessionStorage
+    try {
+      sessionStorage.setItem("reportCardsPrintData", JSON.stringify(printData));
+      console.log("Data stored successfully in sessionStorage");
+      
+      // Verify data was stored
+      const verifyData = sessionStorage.getItem("reportCardsPrintData");
+      if (!verifyData) {
+        throw new Error("Data was not stored correctly");
+      }
+      
+      // Small delay to ensure storage is complete before navigation
+      setTimeout(() => {
+        // Navigate to print page
+        router.push("/admin/reportcards/print");
+      }, 100);
+    } catch (error) {
+      console.error("Error storing data in sessionStorage:", error);
+      alert("خطا در ذخیره داده‌ها. لطفاً دوباره تلاش کنید.");
+      return;
+    }
   };
 
   // Export to Excel function
@@ -3457,6 +3545,14 @@ const ReportCards = ({
                   >
                     <PrinterIcon />
                     نسخه قابل چاپ
+                  </button>
+                  <button
+                    onClick={handlePrintFriendly}
+                    className="print:hidden action-button print-button"
+                    disabled={!selectedClass || !selectedYear || studentReportCards.length === 0}
+                  >
+                    <PrinterIcon />
+                    چاپ بهینه
                   </button>
                 </div>
               </div>
