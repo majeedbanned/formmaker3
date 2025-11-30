@@ -542,7 +542,7 @@ const printStyles = `
     }
     
     th, td {
-      padding: 0.2cm 0.3cm !important;
+      padding: 0.1cm 0.15cm !important;
       border: 1px solid #ddd !important;
       text-align: center !important;
     }
@@ -620,6 +620,24 @@ const printStyles = `
       font-size: 6pt !important;
       line-height: 1.4 !important;
       margin-bottom: 0.1cm !important;
+    }
+    
+    .overall-stats-section {
+      page-break-inside: avoid !important;
+      margin-top: 0.3cm !important;
+      padding: 0.2cm 0 !important;
+      border-top: 1px solid #e5e7eb !important;
+    }
+    
+    .overall-stats-section > div:first-child {
+      font-size: 7pt !important;
+      margin-bottom: 0.15cm !important;
+    }
+    
+    .overall-stats-section .space-y-0\\.5 > div {
+      font-size: 6pt !important;
+      line-height: 1.4 !important;
+      margin-bottom: 0.08cm !important;
     }
     
     .progress-indicator {
@@ -1417,12 +1435,195 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
               );
             })()}
 
-            {/* Overall Statistics */}
-            {showOverallStats && (
-              <div className="overall-stats-section mt-4">
-                <OverallStatistics student={student} />
-              </div>
-            )}
+            {/* Overall Statistics - Minimal */}
+            {showOverallStats && (() => {
+              // Calculate overall presence statistics
+              const overallPresence = {
+                present: 0,
+                absent: 0,
+                late: 0,
+                total: 0,
+              };
+
+              // Calculate assessment statistics
+              const assessmentCounts: Record<string, number> = {};
+
+              // Calculate subject performance
+              const subjectPerformance: {
+                best: { subject: string; avg: number } | null;
+                worst: { subject: string; avg: number } | null;
+                mostImproved: { subject: string; improvement: number } | null;
+              } = {
+                best: null,
+                worst: null,
+                mostImproved: null,
+              };
+
+              Object.entries(student.courses).forEach(([, courseData]: [string, any]) => {
+                // Collect presence data
+                Object.values(courseData.monthlyPresence).forEach((monthData: any) => {
+                  overallPresence.present += monthData.present;
+                  overallPresence.absent += monthData.absent;
+                  overallPresence.late += monthData.late;
+                  overallPresence.total += monthData.total;
+                });
+
+                // Collect assessment data
+                Object.values(courseData.monthlyAssessments)
+                  .flat()
+                  .forEach((assessment: any) => {
+                    assessmentCounts[assessment.value] =
+                      (assessmentCounts[assessment.value] || 0) + 1;
+                  });
+
+                // Store subject performance
+                if (courseData.yearAverage !== null) {
+                  if (
+                    !subjectPerformance.best ||
+                    courseData.yearAverage > subjectPerformance.best.avg
+                  ) {
+                    subjectPerformance.best = {
+                      subject: courseData.courseName,
+                      avg: courseData.yearAverage,
+                    };
+                  }
+
+                  if (
+                    !subjectPerformance.worst ||
+                    courseData.yearAverage < subjectPerformance.worst.avg
+                  ) {
+                    subjectPerformance.worst = {
+                      subject: courseData.courseName,
+                      avg: courseData.yearAverage,
+                    };
+                  }
+
+                  // Calculate improvement
+                  const monthsWithGrades = Object.entries(courseData.monthlyGrades)
+                    .filter(([, grade]) => grade !== null)
+                    .map(([month]) => parseInt(month))
+                    .sort((a, b) => a - b);
+
+                  if (monthsWithGrades.length >= 2) {
+                    const firstMonth = monthsWithGrades[0].toString();
+                    const lastMonth =
+                      monthsWithGrades[monthsWithGrades.length - 1].toString();
+
+                    const firstGrade = courseData.monthlyGrades[firstMonth];
+                    const lastGrade = courseData.monthlyGrades[lastMonth];
+
+                    if (firstGrade !== null && lastGrade !== null) {
+                      const improvement = lastGrade - firstGrade;
+
+                      if (
+                        !subjectPerformance.mostImproved ||
+                        improvement > subjectPerformance.mostImproved.improvement
+                      ) {
+                        subjectPerformance.mostImproved = {
+                          subject: courseData.courseName,
+                          improvement,
+                        };
+                      }
+                    }
+                  }
+                }
+              });
+
+              const totalAssessments = Object.values(assessmentCounts).reduce(
+                (sum, count) => sum + count,
+                0
+              );
+
+              // Check if there's any data to show
+              if (
+                overallPresence.total === 0 &&
+                totalAssessments === 0 &&
+                !subjectPerformance.best &&
+                !subjectPerformance.worst &&
+                !subjectPerformance.mostImproved &&
+                student.weightedAverage === null
+              ) {
+                return null;
+              }
+
+              return (
+                <div className="overall-stats-section mt-3">
+                  <div className="text-xs font-semibold mb-1 text-gray-700 border-b border-gray-300 pb-1">
+                    آمار کلی عملکرد
+                  </div>
+                  <div className="space-y-0.5">
+                    {/* Presence Statistics */}
+                    {overallPresence.total > 0 && (
+                      <div className="text-[9pt]">
+                        <span className="font-medium text-gray-800">حضور و غیاب:</span>
+                        <span className="mr-2">
+                          <span className="text-green-600">حاضر: {toPersianDigits(overallPresence.present)}</span>
+                          <span className="text-gray-400 mx-1">|</span>
+                          <span className="text-red-600">غایب: {toPersianDigits(overallPresence.absent)}</span>
+                          <span className="text-gray-400 mx-1">|</span>
+                          <span className="text-amber-600">تأخیر: {toPersianDigits(overallPresence.late)}</span>
+                          <span className="text-gray-600 mr-1">(مجموع: {toPersianDigits(overallPresence.total)})</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Assessment Statistics */}
+                    {totalAssessments > 0 && (
+                      <div className="text-[7pt]">
+                        <span className="font-medium text-gray-800">ارزیابی‌های کیفی:</span>
+                        <span className="mr-2">
+                          {Object.entries(assessmentCounts).map(([value, count], idx) => (
+                            <span key={value} className="mr-2">
+                              <span className={`${getAssessmentValueClass(value)}`}>{value}</span>
+                              <span className="text-gray-600">: {toPersianDigits(count)}</span>
+                            </span>
+                          ))}
+                          <span className="text-gray-600 mr-1">(مجموع: {toPersianDigits(totalAssessments)})</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Subject Performance */}
+                    {(subjectPerformance.best || subjectPerformance.worst || subjectPerformance.mostImproved) && (
+                      <div className="text-[7pt]">
+                        <span className="font-medium text-gray-800">عملکرد دروس:</span>
+                        <span className="mr-2">
+                          {subjectPerformance.best && (
+                            <span className="mr-2">
+                              <span className="text-emerald-600">بهترین: {subjectPerformance.best.subject} ({toPersianDigits(subjectPerformance.best.avg.toFixed(2))})</span>
+                            </span>
+                          )}
+                          {subjectPerformance.worst && (
+                            <span className="mr-2">
+                              <span className="text-red-600">ضعیف‌ترین: {subjectPerformance.worst.subject} ({toPersianDigits(subjectPerformance.worst.avg.toFixed(2))})</span>
+                            </span>
+                          )}
+                          {subjectPerformance.mostImproved && (
+                            <span className="mr-2">
+                              <span className={subjectPerformance.mostImproved.improvement > 0 ? "text-green-600" : "text-red-600"}>
+                                پیشرفت: {subjectPerformance.mostImproved.subject} (
+                                {subjectPerformance.mostImproved.improvement > 0 ? "+" : ""}
+                                {toPersianDigits(subjectPerformance.mostImproved.improvement.toFixed(2))})
+                              </span>
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Overall Average */}
+                    {student.weightedAverage !== null && student.weightedAverage !== undefined && (
+                      <div className="text-[7pt]">
+                        <span className="font-medium text-gray-800">میانگین کل:</span>
+                        <span className={`mr-2 font-semibold ${getScoreColorClass(student.weightedAverage)}`}>
+                          {toPersianDigits(student.weightedAverage.toFixed(2))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
