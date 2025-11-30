@@ -515,6 +515,18 @@ const printStyles = `
       border-radius: 0.1cm !important;
     }
     
+    .student-avatar {
+      width: 1.2cm !important;
+      height: 1.2cm !important;
+      border-radius: 50% !important;
+      object-fit: cover !important;
+      border: 2px solid #e5e7eb !important;
+      flex-shrink: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    
     .student-details {
       font-size: 8pt !important;
       color: #6b7280 !important;
@@ -737,6 +749,15 @@ const printStyles = `
       border-radius: 0.25rem;
     }
     
+    .student-avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+    
     .progress-indicator {
       font-size: 0.65rem;
       border-radius: 9999px;
@@ -939,6 +960,17 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
                   {/* First Line: Student Name, Code, Class, Year */}
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-3">
+                      {/* Student Image */}
+                      {student.avatarPath && (
+                        <img
+                          src={student.avatarPath}
+                          alt={student.studentName}
+                          className="student-avatar"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
                       <span className="student-name-text">
                         {student.studentName}
                       </span>

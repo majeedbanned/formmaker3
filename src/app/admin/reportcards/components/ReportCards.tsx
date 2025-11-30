@@ -1631,7 +1631,7 @@ const ReportCards = ({
   };
 
   // Handle print-friendly navigation
-  const handlePrintFriendly = () => {
+  const handlePrintFriendly = async () => {
     if (!selectedClass || !selectedYear) {
       alert("لطفاً کلاس و سال تحصیلی را انتخاب کنید");
       return;
@@ -1665,9 +1665,47 @@ const ReportCards = ({
     const yearLabel =
       yearOptions.find((y) => y.value === selectedYear)?.label || "";
 
+    // Fetch avatar data for each student
+    const studentsWithAvatars = await Promise.all(
+      filteredStudents.map(async (student) => {
+        let avatarPath: string | null = null;
+        try {
+          const response = await fetch(
+            `/api/formbuilder/student-details?studentCode=${student.studentCode}`,
+            {
+              headers: {
+                "x-domain": window.location.host,
+              },
+            }
+          );
+          if (response.ok) {
+            const studentDetails = await response.json();
+            if (studentDetails.student?.data?.avatar?.path) {
+              const avatarUrl = studentDetails.student.data.avatar.path;
+              // Handle both absolute and relative URLs
+              if (avatarUrl.startsWith("http")) {
+                avatarPath = avatarUrl;
+              } else {
+                const domain = window.location.origin;
+                avatarPath = avatarUrl.startsWith("/")
+                  ? `${domain}${avatarUrl}`
+                  : `${domain}/${avatarUrl}`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch avatar for ${student.studentCode}:`, err);
+        }
+        return {
+          ...student,
+          avatarPath,
+        };
+      })
+    );
+
     // Collect all data and settings (only serializable data)
     const printData = {
-      studentReportCards: filteredStudents,
+      studentReportCards: studentsWithAvatars,
       selectedClass,
       selectedYear,
       schoolName,
