@@ -489,14 +489,14 @@ const printStyles = `
     .print-table-container {
       page-break-before: avoid !important;
       break-before: avoid !important;
-      margin-top: 0.2cm !important;
+      margin-top: 0 !important;
     }
     
     .student-name {
       background: #f8fafc !important;
       color: #1f2937 !important;
       padding: 0.3cm 0.5cm !important;
-      margin: -0.5cm -0.5cm 0.3cm -0.5cm !important;
+      margin: -0.5cm -0.5cm 0 -0.5cm !important;
       border-radius: 0.15cm 0.15cm 0 0 !important;
       border-bottom: 1px solid #e5e7eb !important;
     }
@@ -606,7 +606,7 @@ const printStyles = `
     
     .assessments-section {
       page-break-inside: avoid !important;
-      margin-top: 0.3cm !important;
+      margin-top: 0 !important;
       padding: 0.2cm 0 !important;
       border-top: 1px solid #e5e7eb !important;
     }
@@ -624,7 +624,7 @@ const printStyles = `
     
     .overall-stats-section {
       page-break-inside: avoid !important;
-      margin-top: 0.3cm !important;
+      margin-top: 0 !important;
       padding: 0.2cm 0 !important;
       border-top: 1px solid #e5e7eb !important;
     }
@@ -975,7 +975,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
               </div>
 
               {/* Report Card Table */}
-              <div className="mt-2 print-table-container">
+              <div className="print-table-container">
               <Table className="w-full border-collapse">
                 <TableHeader>
                   <TableRow>
@@ -1410,7 +1410,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
               });
 
               return (
-                <div className="assessments-section mt-3">
+                <div className="assessments-section">
                   <div className="text-xs font-semibold mb-1 text-gray-700 border-b border-gray-300 pb-1">
                     ارزیابی‌های کیفی
                   </div>
@@ -1547,7 +1547,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
               }
 
               return (
-                <div className="overall-stats-section mt-3">
+                <div className="overall-stats-section">
                   <div className="text-xs font-semibold mb-1 text-gray-700 border-b border-gray-300 pb-1">
                     آمار کلی عملکرد
                   </div>
