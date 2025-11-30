@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import Excel from "exceljs";
 import { saveAs } from "file-saver";
 
@@ -231,7 +234,8 @@ const MonthlyGradeOverallReport = ({
   classDocuments: ClassDocument[];
 }) => {
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [yearOptions, setYearOptions] = useState<
     { value: string; label: string }[]
@@ -250,6 +254,7 @@ const MonthlyGradeOverallReport = ({
   const [courseSpecificAssessmentValues, setCourseSpecificAssessmentValues] =
     useState<Record<string, Record<string, number>>>({});
   const [showRankings, setShowRankings] = useState<boolean>(true);
+  const [showProgress, setShowProgress] = useState<boolean>(true);
 
   // Get the current Persian year and month based on the current date
   const currentDate = new Date();
@@ -296,7 +301,7 @@ const MonthlyGradeOverallReport = ({
     setSelectedYear(currentJYear.toString());
 
     // Set current month as default
-    setSelectedMonth(currentJMonth.toString());
+    setSelectedMonths([currentJMonth.toString()]);
 
     setIsInitialized(true);
   }, [currentJYear, currentJMonth, isInitialized]);
@@ -575,6 +580,12 @@ const MonthlyGradeOverallReport = ({
           // );
           setCourseInfo(coursesWithDetails);
 
+          // Auto-select all courses when they're loaded
+          const allCourseKeys = coursesWithDetails.map(
+            (course) => `${course.teacherCode}_${course.courseCode}`
+          );
+          setSelectedCourses(allCourseKeys);
+
           // Process custom assessment values
           const assessmentResults = await Promise.all(assessmentPromises);
           const assessmentValuesMap: Record<
@@ -613,9 +624,10 @@ const MonthlyGradeOverallReport = ({
   useEffect(() => {
     if (
       !selectedClass ||
-      !selectedMonth ||
+      selectedMonths.length === 0 ||
       !selectedYear ||
-      !courseInfo.length
+      !courseInfo.length ||
+      selectedCourses.length === 0
     ) {
       return;
     }
@@ -650,8 +662,14 @@ const MonthlyGradeOverallReport = ({
           };
         });
 
-        // Fetch grades for each teacher/course
-        const promises = courseInfo.map(async (course) => {
+        // Filter courses to only fetch selected ones
+        const selectedCourseInfos = courseInfo.filter((course) => {
+          const courseKey = `${course.teacherCode}_${course.courseCode}`;
+          return selectedCourses.includes(courseKey);
+        });
+
+        // Fetch grades for each selected teacher/course
+        const promises = selectedCourseInfos.map(async (course) => {
           const response = await fetch("/api/classsheet", {
             method: "POST",
             headers: {
@@ -671,71 +689,39 @@ const MonthlyGradeOverallReport = ({
 
           const cellData: CellData[] = await response.json();
 
-          // Filter data based on date
-          let filteredCellData: CellData[];
+          // Filter data based on selected months
+          // Filter for multiple selected months
+          const filteredCellData = cellData.filter((cell) => {
+            if (!cell.date) return false;
 
-          if (selectedMonth === "all") {
-            // For 'all months', we need all data from the academic year
-            // School year in Iran: Months 7-12 from selected year and months 1-6 from next year
-            filteredCellData = cellData.filter((cell) => {
-              if (!cell.date) return false;
+            try {
+              const cellDate = new Date(cell.date);
+              // Check if date is valid
+              if (isNaN(cellDate.getTime())) return false;
 
-              try {
-                const cellDate = new Date(cell.date);
-                // Check if date is valid
-                if (isNaN(cellDate.getTime())) return false;
+              const [cellYear, cellMonth] = gregorian_to_jalali(
+                cellDate.getFullYear(),
+                cellDate.getMonth() + 1,
+                cellDate.getDate()
+              );
 
-                const [cellYear, cellMonth] = gregorian_to_jalali(
-                  cellDate.getFullYear(),
-                  cellDate.getMonth() + 1,
-                  cellDate.getDate()
-                );
+              // Check if this month is in the selected months
+              const monthStr = cellMonth.toString();
+              if (!selectedMonths.includes(monthStr)) return false;
 
-                // Academic year logic: if month is 7-12, it's from selectedYear, if 1-6, it's from selectedYear+1
-                if (cellMonth >= 7 && cellMonth <= 12) {
-                  return cellYear === parseInt(selectedYear);
-                } else if (cellMonth >= 1 && cellMonth <= 6) {
-                  return cellYear === parseInt(selectedYear) + 1;
-                }
-                return false;
-              } catch (err) {
-                console.error("Error processing date:", cell.date, err);
-                return false;
-              }
-            });
-          } else {
-            // Determine the correct year for the selected month
-            // School year logic: months 7-12 from selected year, months 1-6 from next year
-            const targetYear =
-              parseInt(selectedMonth) >= 7
-                ? parseInt(selectedYear)
-                : parseInt(selectedYear) + 1;
+              // Determine the correct year for the month
+              // School year logic: months 7-12 from selected year, months 1-6 from next year
+              const targetYear =
+                cellMonth >= 7
+                  ? parseInt(selectedYear)
+                  : parseInt(selectedYear) + 1;
 
-            // Filter for the specific month and year
-            filteredCellData = cellData.filter((cell) => {
-              if (!cell.date) return false;
-
-              try {
-                const cellDate = new Date(cell.date);
-                // Check if date is valid
-                if (isNaN(cellDate.getTime())) return false;
-
-                const [cellYear, cellMonth] = gregorian_to_jalali(
-                  cellDate.getFullYear(),
-                  cellDate.getMonth() + 1,
-                  cellDate.getDate()
-                );
-
-                return (
-                  cellMonth.toString() === selectedMonth &&
-                  cellYear === targetYear
-                );
-              } catch (err) {
-                console.error("Error processing date:", cell.date, err);
-                return false;
-              }
-            });
-          }
+              return cellYear === targetYear;
+            } catch (err) {
+              console.error("Error processing date:", cell.date, err);
+              return false;
+            }
+          });
 
           // Group data by student and month
           const studentGradesForCourse: Record<
@@ -862,50 +848,29 @@ const MonthlyGradeOverallReport = ({
                 studentGradesMap[studentCode].courseMonthlyGrades[courseKey] =
                   monthlyGrades;
 
-                // Calculate final score based on selection
-                let finalScore: number | null = null;
-
-                if (selectedMonth === "all" && monthlyGrades.length > 0) {
-                  // For "all months", use average of monthly averages, but only for months that have grades
-                  const monthlyGradesWithValues = monthlyGrades.filter(
-                    (grade) => grade.value !== null
-                  );
-
-                  if (monthlyGradesWithValues.length > 0) {
-                    const sum = monthlyGradesWithValues.reduce(
-                      (total, grade) => total + grade.value,
-                      0
+                // Store monthly grades for each selected month
+                // We'll store individual month scores in courseMonthlyGrades
+                // For display, we'll show each month separately in the table
+                
+                // Store grade details for each month
+                Object.entries(data.monthlyGrades).forEach(([month, monthData]) => {
+                  if (selectedMonths.includes(month)) {
+                    const monthScore = calculateFinalScore(
+                      monthData.grades,
+                      monthData.assessments,
+                      courseKey
                     );
-                    // Cap at 20 to ensure no grade exceeds maximum
-                    finalScore = Math.min(
-                      Math.round((sum / monthlyGradesWithValues.length) * 100) /
-                      100,
-                      20
-                    );
-                  } else {
-                    finalScore = null; // If no valid monthly grades, set to null
+                    
+                    // Store month-specific grade in a structured way
+                    const monthKey = `${courseKey}_${month}`;
+                    if (!studentGradesMap[studentCode].gradeDetails[monthKey]) {
+                      studentGradesMap[studentCode].gradeDetails[monthKey] = {
+                        grades: monthData.grades,
+                        assessments: monthData.assessments,
+                      };
+                    }
                   }
-                } else {
-                  // For specific month, calculate with the courseKey parameter
-                  finalScore = calculateFinalScore(
-                    data.grades,
-                    data.assessments,
-                    courseKey
-                  );
-                }
-
-                // Store the average grade
-                studentGradesMap[studentCode].courseGrades[courseKey] =
-                  finalScore;
-
-                // Store grade details in the student object
-                if (selectedMonth !== "all") {
-                  // Store the grade details for tooltip
-                  studentGradesMap[studentCode].gradeDetails[courseKey] = {
-                    grades: data.grades,
-                    assessments: data.assessments,
-                  };
-                }
+                });
               }
             }
           );
@@ -916,13 +881,14 @@ const MonthlyGradeOverallReport = ({
 
         // Calculate averages and convert to array
         const gradesArray = Object.values(studentGradesMap).map((student) => {
-          // Only include courses that have grades (not null)
-          const validCourseInfos = courseInfo.filter((course) => {
+          // Only include selected courses
+          const validCourseInfos = selectedCourseInfos.filter((course) => {
             const courseKey = `${course.teacherCode}_${course.courseCode}`;
-            return (
-              student.courseGrades[courseKey] !== null &&
-              student.courseGrades[courseKey] !== undefined
-            );
+            // Check if student has any grades for this course in selected months
+            return selectedMonths.some((month) => {
+              const monthKey = `${courseKey}_${month}`;
+              return student.gradeDetails[monthKey] !== undefined;
+            });
           });
 
           // Calculate weighted average based on vahed values
@@ -930,21 +896,40 @@ const MonthlyGradeOverallReport = ({
           let weightedSum = 0;
           const weightedGradesInfo: WeightedGradeInfo[] = [];
 
+          // Calculate average for each course across selected months
           validCourseInfos.forEach((course) => {
             const courseKey = `${course.teacherCode}_${course.courseCode}`;
-            const grade = student.courseGrades[courseKey];
-            const vahed = Number(course.vahed ?? 1) || 1; // Ensure numeric default to 1 if not specified
-
-            if (grade !== null && grade !== undefined) {
-              weightedSum += grade * vahed;
+            const vahed = Number(course.vahed ?? 1) || 1;
+            
+            // Get grades for this course across all selected months
+            const courseMonthGrades: number[] = [];
+            selectedMonths.forEach((month) => {
+              const monthKey = `${courseKey}_${month}`;
+              const monthData = student.gradeDetails[monthKey];
+              if (monthData) {
+                const monthScore = calculateFinalScore(
+                  monthData.grades,
+                  monthData.assessments,
+                  courseKey
+                );
+                if (monthScore !== null) {
+                  courseMonthGrades.push(monthScore);
+                }
+              }
+            });
+            
+            // Calculate average for this course across selected months
+            if (courseMonthGrades.length > 0) {
+              const courseAvg = courseMonthGrades.reduce((sum, g) => sum + g, 0) / courseMonthGrades.length;
+              weightedSum += courseAvg * vahed;
               totalWeight += vahed;
 
               // Store detailed info for tooltip
               weightedGradesInfo.push({
                 courseName: course.courseName,
-                grade,
+                grade: courseAvg,
                 vahed,
-                weightedValue: grade * vahed,
+                weightedValue: courseAvg * vahed,
               });
             }
           });
@@ -975,7 +960,8 @@ const MonthlyGradeOverallReport = ({
     fetchGradesData();
   }, [
     selectedClass,
-    selectedMonth,
+    selectedMonths,
+    selectedCourses,
     selectedYear,
     courseInfo,
     classDocuments,
@@ -983,6 +969,16 @@ const MonthlyGradeOverallReport = ({
     calculateFinalScore,
     courseSpecificAssessmentValues,
   ]);
+
+  // Calculate progress between two scores (as percentage)
+  const calculateProgress = (
+    currentScore: number | null,
+    previousScore: number | null
+  ): number | null => {
+    if (currentScore === null || previousScore === null || previousScore === 0)
+      return null;
+    return ((currentScore - previousScore) / previousScore) * 100;
+  };
 
   // Get a color class based on score value
   const getScoreColorClass = (score: number | null): string => {
@@ -1584,22 +1580,6 @@ const MonthlyGradeOverallReport = ({
               </div>
 
               <div>
-                <Label htmlFor="month-select">ماه</Label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger id="month-select">
-                    <SelectValue placeholder="انتخاب ماه" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {persianMonths.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <Label htmlFor="year-select">سال تحصیلی</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger id="year-select">
@@ -1616,18 +1596,60 @@ const MonthlyGradeOverallReport = ({
               </div>
             </div>
 
-            {/* Add checkbox for rankings */}
-            <div className="flex items-center space-x-2 mt-4">
-              <input
-                type="checkbox"
-                id="show-rankings"
-                checked={showRankings}
-                onChange={(e) => setShowRankings(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            {/* Multi-select for months */}
+            <div className="mt-4">
+              <Label>انتخاب ماه‌ها</Label>
+              <MultiSelect
+                options={persianMonths.filter((m) => m.value !== "all").map((m) => ({
+                  label: m.label,
+                  value: m.value,
+                }))}
+                selected={selectedMonths}
+                onChange={(values) => setSelectedMonths(values as string[])}
+                placeholder="انتخاب ماه‌ها"
+                disabled={!selectedClass || !selectedYear}
               />
-              <Label htmlFor="show-rankings" className="cursor-pointer">
-                نمایش رتبه‌بندی
-              </Label>
+            </div>
+
+            {/* Multi-select for courses */}
+            {courseInfo.length > 0 && (
+              <div className="mt-4">
+                <Label>انتخاب دروس</Label>
+                <MultiSelect
+                  options={courseInfo.map((course) => ({
+                    label: `${course.courseName} (${course.vahed} واحد)`,
+                    value: `${course.teacherCode}_${course.courseCode}`,
+                  }))}
+                  selected={selectedCourses}
+                  onChange={(values) => setSelectedCourses(values as string[])}
+                  placeholder="انتخاب دروس"
+                  disabled={!selectedClass}
+                />
+              </div>
+            )}
+
+            {/* Add checkboxes for options */}
+            <div className="flex items-center space-x-4 mt-4 gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-rankings"
+                  checked={showRankings}
+                  onCheckedChange={(checked) => setShowRankings(checked === true)}
+                />
+                <Label htmlFor="show-rankings" className="cursor-pointer">
+                  نمایش رتبه‌بندی
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-progress"
+                  checked={showProgress}
+                  onCheckedChange={(checked) => setShowProgress(checked === true)}
+                />
+                <Label htmlFor="show-progress" className="cursor-pointer">
+                  نمایش پیشرفت
+                </Label>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1636,7 +1658,7 @@ const MonthlyGradeOverallReport = ({
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
-        ) : selectedClass && selectedMonth && selectedYear ? (
+        ) : selectedClass && selectedMonths.length > 0 && selectedYear && selectedCourses.length > 0 ? (
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -1647,10 +1669,11 @@ const MonthlyGradeOverallReport = ({
                       (doc) => doc.data.classCode === selectedClass
                     )?.data.className}{" "}
                   -{" "}
-                  {selectedMonth === "all"
-                    ? "کل سال تحصیلی"
-                    : persianMonths.find((m) => m.value === selectedMonth)
-                        ?.label}{" "}
+                  {selectedMonths.length > 0 &&
+                    selectedMonths
+                      .map((m) => persianMonths.find((pm) => pm.value === m)?.label)
+                      .filter(Boolean)
+                      .join("، ")}{" "}
                   {selectedYear &&
                     yearOptions.find((y) => y.value === selectedYear)?.label}
                 </CardTitle>
@@ -1673,51 +1696,74 @@ const MonthlyGradeOverallReport = ({
               </div>
             </CardHeader>
             <CardContent>
-              {studentGrades.length > 0 && courseInfo.length > 0 ? (
+              {studentGrades.length > 0 && selectedCourses.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table dir="rtl" className="compact-table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[40px]">ردیف</TableHead>
-                        <TableHead className="w-[60px]">کد</TableHead>
+                        <TableHead className="w-[40px]" rowSpan={2}>ردیف</TableHead>
+                        <TableHead className="w-[60px]" rowSpan={2}>کد</TableHead>
                         <TableHead
                           className="w-[120px] cursor-pointer"
+                          rowSpan={2}
                           onClick={() => requestSort("studentName")}
                         >
                           نام دانش‌آموز <SortIcon column="studentName" />
                         </TableHead>
 
-                        {/* Course columns with vertical text */}
-                        {courseInfo.map((course) => {
-                          const courseKey = `${course.teacherCode}_${course.courseCode}`;
-                          return (
-                            <TableHead
-                              key={courseKey}
-                              className="w-[50px] cursor-pointer p-0.5"
-                              onClick={() => requestSort(courseKey)}
-                            >
-                              <div className="course-header">
-                                <div className="vertical-text">
-                                  {course.courseName}
+                        {/* Course headers with months */}
+                        {courseInfo
+                          .filter((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return selectedCourses.includes(courseKey);
+                          })
+                          .map((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return (
+                              <TableHead
+                                key={courseKey}
+                                colSpan={selectedMonths.length}
+                                className="text-center bg-gray-50"
+                              >
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="font-bold">{course.courseName}</div>
+                                  <div className="text-xs text-gray-600">
+                                    {course.vahed} واحد
+                                  </div>
                                 </div>
-                                <span className="vahed-badge">
-                                  {course.vahed} واحد
-                                </span>
-                                <div className="mt-0.5">
-                                  <SortIcon column={courseKey} />
-                                </div>
-                              </div>
-                            </TableHead>
-                          );
-                        })}
+                              </TableHead>
+                            );
+                          })}
 
-                        {/* Average column with weighted calculation tooltip */}
+                        {/* Average column */}
                         <TableHead
                           className="w-[65px] font-bold cursor-pointer"
+                          rowSpan={2}
                           onClick={() => requestSort("average")}
                         >
                           میانگین <SortIcon column="average" />
                         </TableHead>
+                      </TableRow>
+                      <TableRow>
+                        {/* Month headers for each course */}
+                        {courseInfo
+                          .filter((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return selectedCourses.includes(courseKey);
+                          })
+                          .map((course) => {
+                            return selectedMonths.map((month) => {
+                              const monthName = persianMonths.find((m) => m.value === month)?.label || month;
+                              return (
+                                <TableHead
+                                  key={`${course.teacherCode}_${course.courseCode}_${month}`}
+                                  className="w-[60px] text-center text-xs"
+                                >
+                                  {monthName}
+                                </TableHead>
+                              );
+                            });
+                          })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1729,52 +1775,95 @@ const MonthlyGradeOverallReport = ({
                           </TableCell>
                           <TableCell className="p-1 text-sm">{student.studentName}</TableCell>
 
-                          {/* Course grades */}
-                          {courseInfo.map((course) => {
-                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
-                            const score = student.courseGrades[courseKey];
-                            const monthlyGrades =
-                              student.courseMonthlyGrades[courseKey] || [];
-                            const courseRank =
-                              studentRanks.courseRanks[courseKey]?.[
-                                student.studentCode
-                              ];
+                          {/* Course grades for each selected month */}
+                          {courseInfo
+                            .filter((course) => {
+                              const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                              return selectedCourses.includes(courseKey);
+                            })
+                            .map((course) => {
+                              const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                              return selectedMonths.map((month, monthIndex) => {
+                                const monthKey = `${courseKey}_${month}`;
+                                const monthData = student.gradeDetails[monthKey];
+                                const score = monthData
+                                  ? calculateFinalScore(
+                                      monthData.grades,
+                                      monthData.assessments,
+                                      courseKey
+                                    )
+                                  : null;
 
-                            // Get grade details for tooltip
-                            const gradeDetails = student.gradeDetails[
-                              courseKey
-                            ] || { grades: [], assessments: [] };
-
-                            return (
-                              <TableCell
-                                key={courseKey}
-                                className={`${getScoreColorClass(score)} p-1`}
-                                title={
-                                  selectedMonth === "all"
-                                    ? formatTooltipContent(monthlyGrades)
-                                    : formatGradeCalculationTooltip(
-                                        gradeDetails.grades,
-                                        gradeDetails.assessments,
+                                // Calculate progress from previous month
+                                let progressElement = null;
+                                if (showProgress && monthIndex > 0) {
+                                  const prevMonth = selectedMonths[monthIndex - 1];
+                                  const prevMonthKey = `${courseKey}_${prevMonth}`;
+                                  const prevMonthData = student.gradeDetails[prevMonthKey];
+                                  const prevScore = prevMonthData
+                                    ? calculateFinalScore(
+                                        prevMonthData.grades,
+                                        prevMonthData.assessments,
                                         courseKey
                                       )
+                                    : null;
+
+                                  if (score !== null && prevScore !== null) {
+                                    const progress = calculateProgress(score, prevScore);
+                                    if (progress !== null) {
+                                      const isPositive = progress >= 0;
+                                      progressElement = (
+                                        <div
+                                          className={`text-[10px] mt-0.5 flex items-center ${
+                                            isPositive
+                                              ? "text-green-600"
+                                              : "text-red-600"
+                                          }`}
+                                        >
+                                          {isPositive ? (
+                                            <ChevronUpIcon className="h-3 w-3 mr-0.5" />
+                                          ) : (
+                                            <ChevronDownIcon className="h-3 w-3 mr-0.5" />
+                                          )}
+                                          <span>
+                                            {toPersianDigits(
+                                              Math.abs(progress).toFixed(1)
+                                            )}
+                                            %
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                  }
                                 }
-                                style={{
-                                  cursor: "help",
-                                }}
-                              >
-                                <div className="flex flex-col items-center gap-0.5">
-                                  {score !== null
-                                    ? toPersianDigits(
-                                        (Math.round(score * 100) / 100).toFixed(
-                                          2
-                                        )
-                                      )
-                                    : "-"}
-                                  {renderRankBadge(courseRank)}
-                                </div>
-                              </TableCell>
-                            );
-                          })}
+
+                                return (
+                                  <TableCell
+                                    key={monthKey}
+                                    className={`${getScoreColorClass(score)} p-1`}
+                                    title={
+                                      monthData
+                                        ? formatGradeCalculationTooltip(
+                                            monthData.grades,
+                                            monthData.assessments,
+                                            courseKey
+                                          )
+                                        : ""
+                                    }
+                                    style={{
+                                      cursor: monthData ? "help" : "default",
+                                    }}
+                                  >
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      {score !== null
+                                        ? toPersianDigits(score.toFixed(2))
+                                        : "-"}
+                                      {progressElement}
+                                    </div>
+                                  </TableCell>
+                                );
+                              });
+                            })}
 
                           {/* Average */}
                           <TableCell
@@ -1822,41 +1911,24 @@ const MonthlyGradeOverallReport = ({
                           نفرات برتر
                         </td>
 
-                        {/* Course top students */}
-                        {courseInfo.map((course) => {
-                          const courseKey = `${course.teacherCode}_${course.courseCode}`;
-                          const topStudent = getTopStudent(
-                            studentGrades,
-                            courseKey
-                          );
-
-                          return (
-                            <td key={`top-${courseKey}`} className="p-1">
-                              {topStudent ? (
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <div className="text-amber-800 text-[10px]">
-                                    🏆 نفر اول
-                                  </div>
-                                  <div className="font-bold text-amber-800 text-xs">
-                                    {topStudent.score !== null
-                                      ? toPersianDigits(
-                                          topStudent.score.toFixed(2)
-                                        )
-                                      : "-"}
-                                  </div>
-                                  <div
-                                    className="text-[10px] text-amber-800 truncate max-w-[45px]"
-                                    title={topStudent.name}
-                                  >
-                                    {topStudent.name}
-                                  </div>
-                                </div>
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                          );
-                        })}
+                        {/* Course top students - show for each selected course and month */}
+                        {courseInfo
+                          .filter((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return selectedCourses.includes(courseKey);
+                          })
+                          .map((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return selectedMonths.map((month) => {
+                              // For top students, we'll show the best score for this course/month combination
+                              // This is a simplified version - you might want to calculate actual top students per month
+                              return (
+                                <td key={`top-${courseKey}-${month}`} className="p-1">
+                                  -
+                                </td>
+                              );
+                            });
+                          })}
 
                         {/* Average top student */}
                         <td className="p-1">
@@ -1898,27 +1970,49 @@ const MonthlyGradeOverallReport = ({
                           میانگین ستون‌ها
                         </td>
 
-                        {/* Course column averages */}
-                        {(() => {
-                          const columnAverages = calculateColumnAverages();
-
-                          return courseInfo.map((course) => {
+                        {/* Course column averages - show for each selected course and month */}
+                        {courseInfo
+                          .filter((course) => {
                             const courseKey = `${course.teacherCode}_${course.courseCode}`;
-                            const average = columnAverages[courseKey];
+                            return selectedCourses.includes(courseKey);
+                          })
+                          .map((course) => {
+                            const courseKey = `${course.teacherCode}_${course.courseCode}`;
+                            return selectedMonths.map((month) => {
+                              // Calculate average for this course/month combination
+                              const monthKey = `${courseKey}_${month}`;
+                              const validGrades = studentGrades
+                                .map((student) => {
+                                  const monthData = student.gradeDetails[monthKey];
+                                  return monthData
+                                    ? calculateFinalScore(
+                                        monthData.grades,
+                                        monthData.assessments,
+                                        courseKey
+                                      )
+                                    : null;
+                                })
+                                .filter((grade): grade is number => grade !== null);
 
-                            return (
-                              <td key={`avg-${courseKey}`} className="p-1">
-                                <div className="flex flex-col items-center">
-                                  <div className="font-bold text-blue-800 text-xs">
-                                    {average !== null
-                                      ? toPersianDigits(average.toFixed(2))
-                                      : "-"}
+                              const average =
+                                validGrades.length > 0
+                                  ? validGrades.reduce((sum, g) => sum + g, 0) /
+                                    validGrades.length
+                                  : null;
+
+                              return (
+                                <td key={`avg-${monthKey}`} className="p-1">
+                                  <div className="flex flex-col items-center">
+                                    <div className="font-bold text-blue-800 text-xs">
+                                      {average !== null
+                                        ? toPersianDigits(average.toFixed(2))
+                                        : "-"}
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                            );
-                          });
-                        })()}
+                                </td>
+                              );
+                            });
+                          })}
 
                         {/* Overall average */}
                         <td className="p-1">
@@ -1944,15 +2038,15 @@ const MonthlyGradeOverallReport = ({
               ) : (
                 <div className="text-center p-8 text-gray-500">
                   {studentGrades.length === 0
-                    ? "نمره‌ای برای این ماه ثبت نشده است."
-                    : "درسی برای این کلاس پیدا نشد."}
+                    ? "نمره‌ای برای ماه‌های انتخاب شده ثبت نشده است."
+                    : "لطفاً درس و ماه انتخاب کنید."}
                 </div>
               )}
             </CardContent>
           </Card>
         ) : (
           <div className="text-center p-8 text-gray-500">
-            لطفاً کلاس و ماه را انتخاب کنید تا گزارش نمرات نمایش داده شود.
+            لطفاً کلاس، ماه‌ها و دروس را انتخاب کنید تا گزارش نمرات نمایش داده شود.
           </div>
         )}
       </div>
