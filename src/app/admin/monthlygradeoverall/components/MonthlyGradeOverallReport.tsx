@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -89,7 +90,7 @@ type CellData = {
 
 // Update the AssessmentData type to match the expected structure from the API
 type AssessmentData = {
-  data: {
+  data?: {
     value: string;
     weight: number;
     title?: string;
@@ -97,6 +98,8 @@ type AssessmentData = {
     courseCode?: string;
     schoolCode?: string;
   };
+  value?: string;
+  weight?: number;
 };
 
 // Helper function for Persian date conversion
@@ -255,6 +258,7 @@ const MonthlyGradeOverallReport = ({
     useState<Record<string, Record<string, number>>>({});
   const [showRankings, setShowRankings] = useState<boolean>(true);
   const [showProgress, setShowProgress] = useState<boolean>(true);
+  const router = useRouter();
 
   // Get the current Persian year and month based on the current date
   const currentDate = new Date();
@@ -534,21 +538,26 @@ const MonthlyGradeOverallReport = ({
                   };
                 }
 
-                const assessmentData =
-                  (await response.json()) as AssessmentData[];
+                const assessmentResponse = await response.json();
                 const customValues: Record<string, number> = {};
-                // console.log("assessmentData", assessmentData);
-                if (assessmentData && assessmentData.data.length > 0) {
+                // console.log("assessmentData", assessmentResponse);
+                
+                // Handle both array and object with data property
+                let assessmentData: AssessmentData[] = [];
+                if (Array.isArray(assessmentResponse)) {
+                  assessmentData = assessmentResponse;
+                } else if (assessmentResponse?.data && Array.isArray(assessmentResponse.data)) {
+                  assessmentData = assessmentResponse.data;
+                }
+                
+                if (assessmentData && assessmentData.length > 0) {
                   // Process assessment data to extract custom values
-                  assessmentData.data.forEach((assessment: AssessmentData) => {
-                    if (
-                      assessment &&
-                      assessment.value &&
-                      assessment.weight !== undefined
-                    ) {
+                  assessmentData.forEach((assessment: AssessmentData) => {
+                    const value = assessment.data?.value || assessment.value;
+                    const weight = assessment.data?.weight || assessment.weight;
+                    if (value && weight !== undefined) {
                       // console.log("assessmentxxx");
-
-                      customValues[assessment.value] = assessment.weight;
+                      customValues[value] = weight;
                     }
                   });
                 }
@@ -1063,6 +1072,86 @@ const MonthlyGradeOverallReport = ({
     }, 100);
   };
 
+  // Add print-friendly function
+  const handlePrintFriendly = async () => {
+    if (!selectedClass || selectedMonths.length === 0 || !selectedYear || selectedCourses.length === 0) {
+      alert("لطفاً کلاس، ماه‌ها، سال تحصیلی و دروس را انتخاب کنید");
+      return;
+    }
+
+    if (studentGrades.length === 0) {
+      alert("هیچ نمره‌ای برای نمایش وجود ندارد");
+      return;
+    }
+
+    const selectedClassData = classDocuments.find(
+      (doc) => doc.data.classCode === selectedClass
+    )?.data;
+
+    if (!selectedClassData) {
+      alert("کلاس انتخاب شده یافت نشد");
+      return;
+    }
+
+    // Get class name
+    const className = selectedClassData.className || "";
+
+    // Get year label
+    const yearLabel =
+      yearOptions.find((y) => y.value === selectedYear)?.label || "";
+
+    // Get selected month names
+    const selectedMonthNames = selectedMonths
+      .map((m) => persianMonths.find((pm) => pm.value === m)?.label)
+      .filter(Boolean);
+
+    // Get selected course info
+    const selectedCourseInfos = courseInfo.filter((course) => {
+      const courseKey = `${course.teacherCode}_${course.courseCode}`;
+      return selectedCourses.includes(courseKey);
+    });
+
+    // Collect all data and settings (only serializable data)
+    const printData = {
+      studentGrades,
+      selectedClass,
+      selectedMonths,
+      selectedCourses,
+      selectedYear,
+      className,
+      yearLabel,
+      selectedMonthNames,
+      selectedCourseInfos: selectedCourseInfos.map((course) => ({
+        courseCode: course.courseCode,
+        teacherCode: course.teacherCode,
+        courseName: course.courseName,
+        vahed: course.vahed,
+      })),
+      showProgress,
+      showRankings,
+      courseSpecificAssessmentValues,
+    };
+
+    // Debug: Log the data being stored
+    console.log("Storing print data:", {
+      studentCount: studentGrades.length,
+      selectedClass,
+      selectedMonths,
+      selectedCourses: selectedCourses.length,
+      selectedYear,
+      className,
+      yearLabel,
+    });
+
+    // Store data in sessionStorage
+    sessionStorage.setItem("monthlyGradeOverallPrintData", JSON.stringify(printData));
+
+    // Small delay to ensure sessionStorage write completes
+    setTimeout(() => {
+      router.push("/admin/monthlygradeoverall/print");
+    }, 100);
+  };
+
   // PrinterIcon component
   const PrinterIcon = () => (
     <svg
@@ -1118,9 +1207,11 @@ const MonthlyGradeOverallReport = ({
       classDocuments.find((doc) => doc.data.classCode === selectedClass)?.data
         .className || "کلاس";
 
-    // Get the month name
-    const monthName =
-      persianMonths.find((m) => m.value === selectedMonth)?.label || "";
+    // Get the month names
+    const monthNames = selectedMonths
+      .map((m) => persianMonths.find((pm) => pm.value === m)?.label)
+      .filter(Boolean)
+      .join("، ");
 
     // Create a new workbook
     const workbook = new Excel.Workbook();
@@ -1166,7 +1257,7 @@ const MonthlyGradeOverallReport = ({
     getSortedItems(studentGrades).forEach((student, index) => {
       interface RowData {
         rowNumber: number;
-        studentCode: number;
+        studentCode: string | number;
         studentName: string;
         average: number | null;
         [key: string]: number | string | null;
@@ -1233,7 +1324,7 @@ const MonthlyGradeOverallReport = ({
     worksheet.insertRow(1, []);
     worksheet.mergeCells(`A1:${String.fromCharCode(65 + columns.length - 1)}1`);
     const titleCell = worksheet.getCell("A1");
-    titleCell.value = `گزارش نمرات تمام دروس - ${className} - ${monthName} ${
+    titleCell.value = `گزارش نمرات تمام دروس - ${className} - ${monthNames} ${
       yearOptions.find((y) => y.value === selectedYear)?.label
     }`;
     titleCell.font = { size: 14, bold: true };
@@ -1248,7 +1339,7 @@ const MonthlyGradeOverallReport = ({
     });
     saveAs(
       blob,
-      `گزارش_نمرات_دروس_${selectedClass}_${monthName}_${
+      `گزارش_نمرات_دروس_${selectedClass}_${monthNames.replace(/،/g, "_")}_${
         yearOptions.find((y) => y.value === selectedYear)?.label
       }.xlsx`
     );
@@ -1687,10 +1778,18 @@ const MonthlyGradeOverallReport = ({
                   </button>
                   <button
                     onClick={handlePrint}
-                    className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ml-2"
                   >
                     <PrinterIcon />
-                    نسخه قابل چاپ
+                    چاپ مستقیم
+                  </button>
+                  <button
+                    onClick={handlePrintFriendly}
+                    className="print:hidden flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                    disabled={!selectedClass || selectedMonths.length === 0 || !selectedYear || selectedCourses.length === 0 || studentGrades.length === 0}
+                  >
+                    <PrinterIcon />
+                    چاپ بهینه
                   </button>
                 </div>
               </div>
