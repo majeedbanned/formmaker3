@@ -169,6 +169,39 @@ const printStyles = `
       color: #1f2937 !important;
     }
     
+    .course-header-vertical {
+      writing-mode: vertical-rl !important;
+      text-orientation: mixed !important;
+      transform: rotate(180deg) !important;
+      white-space: nowrap !important;
+      height: 1.5cm !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 7pt !important;
+      line-height: 1.3 !important;
+      padding: 0.1cm 0.05cm !important;
+    }
+    
+    .course-header-container {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.1cm !important;
+      min-height: 3.5cm !important;
+      width: 100% !important;
+    }
+    
+    .vahed-badge-print {
+      background-color: #e2e8f0 !important;
+      border-radius: 9999px !important;
+      padding: 0.02cm 0.05cm !important;
+      font-size: 5pt !important;
+      margin-top: 0.05cm !important;
+      display: inline-block !important;
+    }
+    
     .header-section {
       margin-bottom: 0.3cm !important;
       padding-bottom: 0.2cm !important;
@@ -415,9 +448,9 @@ const MonthlyGradeOverallPrintView = ({
               <TableHead className="w-[30px]" rowSpan={2}>
                 ردیف
               </TableHead>
-              <TableHead className="w-[50px]" rowSpan={2}>
+              {/* <TableHead className="w-[50px]" rowSpan={2}>
                 کد
-              </TableHead>
+              </TableHead> */}
               <TableHead className="w-[100px]" rowSpan={2}>
                 نام دانش‌آموز
               </TableHead>
@@ -430,12 +463,18 @@ const MonthlyGradeOverallPrintView = ({
                     key={courseKey}
                     colSpan={selectedMonths.length}
                     className="text-center bg-gray-50"
+                    style={{
+                      verticalAlign: 'middle',
+                      padding: '0.1cm 0.05cm',
+                    }}
                   >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <div className="font-bold text-[8pt]">{course.courseName}</div>
-                      <div className="text-[6pt] text-gray-600">
-                        {course.vahed || 1} واحد
+                    <div className="course-header-container">
+                      <div className="course-header-vertical">
+                        {course.courseName}
                       </div>
+                      <span className="vahed-badge-print">
+                        {course.vahed || 1} واحد
+                      </span>
                     </div>
                   </TableHead>
                 );
@@ -468,7 +507,7 @@ const MonthlyGradeOverallPrintView = ({
             {studentGrades.map((student, index) => (
               <TableRow key={student.studentCode}>
                 <TableCell>{toPersianDigits(index + 1)}</TableCell>
-                <TableCell>{toPersianDigits(student.studentCode)}</TableCell>
+                {/* <TableCell>{toPersianDigits(student.studentCode)}</TableCell> */}
                 <TableCell className="text-[8pt]">{student.studentName}</TableCell>
 
                 {/* Course grades for each selected month */}
