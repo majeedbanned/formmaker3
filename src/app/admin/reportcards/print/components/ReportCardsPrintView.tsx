@@ -617,7 +617,7 @@ const printStyles = `
     }
     
     .assessments-section .space-y-1 > div {
-      font-size: 6pt !important;
+      font-size: 8pt !important;
       line-height: 1.4 !important;
       margin-bottom: 0.1cm !important;
     }
@@ -635,7 +635,7 @@ const printStyles = `
     }
     
     .overall-stats-section .space-y-0\\.5 > div {
-      font-size: 6pt !important;
+      font-size: 9pt !important;
       line-height: 1.4 !important;
       margin-bottom: 0.08cm !important;
     }
@@ -1416,7 +1416,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
                   </div>
                   <div className="space-y-1">
                     {Object.entries(groupedAssessments).map(([courseName, assessments]) => (
-                      <div key={courseName} className="text-[7pt]">
+                      <div key={courseName} className="text-[9pt]">
                         <span className="font-medium text-gray-800">{courseName}:</span>
                         <span className="mr-2">
                           {Object.values(assessments).map((assessment, idx) => (
@@ -1569,7 +1569,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
 
                     {/* Assessment Statistics */}
                     {totalAssessments > 0 && (
-                      <div className="text-[7pt]">
+                      <div className="text-[9pt]">
                         <span className="font-medium text-gray-800">ارزیابی‌های کیفی:</span>
                         <span className="mr-2">
                           {Object.entries(assessmentCounts).map(([value, count], idx) => (
@@ -1585,7 +1585,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
 
                     {/* Subject Performance */}
                     {(subjectPerformance.best || subjectPerformance.worst || subjectPerformance.mostImproved) && (
-                      <div className="text-[7pt]">
+                      <div className="text-[9pt]">
                         <span className="font-medium text-gray-800">عملکرد دروس:</span>
                         <span className="mr-2">
                           {subjectPerformance.best && (
@@ -1613,7 +1613,7 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
 
                     {/* Overall Average */}
                     {student.weightedAverage !== null && student.weightedAverage !== undefined && (
-                      <div className="text-[7pt]">
+                      <div className="text-[9pt]">
                         <span className="font-medium text-gray-800">میانگین کل:</span>
                         <span className={`mr-2 font-semibold ${getScoreColorClass(student.weightedAverage)}`}>
                           {toPersianDigits(student.weightedAverage.toFixed(2))}
