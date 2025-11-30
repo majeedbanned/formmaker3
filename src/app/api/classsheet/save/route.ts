@@ -48,7 +48,14 @@ export async function POST(request: NextRequest) {
     if (!classCode || !studentCode || !teacherCode || !courseCode || !date || !timeSlot || !schoolCode) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
 
@@ -130,19 +137,39 @@ export async function POST(request: NextRequest) {
         message: "Cell data saved successfully",
         upserted: result.upsertedCount > 0,
         modified: result.modifiedCount > 0,
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
       });
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error connecting to the database" },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
   } catch (error) {
     logger.error("Error in classsheet save API:", error);
     return NextResponse.json(
       { error: "Server error" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }

@@ -14,7 +14,14 @@ export async function POST(request: NextRequest) {
     if (!classCode || !teacherCode || !courseCode || !schoolCode) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
 
@@ -66,19 +73,39 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      return NextResponse.json(cellData);
+      return NextResponse.json(cellData, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error connecting to the database" },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
   } catch (error) {
     logger.error("Error processing classsheet request:", error);
     return NextResponse.json(
       { error: "Failed to fetch classsheet data" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }

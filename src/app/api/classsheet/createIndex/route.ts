@@ -92,12 +92,25 @@ export async function GET(request: NextRequest) {
         'schoolCode_presenceStatus_idx',
         'classCode_date_idx'
       ]
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
   } catch (error) {
     logger.error('Error creating indexes:', error);
     return NextResponse.json(
       { error: 'Failed to create indexes' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }

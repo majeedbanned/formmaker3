@@ -4,17 +4,23 @@ import { connectToDatabase } from "@/lib/mongodb";
 
 export async function POST(request: NextRequest) {
   try {
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+
     // Get user and verify authentication
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
     }
 
     // Only school users can update absence status
     if (user.userType !== "school") {
       return NextResponse.json(
         { error: "Only school administrators can update absence status" },
-        { status: 403 }
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -35,14 +41,14 @@ export async function POST(request: NextRequest) {
     if (!classCode || !courseCode || !studentCode || !teacherCode || !date || !timeSlot) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (typeof isAcceptable !== "boolean") {
       return NextResponse.json(
         { error: "isAcceptable must be a boolean value" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!existingRecord) {
       return NextResponse.json(
         { error: "Classsheet record not found" },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (result.modifiedCount === 0) {
       return NextResponse.json(
         { error: "Failed to update absence status" },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -97,13 +103,20 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Absence status updated successfully",
       recordId: existingRecord._id
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error("Error updating absence status:", error);
     return NextResponse.json(
       { error: "Failed to update absence status" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }

@@ -23,7 +23,14 @@ export async function GET(request: NextRequest) {
     if (!schoolCode || !teacherCode || !courseCode || !classCode || !date || !timeSlot) {
       return NextResponse.json(
         { error: "Missing required parameters" },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
 
@@ -49,19 +56,39 @@ export async function GET(request: NextRequest) {
 
       logger.info(`Teacher comment ${comment ? 'found' : 'not found'} for query parameters`);
       // Return the comment (may be null if not found)
-      return NextResponse.json(comment || null);
+      return NextResponse.json(comment || null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error connecting to the database" },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
   } catch (error) {
     logger.error("Error processing teacher comment request:", error);
     return NextResponse.json(
       { error: "Failed to fetch teacher comment" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }
@@ -107,7 +134,14 @@ export async function POST(request: NextRequest) {
         logger.warn(`Teacher comment already exists for this date and time slot: ${date}, ${timeSlot}`);
         return NextResponse.json(
           { error: "Comment already exists for this date and time slot. Use PUT to update." },
-          { status: 409 }
+          { 
+            status: 409,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            },
+          }
         );
       }
 
@@ -134,19 +168,40 @@ export async function POST(request: NextRequest) {
 
       logger.info(`Created new teacher comment with ID: ${newComment._id}`);
       // Return the created comment
-      return NextResponse.json(newComment, { status: 201 });
+      return NextResponse.json(newComment, { 
+        status: 201,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error connecting to the database" },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
   } catch (error) {
     logger.error("Error creating teacher comment:", error);
     return NextResponse.json(
       { error: "Failed to create teacher comment" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }
@@ -163,7 +218,14 @@ export async function PUT(request: NextRequest) {
     if (!schoolCode || !teacherCode || !courseCode || !classCode || !date || !timeSlot || !comment) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
 
@@ -213,28 +275,47 @@ export async function PUT(request: NextRequest) {
 
       logger.info(`Teacher comment updated successfully`);
       // Return the updated comment - handle potential null result
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      };
       if (updateResult) {
         return NextResponse.json(updateResult.value || { 
           success: true, 
           message: "Comment updated but could not retrieve it" 
-        });
+        }, { headers: corsHeaders });
       } else {
         return NextResponse.json({ 
           error: "Failed to update comment" 
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
       }
     } catch (dbError) {
       logger.error(`Database error for domain ${domain}:`, dbError);
       return NextResponse.json(
         { error: "Error connecting to the database" },
-        { status: 500 }
+        { 
+          status: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
       );
     }
   } catch (error) {
     logger.error("Error updating teacher comment:", error);
     return NextResponse.json(
       { error: "Failed to update teacher comment" },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }
