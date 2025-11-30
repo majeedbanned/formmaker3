@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -261,6 +262,7 @@ const MonthlyGradeReport = ({
     useState<Record<string, number>>({});
   const [teachersInfo, setTeachersInfo] = useState<Record<string, string>>({});
   const [coursesInfo, setCoursesInfo] = useState<Record<string, string>>({});
+  const router = useRouter();
 
   // Get the current Persian year based on the current date
   const currentDate = new Date();
@@ -943,6 +945,74 @@ const MonthlyGradeReport = ({
     }, 100);
   };
 
+  // Add print-friendly function
+  const handlePrintFriendly = async () => {
+    if (!selectedClass || !selectedTeacherCourse || !selectedYear) {
+      alert("لطفاً کلاس، معلم/درس و سال تحصیلی را انتخاب کنید");
+      return;
+    }
+
+    if (studentGrades.length === 0) {
+      alert("هیچ نمره‌ای برای نمایش وجود ندارد");
+      return;
+    }
+
+    const [teacherCode, courseCode] = selectedTeacherCourse.split("-");
+    const selectedClassData = classDocuments.find(
+      (doc) => doc.data.classCode === selectedClass
+    )?.data;
+
+    if (!selectedClassData) {
+      alert("کلاس انتخاب شده یافت نشد");
+      return;
+    }
+
+    // Get class name
+    const className = selectedClassData.className || "";
+
+    // Get year label
+    const yearLabel =
+      yearOptions.find((y) => y.value === selectedYear)?.label || "";
+
+    // Get teacher and course names
+    const teacherName =
+      teachersInfo[teacherCode] || `معلم ${teacherCode}`;
+    const courseName =
+      coursesInfo[courseCode] || `درس ${courseCode}`;
+
+    // Collect all data and settings (only serializable data)
+    const printData = {
+      studentGrades,
+      selectedClass,
+      selectedTeacherCourse,
+      selectedYear,
+      className,
+      yearLabel,
+      teacherName,
+      courseName,
+      showProgress,
+      showRank,
+      courseSpecificAssessmentValues,
+    };
+
+    // Debug: Log the data being stored
+    console.log("Storing print data:", {
+      studentCount: studentGrades.length,
+      selectedClass,
+      selectedYear,
+      className,
+      yearLabel,
+    });
+
+    // Store data in sessionStorage
+    sessionStorage.setItem("monthlyGradePrintData", JSON.stringify(printData));
+
+    // Small delay to ensure sessionStorage write completes
+    setTimeout(() => {
+      router.push("/admin/monthlygrade/print");
+    }, 100);
+  };
+
   // Add PrinterIcon component here
   const PrinterIcon = () => (
     <svg
@@ -1364,10 +1434,18 @@ const MonthlyGradeReport = ({
                   </button>
                   <button
                     onClick={handlePrint}
-                    className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ml-2"
                   >
                     <PrinterIcon />
-                    نسخه قابل چاپ
+                    چاپ مستقیم
+                  </button>
+                  <button
+                    onClick={handlePrintFriendly}
+                    className="print:hidden flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                    disabled={!selectedClass || !selectedTeacherCourse || !selectedYear || studentGrades.length === 0}
+                  >
+                    <PrinterIcon />
+                    چاپ بهینه
                   </button>
                 </div>
               </div>
