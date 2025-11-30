@@ -46,31 +46,15 @@ const getAssessmentValueClass = (value: string): string => {
   }
 };
 
-// Compact Info Display Component
-const CompactInfoDisplay = ({
+// Minimal Presence Display Component (for inline display in course name column)
+const MinimalPresenceDisplay = ({
   presenceData,
-  assessmentData,
-  showPresence,
-  showAssessments,
 }: {
   presenceData: Record<
     string,
     { present: number; absent: number; late: number; total: number }
   >;
-  assessmentData: Record<string, any[]>;
-  showPresence: boolean;
-  showAssessments: boolean;
 }) => {
-  if (
-    (!showPresence && !showAssessments) ||
-    (showPresence &&
-      Object.values(presenceData).every((d) => d.total === 0) &&
-      showAssessments &&
-      Object.values(assessmentData).flatMap((a) => a).length === 0)
-  ) {
-    return null;
-  }
-
   const totals = Object.values(presenceData).reduce(
     (acc, curr) => {
       acc.present += curr.present;
@@ -82,73 +66,75 @@ const CompactInfoDisplay = ({
     { present: 0, absent: 0, late: 0, total: 0 }
   );
 
+  if (totals.total === 0) {
+    return null;
+  }
+
+  return (
+    <div className="presence-minimal text-[6pt] text-gray-600 mt-0.5 text-right">
+      <span className="presence-present">
+        ح: {toPersianDigits(totals.present)}
+      </span>
+      <span className="text-gray-400 mx-0.5">|</span>
+      <span className="presence-absent">
+        غ: {toPersianDigits(totals.absent)}
+      </span>
+      <span className="text-gray-400 mx-0.5">|</span>
+      <span className="presence-late">
+        ت: {toPersianDigits(totals.late)}
+      </span>
+    </div>
+  );
+};
+
+// Compact Info Display Component (for assessments only, shown in separate row)
+const CompactInfoDisplay = ({
+  assessmentData,
+  showAssessments,
+}: {
+  assessmentData: Record<string, any[]>;
+  showAssessments: boolean;
+}) => {
+  if (!showAssessments || Object.values(assessmentData).flatMap((a) => a).length === 0) {
+    return null;
+  }
+
   const groupedAssessments: Record<string, any> = {};
-  if (showAssessments) {
-    Object.values(assessmentData)
-      .flat()
-      .forEach((assessment) => {
-        if (
-          !groupedAssessments[assessment.title] ||
-          new Date(assessment.date) >
-            new Date(groupedAssessments[assessment.title].date)
-        ) {
-          groupedAssessments[assessment.title] = assessment;
-        }
-      });
+  Object.values(assessmentData)
+    .flat()
+    .forEach((assessment) => {
+      if (
+        !groupedAssessments[assessment.title] ||
+        new Date(assessment.date) >
+          new Date(groupedAssessments[assessment.title].date)
+      ) {
+        groupedAssessments[assessment.title] = assessment;
+      }
+    });
+
+  if (Object.keys(groupedAssessments).length === 0) {
+    return null;
   }
 
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {showPresence && totals.total > 0 && (
-        <div className="inline-flex items-center text-xs bg-gray-100 rounded p-1">
-          <span className="presence-present mr-1">
-            حاضر: {toPersianDigits(totals.present)}
-            {totals.total > 0
-              ? ` (${toPersianDigits(
-                  Math.round((totals.present / totals.total) * 100)
-                )}٪)`
-              : ""}
-          </span>
-          <span className="text-gray-300 mx-1">|</span>
-          <span className="presence-absent mr-1">
-            غایب: {toPersianDigits(totals.absent)}
-            {totals.total > 0
-              ? ` (${toPersianDigits(
-                  Math.round((totals.absent / totals.total) * 100)
-                )}٪)`
-              : ""}
-          </span>
-          <span className="text-gray-300 mx-1">|</span>
-          <span className="presence-late">
-            تأخیر: {toPersianDigits(totals.late)}
-            {totals.total > 0
-              ? ` (${toPersianDigits(
-                  Math.round((totals.late / totals.total) * 100)
-                )}٪)`
-              : ""}
-          </span>
-        </div>
-      )}
-
-      {showAssessments && Object.keys(groupedAssessments).length > 0 && (
-        <div className="inline-flex flex-wrap gap-1 text-xs">
-          {Object.entries(groupedAssessments).map(([title, assessment]) => (
-            <div
-              key={title}
-              className="bg-gray-100 rounded p-1 flex items-center"
+      <div className="inline-flex flex-wrap gap-1 text-xs">
+        {Object.entries(groupedAssessments).map(([title, assessment]) => (
+          <div
+            key={title}
+            className="bg-gray-100 rounded p-1 flex items-center"
+          >
+            <span className="font-medium">{title}: </span>
+            <span
+              className={`ml-1 assessment-value text-[0.65rem] ${getAssessmentValueClass(
+                assessment.value
+              )}`}
             >
-              <span className="font-medium">{title}: </span>
-              <span
-                className={`ml-1 assessment-value text-[0.65rem] ${getAssessmentValueClass(
-                  assessment.value
-                )}`}
-              >
-                {assessment.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+              {assessment.value}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -197,7 +183,7 @@ const OverallStatistics = ({ student }: { student: any }) => {
       });
 
     Object.entries(courseData.monthlyGrades).forEach(([month, grade]) => {
-      if (grade !== null) {
+      if (grade !== null && typeof grade === 'number') {
         monthlyAverages[month].sum += grade;
         monthlyAverages[month].count += 1;
       }
@@ -566,7 +552,7 @@ const printStyles = `
       font-weight: bold !important;
     }
     
-    .subject-cell, .teacher-cell {
+    .subject-cell {
       background: #f8fafc !important;
       font-weight: 600 !important;
     }
@@ -581,6 +567,24 @@ const printStyles = `
       flex-direction: column !important;
       align-items: center !important;
       gap: 1px !important;
+    }
+    
+    .presence-minimal {
+      font-size: 5pt !important;
+      line-height: 1.1 !important;
+      margin-top: 1px !important;
+    }
+    
+    .presence-present {
+      color: #10b981 !important;
+    }
+    
+    .presence-absent {
+      color: #ef4444 !important;
+    }
+    
+    .presence-late {
+      color: #f59e0b !important;
     }
     
     .average-row {
@@ -598,6 +602,24 @@ const printStyles = `
     .overall-stats-section {
       page-break-inside: avoid !important;
       margin-top: 0.5cm !important;
+    }
+    
+    .assessments-section {
+      page-break-inside: avoid !important;
+      margin-top: 0.3cm !important;
+      padding: 0.2cm 0 !important;
+      border-top: 1px solid #e5e7eb !important;
+    }
+    
+    .assessments-section > div:first-child {
+      font-size: 7pt !important;
+      margin-bottom: 0.15cm !important;
+    }
+    
+    .assessments-section .space-y-1 > div {
+      font-size: 6pt !important;
+      line-height: 1.4 !important;
+      margin-bottom: 0.1cm !important;
     }
     
     .progress-indicator {
@@ -639,6 +661,24 @@ const printStyles = `
       background-color: rgba(79, 70, 229, 0.15) !important;
       color: rgb(79, 70, 229) !important;
       font-weight: 600 !important;
+    }
+    
+    .presence-minimal {
+      font-size: 0.5rem !important;
+      line-height: 1.2 !important;
+      margin-top: 2px !important;
+    }
+    
+    .presence-present {
+      color: #10b981 !important;
+    }
+    
+    .presence-absent {
+      color: #ef4444 !important;
+    }
+    
+    .presence-late {
+      color: #f59e0b !important;
     }
   }
   
@@ -922,7 +962,6 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="subject-cell">نام درس</TableHead>
-                    <TableHead className="teacher-cell">معلم</TableHead>
                     {monthNamesArray
                       .filter((month) => isMonthVisible(month.num))
                       .map((month) => (
@@ -977,10 +1016,14 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
                         <React.Fragment key={courseCode}>
                           <TableRow>
                             <TableCell className="font-medium subject-cell">
-                              {courseData.courseName}
-                            </TableCell>
-                            <TableCell className="teacher-cell">
-                              {courseData.teacherName}
+                              <div className="flex flex-col items-start">
+                                <span>{courseData.courseName}</span>
+                                {showPresence && (
+                                  <MinimalPresenceDisplay
+                                    presenceData={courseData.monthlyPresence}
+                                  />
+                                )}
+                              </div>
                             </TableCell>
                             {monthNamesArray
                               .filter((month) => isMonthVisible(month.num))
@@ -1083,34 +1126,13 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
                               )}
                             </TableCell>
                           </TableRow>
-                          {(showPresence || showAssessments) && (
-                            <TableRow>
-                              <TableCell
-                                colSpan={
-                                  2 +
-                                  monthNamesArray.filter((m) =>
-                                    isMonthVisible(m.num)
-                                  ).length +
-                                  1
-                                }
-                                className="px-2 py-1"
-                              >
-                                <CompactInfoDisplay
-                                  presenceData={courseData.monthlyPresence}
-                                  assessmentData={courseData.monthlyAssessments}
-                                  showPresence={showPresence}
-                                  showAssessments={showAssessments}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          )}
                         </React.Fragment>
                       );
                     })}
 
                   {/* Overall Average Row */}
                   <TableRow className="average-row">
-                    <TableCell colSpan={2} className="font-bold subject-cell">
+                    <TableCell colSpan={1} className="font-bold subject-cell">
                       میانگین کل (با احتساب واحد)
                     </TableCell>
                     {monthNamesArray
@@ -1317,6 +1339,83 @@ const ReportCardsPrintView: React.FC<ReportCardsPrintViewProps> = ({
               </div>
             </div>
             {/* End of Header-Table Container */}
+
+            {/* Assessments Section - Minimal */}
+            {showAssessments && (() => {
+              // Collect all assessments from all courses
+              const allAssessments: Array<{
+                courseName: string;
+                title: string;
+                value: string;
+                date: string;
+              }> = [];
+
+              Object.entries(student.courses).forEach(([courseCode, courseData]: [string, any]) => {
+                Object.entries(courseData.monthlyAssessments).forEach(([month, assessments]: [string, any]) => {
+                  if (Array.isArray(assessments) && assessments.length > 0) {
+                    assessments.forEach((assessment: any) => {
+                      allAssessments.push({
+                        courseName: courseData.courseName,
+                        title: assessment.title || '',
+                        value: assessment.value || '',
+                        date: assessment.date || '',
+                      });
+                    });
+                  }
+                });
+              });
+
+              // If no assessments, don't show the section
+              if (allAssessments.length === 0) {
+                return null;
+              }
+
+              // Group by course and title to show most recent
+              const groupedAssessments: Record<string, Record<string, {
+                courseName: string;
+                title: string;
+                value: string;
+                date: string;
+              }>> = {};
+
+              allAssessments.forEach((assessment) => {
+                const key = `${assessment.courseName}-${assessment.title}`;
+                if (!groupedAssessments[assessment.courseName]) {
+                  groupedAssessments[assessment.courseName] = {};
+                }
+                if (
+                  !groupedAssessments[assessment.courseName][assessment.title] ||
+                  new Date(assessment.date) > new Date(groupedAssessments[assessment.courseName][assessment.title].date)
+                ) {
+                  groupedAssessments[assessment.courseName][assessment.title] = assessment;
+                }
+              });
+
+              return (
+                <div className="assessments-section mt-3">
+                  <div className="text-xs font-semibold mb-1 text-gray-700 border-b border-gray-300 pb-1">
+                    ارزیابی‌های کیفی
+                  </div>
+                  <div className="space-y-1">
+                    {Object.entries(groupedAssessments).map(([courseName, assessments]) => (
+                      <div key={courseName} className="text-[7pt]">
+                        <span className="font-medium text-gray-800">{courseName}:</span>
+                        <span className="mr-2">
+                          {Object.values(assessments).map((assessment, idx) => (
+                            <span key={idx} className="mr-2">
+                              <span className="text-gray-600">{assessment.title}</span>
+                              <span className={`mr-1 ${getAssessmentValueClass(assessment.value)}`}>
+                                ({assessment.value})
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Overall Statistics */}
             {showOverallStats && (
