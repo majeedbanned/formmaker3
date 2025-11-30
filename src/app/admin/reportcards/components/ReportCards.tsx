@@ -3526,7 +3526,7 @@ const ReportCards = ({
                     <ExcelIcon />
                     خروجی اکسل
                   </button>
-                  <div className="print:hidden flex items-center gap-2">
+                  {/* <div className="print:hidden flex items-center gap-2">
                     <Label
                       htmlFor="print-template-select"
                       className="text-sm text-gray-700 whitespace-nowrap"
@@ -3551,8 +3551,8 @@ const ReportCards = ({
                         <SelectItem value="ultra-compact">فوق فشرده</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="print:hidden flex items-center gap-2">
+                  </div> */}
+                  {/* <div className="print:hidden flex items-center gap-2">
                     <Label
                       htmlFor="cards-per-page-select"
                       className="text-sm text-gray-700 whitespace-nowrap"
@@ -3576,14 +3576,14 @@ const ReportCards = ({
                         <SelectItem value="2">2</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <button
+                  </div> */}
+                  {/* <button
                     onClick={handlePrint}
                     className="print:hidden action-button print-button"
                   >
                     <PrinterIcon />
                     نسخه قابل چاپ
-                  </button>
+                  </button> */}
                   <button
                     onClick={handlePrintFriendly}
                     className="print:hidden action-button print-button"
