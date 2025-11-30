@@ -1705,7 +1705,19 @@ const MonthlyGradeOverallReport = ({
             {/* Multi-select for courses */}
             {courseInfo.length > 0 && (
               <div className="mt-4">
-                <Label>انتخاب دروس</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>انتخاب دروس</Label>
+                  {selectedCourses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourses([])}
+                      className="text-xs text-red-600 hover:text-red-700 underline"
+                      disabled={!selectedClass}
+                    >
+                      حذف همه
+                    </button>
+                  )}
+                </div>
                 <MultiSelect
                   options={courseInfo.map((course) => ({
                     label: `${course.courseName} (${course.vahed} واحد)`,
@@ -1776,13 +1788,13 @@ const MonthlyGradeOverallReport = ({
                     <ExcelIcon />
                     خروجی اکسل
                   </button>
-                  <button
+                  {/* <button
                     onClick={handlePrint}
                     className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ml-2"
                   >
                     <PrinterIcon />
                     چاپ مستقیم
-                  </button>
+                  </button> */}
                   <button
                     onClick={handlePrintFriendly}
                     className="print:hidden flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"

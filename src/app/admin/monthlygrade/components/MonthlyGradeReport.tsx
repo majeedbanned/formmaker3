@@ -1432,13 +1432,13 @@ const MonthlyGradeReport = ({
                     <ExcelIcon />
                     خروجی اکسل
                   </button>
-                  <button
+                  {/* <button
                     onClick={handlePrint}
                     className="print:hidden flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ml-2"
                   >
                     <PrinterIcon />
                     چاپ مستقیم
-                  </button>
+                  </button> */}
                   <button
                     onClick={handlePrintFriendly}
                     className="print:hidden flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
