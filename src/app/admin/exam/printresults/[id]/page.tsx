@@ -298,38 +298,148 @@ export default function PrintExamResults({
         });
 
         // Calculate stats for each answer
-        participant.answers.forEach((answer) => {
-          const question = questions.find((q) => q._id === answer.questionId);
-          if (question) {
-            const category = question.category;
-            if (!categoryStats[category]) {
-              categoryStats[category] = {
-                category,
-                correctCount: 0,
-                wrongCount: 0,
-                unansweredCount: 0,
-                totalQuestions: 0,
-                correctPercentage: 0,
-                maxScore: 0,
-                earnedScore: 0,
-                scorePercentage: 0,
-              };
-            }
+        // Use scanResult if available for more accurate counting
+        if (participant.scanResult) {
+          const scanResult = participant.scanResult;
+          
+          // Create a map of question number to question for quick lookup
+          const questionMap: Record<number, Question> = {};
+          questions.forEach((q, idx) => {
+            questionMap[idx + 1] = q;
+          });
 
-            // Update category stats
-            categoryStats[category].totalQuestions += 1;
-            categoryStats[category].maxScore += answer.maxScore;
-            categoryStats[category].earnedScore += answer.earnedScore || 0;
-
-            if (answer.isCorrect === true) {
-              categoryStats[category].correctCount += 1;
-            } else if (answer.isCorrect === false) {
-              categoryStats[category].wrongCount += 1;
-            } else {
-              categoryStats[category].unansweredCount += 1;
-            }
+          // Count correct answers by category
+          if (scanResult.rightAnswers) {
+            scanResult.rightAnswers.forEach((questionNum) => {
+              const question = questionMap[questionNum];
+              if (question) {
+                const category = question.category;
+                if (!categoryStats[category]) {
+                  categoryStats[category] = {
+                    category,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    unansweredCount: 0,
+                    totalQuestions: 0,
+                    correctPercentage: 0,
+                    maxScore: 0,
+                    earnedScore: 0,
+                    scorePercentage: 0,
+                  };
+                }
+                categoryStats[category].correctCount += 1;
+              }
+            });
           }
-        });
+
+          // Count wrong answers by category (including multipleAnswers as wrong)
+          const wrongQuestionNums = [
+            ...(scanResult.wrongAnswers || []),
+            ...(scanResult.multipleAnswers || [])
+          ];
+          wrongQuestionNums.forEach((questionNum) => {
+            const question = questionMap[questionNum];
+            if (question) {
+              const category = question.category;
+              if (!categoryStats[category]) {
+                categoryStats[category] = {
+                  category,
+                  correctCount: 0,
+                  wrongCount: 0,
+                  unansweredCount: 0,
+                  totalQuestions: 0,
+                  correctPercentage: 0,
+                  maxScore: 0,
+                  earnedScore: 0,
+                  scorePercentage: 0,
+                };
+              }
+              categoryStats[category].wrongCount += 1;
+            }
+          });
+
+          // Count unanswered by category
+          if (scanResult.unAnswered) {
+            scanResult.unAnswered.forEach((questionNum) => {
+              const question = questionMap[questionNum];
+              if (question) {
+                const category = question.category;
+                if (!categoryStats[category]) {
+                  categoryStats[category] = {
+                    category,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    unansweredCount: 0,
+                    totalQuestions: 0,
+                    correctPercentage: 0,
+                    maxScore: 0,
+                    earnedScore: 0,
+                    scorePercentage: 0,
+                  };
+                }
+                categoryStats[category].unansweredCount += 1;
+              }
+            });
+          }
+
+          // Update totals, maxScore, and earnedScore from answers array
+          participant.answers.forEach((answer) => {
+            const question = questions.find((q) => q._id === answer.questionId);
+            if (question) {
+              const category = question.category;
+              if (!categoryStats[category]) {
+                categoryStats[category] = {
+                  category,
+                  correctCount: 0,
+                  wrongCount: 0,
+                  unansweredCount: 0,
+                  totalQuestions: 0,
+                  correctPercentage: 0,
+                  maxScore: 0,
+                  earnedScore: 0,
+                  scorePercentage: 0,
+                };
+              }
+              categoryStats[category].totalQuestions += 1;
+              categoryStats[category].maxScore += answer.maxScore;
+              categoryStats[category].earnedScore += answer.earnedScore || 0;
+            }
+          });
+        } else {
+          // Fallback to answers array when scanResult is not available
+          participant.answers.forEach((answer) => {
+            const question = questions.find((q) => q._id === answer.questionId);
+            if (question) {
+              const category = question.category;
+              if (!categoryStats[category]) {
+                categoryStats[category] = {
+                  category,
+                  correctCount: 0,
+                  wrongCount: 0,
+                  unansweredCount: 0,
+                  totalQuestions: 0,
+                  correctPercentage: 0,
+                  maxScore: 0,
+                  earnedScore: 0,
+                  scorePercentage: 0,
+                };
+              }
+
+              // Update category stats
+              categoryStats[category].totalQuestions += 1;
+              categoryStats[category].maxScore += answer.maxScore;
+              categoryStats[category].earnedScore += answer.earnedScore || 0;
+
+              if (answer.isCorrect === true) {
+                categoryStats[category].correctCount += 1;
+              } else if (answer.isCorrect === false) {
+                categoryStats[category].wrongCount += 1;
+              } else {
+                categoryStats[category].unansweredCount += 1;
+              }
+            }
+          });
+        }
 
         // Calculate percentages for each category
         Object.keys(categoryStats).forEach((category) => {

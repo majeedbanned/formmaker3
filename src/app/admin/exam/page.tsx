@@ -10,6 +10,7 @@ import {
   CalculatorIcon,
   ChartBarIcon,
   KeyIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { FormField, LayoutSettings } from "@/types/crud";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ import { usePagePermission } from "@/hooks/usePagePermission";
 import { ExamParticipantsModal } from "@/components/ExamParticipantsModal";
 import ScanAnswerSheetModal from "@/components/ScanAnswerSheetModal";
 import DefineExamKeysModal from "@/components/DefineExamKeysModal";
+import ManualExamResultModal from "@/components/ManualExamResultModal";
 import { toast } from "sonner";
 
 const layout: LayoutSettings = {
@@ -62,6 +64,7 @@ function StudentsPageContent() {
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [showKeysModal, setShowKeysModal] = useState(false);
+  const [showManualResultModal, setShowManualResultModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
 
   // Add state for teacher's classes
@@ -1008,6 +1011,14 @@ function StudentsPageContent() {
                 icon: QrCodeIcon,
               },
               {
+                label: "ورود دستی نتایج",
+                action: (examId) => {
+                  setSelectedExamId(examId);
+                  setShowManualResultModal(true);
+                },
+                icon: PencilIcon,
+              },
+              {
                 label: "محاسبه مجدد نمرات",
                 action: async (examId) => {
                   // Show confirmation dialog
@@ -1105,6 +1116,20 @@ function StudentsPageContent() {
           isOpen={showKeysModal}
           onClose={() => setShowKeysModal(false)}
           examId={selectedExamId}
+        />
+
+        {/* Manual Exam Result Modal */}
+        <ManualExamResultModal
+          isOpen={showManualResultModal}
+          onClose={() => setShowManualResultModal(false)}
+          examId={selectedExamId}
+          onSuccess={() => {
+            // Refresh participants modal if open
+            if (showParticipantsModal && selectedExamId) {
+              setShowParticipantsModal(false);
+              setTimeout(() => setShowParticipantsModal(true), 100);
+            }
+          }}
         />
       </div>
     </main>
