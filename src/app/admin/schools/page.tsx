@@ -56,6 +56,59 @@ const sampleFormStructure: FormField[] = [
       uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
     },
   },
+
+
+  {
+    name: "BBB_URL",
+    title: "آدرس BBB",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    isUnique: false,
+    required: false,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "آدرس BBB الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
+    },
+  },
+
+  {
+    name: "BBB_SECRET",
+    title: "رمز عبور BBB",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    isUnique: false,
+
+    required: false,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "رمز عبور BBB الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
+    },
+  },
+
+  {
+    name: "skyroomapikey",
+    title: "کلید API اسکای‌روم",
+    type: "text",
+    isShowInList: true,
+    isSearchable: true,
+    isUnique: false,
+
+    required: false,
+    enabled: true,
+    visible: true,
+    validation: {
+      requiredMessage: "رمز عبور BBB الزامی است",
+      uniqueMessage: "این نام کاربری قبلاً ثبت شده است",
+    },
+  },
+
+
   {
     name: "password",
     title: "رمز عبور",

@@ -167,6 +167,7 @@ const data = {
       ],
     },
 
+
     {
       title: "آزمون ها",
       url: "#",
@@ -519,6 +520,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         allMenus.push(assessmentMenu);
       }
       allMenus.push(ticketingMenu);
+    }
+    
+    // Add Skyroom menu
+    const skyroomMenu = {
+      title: "کلاس‌های آنلاین",
+      url: "#",
+      menuID: "skyroom",
+      menuIDOrder: 997,
+      items: [
+        ...(user.userType === "school" ? [{
+          title: "مدیریت کلاس‌های اسکای‌روم",
+          url: "/admin/skyroomadmin",
+          order: 1
+        }] : []),
+        ...((user.userType === "student" || user.userType === "teacher" || user.userType === "school") ? [{
+          title: "کلاس‌های اسکای‌روم من",
+          url: "/admin/myskyroomclass",
+          order: 2
+        }] : [])
+      ]
+    };
+    
+    // Only add Skyroom menu if it has items
+    if (skyroomMenu.items.length > 0) {
+      allMenus.push(skyroomMenu);
     }
 
     return allMenus.map((section, index) => ({

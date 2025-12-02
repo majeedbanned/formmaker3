@@ -1,0 +1,954 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import PageHeader from "@/components/PageHeader";
+import { VideoIcon, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface Student {
+  _id: string;
+  data: {
+    studentCode: string;
+    studentName: string;
+    studentFamily: string;
+    classCode?: string[];
+  };
+}
+
+interface Teacher {
+  _id: string;
+  data: {
+    teacherCode: string;
+    teacherName: string;
+    teacherFamily?: string;
+  };
+}
+
+interface Class {
+  _id: string;
+  data: {
+    classCode: string;
+    className: string;
+  };
+}
+
+type WeekdayCode = "sat" | "sun" | "mon" | "tue" | "wed" | "thu" | "fri";
+
+interface ScheduleSlot {
+  id: string;
+  day: WeekdayCode;
+  startTime: string; // HH:MM
+  endTime: string;   // HH:MM
+}
+
+export default function SkyroomAdminPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([]);
+  const [debugRequest, setDebugRequest] = useState<any | null>(null);
+  const [debugResponse, setDebugResponse] = useState<any | null>(null);
+  const [debugStatus, setDebugStatus] = useState<number | null>(null);
+  const [skyroomClasses, setSkyroomClasses] = useState<any[]>([]);
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+
+  // Form data (keeps a representative concrete date/time for the first slot)
+  const [formData, setFormData] = useState({
+    skyroomApiKey: "",
+    className: "",
+    classDescription: "",
+    classDate: "",
+    classTime: "",
+    duration: "60",
+    maxUsers: "50",
+    selectedStudents: [] as string[],
+    selectedTeachers: [] as string[],
+    selectedClasses: [] as string[],
+  });
+
+  const totalSteps = 4;
+
+  useEffect(() => {
+    if (user && user.userType === "school") {
+      fetchStudents();
+      fetchTeachers();
+      fetchClasses();
+      fetchSkyroomClasses();
+
+      // Initialize with one default weekly slot
+      setScheduleSlots([
+        {
+          id: Math.random().toString(36).slice(2),
+          day: "sat",
+          startTime: "12:30",
+          endTime: "13:40",
+        },
+      ]);
+    }
+  }, [user]);
+
+  const fetchStudents = async () => {
+    if (!user?.schoolCode) return;
+    setLoadingData(true);
+    try {
+      const response = await fetch(
+        `/api/crud/students?schoolCode=${user.schoolCode}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // CRUD API returns data in a specific format
+        setStudents(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    if (!user?.schoolCode) return;
+    try {
+      const response = await fetch(
+        `/api/admin/teachers/teachers?schoolCode=${user.schoolCode}`,
+        {
+          headers: {
+            "x-domain": window.location.host,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setTeachers(data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+    }
+  };
+
+  const fetchClasses = async () => {
+    if (!user?.schoolCode) return;
+    try {
+      const response = await fetch("/api/crud/classes", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Filter classes for current school
+        const allClasses: Class[] = data || [];
+        const filtered = allClasses.filter(
+          (cls) => cls.data?.classCode && cls.data?.className
+        );
+        setClasses(filtered);
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    }
+  };
+
+  const fetchSkyroomClasses = async () => {
+    try {
+      const response = await fetch("/api/admin/skyroom/classes", {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSkyroomClasses(data.classes || []);
+      }
+    } catch (error) {
+      console.error("Error fetching Skyroom classes:", error);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep < totalSteps) {
+      // Validate current step
+      if (currentStep === 1) {
+        if (!formData.className) {
+          toast.error("لطفاً نام کلاس را وارد کنید");
+          return;
+        }
+        if (!scheduleSlots.length) {
+          toast.error("لطفاً حداقل یک روز و ساعت برگزاری کلاس را مشخص کنید");
+          return;
+        }
+        const first = scheduleSlots[0];
+        if (!first.startTime || !first.endTime) {
+          toast.error("برای اولین روز، ساعت شروع و پایان را وارد کنید");
+          return;
+        }
+
+        // Derive a concrete date/time for the first slot (used for sorting and gating)
+        const weekdayToJs: Record<WeekdayCode, number> = {
+          sun: 0,
+          mon: 1,
+          tue: 2,
+          wed: 3,
+          thu: 4,
+          fri: 5,
+          sat: 6,
+        };
+        const now = new Date();
+        const targetDay = weekdayToJs[first.day];
+        const todayIdx = now.getDay();
+        let diff = (targetDay - todayIdx + 7) % 7;
+        const firstDate = new Date(now);
+        const [sh, sm] = first.startTime.split(":").map(Number);
+        firstDate.setHours(sh || 0, sm || 0, 0, 0);
+        if (diff === 0 && firstDate <= now) {
+          diff = 7;
+        }
+        firstDate.setDate(firstDate.getDate() + diff);
+        const iso = firstDate.toISOString().slice(0, 10);
+        const [eh, em] = first.endTime.split(":").map(Number);
+        const durationMinutes = (eh - sh) * 60 + (em - sm);
+
+        setFormData((prev) => ({
+          ...prev,
+          classDate: iso,
+          classTime: first.startTime,
+          duration: String(durationMinutes > 0 ? durationMinutes : 60),
+        }));
+      }
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (
+      formData.selectedStudents.length === 0 &&
+      formData.selectedTeachers.length === 0 &&
+      formData.selectedClasses.length === 0
+    ) {
+      toast.error("لطفاً حداقل یک دانش‌آموز، معلم یا کلاس را انتخاب کنید");
+      return;
+    }
+
+    const isEdit = !!editingClassId;
+
+    // Build payload (include weekly schedule; for edit only update editable fields)
+    const payload = isEdit
+      ? {
+          classId: editingClassId,
+          className: formData.className,
+          classDescription: formData.classDescription,
+          classDate: formData.classDate,
+          classTime: formData.classTime,
+          duration: Number(formData.duration) || 60,
+          maxUsers: Number(formData.maxUsers) || 50,
+          scheduleSlots,
+        }
+      : {
+        ...formData,
+        scheduleSlots,
+      };
+
+    setDebugRequest(payload);
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/skyroom/classes", {
+        method: isEdit ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-domain": window.location.host,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      setDebugStatus(response.status);
+      setDebugResponse(data);
+
+      if (response.ok && data.success) {
+        toast.success(
+          isEdit
+            ? "کلاس اسکای‌روم با موفقیت ویرایش شد"
+            : "کلاس اسکای‌روم با موفقیت ایجاد شد"
+        );
+        // Refresh list of Skyroom classes
+        fetchSkyroomClasses();
+
+        // Reset form after create; for edit we keep API key but clear current editing state
+        setFormData({
+          skyroomApiKey: formData.skyroomApiKey, // Keep API key
+          className: "",
+          classDescription: "",
+          classDate: "",
+          classTime: "",
+          duration: "60",
+          maxUsers: "50",
+          selectedStudents: [],
+          selectedTeachers: [],
+          selectedClasses: [],
+        });
+        setScheduleSlots([]);
+        setEditingClassId(null);
+        setCurrentStep(1);
+      } else {
+        toast.error(data.error || "خطا در ذخیره کلاس");
+      }
+    } catch (error: any) {
+      console.error("Error creating class:", error);
+      setDebugStatus(null);
+      setDebugResponse({ error: error.message || "unknown error" });
+      toast.error("خطا در ایجاد کلاس: " + (error.message || "خطای ناشناخته"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleStudent = (studentId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedStudents: prev.selectedStudents.includes(studentId)
+        ? prev.selectedStudents.filter((id) => id !== studentId)
+        : [...prev.selectedStudents, studentId],
+    }));
+  };
+
+  const toggleTeacher = (teacherId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedTeachers: prev.selectedTeachers.includes(teacherId)
+        ? prev.selectedTeachers.filter((id) => id !== teacherId)
+        : [...prev.selectedTeachers, teacherId],
+    }));
+  };
+
+  const toggleClass = (classId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedClasses: prev.selectedClasses.includes(classId)
+        ? prev.selectedClasses.filter((id) => id !== classId)
+        : [...prev.selectedClasses, classId],
+    }));
+  };
+
+  if (authLoading) {
+    return (
+      <div dir="rtl" className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user || user.userType !== "school") {
+    return (
+      <div dir="rtl" className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-600">
+              فقط مدیران مدرسه می‌توانند به این صفحه دسترسی داشته باشند.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div dir="rtl" className="container mx-auto px-4 py-8">
+      <PageHeader
+        title="مدیریت کلاس‌های اسکای‌روم"
+        subtitle="ایجاد و مدیریت کلاس‌های آنلاین اسکای‌روم"
+        icon={<VideoIcon className="w-6 h-6" />}
+        gradient={true}
+      />
+
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              {editingClassId ? "ویرایش کلاس اسکای‌روم" : "ایجاد کلاس جدید"}
+            </CardTitle>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>مرحله {currentStep} از {totalSteps}</span>
+            </div>
+          </div>
+          <CardDescription>
+            از طریق این فرم می‌توانید کلاس‌های آنلاین اسکای‌روم را ایجاد کنید
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Step Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {[1, 2, 3, 4].map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                      step <= currentStep
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-gray-100 text-gray-400 border-gray-300"
+                    }`}
+                  >
+                    {step < currentStep ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      step
+                    )}
+                  </div>
+                  {step < totalSteps && (
+                    <div
+                      className={`flex-1 h-1 mx-2 ${
+                        step < currentStep ? "bg-primary" : "bg-gray-200"
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <span>اطلاعات کلاس</span>
+              <span>انتخاب شرکت‌کنندگان</span>
+              <span>تنظیمات</span>
+              <span>تایید و ایجاد</span>
+            </div>
+          </div>
+
+          {/* Step 1: Class Details & Weekly Schedule */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="className">نام کلاس *</Label>
+                <Input
+                  id="className"
+                  type="text"
+                  placeholder="مثال: کلاس ریاضی پایه دهم"
+                  value={formData.className}
+                  onChange={(e) =>
+                    setFormData({ ...formData, className: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="classDescription">توضیحات</Label>
+                <Textarea
+                  id="classDescription"
+                  placeholder="توضیحات کلاس (اختیاری)"
+                  value={formData.classDescription}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      classDescription: e.target.value,
+                    })
+                  }
+                  rows={3}
+                />
+              </div>
+
+              {/* Weekly schedule (weekdays & time ranges) */}
+              <div className="space-y-2">
+                <Label>روزها و ساعت‌های برگزاری کلاس *</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  برای هر روز، ساعت شروع و پایان کلاس را مشخص کنید. مثال: شنبه ۱۲:۳۰ تا ۱۳:۴۰، یکشنبه ۱۵:۲۰ تا ۱۶:۴۰
+                </p>
+
+                <div className="space-y-2">
+                  {scheduleSlots.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-12 gap-2 items-center bg-gray-50 p-2 rounded"
+                    >
+                      <div className="col-span-4">
+                        <Select
+                          value={item.day}
+                          onValueChange={(value: WeekdayCode) => {
+                            const updated = [...scheduleSlots];
+                            updated[index] = { ...updated[index], day: value };
+                            setScheduleSlots(updated);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="انتخاب روز" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sat">شنبه</SelectItem>
+                            <SelectItem value="sun">یکشنبه</SelectItem>
+                            <SelectItem value="mon">دوشنبه</SelectItem>
+                            <SelectItem value="tue">سه‌شنبه</SelectItem>
+                            <SelectItem value="wed">چهارشنبه</SelectItem>
+                            <SelectItem value="thu">پنج‌شنبه</SelectItem>
+                            <SelectItem value="fri">جمعه</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-3">
+                        <Input
+                          type="time"
+                          value={item.startTime}
+                          onChange={(e) => {
+                            const updated = [...scheduleSlots];
+                            updated[index] = {
+                              ...updated[index],
+                              startTime: e.target.value,
+                            };
+                            setScheduleSlots(updated);
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <Input
+                          type="time"
+                          value={item.endTime}
+                          onChange={(e) => {
+                            const updated = [...scheduleSlots];
+                            updated[index] = {
+                              ...updated[index],
+                              endTime: e.target.value,
+                            };
+                            setScheduleSlots(updated);
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-2 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const updated = scheduleSlots.filter(
+                              (s) => s.id !== item.id
+                            );
+                            setScheduleSlots(updated);
+                          }}
+                        >
+                          حذف
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newItem: ScheduleSlot = {
+                        id: Math.random().toString(36).slice(2),
+                        day: "sat",
+                        startTime: "12:30",
+                        endTime: "13:40",
+                      };
+                      setScheduleSlots([...scheduleSlots, newItem]);
+                    }}
+                  >
+                    افزودن روز جدید
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Select Participants */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div>
+                <Label>انتخاب دانش‌آموزان</Label>
+                <div className="mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {loadingData ? (
+                    <div className="text-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                    </div>
+                  ) : students.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      دانش‌آموزی یافت نشد
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {students.map((student) => {
+                        const studentId = student._id?.toString() || student._id;
+                        const studentData = student.data || student;
+                        return (
+                          <label
+                            key={studentId}
+                            className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedStudents.includes(
+                                studentId
+                              )}
+                              onChange={() => toggleStudent(studentId)}
+                              className="rounded"
+                            />
+                            <span className="text-sm">
+                              {studentData.studentName}{" "}
+                              {studentData.studentFamily} -{" "}
+                              {studentData.studentCode}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.selectedStudents.length} دانش‌آموز انتخاب شده
+                </p>
+              </div>
+
+              <div>
+                <Label>انتخاب معلمان</Label>
+                <div className="mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {teachers.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      معلمی یافت نشد
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {teachers.map((teacher) => {
+                        const teacherId = teacher._id?.toString() || teacher._id;
+                        const teacherData = teacher.data || teacher;
+                        return (
+                          <label
+                            key={teacherId}
+                            className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedTeachers.includes(
+                                teacherId
+                              )}
+                              onChange={() => toggleTeacher(teacherId)}
+                              className="rounded"
+                            />
+                            <span className="text-sm">
+                              {teacherData.teacherName}{" "}
+                              {teacherData.teacherFamily || ""} -{" "}
+                              {teacherData.teacherCode}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.selectedTeachers.length} معلم انتخاب شده
+                </p>
+              </div>
+
+              <div>
+                <Label>انتخاب کلاس‌ها (همه دانش‌آموزان کلاس)</Label>
+                <div className="mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {classes.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      کلاسی یافت نشد
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {classes.map((cls) => {
+                        const classId = cls._id?.toString() || cls._id;
+                        const classData = cls.data || cls;
+                        return (
+                          <label
+                            key={classId}
+                            className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedClasses.includes(classId)}
+                              onChange={() => toggleClass(classId)}
+                              className="rounded"
+                            />
+                            <span className="text-sm">
+                              {classData.className} - {classData.classCode}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.selectedClasses.length} کلاس انتخاب شده
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Settings */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="duration">مدت زمان کلاس (دقیقه)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  min="15"
+                  max="240"
+                  value={formData.duration}
+                  onChange={(e) =>
+                    setFormData({ ...formData, duration: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="maxUsers">حداکثر تعداد کاربران</Label>
+                <Input
+                  id="maxUsers"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.maxUsers}
+                  onChange={(e) =>
+                    setFormData({ ...formData, maxUsers: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Review and Confirm */}
+          {currentStep === 4 && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <div>
+                  <span className="font-semibold">نام کلاس:</span>{" "}
+                  {formData.className}
+                </div>
+                <div>
+                  <span className="font-semibold">تاریخ:</span>{" "}
+                  {formData.classDate}
+                </div>
+                <div>
+                  <span className="font-semibold">زمان:</span>{" "}
+                  {formData.classTime}
+                </div>
+                <div>
+                  <span className="font-semibold">مدت زمان:</span>{" "}
+                  {formData.duration} دقیقه
+                </div>
+                <div>
+                  <span className="font-semibold">حداکثر کاربران:</span>{" "}
+                  {formData.maxUsers}
+                </div>
+                <div>
+                  <span className="font-semibold">دانش‌آموزان:</span>{" "}
+                  {formData.selectedStudents.length} نفر
+                </div>
+                <div>
+                  <span className="font-semibold">معلمان:</span>{" "}
+                  {formData.selectedTeachers.length} نفر
+                </div>
+                <div>
+                  <span className="font-semibold">کلاس‌ها:</span>{" "}
+                  {formData.selectedClasses.length} کلاس
+                </div>
+              </div>
+
+              {/* Debug panel for request/response */}
+              <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">
+                    پنل دیباگ (فقط برای مدیر / Debug Panel)
+                  </span>
+                  {debugStatus !== null && (
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                      HTTP {debugStatus}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <div className="mb-1 text-slate-300">Request body (ارسال‌شده به API)</div>
+                    <pre className="bg-slate-950/60 border border-slate-700 rounded p-2 overflow-x-auto max-h-60">
+{JSON.stringify(debugRequest, null, 2) || "// هنوز درخواستی ارسال نشده است"}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-slate-300">Response body (پاسخ API)</div>
+                    <pre className="bg-slate-950/60 border border-slate-700 rounded p-2 overflow-x-auto max-h-60">
+{JSON.stringify(debugResponse, null, 2) || "// هنوز پاسخی دریافت نشده است"}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 1 || loading}
+            >
+              <ArrowRight className="w-4 h-4 ml-2" />
+              قبلی
+            </Button>
+
+            {currentStep < totalSteps ? (
+              <Button onClick={handleNext} disabled={loading}>
+                بعدی
+                <ArrowLeft className="w-4 h-4 mr-2" />
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    در حال ایجاد...
+                  </>
+                ) : (
+                  <>
+                    ایجاد کلاس
+                    <Check className="w-4 h-4 mr-2" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+        {/* Existing Skyroom classes list */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>کلاس‌های اسکای‌روم ایجاد شده</CardTitle>
+          <CardDescription>
+            در این بخش می‌توانید کلاس‌های اسکای‌روم موجود را مشاهده و ویرایش یا حذف کنید.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {skyroomClasses.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">
+              تاکنون کلاسی ایجاد نشده است.
+            </p>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {skyroomClasses.map((cls) => (
+                <div
+                  key={cls._id}
+                  className="flex items-center justify-between border rounded-md px-3 py-2"
+                >
+                  <div className="space-y-1">
+                    <div className="font-semibold">{cls.className}</div>
+                    <div className="text-xs text-gray-500">
+                      {cls.classDate && cls.classTime
+                        ? `اولین تاریخ: ${cls.classDate} ساعت ${cls.classTime}`
+                        : "برنامه زمانی بر اساس برنامه هفتگی"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingClassId(cls._id);
+                        setFormData((prev) => ({
+                          ...prev,
+                          className: cls.className || "",
+                          classDescription: cls.classDescription || "",
+                          classDate: cls.classDate || "",
+                          classTime: cls.classTime || "",
+                          duration: String(cls.duration || 60),
+                          maxUsers: String(cls.maxUsers || 50),
+                          selectedStudents: cls.selectedStudents || [],
+                          selectedTeachers: cls.selectedTeachers || [],
+                          selectedClasses: cls.selectedClasses || [],
+                        }));
+
+                        // Load schedule slots from saved data if available
+                        if (Array.isArray(cls.scheduleSlots) && cls.scheduleSlots.length > 0) {
+                          setScheduleSlots(
+                            cls.scheduleSlots.map((s: any, index: number) => ({
+                              id: s.id || `${cls._id}-${index}`,
+                              day: (s.day || "sat") as WeekdayCode,
+                              startTime: s.startTime,
+                              endTime: s.endTime,
+                            }))
+                          );
+                        }
+
+                        setCurrentStep(1);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    >
+                      ویرایش
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        const confirmed = window.confirm(
+                          `آیا از حذف کلاس "${cls.className}" اطمینان دارید؟`
+                        );
+                        if (!confirmed) return;
+
+                        try {
+                          setLoading(true);
+                          const res = await fetch(
+                            `/api/admin/skyroom/classes?classId=${cls._id}`,
+                            {
+                              method: "DELETE",
+                              headers: {
+                                "x-domain": window.location.host,
+                              },
+                            }
+                          );
+                          const data = await res.json();
+                          if (res.ok && data.success) {
+                            toast.success("کلاس با موفقیت حذف شد");
+                            fetchSkyroomClasses();
+                          } else {
+                            toast.error(data.error || "خطا در حذف کلاس");
+                          }
+                        } catch (error: any) {
+                          console.error("Error deleting class:", error);
+                          toast.error(
+                            "خطا در حذف کلاس: " +
+                              (error.message || "خطای ناشناخته")
+                          );
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      حذف
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
