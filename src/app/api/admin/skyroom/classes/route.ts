@@ -215,7 +215,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get students from selected classes
+    // Get students from selected classes (by classCode) and ensure they become Skyroom users
+    let selectedClassCodes: string[] = [];
     if (selectedClasses && selectedClasses.length > 0) {
       // First, get the class codes from the selected class IDs
       const classesCollection = connection.collection("classes");
@@ -224,18 +225,19 @@ export async function POST(request: NextRequest) {
           _id: { $in: selectedClasses.map((id: string) => new ObjectId(id)) },
           "data.schoolCode": user.schoolCode,
         })
+        .project({ "data.classCode": 1 })
         .toArray();
 
-      const classCodes = selectedClassDocs.map(
-        (cls) => cls.data?.classCode
-      ).filter(Boolean);
+      selectedClassCodes = selectedClassDocs
+        .map((cls) => cls.data?.classCode as string | undefined)
+        .filter((code): code is string => !!code);
 
-      if (classCodes.length > 0) {
+      if (selectedClassCodes.length > 0) {
         const studentsCollection = connection.collection("students");
         const classStudents = await studentsCollection
           .find({
             "data.schoolCode": user.schoolCode,
-            "data.classCode": { $in: classCodes },
+            "data.classCode": { $in: selectedClassCodes },
           })
           .toArray();
 
@@ -282,9 +284,13 @@ export async function POST(request: NextRequest) {
       maxUsers: maxUsers || 50,
       skyroomRoomId: roomId,
       skyroomRoomName: roomName,
+      // explicit student selections by _id
       selectedStudents: selectedStudents || [],
       selectedTeachers: selectedTeachers || [],
-      selectedClasses: selectedClasses || [],
+      // store class codes (not ids) for matching with students later
+      selectedClasses: selectedClassCodes.length
+        ? selectedClassCodes
+        : selectedClasses || [],
       studentUserIds,
       teacherUserIds,
       // store weekly schedule if provided
@@ -342,7 +348,14 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { classId, ...updateData } = body;
+    const {
+      classId,
+      selectedStudents,
+      selectedTeachers,
+      selectedClasses,
+      scheduleSlots,
+      ...updateData
+    } = body;
 
     if (!classId) {
       return NextResponse.json(
@@ -384,8 +397,41 @@ export async function PUT(request: NextRequest) {
     if (typeof updateData.maxUsers !== "undefined") {
       updateFields["data.maxUsers"] = updateData.maxUsers;
     }
-    if (Array.isArray(updateData.scheduleSlots)) {
-      updateFields["data.scheduleSlots"] = updateData.scheduleSlots;
+
+    // Weekly schedule
+    if (Array.isArray(scheduleSlots)) {
+      updateFields["data.scheduleSlots"] = scheduleSlots;
+    }
+
+    // Participants: selected students and teachers (store ids as-is)
+    if (Array.isArray(selectedStudents)) {
+      updateFields["data.selectedStudents"] = selectedStudents;
+    }
+    if (Array.isArray(selectedTeachers)) {
+      updateFields["data.selectedTeachers"] = selectedTeachers;
+    }
+
+    // Participants: selected classes – convert ids to classCode like in POST
+    if (Array.isArray(selectedClasses)) {
+      const classesCollection = connection.collection("classes");
+      const selectedClassDocs = await classesCollection
+        .find({
+          _id: {
+            $in: selectedClasses
+              .filter((id: string) => ObjectId.isValid(id))
+              .map((id: string) => new ObjectId(id)),
+          },
+          "data.schoolCode": user.schoolCode,
+        })
+        .project({ "data.classCode": 1 })
+        .toArray();
+
+      const selectedClassCodes = selectedClassDocs
+        .map((cls: any) => cls.data?.classCode as string | undefined)
+        .filter((code): code is string => !!code);
+
+      updateFields["data.selectedClasses"] =
+        selectedClassCodes.length > 0 ? selectedClassCodes : selectedClasses;
     }
 
     await collection.updateOne(

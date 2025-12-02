@@ -40,7 +40,23 @@ export async function GET(request: NextRequest) {
         "data.schoolCode": user.schoolCode,
       });
 
-      const studentClassCodes = student?.data?.classCode || [];
+      // Normalize student's class codes:
+      // - In some schools it's stored as array of strings
+      // - In others as array of objects like { label: "...", value: "9" }
+      let studentClassCodes: string[] = [];
+      const rawClassCode = student?.data?.classCode;
+
+      if (Array.isArray(rawClassCode)) {
+        studentClassCodes = rawClassCode
+          .map((item: any) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item.value === "string") return item.value;
+            return null;
+          })
+          .filter((v: string | null): v is string => !!v);
+      } else if (typeof rawClassCode === "string") {
+        studentClassCodes = [rawClassCode];
+      }
 
       query.$or = [
         { "data.selectedStudents": user.id },

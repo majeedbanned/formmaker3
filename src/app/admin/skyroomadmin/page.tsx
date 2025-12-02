@@ -258,7 +258,8 @@ export default function SkyroomAdminPage() {
 
     const isEdit = !!editingClassId;
 
-    // Build payload (include weekly schedule; for edit only update editable fields)
+    // Build payload (include weekly schedule and participants)
+    // In edit mode, we also allow updating selected students/teachers/classes.
     const payload = isEdit
       ? {
           classId: editingClassId,
@@ -268,12 +269,15 @@ export default function SkyroomAdminPage() {
           classTime: formData.classTime,
           duration: Number(formData.duration) || 60,
           maxUsers: Number(formData.maxUsers) || 50,
+          selectedStudents: formData.selectedStudents,
+          selectedTeachers: formData.selectedTeachers,
+          selectedClasses: formData.selectedClasses,
           scheduleSlots,
         }
       : {
-        ...formData,
-        scheduleSlots,
-      };
+          ...formData,
+          scheduleSlots,
+        };
 
     setDebugRequest(payload);
     setLoading(true);
@@ -869,6 +873,38 @@ export default function SkyroomAdminPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        // Normalize selectedClasses so that checkbox values in Step 2
+                        // (which use class document _id) appear checked correctly.
+                        const normalizedSelectedClasses: string[] = Array.isArray(
+                          cls.selectedClasses
+                        )
+                          ? cls.selectedClasses
+                              .map((value: string) => {
+                                // If value already matches a class _id, keep it
+                                const byId = classes.find(
+                                  (c) => (c._id?.toString() || c._id) === value
+                                );
+                                if (byId) return byId._id?.toString() || byId._id;
+
+                                // Otherwise, treat value as classCode and find matching class
+                                const byCode = classes.find(
+                                  (c) =>
+                                    (c.data?.classCode ||
+                                      (c as any).classCode) === value
+                                );
+                                if (byCode)
+                                  return byCode._id?.toString() || byCode._id;
+
+                                // Fallback: keep original value
+                                return value;
+                              })
+                              // Ensure uniqueness
+                              .filter(
+                                (v: string, idx: number, arr: string[]) =>
+                                  arr.indexOf(v) === idx
+                              )
+                          : [];
+
                         setEditingClassId(cls._id);
                         setFormData((prev) => ({
                           ...prev,
@@ -880,7 +916,7 @@ export default function SkyroomAdminPage() {
                           maxUsers: String(cls.maxUsers || 50),
                           selectedStudents: cls.selectedStudents || [],
                           selectedTeachers: cls.selectedTeachers || [],
-                          selectedClasses: cls.selectedClasses || [],
+                          selectedClasses: normalizedSelectedClasses,
                         }));
 
                         // Load schedule slots from saved data if available
