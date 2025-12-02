@@ -524,7 +524,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     
     // Add Skyroom menu
     const skyroomMenu = {
-      title: "کلاس‌های آنلاین",
+      title: "کلاس‌های آنلاین" +" اسکای‌روم ",
       url: "#",
       menuID: "skyroom",
       menuIDOrder: 997,
