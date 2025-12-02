@@ -720,8 +720,19 @@
               "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/bahrami?authSource=admin",
               "description": "bahrami.farsamooz.ir"
             }
+,
+"ez1.farsamooz.ir": {
+    "schoolCode":"95096783",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ez1?authSource=admin",
+    "description": "ez1.farsamooz.ir"
+  }
+,
 
-
+  "ez2.farsamooz.ir": {
+    "schoolCode":"96039899",
+    "connectionString": "mongodb://myadmin:strongpassword123@185.128.137.182:27017/ez2?authSource=admin",
+    "description": "ez2.farsamooz.ir"
+  }
 
 
 } 
