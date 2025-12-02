@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bbbAPI } from '@/lib/bbb';
+import { BigBlueButtonAPI } from '@/lib/bbb';
 import { connectToDatabase } from '@/lib/mongodb';
 import { logger } from '@/lib/logger';
 
@@ -15,6 +15,41 @@ interface JoinRequest {
   userType: 'school' | 'teacher' | 'student';
   userId: string;
   schoolCode: string;
+}
+
+/**
+ * Fetch BBB configuration from schools collection
+ */
+async function getBBBConfig(schoolCode: string, domain: string): Promise<{ url: string; secret: string } | null> {
+  try {
+    const connection = await connectToDatabase(domain);
+    const schoolsCollection = connection.collection('schools');
+    
+    const school = await schoolsCollection.findOne({ 
+      'data.schoolCode': schoolCode 
+    });
+
+    if (!school || !school.data) {
+      logger.error(`School not found: ${schoolCode}`);
+      return null;
+    }
+
+    const bbbUrl = school.data.BBB_URL;
+    const bbbSecret = school.data.BBB_SECRET;
+
+    if (!bbbUrl || !bbbSecret) {
+      logger.error(`BBB configuration not found for school: ${schoolCode}`);
+      return null;
+    }
+
+    return {
+      url: bbbUrl,
+      secret: bbbSecret,
+    };
+  } catch (error) {
+    logger.error(`Error fetching BBB config for school ${schoolCode}:`, error);
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -34,6 +69,22 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Fetch BBB configuration from schools collection
+      const bbbConfig = await getBBBConfig(schoolCode, domain);
+      
+      if (!bbbConfig) {
+        return NextResponse.json(
+          { 
+            error: 'BBB configuration not found for this school',
+            details: 'Please configure BBB_URL and BBB_SECRET in school settings'
+          },
+          { status: 500 }
+        );
+      }
+
+      // Create BBB API instance with school-specific configuration
+      const bbbAPI = new BigBlueButtonAPI(bbbConfig);
+
       // Create unique meeting ID based on school and class
       const meetingID = `${schoolCode}_${classCode}`;
       const meetingName = `${className} - ${schoolCode}`;
@@ -140,6 +191,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const meetingID = searchParams.get('meetingID');
+    const schoolCode = searchParams.get('schoolCode');
 
     if (!meetingID) {
       return NextResponse.json(
@@ -147,6 +199,32 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!schoolCode) {
+      return NextResponse.json(
+        { error: 'schoolCode is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get domain from headers
+    const domain = request.headers.get('x-domain') || 'localhost:3000';
+
+    // Fetch BBB configuration from schools collection
+    const bbbConfig = await getBBBConfig(schoolCode, domain);
+    
+    if (!bbbConfig) {
+      return NextResponse.json(
+        { 
+          error: 'BBB configuration not found for this school',
+          details: 'Please configure BBB_URL and BBB_SECRET in school settings'
+        },
+        { status: 500 }
+      );
+    }
+
+    // Create BBB API instance with school-specific configuration
+    const bbbAPI = new BigBlueButtonAPI(bbbConfig);
 
     const isRunning = await bbbAPI.isMeetingRunning(meetingID);
 
