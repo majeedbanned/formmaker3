@@ -86,7 +86,10 @@ export async function POST(request: NextRequest) {
 
     // Check if user has access to this class
     let hasAccess = false;
-    if (user.userType === "teacher") {
+    if (user.userType === "school") {
+      // School admins can access all classes in their school
+      hasAccess = classData.schoolCode === user.schoolCode;
+    } else if (user.userType === "teacher") {
       hasAccess =
         classData.selectedTeachers?.includes(user.id) ||
         classData.teacherUserIds?.some((tid: number) => {
@@ -102,10 +105,6 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    // For now, allow access if user is in the school
-    // In production, you might want stricter checks
-    hasAccess = true;
-
     if (!hasAccess) {
       return NextResponse.json(
         { success: false, error: "You don't have access to this class" },
@@ -115,15 +114,24 @@ export async function POST(request: NextRequest) {
 
     // Get or find the Skyroom user
     const skyroomClient = new SkyroomApiClient(skyroomApiKey);
-    const skyroomUsername =
-      user.userType === "teacher" ? `teacher-${user.username}` : `student-${user.username}`;
+    
+    // Construct username based on user type
+    let skyroomUsername: string;
+    if (user.userType === "school") {
+      skyroomUsername = `school-${user.username || user.id}`;
+    } else if (user.userType === "teacher") {
+      skyroomUsername = `teacher-${user.username}`;
+    } else {
+      skyroomUsername = `student-${user.username}`;
+    }
 
     let skyroomUser = await skyroomClient.getUser(undefined, skyroomUsername);
 
     // If user doesn't exist in Skyroom, we'll use createLoginUrl with user_id
     // This allows direct login without creating a user account
-    const userIdentifier = `${user.userType}-${user.schoolCode}-${user.username}`;
-    const access = user.userType === "teacher" ? 3 : 1; // 3 = operator, 1 = normal user
+    const userIdentifier = `${user.userType}-${user.schoolCode}-${user.username || user.id}`;
+    // School users and teachers get operator access (3), students get normal access (1)
+    const access = (user.userType === "school" || user.userType === "teacher") ? 3 : 1; // 3 = operator, 1 = normal user
 
     // Generate login URL
     // TTL: 2 hours (7200 seconds) - enough for a class session

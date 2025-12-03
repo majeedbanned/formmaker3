@@ -91,9 +91,15 @@ export default function MySkyroomClassPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Open the join URL in a new tab
-        window.open(data.joinUrl, "_blank");
-        toast.success("در حال انتقال به کلاس...");
+        // School users and teachers: open in new tab
+        // Students: open in same window
+        if (user?.userType === "school" || user?.userType === "teacher") {
+          window.open(data.joinUrl, "_blank");
+          toast.success("در حال انتقال به کلاس...");
+        } else {
+          // Student: redirect in same window
+          window.location.href = data.joinUrl;
+        }
       } else {
         toast.error(data.error || "خطا در ایجاد لینک ورود");
       }
