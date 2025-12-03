@@ -12,6 +12,7 @@ import { DraggableWidget } from "../components/DraggableWidget";
 import { WidgetSelector } from "../components/WidgetSelector";
 import OnboardingStatus from "@/components/OnboardingStatus";
 import AnnouncementProvider from "@/components/AnnouncementProvider";
+import SMSRegistrationModal from "../components/SMSRegistrationModal";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -39,6 +40,7 @@ import {
   QrCode,
   X,
   Smartphone,
+  MessageSquare,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { useSearchParams } from "next/navigation";
@@ -72,6 +74,7 @@ function DashboardContent() {
   const [isOnboardingMinimized, setIsOnboardingMinimized] = useState(false);
   const [qrCodeDataURL, setQRCodeDataURL] = useState<string>("");
   const [hasPassword, setHasPassword] = useState(false);
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -256,6 +259,55 @@ function DashboardContent() {
 
               {/* Customization Controls */}
               <div className="flex items-center gap-3">
+                {user.userType === "school" && (
+                  <motion.button
+                    onClick={() => setIsSMSModalOpen(true)}
+                    className="relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden group"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  >
+                    {/* Smooth gradient shimmer effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                      animate={{
+                        x: ["-100%", "100%"],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                    />
+                    
+                    {/* Subtle pulse on icon */}
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.1, 1],
+                        opacity: [1, 0.8, 1],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <MessageSquare className="h-5 w-5 relative z-10" />
+                    </motion.div>
+                    
+                    <span className="relative z-10">ثبت‌نام SMS</span>
+                    
+                    {/* Subtle glow on hover */}
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-purple-400/20 blur-md"
+                      initial={{ opacity: 0 }}
+                      whileHover={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </motion.button>
+                )}
                 <motion.button
                   onClick={() => setIsCustomizing(!isCustomizing)}
                   className={`
@@ -569,6 +621,12 @@ function DashboardContent() {
         <WidgetSelector
           isOpen={isWidgetSelectorOpen}
           onClose={() => setIsWidgetSelectorOpen(false)}
+        />
+
+        {/* SMS Registration Modal */}
+        <SMSRegistrationModal
+          isOpen={isSMSModalOpen}
+          onClose={() => setIsSMSModalOpen(false)}
         />
 
         {/* Drag Overlay */}
