@@ -78,6 +78,8 @@ export default function SkyroomAdminPage() {
     classTime: "",
     duration: "60",
     maxUsers: "50",
+    classType: "skyroom" as "skyroom" | "googlemeet", // New field for class type
+    googleMeetLink: "", // Google Meet link (manually entered or generated)
     selectedStudents: [] as string[],
     selectedTeachers: [] as string[],
     selectedClasses: [] as string[],
@@ -194,6 +196,14 @@ export default function SkyroomAdminPage() {
           toast.error("لطفاً نام کلاس را وارد کنید");
           return;
         }
+        if (formData.classType === "googlemeet" && !formData.googleMeetLink) {
+          toast.error("لطفاً لینک گوگل میت را وارد کنید");
+          return;
+        }
+        if (formData.classType === "googlemeet" && !formData.googleMeetLink.includes("meet.google.com")) {
+          toast.error("لطفاً یک لینک معتبر گوگل میت وارد کنید (باید شامل meet.google.com باشد)");
+          return;
+        }
         if (!scheduleSlots.length) {
           toast.error("لطفاً حداقل یک روز و ساعت برگزاری کلاس را مشخص کنید");
           return;
@@ -269,6 +279,8 @@ export default function SkyroomAdminPage() {
           classTime: formData.classTime,
           duration: Number(formData.duration) || 60,
           maxUsers: Number(formData.maxUsers) || 50,
+          classType: formData.classType,
+          googleMeetLink: formData.googleMeetLink,
           selectedStudents: formData.selectedStudents,
           selectedTeachers: formData.selectedTeachers,
           selectedClasses: formData.selectedClasses,
@@ -298,8 +310,8 @@ export default function SkyroomAdminPage() {
       if (response.ok && data.success) {
         toast.success(
           isEdit
-            ? "کلاس اسکای‌روم با موفقیت ویرایش شد"
-            : "کلاس اسکای‌روم با موفقیت ایجاد شد"
+            ? "کلاس آنلاین با موفقیت ویرایش شد"
+            : "کلاس آنلاین با موفقیت ایجاد شد"
         );
         // Refresh list of Skyroom classes
         fetchSkyroomClasses();
@@ -313,6 +325,8 @@ export default function SkyroomAdminPage() {
           classTime: "",
           duration: "60",
           maxUsers: "50",
+          classType: "skyroom",
+          googleMeetLink: "",
           selectedStudents: [],
           selectedTeachers: [],
           selectedClasses: [],
@@ -385,8 +399,8 @@ export default function SkyroomAdminPage() {
   return (
     <div dir="rtl" className="container mx-auto px-4 py-8">
       <PageHeader
-        title="مدیریت کلاس‌های اسکای‌روم"
-        subtitle="ایجاد و مدیریت کلاس‌های آنلاین اسکای‌روم"
+        title="مدیریت کلاس‌های آنلاین"
+        subtitle="ایجاد و مدیریت کلاس‌های آنلاین (اسکای‌روم و گوگل میت)"
         icon={<VideoIcon className="w-6 h-6" />}
         gradient={true}
       />
@@ -395,14 +409,14 @@ export default function SkyroomAdminPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>
-              {editingClassId ? "ویرایش کلاس اسکای‌روم" : "ایجاد کلاس جدید"}
+              {editingClassId ? "ویرایش کلاس آنلاین" : "ایجاد کلاس جدید"}
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <span>مرحله {currentStep} از {totalSteps}</span>
             </div>
           </div>
           <CardDescription>
-            از طریق این فرم می‌توانید کلاس‌های آنلاین اسکای‌روم را ایجاد کنید
+            از طریق این فرم می‌توانید کلاس‌های آنلاین (اسکای‌روم یا گوگل میت) را ایجاد کنید
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -445,6 +459,56 @@ export default function SkyroomAdminPage() {
           {/* Step 1: Class Details & Weekly Schedule */}
           {currentStep === 1 && (
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="classType">نوع کلاس آنلاین *</Label>
+                <Select
+                  value={formData.classType}
+                  onValueChange={(value: "skyroom" | "googlemeet") =>
+                    setFormData({ ...formData, classType: value, googleMeetLink: "" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب نوع کلاس" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="skyroom">اسکای‌روم (Skyroom)</SelectItem>
+                    <SelectItem value="googlemeet">گوگل میت (Google Meet)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.classType === "skyroom"
+                    ? "برای استفاده از اسکای‌روم، کلید API باید در تنظیمات مدرسه فعال باشد"
+                    : "لطفاً لینک گوگل میت را وارد کنید یا از گوگل میت یک لینک ایجاد کنید"}
+                </p>
+              </div>
+
+              {formData.classType === "googlemeet" && (
+                <div>
+                  <Label htmlFor="googleMeetLink">لینک گوگل میت *</Label>
+                  <Input
+                    id="googleMeetLink"
+                    type="text"
+                    placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                    value={formData.googleMeetLink}
+                    onChange={(e) =>
+                      setFormData({ ...formData, googleMeetLink: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    برای ایجاد لینک:{" "}
+                    <a
+                      href="https://meet.google.com/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      اینجا کلیک کنید
+                    </a>{" "}
+                    و لینک ایجاد شده را اینجا وارد کنید
+                  </p>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="className">نام کلاس *</Label>
                 <Input
@@ -843,9 +907,9 @@ export default function SkyroomAdminPage() {
         {/* Existing Skyroom classes list */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>کلاس‌های اسکای‌روم ایجاد شده</CardTitle>
+          <CardTitle>کلاس‌های آنلاین ایجاد شده</CardTitle>
           <CardDescription>
-            در این بخش می‌توانید کلاس‌های اسکای‌روم موجود را مشاهده و ویرایش یا حذف کنید.
+            در این بخش می‌توانید کلاس‌های آنلاین موجود را مشاهده و ویرایش یا حذف کنید.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -914,6 +978,8 @@ export default function SkyroomAdminPage() {
                           classTime: cls.classTime || "",
                           duration: String(cls.duration || 60),
                           maxUsers: String(cls.maxUsers || 50),
+                          classType: cls.classType || "skyroom",
+                          googleMeetLink: cls.googleMeetLink || "",
                           selectedStudents: cls.selectedStudents || [],
                           selectedTeachers: cls.selectedTeachers || [],
                           selectedClasses: normalizedSelectedClasses,

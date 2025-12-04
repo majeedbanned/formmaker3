@@ -31,27 +31,6 @@ export async function POST(request: NextRequest) {
     }
 
     const connection = await connectToDatabase(domain);
-
-    // Read Skyroom API key from schools collection
-    const schoolsCollection = connection.collection("schools");
-    const school = await schoolsCollection.findOne({
-      "data.schoolCode": user.schoolCode,
-    });
-
-    const skyroomApiKey: string | undefined =
-      school?.data?.skyroomapikey || school?.data?.skyroomApiKey;
-
-    if (!skyroomApiKey || skyroomApiKey.length !== 50) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "کلید API اسکای‌روم برای این مدرسه تنظیم نشده است. لطفاً از بخش تنظیمات مدرسه آن را فعال کنید.",
-        },
-        { status: 400 }
-      );
-    }
-
     const classesCollection = connection.collection("skyroomclasses");
 
     if (!ObjectId.isValid(classId)) {
@@ -75,6 +54,74 @@ export async function POST(request: NextRequest) {
     }
 
     const classData = classDoc.data;
+    const classType = classData.classType || "skyroom";
+
+    // Handle Google Meet classes (just return the stored link)
+    if (classType === "googlemeet") {
+      const googleMeetLink = classData.googleMeetLink;
+      
+      if (!googleMeetLink) {
+        return NextResponse.json(
+          { success: false, error: "Google Meet link not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user has access to this class
+      let hasAccess = false;
+      if (user.userType === "school") {
+        hasAccess = classData.schoolCode === user.schoolCode;
+      } else if (user.userType === "teacher") {
+        hasAccess = classData.selectedTeachers?.includes(user.id) || false;
+      } else if (user.userType === "student") {
+        hasAccess = classData.selectedStudents?.includes(user.id) || false;
+        
+        // Also check if student's class is in selectedClasses
+        if (!hasAccess) {
+          const studentsCollection = connection.collection("students");
+          const student = await studentsCollection.findOne({
+            _id: new ObjectId(user.id),
+            "data.schoolCode": user.schoolCode,
+          });
+          
+          const studentClassCodes = student?.data?.classCode || [];
+          let normalizedCodes: string[] = [];
+          
+          if (Array.isArray(studentClassCodes)) {
+            normalizedCodes = studentClassCodes
+              .map((item: any) => {
+                if (typeof item === "string") return item;
+                if (item && typeof item.value === "string") return item.value;
+                return null;
+              })
+              .filter((v: string | null): v is string => !!v);
+          }
+          
+          hasAccess = classData.selectedClasses?.some((code: string) =>
+            normalizedCodes.includes(code)
+          ) || false;
+        }
+      }
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { success: false, error: "You don't have access to this class" },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        joinUrl: googleMeetLink,
+        classData: {
+          className: classData.className,
+          classDate: classData.classDate,
+          classTime: classData.classTime,
+        },
+      });
+    }
+
+    // Handle Skyroom classes (existing logic)
     const roomId = classData.skyroomRoomId;
 
     if (!roomId) {
@@ -109,6 +156,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: "You don't have access to this class" },
         { status: 403 }
+      );
+    }
+
+    // Read Skyroom API key from schools collection (only needed for Skyroom classes)
+    const schoolsCollection = connection.collection("schools");
+    const school = await schoolsCollection.findOne({
+      "data.schoolCode": user.schoolCode,
+    });
+
+    const skyroomApiKey: string | undefined =
+      school?.data?.skyroomapikey || school?.data?.skyroomApiKey;
+
+    if (!skyroomApiKey || skyroomApiKey.length !== 50) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "کلید API اسکای‌روم برای این مدرسه تنظیم نشده است. لطفاً از بخش تنظیمات مدرسه آن را فعال کنید.",
+        },
+        { status: 400 }
       );
     }
 
