@@ -226,18 +226,64 @@ export async function POST(request: NextRequest) {
           joinUrl = `${adobeServerUrl}/${adobeConnectUrlPath}`;
         }
       } else if (user.userType === "school") {
-        // School admin - use admin session
+        // School admin - create/get school user account and join with school name
         try {
           const adobeClient = new AdobeConnectApiClient(
             adobeServerUrl,
             adobeAdminUsername,
             adobeAdminPassword
           );
-          await adobeClient.login();
-          joinUrl = await adobeClient.generateAuthenticatedUrl(adobeConnectUrlPath);
-          logger.info(`[AdobeConnect] School admin joining with admin session`);
+
+          // Get school info for the name
+          const school = await schoolsCollection.findOne({
+            "data.schoolCode": user.schoolCode,
+          });
+          const schoolName = school?.data?.schoolName || school?.data?.name || `مدرسه ${user.schoolCode}`;
+
+          const schoolLogin = `school-${user.schoolCode}`;
+          const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+            login: schoolLogin,
+            password: adobeUserDefaultPassword,
+            firstName: schoolName,
+            lastName: "(مدیر)",
+          });
+
+          // Add school user as host to the meeting
+          await adobeClient.addUserToMeeting(
+            classData.adobeConnectScoId,
+            principalId,
+            "host"
+          );
+
+          // Update the mappings in the database if not already present
+          const existingMapping = adobeUserMappings.find(
+            (m: any) => m.odUserId === user.id && m.role === "school"
+          );
+          if (!existingMapping) {
+            await classesCollection.updateOne(
+              { _id: new ObjectId(classId) },
+              {
+                $push: {
+                  "data.adobeConnectUserMappings": {
+                    odUserId: user.id,
+                    adobePrincipalId: principalId,
+                    role: "school",
+                    login: actualLogin,
+                  },
+                },
+              } as any
+            );
+          }
+
+          // Create session for the school user
+          joinUrl = await adobeClient.createUserSession(
+            actualLogin,
+            adobeUserDefaultPassword,
+            adobeConnectUrlPath
+          );
+          logger.info(`[AdobeConnect] School admin joining as: ${schoolName} (${actualLogin})`);
         } catch (err) {
-          logger.warn(`[AdobeConnect] Failed to create admin session, falling back to direct URL:`, err);
+          logger.warn(`[AdobeConnect] Failed to create school user session, falling back to direct URL:`, err);
           joinUrl = `${adobeServerUrl}/${adobeConnectUrlPath}`;
         }
       } else {
@@ -303,7 +349,7 @@ export async function POST(request: NextRequest) {
                   login: actualLogin, // Use actual login (email) for session creation
                 },
               },
-            }
+            } as any
           );
 
           // Create session for the user

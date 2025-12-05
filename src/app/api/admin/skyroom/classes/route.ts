@@ -780,15 +780,24 @@ export async function PUT(request: NextRequest) {
       updateFields["data.scheduleSlots"] = scheduleSlots;
     }
 
-    // Participants: selected students and teachers (store ids as-is)
-    if (Array.isArray(selectedStudents)) {
-      updateFields["data.selectedStudents"] = selectedStudents;
-    }
-    if (Array.isArray(selectedTeachers)) {
-      updateFields["data.selectedTeachers"] = selectedTeachers;
+    // Get the existing class to check if it's Adobe Connect and to compare participants
+    const existingClass = await collection.findOne({
+      _id: new ObjectId(classId),
+      "data.schoolCode": user.schoolCode,
+    });
+
+    if (!existingClass) {
+      return NextResponse.json(
+        { success: false, error: "Class not found" },
+        { status: 404 }
+      );
     }
 
-    // Participants: selected classes – convert ids to classCode like in POST
+    const existingData = existingClass.data || {};
+    const isAdobeConnect = existingData.classType === "adobeconnect";
+
+    // Convert selected classes to class codes
+    let newSelectedClassCodes: string[] = [];
     if (Array.isArray(selectedClasses)) {
       const classesCollection = connection.collection("classes");
       const selectedClassDocs = await classesCollection
@@ -803,12 +812,236 @@ export async function PUT(request: NextRequest) {
         .project({ "data.classCode": 1 })
         .toArray();
 
-      const selectedClassCodes = selectedClassDocs
+      newSelectedClassCodes = selectedClassDocs
         .map((cls: any) => cls.data?.classCode as string | undefined)
         .filter((code): code is string => !!code);
+    }
 
+    // Participants: selected students and teachers (store ids as-is)
+    if (Array.isArray(selectedStudents)) {
+      updateFields["data.selectedStudents"] = selectedStudents;
+    }
+    if (Array.isArray(selectedTeachers)) {
+      updateFields["data.selectedTeachers"] = selectedTeachers;
+    }
+    if (Array.isArray(selectedClasses)) {
       updateFields["data.selectedClasses"] =
-        selectedClassCodes.length > 0 ? selectedClassCodes : selectedClasses;
+        newSelectedClassCodes.length > 0 ? newSelectedClassCodes : selectedClasses;
+    }
+
+    // For Adobe Connect classes, sync users when teachers/students/classes change
+    if (isAdobeConnect && existingData.adobeConnectScoId) {
+      const schoolsCollection = connection.collection("schools");
+      const school = await schoolsCollection.findOne({
+        "data.schoolCode": user.schoolCode,
+      });
+
+      const adobeServerUrl =
+        school?.data?.adobeConnectServerUrl || "https://adobe.farsamooz.ir";
+      const adobeAdminUsername =
+        school?.data?.adobeConnectUsername || "admin@gmail.com";
+      const adobeAdminPassword =
+        school?.data?.adobeConnectPassword || "357611123qwe!@#QQ";
+      const adobeUserDefaultPassword =
+        school?.data?.adobeConnectUserPassword || "Aa@123456";
+
+      try {
+        const adobeClient = new AdobeConnectApiClient(
+          adobeServerUrl,
+          adobeAdminUsername,
+          adobeAdminPassword
+        );
+
+        const scoId = existingData.adobeConnectScoId;
+        const existingMappings = existingData.adobeConnectUserMappings || [];
+        const newMappings = [...existingMappings];
+
+        // Get old and new teacher IDs
+        const oldTeacherIds = existingData.selectedTeachers || [];
+        const newTeacherIds = Array.isArray(selectedTeachers)
+          ? selectedTeachers
+          : oldTeacherIds;
+
+        // Find newly added teachers
+        const addedTeacherIds = newTeacherIds.filter(
+          (id: string) => !oldTeacherIds.includes(id)
+        );
+
+        // Find removed teachers
+        const removedTeacherIds = oldTeacherIds.filter(
+          (id: string) => !newTeacherIds.includes(id)
+        );
+
+        // Process newly added teachers
+        if (addedTeacherIds.length > 0) {
+          const teachersCollection = connection.collection("teachers");
+          const addedTeachers = await teachersCollection
+            .find({
+              _id: { $in: addedTeacherIds.map((id: string) => new ObjectId(id)) },
+              "data.schoolCode": user.schoolCode,
+            })
+            .toArray();
+
+          for (const teacher of addedTeachers) {
+            try {
+              const teacherLogin = `teacher-${user.schoolCode}-${teacher.data.teacherCode || teacher._id.toString()}`;
+              const firstName = teacher.data.teacherName || "معلم";
+              const lastName = teacher.data.teacherFamily || teacher.data.teacherCode || "";
+
+              const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+                login: teacherLogin,
+                password: adobeUserDefaultPassword,
+                firstName,
+                lastName,
+              });
+
+              await adobeClient.addUserToMeeting(scoId, principalId, "host");
+
+              // Add to mappings if not already present
+              if (!newMappings.some((m: any) => m.odUserId === teacher._id.toString())) {
+                newMappings.push({
+                  odUserId: teacher._id.toString(),
+                  adobePrincipalId: principalId,
+                  role: "teacher",
+                  login: actualLogin,
+                });
+              }
+              logger.info(`[AdobeConnect] Added teacher ${actualLogin} to meeting ${scoId}`);
+            } catch (err) {
+              logger.warn(`[AdobeConnect] Failed to add teacher ${teacher._id}:`, err);
+            }
+          }
+        }
+
+        // Remove access for removed teachers
+        for (const teacherId of removedTeacherIds) {
+          const mapping = existingMappings.find(
+            (m: any) => m.odUserId === teacherId && m.role === "teacher"
+          );
+          if (mapping) {
+            try {
+              await adobeClient.addUserToMeeting(scoId, mapping.adobePrincipalId, "remove");
+              logger.info(`[AdobeConnect] Removed teacher ${mapping.login} from meeting ${scoId}`);
+            } catch (err) {
+              logger.warn(`[AdobeConnect] Failed to remove teacher access:`, err);
+            }
+          }
+        }
+
+        // Get old and new class codes for student comparison
+        const oldClassCodes = existingData.selectedClasses || [];
+        const newClassCodes = newSelectedClassCodes.length > 0
+          ? newSelectedClassCodes
+          : (Array.isArray(selectedClasses) ? selectedClasses : oldClassCodes);
+
+        // Find newly added class codes
+        const addedClassCodes = newClassCodes.filter(
+          (code: string) => !oldClassCodes.includes(code)
+        );
+
+        // Find removed class codes
+        const removedClassCodes = oldClassCodes.filter(
+          (code: string) => !newClassCodes.includes(code)
+        );
+
+        // Process students from newly added classes
+        if (addedClassCodes.length > 0) {
+          const studentsCollection = connection.collection("students");
+          const addedStudents = await studentsCollection
+            .find({
+              "data.schoolCode": user.schoolCode,
+              $or: [
+                { "data.classCode": { $in: addedClassCodes } },
+                { "data.classCode.value": { $in: addedClassCodes } },
+              ],
+            })
+            .toArray();
+
+          for (const student of addedStudents) {
+            // Skip if already in mappings
+            if (newMappings.some((m: any) => m.odUserId === student._id.toString())) {
+              continue;
+            }
+
+            try {
+              const studentLogin = `student-${user.schoolCode}-${student.data.studentCode || student._id.toString()}`;
+              const firstName = student.data.studentName || "دانش‌آموز";
+              const lastName = student.data.studentFamily || student.data.studentCode || "";
+
+              const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+                login: studentLogin,
+                password: adobeUserDefaultPassword,
+                firstName,
+                lastName,
+              });
+
+              await adobeClient.addUserToMeeting(scoId, principalId, "view");
+
+              newMappings.push({
+                odUserId: student._id.toString(),
+                adobePrincipalId: principalId,
+                role: "student",
+                login: actualLogin,
+              });
+              logger.info(`[AdobeConnect] Added student ${actualLogin} to meeting ${scoId}`);
+            } catch (err) {
+              logger.warn(`[AdobeConnect] Failed to add student ${student._id}:`, err);
+            }
+          }
+        }
+
+        // Remove access for students from removed classes
+        if (removedClassCodes.length > 0) {
+          const studentsCollection = connection.collection("students");
+          const removedStudents = await studentsCollection
+            .find({
+              "data.schoolCode": user.schoolCode,
+              $or: [
+                { "data.classCode": { $in: removedClassCodes } },
+                { "data.classCode.value": { $in: removedClassCodes } },
+              ],
+            })
+            .toArray();
+
+          for (const student of removedStudents) {
+            // Check if student is still in a selected class
+            const studentClassCodes: string[] = [];
+            const rawClassCode = student.data?.classCode;
+            if (Array.isArray(rawClassCode)) {
+              rawClassCode.forEach((item: any) => {
+                if (typeof item === "string") studentClassCodes.push(item);
+                else if (item?.value) studentClassCodes.push(item.value);
+              });
+            } else if (typeof rawClassCode === "string") {
+              studentClassCodes.push(rawClassCode);
+            }
+
+            const stillInClass = studentClassCodes.some((code) =>
+              newClassCodes.includes(code)
+            );
+            if (stillInClass) continue;
+
+            const mapping = existingMappings.find(
+              (m: any) => m.odUserId === student._id.toString() && m.role === "student"
+            );
+            if (mapping) {
+              try {
+                await adobeClient.addUserToMeeting(scoId, mapping.adobePrincipalId, "remove");
+                logger.info(`[AdobeConnect] Removed student ${mapping.login} from meeting ${scoId}`);
+              } catch (err) {
+                logger.warn(`[AdobeConnect] Failed to remove student access:`, err);
+              }
+            }
+          }
+        }
+
+        // Update mappings in the database
+        updateFields["data.adobeConnectUserMappings"] = newMappings;
+
+      } catch (err) {
+        logger.error("[AdobeConnect] Error syncing users on edit:", err);
+        // Continue with update even if Adobe Connect sync fails
+      }
     }
 
     await collection.updateOne(
