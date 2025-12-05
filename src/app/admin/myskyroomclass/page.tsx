@@ -28,11 +28,13 @@ interface SkyroomClass {
   className: string;
   classDescription?: string;
   maxUsers: number;
-  classType?: "skyroom" | "googlemeet" | "adobeconnect";
+  classType?: "skyroom" | "googlemeet" | "adobeconnect" | "bigbluebutton";
   skyroomRoomId?: number;
   googleMeetLink?: string;
   adobeConnectUrl?: string;
   adobeConnectScoId?: string;
+  bbbMeetingID?: string;
+  bbbMeetingName?: string;
   scheduleSlots?: ScheduleSlot[];
   nextDate: string;      // ISO string of next occurrence
   nextWeekday: string;   // sat/sun/...
@@ -296,8 +298,8 @@ export default function MySkyroomClassPage() {
         }
         subtitle={
           user.userType === "school"
-            ? "مشاهده و ورود به تمام کلاس‌های آنلاین این مدرسه (اسکای‌روم، گوگل میت و ادوبی کانکت)"
-            : "مشاهده و ورود به کلاس‌های آنلاین (اسکای‌روم، گوگل میت و ادوبی کانکت)"
+            ? "مشاهده و ورود به تمام کلاس‌های آنلاین این مدرسه (اسکای‌روم، گوگل میت، ادوبی کانکت و بیگ بلو باتن)"
+            : "مشاهده و ورود به کلاس‌های آنلاین (اسکای‌روم، گوگل میت، ادوبی کانکت و بیگ بلو باتن)"
         }
         icon={<VideoIcon className="w-6 h-6" />}
         gradient={true}
@@ -376,6 +378,11 @@ export default function MySkyroomClassPage() {
                                   {classItem.classType === "adobeconnect" && (
                                     <Badge variant="outline" className="text-[10px] px-1 py-0 bg-red-50 text-red-700 border-red-200">
                                       Adobe Connect
+                                    </Badge>
+                                  )}
+                                  {classItem.classType === "bigbluebutton" && (
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-50 text-purple-700 border-purple-200">
+                                      BigBlueButton
                                     </Badge>
                                   )}
                                   {(!classItem.classType || classItem.classType === "skyroom") && (

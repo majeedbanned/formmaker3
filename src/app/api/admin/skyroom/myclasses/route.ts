@@ -197,6 +197,8 @@ export async function GET(request: NextRequest) {
           googleMeetLink: data.googleMeetLink,
           adobeConnectUrl: data.adobeConnectUrl,
           adobeConnectScoId: data.adobeConnectScoId,
+          bbbMeetingID: data.bbbMeetingID,
+          bbbMeetingName: data.bbbMeetingName,
           scheduleSlots: data.scheduleSlots || [],
           nextDate: next.date.toISOString(),
           nextWeekday: next.weekday,

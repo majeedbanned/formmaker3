@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { SkyroomApiClient } from "@/lib/skyroom";
 import { AdobeConnectApiClient } from "@/lib/adobeconnect";
+import { BigBlueButtonApiClient } from "@/lib/bigbluebutton";
 import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/app/api/chatbot7/config/route";
@@ -118,9 +119,10 @@ export async function POST(request: NextRequest) {
       selectedStudents,
       selectedTeachers,
       selectedClasses,
-      classType = "skyroom", // "skyroom", "googlemeet", or "adobeconnect"
+      classType = "skyroom", // "skyroom", "googlemeet", "adobeconnect", or "bigbluebutton"
       googleMeetLink, // Google Meet link (manually entered)
       adobeConnectMeetingName, // Adobe Connect meeting name (optional)
+      bbbWelcomeMessage, // BigBlueButton welcome message (optional)
       // skyroomApiKey is ignored; we read from schools collection instead
       scheduleSlots, // optional: weekly schedule from UI
     } = body;
@@ -453,6 +455,114 @@ export async function POST(request: NextRequest) {
             error:
               error.message ||
               "خطا در ایجاد جلسه ادوبی کانکت. لطفاً تنظیمات سرور را بررسی کنید.",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle BigBlueButton classes
+    if (classType === "bigbluebutton") {
+      // Get BigBlueButton credentials from schools collection
+      const schoolsCollection = connection.collection("schools");
+      const school = await schoolsCollection.findOne({
+        "data.schoolCode": user.schoolCode,
+      });
+
+      const bbbUrl = school?.data?.BBB_URL;
+      const bbbSecret = school?.data?.BBB_SECRET;
+
+      if (!bbbUrl || !bbbSecret) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "تنظیمات بیگ بلو باتن برای این مدرسه یافت نشد. لطفاً BBB_URL و BBB_SECRET را در تنظیمات مدرسه وارد کنید.",
+          },
+          { status: 400 }
+        );
+      }
+
+      try {
+        // Create BigBlueButton client
+        const bbbClient = new BigBlueButtonApiClient(bbbUrl, bbbSecret);
+
+        // Create the meeting
+        const meeting = await bbbClient.createMeeting({
+          name: className,
+          welcome: bbbWelcomeMessage || `به کلاس ${className} خوش آمدید!`,
+          maxParticipants: typeof maxUsers === "number" ? maxUsers : parseInt(maxUsers || "50", 10),
+          duration: typeof duration === "number" ? duration : parseInt(duration || "60", 10),
+          record: false,
+        });
+
+        // Get students from selected classes (by classCode)
+        let selectedClassCodes: string[] = [];
+        if (selectedClasses && selectedClasses.length > 0) {
+          const classesCollection = connection.collection("classes");
+          const selectedClassDocs = await classesCollection
+            .find({
+              _id: { $in: selectedClasses.map((id: string) => new ObjectId(id)) },
+              "data.schoolCode": user.schoolCode,
+            })
+            .project({ "data.classCode": 1 })
+            .toArray();
+
+          selectedClassCodes = selectedClassDocs
+            .map((cls) => cls.data?.classCode as string | undefined)
+            .filter((code): code is string => !!code);
+        }
+
+        // Store BigBlueButton class information in database
+        const classData = {
+          schoolCode: user.schoolCode,
+          className,
+          classDescription: classDescription || "",
+          classDate,
+          classTime,
+          duration: duration || 60,
+          maxUsers: maxUsers || 50,
+          classType: "bigbluebutton",
+          bbbMeetingID: meeting.meetingID,
+          bbbMeetingName: meeting.meetingName,
+          bbbAttendeePW: meeting.attendeePW,
+          bbbModeratorPW: meeting.moderatorPW,
+          bbbWelcomeMessage: bbbWelcomeMessage || "",
+          // explicit student selections by _id
+          selectedStudents: selectedStudents || [],
+          selectedTeachers: selectedTeachers || [],
+          // store class codes (not ids) for matching with students later
+          selectedClasses: selectedClassCodes.length
+            ? selectedClassCodes
+            : selectedClasses || [],
+          // store weekly schedule if provided
+          scheduleSlots: Array.isArray(scheduleSlots) ? scheduleSlots : [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const classesCollection = connection.collection("skyroomclasses");
+        const result = await classesCollection.insertOne({
+          data: classData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        return NextResponse.json({
+          success: true,
+          class: {
+            _id: result.insertedId.toString(),
+            ...classData,
+          },
+        });
+      } catch (error: any) {
+        logger.error("Error creating BigBlueButton meeting:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              error.message ||
+              "خطا در ایجاد جلسه بیگ بلو باتن. لطفاً تنظیمات سرور را بررسی کنید.",
           },
           { status: 500 }
         );

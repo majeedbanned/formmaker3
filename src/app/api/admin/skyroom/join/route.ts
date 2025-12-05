@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { SkyroomApiClient } from "@/lib/skyroom";
 import { AdobeConnectApiClient } from "@/lib/adobeconnect";
+import { BigBlueButtonApiClient } from "@/lib/bigbluebutton";
 import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/app/api/chatbot7/config/route";
@@ -374,6 +375,160 @@ export async function POST(request: NextRequest) {
           classTime: classData.classTime,
         },
       });
+    }
+
+    // Handle BigBlueButton classes
+    if (classType === "bigbluebutton") {
+      const bbbMeetingID = classData.bbbMeetingID;
+      const bbbAttendeePW = classData.bbbAttendeePW;
+      const bbbModeratorPW = classData.bbbModeratorPW;
+
+      if (!bbbMeetingID) {
+        return NextResponse.json(
+          { success: false, error: "BigBlueButton meeting ID not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user has access to this class
+      let hasAccess = false;
+      if (user.userType === "school") {
+        hasAccess = classData.schoolCode === user.schoolCode;
+      } else if (user.userType === "teacher") {
+        hasAccess = classData.selectedTeachers?.includes(user.id) || false;
+      } else if (user.userType === "student") {
+        hasAccess = classData.selectedStudents?.includes(user.id) || false;
+        
+        // Also check if student's class is in selectedClasses
+        if (!hasAccess) {
+          const studentsCollection = connection.collection("students");
+          const student = await studentsCollection.findOne({
+            _id: new ObjectId(user.id),
+            "data.schoolCode": user.schoolCode,
+          });
+          
+          const studentClassCodes = student?.data?.classCode || [];
+          let normalizedCodes: string[] = [];
+          
+          if (Array.isArray(studentClassCodes)) {
+            normalizedCodes = studentClassCodes
+              .map((item: any) => {
+                if (typeof item === "string") return item;
+                if (item && typeof item.value === "string") return item.value;
+                return null;
+              })
+              .filter((v: string | null): v is string => !!v);
+          }
+          
+          hasAccess = classData.selectedClasses?.some((code: string) =>
+            normalizedCodes.includes(code)
+          ) || false;
+        }
+      }
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { success: false, error: "You don't have access to this class" },
+          { status: 403 }
+        );
+      }
+
+      // Get BBB credentials from schools collection
+      const schoolsCollection = connection.collection("schools");
+      const school = await schoolsCollection.findOne({
+        "data.schoolCode": user.schoolCode,
+      });
+
+      const bbbUrl = school?.data?.BBB_URL;
+      const bbbSecret = school?.data?.BBB_SECRET;
+
+      if (!bbbUrl || !bbbSecret) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "تنظیمات بیگ بلو باتن برای این مدرسه یافت نشد",
+          },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const bbbClient = new BigBlueButtonApiClient(bbbUrl, bbbSecret);
+
+        // First, ensure the meeting is created/exists (BBB meetings expire when empty)
+        await bbbClient.createMeeting({
+          meetingID: bbbMeetingID,
+          name: classData.className || "کلاس آنلاین",
+          attendeePW: bbbAttendeePW,
+          moderatorPW: bbbModeratorPW,
+          welcome: classData.bbbWelcomeMessage || `به کلاس ${classData.className} خوش آمدید!`,
+          maxParticipants: classData.maxUsers || 50,
+          duration: classData.duration || 60,
+        });
+
+        // Determine user's name and role
+        let fullName: string;
+        let password: string;
+
+        if (user.userType === "school") {
+          // School admin is moderator
+          const schoolName = school?.data?.schoolName || school?.data?.name || `مدرسه ${user.schoolCode}`;
+          fullName = `${schoolName} (مدیر)`;
+          password = bbbModeratorPW;
+        } else if (user.userType === "teacher") {
+          // Teacher is moderator
+          const teachersCollection = connection.collection("teachers");
+          const teacher = await teachersCollection.findOne({
+            _id: new ObjectId(user.id),
+            "data.schoolCode": user.schoolCode,
+          });
+          fullName = teacher?.data?.teacherName
+            ? `${teacher.data.teacherName} ${teacher.data.teacherFamily || ""}`.trim()
+            : "معلم";
+          password = bbbModeratorPW;
+        } else {
+          // Student is attendee
+          const studentsCollection = connection.collection("students");
+          const student = await studentsCollection.findOne({
+            _id: new ObjectId(user.id),
+            "data.schoolCode": user.schoolCode,
+          });
+          fullName = student?.data?.studentName
+            ? `${student.data.studentName} ${student.data.studentFamily || ""}`.trim()
+            : "دانش‌آموز";
+          password = bbbAttendeePW;
+        }
+
+        // Generate join URL
+        const joinUrl = bbbClient.getJoinUrl({
+          meetingID: bbbMeetingID,
+          fullName,
+          password,
+          userID: user.id,
+        });
+
+        logger.info(`[BBB] Generated join URL for ${user.userType} ${user.id}`);
+
+        return NextResponse.json({
+          success: true,
+          joinUrl,
+          classData: {
+            className: classData.className,
+            classDate: classData.classDate,
+            classTime: classData.classTime,
+            classType: classData.classType,
+          },
+        });
+      } catch (error: any) {
+        logger.error("Error generating BBB join URL:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: error.message || "خطا در ایجاد لینک ورود به کلاس بیگ بلو باتن",
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Handle Skyroom classes (existing logic)

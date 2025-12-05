@@ -78,9 +78,10 @@ export default function SkyroomAdminPage() {
     classTime: "",
     duration: "60",
     maxUsers: "50",
-    classType: "skyroom" as "skyroom" | "googlemeet" | "adobeconnect", // New field for class type
+    classType: "skyroom" as "skyroom" | "googlemeet" | "adobeconnect" | "bigbluebutton", // New field for class type
     googleMeetLink: "", // Google Meet link (manually entered or generated)
     adobeConnectMeetingName: "", // Adobe Connect meeting name (optional, defaults to className)
+    bbbWelcomeMessage: "", // BigBlueButton welcome message (optional)
     selectedStudents: [] as string[],
     selectedTeachers: [] as string[],
     selectedClasses: [] as string[],
@@ -329,6 +330,7 @@ export default function SkyroomAdminPage() {
           classType: "skyroom",
           googleMeetLink: "",
           adobeConnectMeetingName: "",
+          bbbWelcomeMessage: "",
           selectedStudents: [],
           selectedTeachers: [],
           selectedClasses: [],
@@ -402,7 +404,7 @@ export default function SkyroomAdminPage() {
     <div dir="rtl" className="container mx-auto px-4 py-8">
       <PageHeader
         title="مدیریت کلاس‌های آنلاین"
-        subtitle="ایجاد و مدیریت کلاس‌های آنلاین (اسکای‌روم، گوگل میت و ادوبی کانکت)"
+        subtitle="ایجاد و مدیریت کلاس‌های آنلاین (اسکای‌روم، گوگل میت، ادوبی کانکت و بیگ بلو باتن)"
         icon={<VideoIcon className="w-6 h-6" />}
         gradient={true}
       />
@@ -465,8 +467,8 @@ export default function SkyroomAdminPage() {
                 <Label htmlFor="classType">نوع کلاس آنلاین *</Label>
                 <Select
                   value={formData.classType}
-                  onValueChange={(value: "skyroom" | "googlemeet" | "adobeconnect") =>
-                    setFormData({ ...formData, classType: value, googleMeetLink: "", adobeConnectMeetingName: "" })
+                  onValueChange={(value: "skyroom" | "googlemeet" | "adobeconnect" | "bigbluebutton") =>
+                    setFormData({ ...formData, classType: value, googleMeetLink: "", adobeConnectMeetingName: "", bbbWelcomeMessage: "" })
                   }
                 >
                   <SelectTrigger>
@@ -476,6 +478,7 @@ export default function SkyroomAdminPage() {
                     <SelectItem value="skyroom">اسکای‌روم (Skyroom)</SelectItem>
                     <SelectItem value="googlemeet">گوگل میت (Google Meet)</SelectItem>
                     <SelectItem value="adobeconnect">ادوبی کانکت (Adobe Connect)</SelectItem>
+                    <SelectItem value="bigbluebutton">بیگ بلو باتن (BigBlueButton)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
@@ -483,7 +486,9 @@ export default function SkyroomAdminPage() {
                     ? "برای استفاده از اسکای‌روم، کلید API باید در تنظیمات مدرسه فعال باشد"
                     : formData.classType === "googlemeet"
                     ? "لطفاً لینک گوگل میت را وارد کنید یا از گوگل میت یک لینک ایجاد کنید"
-                    : "جلسه ادوبی کانکت به صورت خودکار ایجاد می‌شود"}
+                    : formData.classType === "adobeconnect"
+                    ? "جلسه ادوبی کانکت به صورت خودکار ایجاد می‌شود"
+                    : "جلسه بیگ بلو باتن به صورت خودکار ایجاد می‌شود. نیاز به تنظیم BBB_URL و BBB_SECRET در تنظیمات مدرسه"}
                 </p>
               </div>
 
@@ -510,6 +515,24 @@ export default function SkyroomAdminPage() {
                       اینجا کلیک کنید
                     </a>{" "}
                     و لینک ایجاد شده را اینجا وارد کنید
+                  </p>
+                </div>
+              )}
+
+              {formData.classType === "bigbluebutton" && (
+                <div>
+                  <Label htmlFor="bbbWelcomeMessage">پیام خوش‌آمدگویی (اختیاری)</Label>
+                  <Input
+                    id="bbbWelcomeMessage"
+                    type="text"
+                    placeholder="مثال: به کلاس ریاضی خوش آمدید!"
+                    value={formData.bbbWelcomeMessage}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bbbWelcomeMessage: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    این پیام هنگام ورود به کلاس به کاربران نمایش داده می‌شود
                   </p>
                 </div>
               )}
@@ -986,6 +1009,7 @@ export default function SkyroomAdminPage() {
                           classType: cls.classType || "skyroom",
                           googleMeetLink: cls.googleMeetLink || "",
                           adobeConnectMeetingName: cls.adobeConnectMeetingName || "",
+                          bbbWelcomeMessage: cls.bbbWelcomeMessage || "",
                           selectedStudents: cls.selectedStudents || [],
                           selectedTeachers: cls.selectedTeachers || [],
                           selectedClasses: normalizedSelectedClasses,
