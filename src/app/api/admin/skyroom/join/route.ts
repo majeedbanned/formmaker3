@@ -469,12 +469,14 @@ export async function POST(request: NextRequest) {
         // Determine user's name and role
         let fullName: string;
         let password: string;
+        let listenOnly: boolean = false;
 
         if (user.userType === "school") {
           // School admin is moderator
           const schoolName = school?.data?.schoolName || school?.data?.name || `مدرسه ${user.schoolCode}`;
           fullName = `${schoolName} (مدیر)`;
           password = bbbModeratorPW;
+          listenOnly = false; // Moderators have full access
         } else if (user.userType === "teacher") {
           // Teacher is moderator
           const teachersCollection = connection.collection("teachers");
@@ -486,8 +488,9 @@ export async function POST(request: NextRequest) {
             ? `${teacher.data.teacherName} ${teacher.data.teacherFamily || ""}`.trim()
             : "معلم";
           password = bbbModeratorPW;
+          listenOnly = false; // Teachers have full access
         } else {
-          // Student is attendee
+          // Student is attendee - join as listener only (no microphone)
           const studentsCollection = connection.collection("students");
           const student = await studentsCollection.findOne({
             _id: new ObjectId(user.id),
@@ -497,6 +500,7 @@ export async function POST(request: NextRequest) {
             ? `${student.data.studentName} ${student.data.studentFamily || ""}`.trim()
             : "دانش‌آموز";
           password = bbbAttendeePW;
+          listenOnly = true; // Students join as listeners without microphone
         }
 
         // Generate join URL
@@ -505,6 +509,7 @@ export async function POST(request: NextRequest) {
           fullName,
           password,
           userID: user.id,
+          listenOnly,
         });
 
         logger.info(`[BBB] Generated join URL for ${user.userType} ${user.id}`);

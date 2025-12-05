@@ -201,6 +201,7 @@ export class BigBlueButtonApiClient {
    * @param fullName - The user's display name
    * @param password - Either attendee password (participant) or moderator password (host)
    * @param userID - Optional user ID for tracking
+   * @param listenOnly - If true, user joins in listen-only mode (no microphone)
    */
   getJoinUrl(params: {
     meetingID: string;
@@ -208,6 +209,7 @@ export class BigBlueButtonApiClient {
     password: string;
     userID?: string;
     redirect?: boolean;
+    listenOnly?: boolean;
   }): string {
     const apiParams: Record<string, string | number | boolean> = {
       meetingID: params.meetingID,
@@ -218,6 +220,12 @@ export class BigBlueButtonApiClient {
 
     if (params.userID) {
       apiParams.userID = params.userID;
+    }
+
+    // Add listen-only mode for students (no microphone access)
+    // This forces the user to join in listen-only mode without microphone
+    if (params.listenOnly === true) {
+      apiParams["userdata-bbb_force_listen_only"] = "true";
     }
 
     const queryString = this.buildQueryString(apiParams);
