@@ -291,16 +291,20 @@ export class AdobeConnectApiClient {
     }
 
     // Generate a unique URL path if not provided
-    const urlPath =
-      params.urlPath ||
-      `meeting-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const urlPath = params.urlPath || `meeting-${timestamp}-${randomStr}`;
+
+    // Make the meeting name unique by appending timestamp
+    // Adobe Connect doesn't allow duplicate names in the same folder
+    const uniqueName = `${params.name} (${timestamp})`;
 
     // Create the meeting using sco-update
     // type=meeting for meeting rooms
     const xml = await this.authRequest("sco-update", {
       "folder-id": folderId,
       type: "meeting",
-      name: params.name,
+      name: uniqueName,
       description: params.description || "",
       "url-path": urlPath,
       "date-begin": new Date().toISOString(),
@@ -311,6 +315,39 @@ export class AdobeConnectApiClient {
     const result = this.parseXmlResponse(xml);
 
     if (!result.ok) {
+      // If duplicate name error, try with a different random suffix
+      if (result.subcode === "duplicate") {
+        const retryName = `${params.name} (${timestamp}-${randomStr})`;
+        const retryXml = await this.authRequest("sco-update", {
+          "folder-id": folderId,
+          type: "meeting",
+          name: retryName,
+          description: params.description || "",
+          "url-path": urlPath + "-retry",
+          "date-begin": new Date().toISOString(),
+          "source-sco-id": "",
+        });
+        
+        const retryResult = this.parseXmlResponse(retryXml);
+        if (!retryResult.ok) {
+          throw new Error(retryResult.error || "Failed to create meeting (retry also failed)");
+        }
+        
+        if (!retryResult.scoId) {
+          throw new Error("Meeting created but no sco-id returned");
+        }
+
+        // Set permissions to allow anyone with link to enter
+        await this.setMeetingPermissions(retryResult.scoId, "view-hidden");
+
+        const retryUrlPath = urlPath + "-retry";
+        return {
+          scoId: retryResult.scoId,
+          name: retryName,
+          urlPath: retryUrlPath,
+          meetingUrl: `${this.serverUrl}/${retryUrlPath}`,
+        };
+      }
       throw new Error(result.error || "Failed to create meeting");
     }
 
@@ -326,7 +363,7 @@ export class AdobeConnectApiClient {
 
     return {
       scoId: result.scoId,
-      name: params.name,
+      name: uniqueName,
       urlPath: urlPath,
       meetingUrl,
     };
@@ -441,6 +478,180 @@ export class AdobeConnectApiClient {
    */
   getMeetingUrl(urlPath: string): string {
     return `${this.serverUrl}/${urlPath.replace(/^\//, "")}`;
+  }
+
+  /**
+   * Search for a user by login (email)
+   * Returns the principal-id and actual login if found, null otherwise
+   */
+  async findUserByLogin(login: string): Promise<{ principalId: string; actualLogin: string } | null> {
+    // Also try email format
+    const searchTerm = login.includes("@") ? login : `${login.replace(/[^a-z0-9]/gi, '')}@school.edu`;
+    
+    const xml = await this.authRequest("principal-list", {
+      "filter-login": searchTerm,
+    });
+
+    const result = this.parseXmlResponse(xml);
+    if (!result.ok) {
+      return null;
+    }
+
+    // Extract principal-id from the response
+    const principalMatch = xml.match(/<principal[^>]+principal-id="([^"]+)"/);
+    const loginMatch = xml.match(/<login>([^<]+)<\/login>/);
+    
+    if (principalMatch?.[1]) {
+      return {
+        principalId: principalMatch[1],
+        actualLogin: loginMatch?.[1] || searchTerm,
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Create a new user in Adobe Connect
+   * Returns the principal-id of the created user
+   */
+  async createUser(params: {
+    login: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    type?: "user" | "guest";
+  }): Promise<{ principalId: string; actualLogin: string }> {
+    // Generate a valid-looking email if not provided
+    // Adobe Connect uses email as the actual login for users
+    const email = params.email || `${params.login.replace(/[^a-z0-9]/gi, '')}@school.edu`;
+    
+    const xml = await this.authRequest("principal-update", {
+      "first-name": params.firstName,
+      "last-name": params.lastName,
+      login: email, // Use email as login - Adobe Connect requires this
+      password: params.password,
+      email,
+      type: params.type || "user",
+      "has-children": "0",
+    });
+
+    const result = this.parseXmlResponse(xml);
+
+    if (!result.ok) {
+      throw new Error(result.error || "Failed to create user");
+    }
+
+    if (!result.principalId) {
+      throw new Error("User created but no principal-id returned");
+    }
+
+    // Extract the actual login from response (Adobe Connect uses email as login)
+    const loginMatch = xml.match(/<login>([^<]+)<\/login>/);
+    const actualLogin = loginMatch?.[1] || email;
+
+    console.log(`[AdobeConnect] Created user ${actualLogin} with principal-id: ${result.principalId}`);
+    return { principalId: result.principalId, actualLogin };
+  }
+
+  /**
+   * Get or create a user in Adobe Connect
+   * Returns { principalId, actualLogin } - actualLogin is the email used for login
+   */
+  async getOrCreateUser(params: {
+    login: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  }): Promise<{ principalId: string; actualLogin: string }> {
+    // First, try to find existing user
+    const existing = await this.findUserByLogin(params.login);
+    if (existing) {
+      console.log(`[AdobeConnect] Found existing user ${existing.actualLogin}: ${existing.principalId}`);
+      return existing;
+    }
+
+    // Create new user
+    return this.createUser(params);
+  }
+
+  /**
+   * Add a user to a meeting with specific permissions
+   * @param scoId - The meeting sco-id
+   * @param principalId - The user's principal-id
+   * @param permission - Permission level: "host" (full control), "mini-host" (presenter), "view" (participant), "remove" (remove access)
+   */
+  async addUserToMeeting(
+    scoId: string,
+    principalId: string,
+    permission: "host" | "mini-host" | "view" | "remove" = "view"
+  ): Promise<void> {
+    const xml = await this.authRequest("permissions-update", {
+      "acl-id": scoId,
+      "principal-id": principalId,
+      "permission-id": permission,
+    });
+
+    const result = this.parseXmlResponse(xml);
+
+    if (!result.ok) {
+      console.warn(`[AdobeConnect] Failed to set user permission: ${result.error}`);
+      // Don't throw - user might still be able to join
+    } else {
+      console.log(`[AdobeConnect] Added user ${principalId} to meeting ${scoId} with permission: ${permission}`);
+    }
+  }
+
+  /**
+   * Create a login session for a specific user and return a URL with the session
+   * This allows the user to join the meeting as themselves
+   */
+  async createUserSession(
+    userLogin: string,
+    userPassword: string,
+    meetingUrlPath: string
+  ): Promise<string> {
+    // Get a new session cookie first
+    const commonInfoResult = await this.request("common-info", {});
+    let sessionCookie = this.extractSessionFromCookies(commonInfoResult.cookies);
+    
+    if (!sessionCookie) {
+      const parsed = this.parseXmlResponse(commonInfoResult.xml);
+      sessionCookie = parsed.sessionCookie;
+    }
+
+    if (!sessionCookie) {
+      throw new Error("Failed to obtain session for user login");
+    }
+
+    // Login as the specific user
+    const loginResult = await this.request(
+      "login",
+      {
+        login: userLogin,
+        password: userPassword,
+      },
+      sessionCookie
+    );
+
+    const loginParsed = this.parseXmlResponse(loginResult.xml);
+
+    if (!loginParsed.ok) {
+      console.error(`[AdobeConnect] User login failed: ${loginParsed.error}`);
+      // Fall back to meeting URL without session
+      return `${this.serverUrl}/${meetingUrlPath.replace(/^\//, "")}`;
+    }
+
+    // Return the meeting URL with the authenticated session
+    return `${this.serverUrl}/${meetingUrlPath.replace(/^\//, "")}?session=${sessionCookie}`;
+  }
+
+  /**
+   * Get the server URL
+   */
+  getServerUrl(): string {
+    return this.serverUrl;
   }
 }
 

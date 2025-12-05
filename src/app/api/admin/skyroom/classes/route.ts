@@ -235,6 +235,9 @@ export async function POST(request: NextRequest) {
         school?.data?.adobeConnectUsername || "admin@gmail.com";
       const adobePassword =
         school?.data?.adobeConnectPassword || "357611123qwe!@#QQ";
+      // Default password for Adobe Connect users (can be customized per school)
+      const adobeUserDefaultPassword =
+        school?.data?.adobeConnectUserPassword || "Aa@123456";
 
       try {
         // Create Adobe Connect client
@@ -250,7 +253,56 @@ export async function POST(request: NextRequest) {
           description: classDescription || "",
         });
 
-        // Get students from selected classes (by classCode) for Adobe Connect
+        // Disable public access - only registered users can join
+        await adobeClient.setMeetingPermissions(meeting.scoId, "remove", "public-access");
+
+        // Track Adobe Connect user mappings
+        const adobeUserMappings: Array<{
+          odUserId: string;
+          adobePrincipalId: string;
+          role: "teacher" | "student" | "school";
+          login: string;
+        }> = [];
+
+        // Create/get Adobe Connect users for teachers and add them to meeting as hosts
+        if (selectedTeachers && selectedTeachers.length > 0) {
+          const teachersCollection = connection.collection("teachers");
+          const teacherDocs = await teachersCollection
+            .find({
+              _id: { $in: selectedTeachers.map((id: string) => new ObjectId(id)) },
+              "data.schoolCode": user.schoolCode,
+            })
+            .toArray();
+
+          for (const teacher of teacherDocs) {
+            try {
+              const teacherLogin = `teacher-${user.schoolCode}-${teacher.data.teacherCode || teacher._id.toString()}`;
+              const firstName = teacher.data.teacherName || "معلم";
+              const lastName = teacher.data.teacherFamily || teacher.data.teacherCode || "";
+
+              const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+                login: teacherLogin,
+                password: adobeUserDefaultPassword,
+                firstName,
+                lastName,
+              });
+
+              // Add teacher as host (full control)
+              await adobeClient.addUserToMeeting(meeting.scoId, principalId, "host");
+
+              adobeUserMappings.push({
+                odUserId: teacher._id.toString(),
+                adobePrincipalId: principalId,
+                role: "teacher",
+                login: actualLogin, // Use actual login (email) for session creation
+              });
+            } catch (err) {
+              logger.warn(`Failed to create/add Adobe Connect user for teacher ${teacher._id}:`, err);
+            }
+          }
+        }
+
+        // Get students from selected classes (by classCode)
         let selectedClassCodes: string[] = [];
         if (selectedClasses && selectedClasses.length > 0) {
           const classesCollection = connection.collection("classes");
@@ -267,6 +319,89 @@ export async function POST(request: NextRequest) {
             .filter((code): code is string => !!code);
         }
 
+        // Get all students from selected classes and create Adobe Connect users
+        if (selectedClassCodes.length > 0) {
+          const studentsCollection = connection.collection("students");
+          const classStudents = await studentsCollection
+            .find({
+              "data.schoolCode": user.schoolCode,
+              $or: [
+                { "data.classCode": { $in: selectedClassCodes } },
+                { "data.classCode.value": { $in: selectedClassCodes } },
+              ],
+            })
+            .toArray();
+
+          for (const student of classStudents) {
+            try {
+              const studentLogin = `student-${user.schoolCode}-${student.data.studentCode || student._id.toString()}`;
+              const firstName = student.data.studentName || "دانش‌آموز";
+              const lastName = student.data.studentFamily || student.data.studentCode || "";
+
+              const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+                login: studentLogin,
+                password: adobeUserDefaultPassword,
+                firstName,
+                lastName,
+              });
+
+              // Add student as participant (view only)
+              await adobeClient.addUserToMeeting(meeting.scoId, principalId, "view");
+
+              adobeUserMappings.push({
+                odUserId: student._id.toString(),
+                adobePrincipalId: principalId,
+                role: "student",
+                login: actualLogin, // Use actual login (email) for session creation
+              });
+            } catch (err) {
+              logger.warn(`Failed to create/add Adobe Connect user for student ${student._id}:`, err);
+            }
+          }
+        }
+
+        // Also create users for explicitly selected students
+        if (selectedStudents && selectedStudents.length > 0) {
+          const studentsCollection = connection.collection("students");
+          const explicitStudents = await studentsCollection
+            .find({
+              _id: { $in: selectedStudents.map((id: string) => new ObjectId(id)) },
+              "data.schoolCode": user.schoolCode,
+            })
+            .toArray();
+
+          for (const student of explicitStudents) {
+            // Skip if already added via class
+            if (adobeUserMappings.some((m) => m.odUserId === student._id.toString())) {
+              continue;
+            }
+
+            try {
+              const studentLogin = `student-${user.schoolCode}-${student.data.studentCode || student._id.toString()}`;
+              const firstName = student.data.studentName || "دانش‌آموز";
+              const lastName = student.data.studentFamily || student.data.studentCode || "";
+
+              const { principalId, actualLogin } = await adobeClient.getOrCreateUser({
+                login: studentLogin,
+                password: adobeUserDefaultPassword,
+                firstName,
+                lastName,
+              });
+
+              await adobeClient.addUserToMeeting(meeting.scoId, principalId, "view");
+
+              adobeUserMappings.push({
+                odUserId: student._id.toString(),
+                adobePrincipalId: principalId,
+                role: "student",
+                login: actualLogin, // Use actual login (email) for session creation
+              });
+            } catch (err) {
+              logger.warn(`Failed to create/add Adobe Connect user for student ${student._id}:`, err);
+            }
+          }
+        }
+
         // Store Adobe Connect class information in database
         const classData = {
           schoolCode: user.schoolCode,
@@ -281,6 +416,8 @@ export async function POST(request: NextRequest) {
           adobeConnectUrl: meeting.meetingUrl,
           adobeConnectUrlPath: meeting.urlPath,
           adobeConnectMeetingName: adobeConnectMeetingName || className,
+          adobeConnectUserMappings: adobeUserMappings, // Store user mappings for join
+          adobeUserDefaultPassword: adobeUserDefaultPassword, // Store for user login
           // explicit student selections by _id
           selectedStudents: selectedStudents || [],
           selectedTeachers: selectedTeachers || [],
