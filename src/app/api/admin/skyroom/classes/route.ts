@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { SkyroomApiClient } from "@/lib/skyroom";
+import { AdobeConnectApiClient } from "@/lib/adobeconnect";
 import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/app/api/chatbot7/config/route";
@@ -117,8 +118,9 @@ export async function POST(request: NextRequest) {
       selectedStudents,
       selectedTeachers,
       selectedClasses,
-      classType = "skyroom", // "skyroom" or "googlemeet"
+      classType = "skyroom", // "skyroom", "googlemeet", or "adobeconnect"
       googleMeetLink, // Google Meet link (manually entered)
+      adobeConnectMeetingName, // Adobe Connect meeting name (optional)
       // skyroomApiKey is ignored; we read from schools collection instead
       scheduleSlots, // optional: weekly schedule from UI
     } = body;
@@ -216,6 +218,108 @@ export async function POST(request: NextRequest) {
           ...classData,
         },
       });
+    }
+
+    // Handle Adobe Connect classes
+    if (classType === "adobeconnect") {
+      // Get Adobe Connect credentials from schools collection or use defaults
+      const schoolsCollection = connection.collection("schools");
+      const school = await schoolsCollection.findOne({
+        "data.schoolCode": user.schoolCode,
+      });
+
+      // Use school-specific config or default to farsamooz server
+      const adobeServerUrl =
+        school?.data?.adobeConnectServerUrl || "https://adobe.farsamooz.ir";
+      const adobeUsername =
+        school?.data?.adobeConnectUsername || "admin@gmail.com";
+      const adobePassword =
+        school?.data?.adobeConnectPassword || "357611123qwe!@#QQ";
+
+      try {
+        // Create Adobe Connect client
+        const adobeClient = new AdobeConnectApiClient(
+          adobeServerUrl,
+          adobeUsername,
+          adobePassword
+        );
+
+        // Create the meeting
+        const meeting = await adobeClient.createMeeting({
+          name: adobeConnectMeetingName || className,
+          description: classDescription || "",
+        });
+
+        // Get students from selected classes (by classCode) for Adobe Connect
+        let selectedClassCodes: string[] = [];
+        if (selectedClasses && selectedClasses.length > 0) {
+          const classesCollection = connection.collection("classes");
+          const selectedClassDocs = await classesCollection
+            .find({
+              _id: { $in: selectedClasses.map((id: string) => new ObjectId(id)) },
+              "data.schoolCode": user.schoolCode,
+            })
+            .project({ "data.classCode": 1 })
+            .toArray();
+
+          selectedClassCodes = selectedClassDocs
+            .map((cls) => cls.data?.classCode as string | undefined)
+            .filter((code): code is string => !!code);
+        }
+
+        // Store Adobe Connect class information in database
+        const classData = {
+          schoolCode: user.schoolCode,
+          className,
+          classDescription: classDescription || "",
+          classDate,
+          classTime,
+          duration: duration || 60,
+          maxUsers: maxUsers || 50,
+          classType: "adobeconnect",
+          adobeConnectScoId: meeting.scoId,
+          adobeConnectUrl: meeting.meetingUrl,
+          adobeConnectUrlPath: meeting.urlPath,
+          adobeConnectMeetingName: adobeConnectMeetingName || className,
+          // explicit student selections by _id
+          selectedStudents: selectedStudents || [],
+          selectedTeachers: selectedTeachers || [],
+          // store class codes (not ids) for matching with students later
+          selectedClasses: selectedClassCodes.length
+            ? selectedClassCodes
+            : selectedClasses || [],
+          // store weekly schedule if provided
+          scheduleSlots: Array.isArray(scheduleSlots) ? scheduleSlots : [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const classesCollection = connection.collection("skyroomclasses");
+        const result = await classesCollection.insertOne({
+          data: classData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        return NextResponse.json({
+          success: true,
+          class: {
+            _id: result.insertedId.toString(),
+            ...classData,
+          },
+        });
+      } catch (error: any) {
+        logger.error("Error creating Adobe Connect meeting:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              error.message ||
+              "خطا در ایجاد جلسه ادوبی کانکت. لطفاً تنظیمات سرور را بررسی کنید.",
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Handle Skyroom classes (requires API key)
@@ -518,7 +622,7 @@ export async function PUT(request: NextRequest) {
     if (typeof updateData.maxUsers !== "undefined") {
       updateFields["data.maxUsers"] = updateData.maxUsers;
     }
-    if (typeof classType === "string" && (classType === "skyroom" || classType === "googlemeet")) {
+    if (typeof classType === "string" && (classType === "skyroom" || classType === "googlemeet" || classType === "adobeconnect")) {
       updateFields["data.classType"] = classType;
     }
     

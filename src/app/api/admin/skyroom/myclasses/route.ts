@@ -195,6 +195,8 @@ export async function GET(request: NextRequest) {
           classType: data.classType || "skyroom",
           skyroomRoomId: data.skyroomRoomId,
           googleMeetLink: data.googleMeetLink,
+          adobeConnectUrl: data.adobeConnectUrl,
+          adobeConnectScoId: data.adobeConnectScoId,
           scheduleSlots: data.scheduleSlots || [],
           nextDate: next.date.toISOString(),
           nextWeekday: next.weekday,

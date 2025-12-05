@@ -121,6 +121,71 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Handle Adobe Connect classes
+    if (classType === "adobeconnect") {
+      const adobeConnectUrl = classData.adobeConnectUrl;
+      
+      if (!adobeConnectUrl) {
+        return NextResponse.json(
+          { success: false, error: "Adobe Connect URL not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user has access to this class
+      let hasAccess = false;
+      if (user.userType === "school") {
+        hasAccess = classData.schoolCode === user.schoolCode;
+      } else if (user.userType === "teacher") {
+        hasAccess = classData.selectedTeachers?.includes(user.id) || false;
+      } else if (user.userType === "student") {
+        hasAccess = classData.selectedStudents?.includes(user.id) || false;
+        
+        // Also check if student's class is in selectedClasses
+        if (!hasAccess) {
+          const studentsCollection = connection.collection("students");
+          const student = await studentsCollection.findOne({
+            _id: new ObjectId(user.id),
+            "data.schoolCode": user.schoolCode,
+          });
+          
+          const studentClassCodes = student?.data?.classCode || [];
+          let normalizedCodes: string[] = [];
+          
+          if (Array.isArray(studentClassCodes)) {
+            normalizedCodes = studentClassCodes
+              .map((item: any) => {
+                if (typeof item === "string") return item;
+                if (item && typeof item.value === "string") return item.value;
+                return null;
+              })
+              .filter((v: string | null): v is string => !!v);
+          }
+          
+          hasAccess = classData.selectedClasses?.some((code: string) =>
+            normalizedCodes.includes(code)
+          ) || false;
+        }
+      }
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { success: false, error: "You don't have access to this class" },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        joinUrl: adobeConnectUrl,
+        classData: {
+          className: classData.className,
+          classDate: classData.classDate,
+          classTime: classData.classTime,
+        },
+      });
+    }
+
     // Handle Skyroom classes (existing logic)
     const roomId = classData.skyroomRoomId;
 

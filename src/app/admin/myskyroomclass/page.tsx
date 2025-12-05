@@ -28,9 +28,11 @@ interface SkyroomClass {
   className: string;
   classDescription?: string;
   maxUsers: number;
-  classType?: "skyroom" | "googlemeet";
+  classType?: "skyroom" | "googlemeet" | "adobeconnect";
   skyroomRoomId?: number;
   googleMeetLink?: string;
+  adobeConnectUrl?: string;
+  adobeConnectScoId?: string;
   scheduleSlots?: ScheduleSlot[];
   nextDate: string;      // ISO string of next occurrence
   nextWeekday: string;   // sat/sun/...
@@ -294,8 +296,8 @@ export default function MySkyroomClassPage() {
         }
         subtitle={
           user.userType === "school"
-            ? "مشاهده و ورود به تمام کلاس‌های آنلاین این مدرسه (اسکای‌روم و گوگل میت)"
-            : "مشاهده و ورود به کلاس‌های آنلاین (اسکای‌روم و گوگل میت)"
+            ? "مشاهده و ورود به تمام کلاس‌های آنلاین این مدرسه (اسکای‌روم، گوگل میت و ادوبی کانکت)"
+            : "مشاهده و ورود به کلاس‌های آنلاین (اسکای‌روم، گوگل میت و ادوبی کانکت)"
         }
         icon={<VideoIcon className="w-6 h-6" />}
         gradient={true}
@@ -367,12 +369,17 @@ export default function MySkyroomClassPage() {
                                     {classItem.className}
                                   </span>
                                   {classItem.classType === "googlemeet" && (
-                                    <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700 border-green-200">
                                       Google Meet
                                     </Badge>
                                   )}
+                                  {classItem.classType === "adobeconnect" && (
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 bg-red-50 text-red-700 border-red-200">
+                                      Adobe Connect
+                                    </Badge>
+                                  )}
                                   {(!classItem.classType || classItem.classType === "skyroom") && (
-                                    <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                    <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-50 text-blue-700 border-blue-200">
                                       Skyroom
                                     </Badge>
                                   )}

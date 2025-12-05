@@ -78,8 +78,9 @@ export default function SkyroomAdminPage() {
     classTime: "",
     duration: "60",
     maxUsers: "50",
-    classType: "skyroom" as "skyroom" | "googlemeet", // New field for class type
+    classType: "skyroom" as "skyroom" | "googlemeet" | "adobeconnect", // New field for class type
     googleMeetLink: "", // Google Meet link (manually entered or generated)
+    adobeConnectMeetingName: "", // Adobe Connect meeting name (optional, defaults to className)
     selectedStudents: [] as string[],
     selectedTeachers: [] as string[],
     selectedClasses: [] as string[],
@@ -327,6 +328,7 @@ export default function SkyroomAdminPage() {
           maxUsers: "50",
           classType: "skyroom",
           googleMeetLink: "",
+          adobeConnectMeetingName: "",
           selectedStudents: [],
           selectedTeachers: [],
           selectedClasses: [],
@@ -400,7 +402,7 @@ export default function SkyroomAdminPage() {
     <div dir="rtl" className="container mx-auto px-4 py-8">
       <PageHeader
         title="مدیریت کلاس‌های آنلاین"
-        subtitle="ایجاد و مدیریت کلاس‌های آنلاین (اسکای‌روم و گوگل میت)"
+        subtitle="ایجاد و مدیریت کلاس‌های آنلاین (اسکای‌روم، گوگل میت و ادوبی کانکت)"
         icon={<VideoIcon className="w-6 h-6" />}
         gradient={true}
       />
@@ -463,8 +465,8 @@ export default function SkyroomAdminPage() {
                 <Label htmlFor="classType">نوع کلاس آنلاین *</Label>
                 <Select
                   value={formData.classType}
-                  onValueChange={(value: "skyroom" | "googlemeet") =>
-                    setFormData({ ...formData, classType: value, googleMeetLink: "" })
+                  onValueChange={(value: "skyroom" | "googlemeet" | "adobeconnect") =>
+                    setFormData({ ...formData, classType: value, googleMeetLink: "", adobeConnectMeetingName: "" })
                   }
                 >
                   <SelectTrigger>
@@ -473,12 +475,15 @@ export default function SkyroomAdminPage() {
                   <SelectContent>
                     <SelectItem value="skyroom">اسکای‌روم (Skyroom)</SelectItem>
                     <SelectItem value="googlemeet">گوگل میت (Google Meet)</SelectItem>
+                    <SelectItem value="adobeconnect">ادوبی کانکت (Adobe Connect)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.classType === "skyroom"
                     ? "برای استفاده از اسکای‌روم، کلید API باید در تنظیمات مدرسه فعال باشد"
-                    : "لطفاً لینک گوگل میت را وارد کنید یا از گوگل میت یک لینک ایجاد کنید"}
+                    : formData.classType === "googlemeet"
+                    ? "لطفاً لینک گوگل میت را وارد کنید یا از گوگل میت یک لینک ایجاد کنید"
+                    : "جلسه ادوبی کانکت به صورت خودکار ایجاد می‌شود"}
                 </p>
               </div>
 
@@ -980,6 +985,7 @@ export default function SkyroomAdminPage() {
                           maxUsers: String(cls.maxUsers || 50),
                           classType: cls.classType || "skyroom",
                           googleMeetLink: cls.googleMeetLink || "",
+                          adobeConnectMeetingName: cls.adobeConnectMeetingName || "",
                           selectedStudents: cls.selectedStudents || [],
                           selectedTeachers: cls.selectedTeachers || [],
                           selectedClasses: normalizedSelectedClasses,
