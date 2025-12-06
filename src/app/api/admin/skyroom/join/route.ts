@@ -552,19 +552,37 @@ export async function POST(request: NextRequest) {
       // School admins can access all classes in their school
       hasAccess = classData.schoolCode === user.schoolCode;
     } else if (user.userType === "teacher") {
-      hasAccess =
-        classData.selectedTeachers?.includes(user.id) ||
-        classData.teacherUserIds?.some((tid: number) => {
-          // Check if this teacher's Skyroom user ID is in the list
-          return true; // We'll verify this properly below
-        });
+      hasAccess = classData.selectedTeachers?.includes(user.id) || false;
     } else if (user.userType === "student") {
-      hasAccess =
-        classData.selectedStudents?.includes(user.id) ||
-        classData.studentUserIds?.some((sid: number) => {
-          // Check if this student's Skyroom user ID is in the list
-          return true; // We'll verify this properly below
+      hasAccess = classData.selectedStudents?.includes(user.id) || false;
+      
+      // Also check if student's class is in selectedClasses
+      if (!hasAccess) {
+        const studentsCollection = connection.collection("students");
+        const student = await studentsCollection.findOne({
+          _id: new ObjectId(user.id),
+          "data.schoolCode": user.schoolCode,
         });
+        
+        const studentClassCodes = student?.data?.classCode || [];
+        let normalizedCodes: string[] = [];
+        
+        if (Array.isArray(studentClassCodes)) {
+          normalizedCodes = studentClassCodes
+            .map((item: any) => {
+              if (typeof item === "string") return item;
+              if (item && typeof item.value === "string") return item.value;
+              return null;
+            })
+            .filter((v: string | null): v is string => !!v);
+        } else if (typeof studentClassCodes === "string") {
+          normalizedCodes = [studentClassCodes];
+        }
+        
+        hasAccess = classData.selectedClasses?.some((code: string) =>
+          normalizedCodes.includes(code)
+        ) || false;
+      }
     }
 
     if (!hasAccess) {
