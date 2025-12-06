@@ -132,15 +132,9 @@ export default function MySkyroomClassPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // School users and teachers: open in new tab
-        // Students: open in same window
-        if (user?.userType === "school" || user?.userType === "teacher") {
-          window.open(data.joinUrl, "_blank");
-          toast.success("در حال انتقال به کلاس...");
-        } else {
-          // Student: redirect in same window
-          window.location.href = data.joinUrl;
-        }
+        // All users (school, teacher, student): open in new tab
+        window.open(data.joinUrl, "_blank");
+        toast.success("در حال انتقال به کلاس...");
       } else {
         toast.error(data.error || "خطا در ایجاد لینک ورود");
       }
@@ -214,7 +208,27 @@ export default function MySkyroomClassPage() {
     slotEndTime: string
   ) => {
     const now = new Date();
-    const classDate = new Date(); // today, we'll use today's date with slot time
+    
+    // Check if today's weekday matches the slot's day
+    const todayIdx = now.getDay(); // 0-6 (0 = Sunday, 6 = Saturday)
+    const codeMap: Record<number, string> = {
+      0: "sun", // Sunday
+      1: "mon", // Monday
+      2: "tue", // Tuesday
+      3: "wed", // Wednesday
+      4: "thu", // Thursday
+      5: "fri", // Friday
+      6: "sat", // Saturday
+    };
+    const todayCode = codeMap[todayIdx];
+    
+    // If today is not the slot's day, return upcoming status
+    if (slotDay.toLowerCase() !== todayCode) {
+      return { status: "upcoming", text: "آینده", color: "bg-blue-100 text-blue-800" };
+    }
+    
+    // Today matches the slot's day, now check the time
+    const classDate = new Date(); // today
     const [hours, minutes] = slotStartTime.split(":").map(Number);
     const classDateTime = new Date(classDate);
     classDateTime.setHours(hours || 0, minutes || 0, 0, 0);
@@ -228,7 +242,7 @@ export default function MySkyroomClassPage() {
     }
 
     if (now < classDateTime) {
-      // Class hasn't started yet
+      // Class hasn't started yet today
       const minutesUntilStart = Math.floor(
         (classDateTime.getTime() - now.getTime()) / 1000 / 60
       );
@@ -237,10 +251,10 @@ export default function MySkyroomClassPage() {
       }
       return { status: "upcoming", text: "آینده", color: "bg-blue-100 text-blue-800" };
     } else if (now >= classDateTime && now <= endTime) {
-      // Class is in progress
+      // Class is currently in progress (today is the right day AND time is within range)
       return { status: "active", text: "در حال برگزاری", color: "bg-green-100 text-green-800" };
     } else {
-      // Class has ended
+      // Class has ended today
       return { status: "ended", text: "پایان یافته", color: "bg-gray-100 text-gray-800" };
     }
   };

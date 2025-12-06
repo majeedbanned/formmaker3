@@ -1199,7 +1199,7 @@ const MonthlyGradeOverallReport = ({
 
   // Add export to Excel function
   const exportToExcel = async () => {
-    if (!selectedClass || studentGrades.length === 0 || courseInfo.length === 0)
+    if (!selectedClass || studentGrades.length === 0 || courseInfo.length === 0 || selectedCourses.length === 0 || selectedMonths.length === 0)
       return;
 
     // Get the selected class name
@@ -1222,20 +1222,30 @@ const MonthlyGradeOverallReport = ({
     // Set RTL direction for the worksheet
     worksheet.views = [{ rightToLeft: true }];
 
-    // Set column headers (Student info + each course + average)
+    // Filter to only selected courses
+    const selectedCourseInfos = courseInfo.filter((course) => {
+      const courseKey = `${course.teacherCode}_${course.courseCode}`;
+      return selectedCourses.includes(courseKey);
+    });
+
+    // Set column headers (Student info + each course/month combination + average)
     const columns = [
       { header: "ردیف", key: "rowNumber", width: 10 },
       { header: "کد دانش‌آموز", key: "studentCode", width: 15 },
       { header: "نام دانش‌آموز", key: "studentName", width: 25 },
     ];
 
-    // Add columns for each course
-    courseInfo.forEach((course) => {
+    // Add columns for each course/month combination (matching the visible table)
+    selectedCourseInfos.forEach((course) => {
       const courseKey = `${course.teacherCode}_${course.courseCode}`;
-      columns.push({
-        header: `${course.courseName} (${course.vahed} واحد)`,
-        key: courseKey,
-        width: 18,
+      selectedMonths.forEach((month) => {
+        const monthName = persianMonths.find((m) => m.value === month)?.label || month;
+        const columnKey = `${courseKey}_${month}`;
+        columns.push({
+          header: `${course.courseName} - ${monthName}`,
+          key: columnKey,
+          width: 18,
+        });
       });
     });
 
@@ -1270,10 +1280,21 @@ const MonthlyGradeOverallReport = ({
         average: student.average,
       };
 
-      // Add course grades
-      courseInfo.forEach((course) => {
+      // Add course grades for each month (matching the visible table structure)
+      selectedCourseInfos.forEach((course) => {
         const courseKey = `${course.teacherCode}_${course.courseCode}`;
-        rowData[courseKey] = student.courseGrades[courseKey] ?? "";
+        selectedMonths.forEach((month) => {
+          const monthKey = `${courseKey}_${month}`;
+          const monthData = student.gradeDetails[monthKey];
+          const score = monthData
+            ? calculateFinalScore(
+                monthData.grades,
+                monthData.assessments,
+                courseKey
+              )
+            : null;
+          rowData[monthKey] = score !== null ? score : "";
+        });
       });
 
       worksheet.addRow(rowData);
@@ -1298,7 +1319,7 @@ const MonthlyGradeOverallReport = ({
     worksheet.eachRow((row, rowNum) => {
       if (rowNum > 1) {
         // Skip header row
-        // Process grade columns (start from column 4)
+        // Process grade columns (start from column 4, which is the first course/month column)
         for (let colIndex = 4; colIndex <= columns.length; colIndex++) {
           const cell = row.getCell(colIndex);
           const value = cell.value as number;

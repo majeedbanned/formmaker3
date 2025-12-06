@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import PageHeader from "@/components/PageHeader";
-import { VideoIcon, ArrowRight, ArrowLeft, Check, Loader2, Users, Clock, Calendar, BookOpen, User, ChevronDown } from "lucide-react";
+import { VideoIcon, ArrowRight, ArrowLeft, Check, Loader2, Users, Clock, Calendar, BookOpen, User, ChevronDown, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,8 @@ export default function SkyroomAdminPage() {
   const [skyroomClasses, setSkyroomClasses] = useState<any[]>([]);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [openCollapsibles, setOpenCollapsibles] = useState<Set<string>>(new Set());
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
+  const [classSearchQuery, setClassSearchQuery] = useState("");
 
   // Form data (keeps a representative concrete date/time for the first slot)
   const [formData, setFormData] = useState({
@@ -341,6 +343,8 @@ export default function SkyroomAdminPage() {
         setScheduleSlots([]);
         setEditingClassId(null);
         setCurrentStep(1);
+        setTeacherSearchQuery("");
+        setClassSearchQuery("");
       } else {
         toast.error(data.error || "خطا در ذخیره کلاس");
       }
@@ -720,39 +724,72 @@ export default function SkyroomAdminPage() {
 
               <div>
                 <Label>انتخاب معلمان</Label>
-                <div className="mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {teachers.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      معلمی یافت نشد
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {teachers.map((teacher) => {
-                        const teacherId = teacher._id?.toString() || teacher._id;
+                <div className="mt-2 relative">
+                  <div className="relative mb-2">
+                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="جستجوی معلم (نام، نام خانوادگی یا کد معلم)..."
+                      value={teacherSearchQuery}
+                      onChange={(e) => setTeacherSearchQuery(e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
+                  <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
+                    {teachers.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        معلمی یافت نشد
+                      </p>
+                    ) : (() => {
+                      const filteredTeachers = teachers.filter((teacher) => {
+                        if (!teacherSearchQuery.trim()) return true;
                         const teacherData = teacher.data || teacher;
+                        const searchLower = teacherSearchQuery.toLowerCase();
                         return (
-                          <label
-                            key={teacherId}
-                            className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.selectedTeachers.includes(
-                                teacherId
-                              )}
-                              onChange={() => toggleTeacher(teacherId)}
-                              className="rounded"
-                            />
-                            <span className="text-sm">
-                              {teacherData.teacherName}{" "}
-                              {teacherData.teacherFamily || ""} -{" "}
-                              {teacherData.teacherCode}
-                            </span>
-                          </label>
+                          teacherData.teacherName?.toLowerCase().includes(searchLower) ||
+                          teacherData.teacherFamily?.toLowerCase().includes(searchLower) ||
+                          teacherData.teacherCode?.toLowerCase().includes(searchLower)
                         );
-                      })}
-                    </div>
-                  )}
+                      });
+
+                      if (filteredTeachers.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            معلمی با این جستجو یافت نشد
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          {filteredTeachers.map((teacher) => {
+                            const teacherId = teacher._id?.toString() || teacher._id;
+                            const teacherData = teacher.data || teacher;
+                            return (
+                              <label
+                                key={teacherId}
+                                className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={formData.selectedTeachers.includes(
+                                    teacherId
+                                  )}
+                                  onChange={() => toggleTeacher(teacherId)}
+                                  className="rounded"
+                                />
+                                <span className="text-sm">
+                                  {teacherData.teacherName}{" "}
+                                  {teacherData.teacherFamily || ""} -{" "}
+                                  {teacherData.teacherCode}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.selectedTeachers.length} معلم انتخاب شده
@@ -761,35 +798,67 @@ export default function SkyroomAdminPage() {
 
               <div>
                 <Label>انتخاب کلاس‌ها (همه دانش‌آموزان کلاس)</Label>
-                <div className="mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {classes.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      کلاسی یافت نشد
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {classes.map((cls) => {
-                        const classId = cls._id?.toString() || cls._id;
+                <div className="mt-2 relative">
+                  <div className="relative mb-2">
+                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="جستجوی کلاس (نام کلاس یا کد کلاس)..."
+                      value={classSearchQuery}
+                      onChange={(e) => setClassSearchQuery(e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
+                  <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
+                    {classes.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        کلاسی یافت نشد
+                      </p>
+                    ) : (() => {
+                      const filteredClasses = classes.filter((cls) => {
+                        if (!classSearchQuery.trim()) return true;
                         const classData = cls.data || cls;
+                        const searchLower = classSearchQuery.toLowerCase();
                         return (
-                          <label
-                            key={classId}
-                            className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.selectedClasses.includes(classId)}
-                              onChange={() => toggleClass(classId)}
-                              className="rounded"
-                            />
-                            <span className="text-sm">
-                              {classData.className} - {classData.classCode}
-                            </span>
-                          </label>
+                          classData.className?.toLowerCase().includes(searchLower) ||
+                          classData.classCode?.toLowerCase().includes(searchLower)
                         );
-                      })}
-                    </div>
-                  )}
+                      });
+
+                      if (filteredClasses.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            کلاسی با این جستجو یافت نشد
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          {filteredClasses.map((cls) => {
+                            const classId = cls._id?.toString() || cls._id;
+                            const classData = cls.data || cls;
+                            return (
+                              <label
+                                key={classId}
+                                className="flex items-center space-x-2 space-x-reverse cursor-pointer hover:bg-gray-50 p-2 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={formData.selectedClasses.includes(classId)}
+                                  onChange={() => toggleClass(classId)}
+                                  className="rounded"
+                                />
+                                <span className="text-sm">
+                                  {classData.className} - {classData.classCode}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.selectedClasses.length} کلاس انتخاب شده
