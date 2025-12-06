@@ -292,6 +292,145 @@ export class BigBlueButtonApiClient {
   }
 
   /**
+   * Get recordings for a meeting
+   */
+  async getRecordings(meetingID?: string): Promise<Array<{
+    recordID: string;
+    meetingID: string;
+    name: string;
+    published: boolean;
+    startTime: number;
+    endTime: number;
+    playbackUrl: string;
+    thumbnailUrl?: string;
+    duration: number;
+  }>> {
+    try {
+      const params: Record<string, string> = {};
+      if (meetingID) {
+        params.meetingID = meetingID;
+      }
+
+      const xml = await this.request("getRecordings", params);
+      const result = this.parseResponse(xml);
+
+      if (!result.success) {
+        return [];
+      }
+
+      const recordings: Array<{
+        recordID: string;
+        meetingID: string;
+        name: string;
+        published: boolean;
+        startTime: number;
+        endTime: number;
+        playbackUrl: string;
+        thumbnailUrl?: string;
+        duration: number;
+      }> = [];
+
+      // Parse recordings from XML
+      const recordingRegex = /<recording>([\s\S]*?)<\/recording>/g;
+      let match;
+      while ((match = recordingRegex.exec(xml)) !== null) {
+        const recordingXml = match[1];
+        
+        const recordIDMatch = recordingXml.match(/<recordID>([^<]+)<\/recordID>/);
+        const meetingIDMatch = recordingXml.match(/<meetingID>([^<]+)<\/meetingID>/);
+        const nameMatch = recordingXml.match(/<name>([^<]+)<\/name>/);
+        const publishedMatch = recordingXml.match(/<published>([^<]+)<\/published>/);
+        const startTimeMatch = recordingXml.match(/<startTime>([^<]+)<\/startTime>/);
+        const endTimeMatch = recordingXml.match(/<endTime>([^<]+)<\/endTime>/);
+        
+        // Get playback URL - usually in format section
+        const playbackUrlMatch = recordingXml.match(/<playback>[\s\S]*?<url>([^<]+)<\/url>[\s\S]*?<\/playback>/);
+        const thumbnailMatch = recordingXml.match(/<preview>[\s\S]*?<image[^>]*>([^<]+)<\/image>[\s\S]*?<\/preview>/);
+
+        if (recordIDMatch && meetingIDMatch) {
+          const startTime = parseInt(startTimeMatch?.[1] || "0");
+          const endTime = parseInt(endTimeMatch?.[1] || "0");
+          const duration = endTime > startTime ? Math.round((endTime - startTime) / 60000) : 0;
+
+          recordings.push({
+            recordID: recordIDMatch[1],
+            meetingID: meetingIDMatch[1],
+            name: nameMatch?.[1] || "Recording",
+            published: publishedMatch?.[1] === "true",
+            startTime,
+            endTime,
+            playbackUrl: playbackUrlMatch?.[1] || "",
+            thumbnailUrl: thumbnailMatch?.[1],
+            duration,
+          });
+        }
+      }
+
+      return recordings;
+    } catch (err) {
+      console.error("[BBB] Error fetching recordings:", err);
+      return [];
+    }
+  }
+
+  /**
+   * Get attendees currently in a meeting
+   */
+  async getAttendees(meetingID: string): Promise<Array<{
+    userID: string;
+    fullName: string;
+    role: "MODERATOR" | "VIEWER";
+    isPresenter: boolean;
+    isListeningOnly: boolean;
+  }>> {
+    try {
+      const info = await this.getMeetingInfo(meetingID);
+      if (!info || !info.running) {
+        return [];
+      }
+
+      // Get full meeting info with attendees
+      const xml = await this.request("getMeetingInfo", { meetingID });
+      
+      const attendees: Array<{
+        userID: string;
+        fullName: string;
+        role: "MODERATOR" | "VIEWER";
+        isPresenter: boolean;
+        isListeningOnly: boolean;
+      }> = [];
+
+      // Parse attendees from XML
+      const attendeeRegex = /<attendee>([\s\S]*?)<\/attendee>/g;
+      let match;
+      while ((match = attendeeRegex.exec(xml)) !== null) {
+        const attendeeXml = match[1];
+        
+        const userIDMatch = attendeeXml.match(/<userID>([^<]+)<\/userID>/);
+        const fullNameMatch = attendeeXml.match(/<fullName>([^<]+)<\/fullName>/);
+        const roleMatch = attendeeXml.match(/<role>([^<]+)<\/role>/);
+        const isPresenterMatch = attendeeXml.match(/<isPresenter>([^<]+)<\/isPresenter>/);
+        const isListeningOnlyMatch = attendeeXml.match(/<isListeningOnly>([^<]+)<\/isListeningOnly>/);
+
+        if (userIDMatch && fullNameMatch) {
+          attendees.push({
+            userID: userIDMatch[1],
+            fullName: fullNameMatch[1],
+            role: roleMatch?.[1] === "MODERATOR" ? "MODERATOR" : "VIEWER",
+            isPresenter: isPresenterMatch?.[1] === "true",
+            isListeningOnly: isListeningOnlyMatch?.[1] === "true",
+          });
+        }
+      }
+
+      return attendees;
+    } catch (err) {
+      console.error("[BBB] Error fetching attendees:", err);
+      return [];
+    }
+  }
+
+  /**
    * Get the server URL (base, without /bigbluebutton/api)
    */
   getServerUrl(): string {

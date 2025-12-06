@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +11,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import PageHeader from "@/components/PageHeader";
-import { VideoIcon, ExternalLink, Loader2, Clock, Calendar, Users } from "lucide-react";
+import { VideoIcon, ExternalLink, Loader2, Clock, Calendar, Users, PlayCircle, Radio, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ScheduleSlot {
   day: string;
@@ -43,11 +51,32 @@ interface SkyroomClass {
   duration: number;      // minutes
 }
 
+interface ClassStats {
+  classType: string;
+  meetingName: string;
+  isActive: boolean | null;
+  currentUsers: number | null;
+  moderatorCount?: number;
+  attendees: Array<{ name: string; login?: string; role?: string }>;
+  recordings: Array<{
+    id: string;
+    name: string;
+    duration?: number;
+    dateCreated?: string;
+    playbackUrl: string;
+    thumbnailUrl?: string;
+  }>;
+  error?: string;
+}
+
 export default function MySkyroomClassPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [classes, setClasses] = useState<SkyroomClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
+  const [classStats, setClassStats] = useState<Record<string, ClassStats>>({});
+  const [loadingStats, setLoadingStats] = useState<Record<string, boolean>>({});
+  const [statsDialogOpen, setStatsDialogOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && (user.userType === "student" || user.userType === "teacher" || user.userType === "school")) {
@@ -116,6 +145,39 @@ export default function MySkyroomClassPage() {
       setGeneratingLink(null);
     }
   };
+
+  const fetchClassStats = useCallback(async (classId: string) => {
+    setLoadingStats((prev) => ({ ...prev, [classId]: true }));
+    try {
+      const response = await fetch(`/api/admin/skyroom/stats?classId=${classId}`, {
+        headers: {
+          "x-domain": window.location.host,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setClassStats((prev) => ({ ...prev, [classId]: data.stats }));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching class stats:", error);
+    } finally {
+      setLoadingStats((prev) => ({ ...prev, [classId]: false }));
+    }
+  }, []);
+
+  // Fetch stats for Adobe Connect and BigBlueButton classes on mount
+  useEffect(() => {
+    if (classes.length > 0) {
+      classes.forEach((cls) => {
+        if (cls.classType === "adobeconnect" || cls.classType === "bigbluebutton") {
+          fetchClassStats(cls._id);
+        }
+      });
+    }
+  }, [classes, fetchClassStats]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -418,6 +480,97 @@ export default function MySkyroomClassPage() {
                                   </span>
                                 </div>
                               </div>
+
+                              {/* Stats for Adobe Connect and BigBlueButton */}
+                              {(classItem.classType === "adobeconnect" || classItem.classType === "bigbluebutton") && (
+                                <div className="mt-1 pt-1 border-t border-gray-100">
+                                  {loadingStats[classItem._id] ? (
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      در حال دریافت وضعیت...
+                                    </div>
+                                  ) : classStats[classItem._id] ? (
+                                    <div className="space-y-1">
+                                      {/* Live status */}
+                                      <div className="flex items-center gap-2">
+                                        {classStats[classItem._id].isActive ? (
+                                          <Badge className="text-[9px] px-1 py-0 bg-green-500 text-white animate-pulse">
+                                            <Radio className="w-2 h-2 mr-1" />
+                                            آنلاین
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-[9px] px-1 py-0 text-gray-500">
+                                            آفلاین
+                                          </Badge>
+                                        )}
+                                        {classStats[classItem._id].currentUsers !== null && classStats[classItem._id].currentUsers! > 0 && (
+                                          <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                                            <Users className="w-3 h-3" />
+                                            {classStats[classItem._id].currentUsers} نفر آنلاین
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={() => fetchClassStats(classItem._id)}
+                                          className="text-gray-400 hover:text-gray-600"
+                                          title="بروزرسانی"
+                                        >
+                                          <RefreshCw className="w-3 h-3" />
+                                        </button>
+                                      </div>
+
+                                      {/* Recordings */}
+                                      {classStats[classItem._id].recordings.length > 0 && (
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <button className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                              <PlayCircle className="w-3 h-3" />
+                                              {classStats[classItem._id].recordings.length} ضبط موجود
+                                            </button>
+                                          </DialogTrigger>
+                                          <DialogContent className="max-w-md" dir="rtl">
+                                            <DialogHeader>
+                                              <DialogTitle>ضبط‌های کلاس {classItem.className}</DialogTitle>
+                                              <DialogDescription>
+                                                لیست ضبط‌های موجود برای این کلاس
+                                              </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                              {classStats[classItem._id].recordings.map((rec) => (
+                                                <div
+                                                  key={rec.id}
+                                                  className="flex items-center justify-between p-2 border rounded-md"
+                                                >
+                                                  <div className="flex-1">
+                                                    <p className="text-sm font-medium">{rec.name}</p>
+                                                    {rec.duration && (
+                                                      <p className="text-xs text-gray-500">
+                                                        مدت: {rec.duration} دقیقه
+                                                      </p>
+                                                    )}
+                                                    {rec.dateCreated && (
+                                                      <p className="text-xs text-gray-500">
+                                                        تاریخ: {new Date(rec.dateCreated).toLocaleDateString("fa-IR")}
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => window.open(rec.playbackUrl, "_blank")}
+                                                  >
+                                                    <PlayCircle className="w-4 h-4 mr-1" />
+                                                    پخش
+                                                  </Button>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )}
 
                               <div className="mt-2 flex justify-between items-center">
                                 <Button

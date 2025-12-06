@@ -653,5 +653,173 @@ export class AdobeConnectApiClient {
   getServerUrl(): string {
     return this.serverUrl;
   }
+
+  /**
+   * Get meeting statistics including current users count
+   * Uses sco-info and report-meeting-attendance
+   */
+  async getMeetingStats(scoId: string): Promise<{
+    name: string;
+    urlPath: string;
+    dateBegin?: string;
+    dateEnd?: string;
+    currentUsers: number;
+    isActive: boolean;
+  }> {
+    await this.login();
+
+    // Get SCO info
+    const scoInfoResult = await this.authRequest("sco-info", { "sco-id": scoId });
+    
+    const nameMatch = scoInfoResult.match(/<name>([^<]*)<\/name>/);
+    const urlPathMatch = scoInfoResult.match(/<url-path>([^<]*)<\/url-path>/);
+    const dateBeginMatch = scoInfoResult.match(/<date-begin>([^<]*)<\/date-begin>/);
+    const dateEndMatch = scoInfoResult.match(/<date-end>([^<]*)<\/date-end>/);
+
+    // Get current users in meeting using report-meeting-attendance
+    let currentUsers = 0;
+    let isActive = false;
+
+    try {
+      const attendanceResult = await this.authRequest("report-bulk-objects", { "sco-id": scoId });
+      // Count users currently in meeting
+      const userMatches = attendanceResult.match(/<row[^>]*>/g);
+      if (userMatches) {
+        currentUsers = userMatches.length;
+        isActive = currentUsers > 0;
+      }
+    } catch (err) {
+      // Try alternative method - meeting-usage-report
+      try {
+        const usageResult = await this.authRequest("meeting-usage-report", { "sco-id": scoId });
+        const activeMatch = usageResult.match(/<row[^>]*>/g);
+        if (activeMatch) {
+          isActive = true;
+          currentUsers = activeMatch.length;
+        }
+      } catch {
+        // Ignore - meeting might not be active
+      }
+    }
+
+    return {
+      name: nameMatch?.[1] || "",
+      urlPath: urlPathMatch?.[1] || "",
+      dateBegin: dateBeginMatch?.[1],
+      dateEnd: dateEndMatch?.[1],
+      currentUsers,
+      isActive,
+    };
+  }
+
+  /**
+   * Get recordings for a meeting
+   * Recordings are stored as SCOs in the meeting folder
+   */
+  async getMeetingRecordings(scoId: string): Promise<Array<{
+    scoId: string;
+    name: string;
+    dateCreated: string;
+    duration?: number;
+    playbackUrl: string;
+  }>> {
+    await this.login();
+
+    try {
+      // Get contents of meeting folder - recordings are type="content"
+      const contentsResult = await this.authRequest("sco-contents", { 
+        "sco-id": scoId,
+        "filter-icon": "archive"
+      });
+
+      const recordings: Array<{
+        scoId: string;
+        name: string;
+        dateCreated: string;
+        duration?: number;
+        playbackUrl: string;
+      }> = [];
+
+      // Parse recordings from response
+      const rowRegex = /<row[^>]*sco-id="([^"]+)"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<date-created>([^<]*)<\/date-created>[\s\S]*?<url-path>([^<]*)<\/url-path>[\s\S]*?<\/row>/g;
+      let match;
+      while ((match = rowRegex.exec(contentsResult)) !== null) {
+        const recordingScoId = match[1];
+        const name = match[2];
+        const dateCreated = match[3];
+        const urlPath = match[4];
+
+        recordings.push({
+          scoId: recordingScoId,
+          name,
+          dateCreated,
+          playbackUrl: `${this.serverUrl}${urlPath}`,
+        });
+      }
+
+      // If no results with archive filter, try getting all content
+      if (recordings.length === 0) {
+        const allContentsResult = await this.authRequest("sco-contents", { "sco-id": scoId });
+        
+        // Look for archive/recording type items
+        const archiveRegex = /<sco[^>]*sco-id="([^"]+)"[^>]*type="archive"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<date-created>([^<]*)<\/date-created>[\s\S]*?<url-path>([^<]*)<\/url-path>[\s\S]*?<\/sco>/g;
+        while ((match = archiveRegex.exec(allContentsResult)) !== null) {
+          recordings.push({
+            scoId: match[1],
+            name: match[2],
+            dateCreated: match[3],
+            playbackUrl: `${this.serverUrl}${match[4]}`,
+          });
+        }
+      }
+
+      return recordings;
+    } catch (err) {
+      console.error("[AdobeConnect] Error fetching recordings:", err);
+      return [];
+    }
+  }
+
+  /**
+   * Get current attendees in a meeting
+   */
+  async getCurrentAttendees(scoId: string): Promise<Array<{
+    principalId: string;
+    name: string;
+    login: string;
+    dateJoined?: string;
+  }>> {
+    await this.login();
+
+    try {
+      const result = await this.authRequest("report-meeting-attendance", { 
+        "sco-id": scoId,
+        "filter-is-in-room": "true"
+      });
+
+      const attendees: Array<{
+        principalId: string;
+        name: string;
+        login: string;
+        dateJoined?: string;
+      }> = [];
+
+      const rowRegex = /<row[^>]*principal-id="([^"]+)"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<login>([^<]*)<\/login>[\s\S]*?(?:<date-created>([^<]*)<\/date-created>)?[\s\S]*?<\/row>/g;
+      let match;
+      while ((match = rowRegex.exec(result)) !== null) {
+        attendees.push({
+          principalId: match[1],
+          name: match[2],
+          login: match[3],
+          dateJoined: match[4],
+        });
+      }
+
+      return attendees;
+    } catch (err) {
+      console.error("[AdobeConnect] Error fetching attendees:", err);
+      return [];
+    }
+  }
 }
 
