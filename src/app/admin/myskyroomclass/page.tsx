@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import PageHeader from "@/components/PageHeader";
-import { VideoIcon, ExternalLink, Loader2, Clock, Calendar, Users, PlayCircle, Radio, RefreshCw } from "lucide-react";
+import { VideoIcon, ExternalLink, Loader2, Clock, Calendar, Users, PlayCircle, Radio, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +57,13 @@ interface ClassStats {
   isActive: boolean | null;
   currentUsers: number | null;
   moderatorCount?: number;
-  attendees: Array<{ name: string; login?: string; role?: string }>;
+  totalRecordings?: number;
+  dateBegin?: string;
+  dateEnd?: string;
+  dateCreated?: string;
+  dateModified?: string;
+  urlPath?: string;
+  attendees: Array<{ name: string; login?: string; role?: string; dateJoined?: string }>;
   recordings: Array<{
     id: string;
     name: string;
@@ -491,8 +497,8 @@ export default function MySkyroomClassPage() {
                                     </div>
                                   ) : classStats[classItem._id] ? (
                                     <div className="space-y-1">
-                                      {/* Live status */}
-                                      <div className="flex items-center gap-2">
+                                      {/* Live status and controls */}
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         {classStats[classItem._id].isActive ? (
                                           <Badge className="text-[9px] px-1 py-0 bg-green-500 text-white animate-pulse">
                                             <Radio className="w-2 h-2 mr-1" />
@@ -509,6 +515,12 @@ export default function MySkyroomClassPage() {
                                             {classStats[classItem._id].currentUsers} نفر آنلاین
                                           </span>
                                         )}
+                                        {classStats[classItem._id].totalRecordings !== undefined && classStats[classItem._id].totalRecordings! > 0 && (
+                                          <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                                            <PlayCircle className="w-3 h-3" />
+                                            {classStats[classItem._id].totalRecordings} ضبط
+                                          </span>
+                                        )}
                                         <button
                                           onClick={() => fetchClassStats(classItem._id)}
                                           className="text-gray-400 hover:text-gray-600"
@@ -516,9 +528,135 @@ export default function MySkyroomClassPage() {
                                         >
                                           <RefreshCw className="w-3 h-3" />
                                         </button>
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <button
+                                              className="text-gray-400 hover:text-gray-600"
+                                              title="اطلاعات تفصیلی"
+                                            >
+                                              <Info className="w-3 h-3" />
+                                            </button>
+                                          </DialogTrigger>
+                                          <DialogContent className="max-w-lg" dir="rtl">
+                                            <DialogHeader>
+                                              <DialogTitle>اطلاعات کلاس {classStats[classItem._id].meetingName || classItem.className}</DialogTitle>
+                                              <DialogDescription>
+                                                جزئیات و آمار کلاس
+                                              </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4 max-h-96 overflow-y-auto">
+                                              {/* Status */}
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                  <p className="text-xs text-gray-500 mb-1">وضعیت</p>
+                                                  <Badge className={classStats[classItem._id].isActive ? "bg-green-500" : "bg-gray-500"}>
+                                                    {classStats[classItem._id].isActive ? "آنلاین" : "آفلاین"}
+                                                  </Badge>
+                                                </div>
+                                                <div>
+                                                  <p className="text-xs text-gray-500 mb-1">کاربران آنلاین</p>
+                                                  <p className="text-sm font-medium">{classStats[classItem._id].currentUsers || 0} نفر</p>
+                                                </div>
+                                              </div>
+
+                                              {/* Dates */}
+                                              {(classStats[classItem._id].dateBegin || classStats[classItem._id].dateEnd || classStats[classItem._id].dateCreated) && (
+                                                <div className="space-y-2">
+                                                  <p className="text-xs font-semibold text-gray-700">تاریخ‌ها</p>
+                                                  {classStats[classItem._id].dateBegin && (
+                                                    <div className="flex justify-between text-xs">
+                                                      <span className="text-gray-500">شروع:</span>
+                                                      <span>{new Date(classStats[classItem._id].dateBegin!).toLocaleString("fa-IR")}</span>
+                                                    </div>
+                                                  )}
+                                                  {classStats[classItem._id].dateEnd && (
+                                                    <div className="flex justify-between text-xs">
+                                                      <span className="text-gray-500">پایان:</span>
+                                                      <span>{new Date(classStats[classItem._id].dateEnd!).toLocaleString("fa-IR")}</span>
+                                                    </div>
+                                                  )}
+                                                  {classStats[classItem._id].dateCreated && (
+                                                    <div className="flex justify-between text-xs">
+                                                      <span className="text-gray-500">ایجاد شده:</span>
+                                                      <span>{new Date(classStats[classItem._id].dateCreated!).toLocaleDateString("fa-IR")}</span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
+
+                                              {/* Attendees */}
+                                              {classStats[classItem._id].attendees.length > 0 && (
+                                                <div>
+                                                  <p className="text-xs font-semibold text-gray-700 mb-2">
+                                                    شرکت‌کنندگان ({classStats[classItem._id].attendees.length})
+                                                  </p>
+                                                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                                                    {classStats[classItem._id].attendees.map((attendee, idx) => (
+                                                      <div key={idx} className="flex justify-between items-center text-xs p-1 bg-gray-50 rounded">
+                                                        <span>{attendee.name}</span>
+                                                        {attendee.role && (
+                                                          <Badge variant="outline" className="text-[9px]">
+                                                            {attendee.role === "MODERATOR" ? "مدیر" : "مشاهده‌گر"}
+                                                          </Badge>
+                                                        )}
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {/* Recordings */}
+                                              {classStats[classItem._id].recordings.length > 0 && (
+                                                <div>
+                                                  <p className="text-xs font-semibold text-gray-700 mb-2">
+                                                    ضبط‌ها ({classStats[classItem._id].recordings.length})
+                                                  </p>
+                                                  <div className="space-y-2">
+                                                    {classStats[classItem._id].recordings.map((rec) => (
+                                                      <div
+                                                        key={rec.id}
+                                                        className="flex items-center justify-between p-2 border rounded-md"
+                                                      >
+                                                        <div className="flex-1">
+                                                          <p className="text-sm font-medium">{rec.name}</p>
+                                                          <div className="flex gap-3 mt-1">
+                                                            {rec.duration && (
+                                                              <p className="text-xs text-gray-500">
+                                                                مدت: {rec.duration} دقیقه
+                                                              </p>
+                                                            )}
+                                                            {rec.dateCreated && (
+                                                              <p className="text-xs text-gray-500">
+                                                                {new Date(rec.dateCreated).toLocaleDateString("fa-IR")}
+                                                              </p>
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                        <Button
+                                                          size="sm"
+                                                          variant="outline"
+                                                          onClick={() => window.open(rec.playbackUrl, "_blank")}
+                                                        >
+                                                          <PlayCircle className="w-4 h-4 mr-1" />
+                                                          پخش
+                                                        </Button>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {classStats[classItem._id].recordings.length === 0 && (
+                                                <p className="text-xs text-gray-500 text-center py-4">
+                                                  ضبطی موجود نیست
+                                                </p>
+                                              )}
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
                                       </div>
 
-                                      {/* Recordings */}
+                                      {/* Recordings quick link */}
                                       {classStats[classItem._id].recordings.length > 0 && (
                                         <Dialog>
                                           <DialogTrigger asChild>
@@ -542,16 +680,18 @@ export default function MySkyroomClassPage() {
                                                 >
                                                   <div className="flex-1">
                                                     <p className="text-sm font-medium">{rec.name}</p>
-                                                    {rec.duration && (
-                                                      <p className="text-xs text-gray-500">
-                                                        مدت: {rec.duration} دقیقه
-                                                      </p>
-                                                    )}
-                                                    {rec.dateCreated && (
-                                                      <p className="text-xs text-gray-500">
-                                                        تاریخ: {new Date(rec.dateCreated).toLocaleDateString("fa-IR")}
-                                                      </p>
-                                                    )}
+                                                    <div className="flex gap-3 mt-1">
+                                                      {rec.duration && (
+                                                        <p className="text-xs text-gray-500">
+                                                          مدت: {rec.duration} دقیقه
+                                                        </p>
+                                                      )}
+                                                      {rec.dateCreated && (
+                                                        <p className="text-xs text-gray-500">
+                                                          {new Date(rec.dateCreated).toLocaleDateString("fa-IR")}
+                                                        </p>
+                                                      )}
+                                                    </div>
                                                   </div>
                                                   <Button
                                                     size="sm"

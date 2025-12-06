@@ -14,9 +14,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import PageHeader from "@/components/PageHeader";
-import { VideoIcon, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { VideoIcon, ArrowRight, ArrowLeft, Check, Loader2, Users, Clock, Calendar, BookOpen, User, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Student {
   _id: string;
@@ -68,6 +70,7 @@ export default function SkyroomAdminPage() {
   const [debugStatus, setDebugStatus] = useState<number | null>(null);
   const [skyroomClasses, setSkyroomClasses] = useState<any[]>([]);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [openCollapsibles, setOpenCollapsibles] = useState<Set<string>>(new Set());
 
   // Form data (keeps a representative concrete date/time for the first slot)
   const [formData, setFormData] = useState({
@@ -946,25 +949,128 @@ export default function SkyroomAdminPage() {
               تاکنون کلاسی ایجاد نشده است.
             </p>
           ) : (
-            <div className="space-y-2 text-sm">
-              {skyroomClasses.map((cls) => (
-                <div
-                  key={cls._id}
-                  className="flex items-center justify-between border rounded-md px-3 py-2"
-                >
-                  <div className="space-y-1">
-                    <div className="font-semibold">{cls.className}</div>
-                    <div className="text-xs text-gray-500">
-                      {cls.classDate && cls.classTime
-                        ? `اولین تاریخ: ${cls.classDate} ساعت ${cls.classTime}`
-                        : "برنامه زمانی بر اساس برنامه هفتگی"}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
+            <div className="space-y-4">
+              {skyroomClasses.map((cls) => {
+                // Helper functions to get names
+                const getTeacherNames = (teacherIds: string[] = []) => {
+                  return teacherIds
+                    .map((id) => {
+                      const teacher = teachers.find((t) => (t._id?.toString() || t._id) === id);
+                      if (teacher) {
+                        return `${teacher.data.teacherName} ${teacher.data.teacherFamily || ""}`.trim();
+                      }
+                      return null;
+                    })
+                    .filter((name): name is string => !!name);
+                };
+
+                const getClassNames = (classCodesOrIds: string[] = []) => {
+                  return classCodesOrIds
+                    .map((codeOrId) => {
+                      // Try to find by _id first
+                      const byId = classes.find((c) => (c._id?.toString() || c._id) === codeOrId);
+                      if (byId) return byId.data.className;
+                      
+                      // Try to find by classCode
+                      const byCode = classes.find((c) => c.data.classCode === codeOrId);
+                      if (byCode) return byCode.data.className;
+                      
+                      return null;
+                    })
+                    .filter((name): name is string => !!name);
+                };
+
+                const getClassTypeBadge = (type?: string) => {
+                  switch (type) {
+                    case "googlemeet":
+                      return <Badge className="bg-green-50 text-green-700 border-green-200">Google Meet</Badge>;
+                    case "adobeconnect":
+                      return <Badge className="bg-red-50 text-red-700 border-red-200">Adobe Connect</Badge>;
+                    case "bigbluebutton":
+                      return <Badge className="bg-purple-50 text-purple-700 border-purple-200">BigBlueButton</Badge>;
+                    default:
+                      return <Badge className="bg-blue-50 text-blue-700 border-blue-200">Skyroom</Badge>;
+                  }
+                };
+
+                const weekdayNames: Record<string, string> = {
+                  sat: "شنبه",
+                  sun: "یکشنبه",
+                  mon: "دوشنبه",
+                  tue: "سه‌شنبه",
+                  wed: "چهارشنبه",
+                  thu: "پنج‌شنبه",
+                  fri: "جمعه",
+                };
+
+                const teacherNames = getTeacherNames(cls.selectedTeachers || []);
+                const classNames = getClassNames(cls.selectedClasses || []);
+                const scheduleSlots = cls.scheduleSlots || [];
+
+                const isOpen = openCollapsibles.has(cls._id);
+                
+                return (
+                  <Collapsible 
+                    key={cls._id} 
+                    className="border rounded-lg"
+                    open={isOpen}
+                    onOpenChange={(open) => {
+                      const newSet = new Set(openCollapsibles);
+                      if (open) {
+                        newSet.add(cls._id);
+                      } else {
+                        newSet.delete(cls._id);
+                      }
+                      setOpenCollapsibles(newSet);
+                    }}
+                  >
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        <div className="flex-1 space-y-2 text-right mr-2">
+                          <div className="flex items-center gap-2 justify-end">
+                            <div className="font-semibold text-base">{cls.className}</div>
+                            {getClassTypeBadge(cls.classType)}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap justify-end">
+                            {cls.maxUsers && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                حداکثر {cls.maxUsers} نفر
+                              </span>
+                            )}
+                            {cls.duration && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {cls.duration} دقیقه
+                              </span>
+                            )}
+                            {scheduleSlots.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {scheduleSlots.length} زمان‌بندی
+                              </span>
+                            )}
+                            {teacherNames.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {teacherNames.length} معلم
+                              </span>
+                            )}
+                            {classNames.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" />
+                                {classNames.length} کلاس
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mr-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
                         // Normalize selectedClasses so that checkbox values in Step 2
                         // (which use class document _id) appear checked correctly.
                         const normalizedSelectedClasses: string[] = Array.isArray(
@@ -1036,7 +1142,8 @@ export default function SkyroomAdminPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         const confirmed = window.confirm(
                           `آیا از حذف کلاس "${cls.className}" اطمینان دارید؟`
                         );
@@ -1075,7 +1182,142 @@ export default function SkyroomAdminPage() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 pt-2 border-t bg-gray-50 space-y-4">
+                        {/* Description */}
+                        {cls.classDescription && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-1">توضیحات:</p>
+                            <p className="text-sm text-gray-600">{cls.classDescription}</p>
+                          </div>
+                        )}
+
+                        {/* Schedule Slots */}
+                        {scheduleSlots.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-2">زمان‌بندی هفتگی:</p>
+                            <div className="space-y-1">
+                              {scheduleSlots.map((slot: any, idx: number) => (
+                                <div key={idx} className="text-sm text-gray-600 bg-white px-3 py-2 rounded border">
+                                  <span className="font-medium">{weekdayNames[slot.day] || slot.day}</span>
+                                  {" "}از {slot.startTime} تا {slot.endTime}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Teachers */}
+                        {teacherNames.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-2">معلمان ({teacherNames.length}):</p>
+                            <div className="flex flex-wrap gap-2">
+                              {teacherNames.map((name, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Classes */}
+                        {classNames.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-2">کلاس‌ها ({classNames.length}):</p>
+                            <div className="flex flex-wrap gap-2">
+                              {classNames.map((name, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                  {name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Class Type Specific Info */}
+                        {cls.classType === "googlemeet" && cls.googleMeetLink && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-1">لینک Google Meet:</p>
+                            <a 
+                              href={cls.googleMeetLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline break-all"
+                            >
+                              {cls.googleMeetLink}
+                            </a>
+                          </div>
+                        )}
+
+                        {cls.classType === "adobeconnect" && (
+                          <div className="space-y-1">
+                            {cls.adobeConnectMeetingName && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-700 mb-1">نام جلسه Adobe Connect:</p>
+                                <p className="text-sm text-gray-600">{cls.adobeConnectMeetingName}</p>
+                              </div>
+                            )}
+                            {cls.adobeConnectScoId && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-700 mb-1">شناسه SCO:</p>
+                                <p className="text-sm text-gray-600 font-mono">{cls.adobeConnectScoId}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {cls.classType === "bigbluebutton" && (
+                          <div className="space-y-1">
+                            {cls.bbbWelcomeMessage && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-700 mb-1">پیام خوش‌آمدگویی:</p>
+                                <p className="text-sm text-gray-600">{cls.bbbWelcomeMessage}</p>
+                              </div>
+                            )}
+                            {cls.bbbMeetingID && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-700 mb-1">شناسه جلسه:</p>
+                                <p className="text-sm text-gray-600 font-mono">{cls.bbbMeetingID}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {cls.classType === "skyroom" && cls.skyroomRoomId && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-1">شناسه اتاق Skyroom:</p>
+                            <p className="text-sm text-gray-600 font-mono">{cls.skyroomRoomId}</p>
+                          </div>
+                        )}
+
+                        {/* Additional Info */}
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                          {cls.classDate && cls.classTime && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-700 mb-1">اولین تاریخ:</p>
+                              <p className="text-sm text-gray-600">{cls.classDate} ساعت {cls.classTime}</p>
+                            </div>
+                          )}
+                          {cls.maxUsers && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-700 mb-1">حداکثر کاربران:</p>
+                              <p className="text-sm text-gray-600">{cls.maxUsers} نفر</p>
+                            </div>
+                          )}
+                          {cls.duration && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-700 mb-1">مدت زمان:</p>
+                              <p className="text-sm text-gray-600">{cls.duration} دقیقه</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
             </div>
           )}
         </CardContent>

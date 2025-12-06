@@ -656,15 +656,18 @@ export class AdobeConnectApiClient {
 
   /**
    * Get meeting statistics including current users count
-   * Uses sco-info and report-meeting-attendance
+   * Uses sco-info and various reports
    */
   async getMeetingStats(scoId: string): Promise<{
     name: string;
     urlPath: string;
     dateBegin?: string;
     dateEnd?: string;
+    dateCreated?: string;
+    dateModified?: string;
     currentUsers: number;
     isActive: boolean;
+    totalRecordings?: number;
   }> {
     await this.login();
 
@@ -675,22 +678,22 @@ export class AdobeConnectApiClient {
     const urlPathMatch = scoInfoResult.match(/<url-path>([^<]*)<\/url-path>/);
     const dateBeginMatch = scoInfoResult.match(/<date-begin>([^<]*)<\/date-begin>/);
     const dateEndMatch = scoInfoResult.match(/<date-end>([^<]*)<\/date-end>/);
+    const dateCreatedMatch = scoInfoResult.match(/<date-created>([^<]*)<\/date-created>/);
+    const dateModifiedMatch = scoInfoResult.match(/<date-modified>([^<]*)<\/date-modified>/);
 
-    // Get current users in meeting using report-meeting-attendance
+    // Get current users in meeting
     let currentUsers = 0;
     let isActive = false;
 
+    // Try to get current attendees
     try {
-      const attendanceResult = await this.authRequest("report-bulk-objects", { "sco-id": scoId });
-      // Count users currently in meeting
-      const userMatches = attendanceResult.match(/<row[^>]*>/g);
-      if (userMatches) {
-        currentUsers = userMatches.length;
-        isActive = currentUsers > 0;
-      }
+      const attendees = await this.getCurrentAttendees(scoId);
+      currentUsers = attendees.length;
+      isActive = currentUsers > 0;
     } catch (err) {
-      // Try alternative method - meeting-usage-report
+      // If that fails, try alternative methods
       try {
+        // Try meeting-usage-report
         const usageResult = await this.authRequest("meeting-usage-report", { "sco-id": scoId });
         const activeMatch = usageResult.match(/<row[^>]*>/g);
         if (activeMatch) {
@@ -698,8 +701,24 @@ export class AdobeConnectApiClient {
           currentUsers = activeMatch.length;
         }
       } catch {
-        // Ignore - meeting might not be active
+        // Meeting might not be active or API not available
+        // Check if meeting time suggests it should be active
+        if (dateBeginMatch && dateEndMatch) {
+          const beginDate = new Date(dateBeginMatch[1]);
+          const endDate = new Date(dateEndMatch[1]);
+          const now = new Date();
+          isActive = now >= beginDate && now <= endDate;
+        }
       }
+    }
+
+    // Get recordings count
+    let totalRecordings = 0;
+    try {
+      const recordings = await this.getMeetingRecordings(scoId);
+      totalRecordings = recordings.length;
+    } catch {
+      // Ignore errors
     }
 
     return {
@@ -707,8 +726,11 @@ export class AdobeConnectApiClient {
       urlPath: urlPathMatch?.[1] || "",
       dateBegin: dateBeginMatch?.[1],
       dateEnd: dateEndMatch?.[1],
+      dateCreated: dateCreatedMatch?.[1],
+      dateModified: dateModifiedMatch?.[1],
       currentUsers,
       isActive,
+      totalRecordings,
     };
   }
 
@@ -726,7 +748,7 @@ export class AdobeConnectApiClient {
     await this.login();
 
     try {
-      // Get contents of meeting folder - recordings are type="content"
+      // Get contents of meeting folder - recordings are type="content" with icon="archive"
       const contentsResult = await this.authRequest("sco-contents", { 
         "sco-id": scoId,
         "filter-icon": "archive"
@@ -740,36 +762,95 @@ export class AdobeConnectApiClient {
         playbackUrl: string;
       }> = [];
 
-      // Parse recordings from response
-      const rowRegex = /<row[^>]*sco-id="([^"]+)"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<date-created>([^<]*)<\/date-created>[\s\S]*?<url-path>([^<]*)<\/url-path>[\s\S]*?<\/row>/g;
+      // Parse recordings from response - Adobe Connect returns <sco> tags, not <row>
+      // Format: <sco sco-id="..." type="content" icon="archive" ...>...</sco>
+      const scoRegex = /<sco[^>]*sco-id="([^"]+)"[^>]*icon="archive"[^>]*>([\s\S]*?)<\/sco>/g;
       let match;
-      while ((match = rowRegex.exec(contentsResult)) !== null) {
+      
+      while ((match = scoRegex.exec(contentsResult)) !== null) {
         const recordingScoId = match[1];
-        const name = match[2];
-        const dateCreated = match[3];
-        const urlPath = match[4];
+        const scoContent = match[2];
+        const fullMatch = match[0]; // Full match including opening tag
+        
+        // Extract fields from the sco content
+        const nameMatch = scoContent.match(/<name>([^<]*)<\/name>/);
+        const urlPathMatch = scoContent.match(/<url-path>([^<]*)<\/url-path>/);
+        const dateCreatedMatch = scoContent.match(/<date-created>([^<]*)<\/date-created>/);
+        // Duration can be in attribute (in opening tag) or calculated from date-begin/date-end
+        const durationAttrMatch = fullMatch.match(/duration="([^"]+)"/);
+        const dateBeginMatch = scoContent.match(/<date-begin>([^<]*)<\/date-begin>/);
+        const dateEndMatch = scoContent.match(/<date-end>([^<]*)<\/date-end>/);
+        
+        let duration: number | undefined = undefined;
+        if (durationAttrMatch) {
+          duration = parseInt(durationAttrMatch[1]);
+        } else if (dateBeginMatch && dateEndMatch) {
+          // Calculate duration from dates (in seconds, convert to minutes)
+          const begin = new Date(dateBeginMatch[1]);
+          const end = new Date(dateEndMatch[1]);
+          if (!isNaN(begin.getTime()) && !isNaN(end.getTime())) {
+            duration = Math.round((end.getTime() - begin.getTime()) / 1000 / 60);
+          }
+        }
+        
+        if (nameMatch && urlPathMatch) {
+          const name = nameMatch[1];
+          const urlPath = urlPathMatch[1];
+          const dateCreated = dateCreatedMatch?.[1] || "";
 
-        recordings.push({
-          scoId: recordingScoId,
-          name,
-          dateCreated,
-          playbackUrl: `${this.serverUrl}${urlPath}`,
-        });
+          recordings.push({
+            scoId: recordingScoId,
+            name,
+            dateCreated,
+            duration,
+            playbackUrl: `${this.serverUrl}${urlPath}`,
+          });
+        }
       }
 
-      // If no results with archive filter, try getting all content
+      // If no results with archive filter, try getting all content and filter manually
       if (recordings.length === 0) {
         const allContentsResult = await this.authRequest("sco-contents", { "sco-id": scoId });
         
-        // Look for archive/recording type items
-        const archiveRegex = /<sco[^>]*sco-id="([^"]+)"[^>]*type="archive"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<date-created>([^<]*)<\/date-created>[\s\S]*?<url-path>([^<]*)<\/url-path>[\s\S]*?<\/sco>/g;
-        while ((match = archiveRegex.exec(allContentsResult)) !== null) {
-          recordings.push({
-            scoId: match[1],
-            name: match[2],
-            dateCreated: match[3],
-            playbackUrl: `${this.serverUrl}${match[4]}`,
-          });
+        // Look for archive/recording type items - check for icon="archive" or type="content"
+        const allScoRegex = /<sco[^>]*sco-id="([^"]+)"[^>]*(?:icon="archive"|type="content")[^>]*>([\s\S]*?)<\/sco>/g;
+        while ((match = allScoRegex.exec(allContentsResult)) !== null) {
+          const recordingScoId = match[1];
+          const scoContent = match[2];
+          const fullMatch = match[0]; // Full match including opening tag
+          
+          // Check if it's actually an archive (has icon="archive" attribute or in name)
+          if (!scoContent.includes('icon="archive"') && !scoContent.match(/<name>.*archive.*<\/name>/i)) {
+            continue;
+          }
+          
+          const nameMatch = scoContent.match(/<name>([^<]*)<\/name>/);
+          const urlPathMatch = scoContent.match(/<url-path>([^<]*)<\/url-path>/);
+          const dateCreatedMatch = scoContent.match(/<date-created>([^<]*)<\/date-created>/);
+          const durationAttrMatch = fullMatch.match(/duration="([^"]+)"/);
+          const dateBeginMatch = scoContent.match(/<date-begin>([^<]*)<\/date-begin>/);
+          const dateEndMatch = scoContent.match(/<date-end>([^<]*)<\/date-end>/);
+          
+          let duration: number | undefined = undefined;
+          if (durationAttrMatch) {
+            duration = parseInt(durationAttrMatch[1]);
+          } else if (dateBeginMatch && dateEndMatch) {
+            const begin = new Date(dateBeginMatch[1]);
+            const end = new Date(dateEndMatch[1]);
+            if (!isNaN(begin.getTime()) && !isNaN(end.getTime())) {
+              duration = Math.round((end.getTime() - begin.getTime()) / 1000 / 60);
+            }
+          }
+          
+          if (nameMatch && urlPathMatch) {
+            recordings.push({
+              scoId: recordingScoId,
+              name: nameMatch[1],
+              dateCreated: dateCreatedMatch?.[1] || "",
+              duration,
+              playbackUrl: `${this.serverUrl}${urlPathMatch[1]}`,
+            });
+          }
         }
       }
 
@@ -782,6 +863,8 @@ export class AdobeConnectApiClient {
 
   /**
    * Get current attendees in a meeting
+   * Note: Adobe Connect API doesn't always support filter-is-in-room
+   * So we get all attendance records and filter by recent activity
    */
   async getCurrentAttendees(scoId: string): Promise<Array<{
     principalId: string;
@@ -792,10 +875,19 @@ export class AdobeConnectApiClient {
     await this.login();
 
     try {
-      const result = await this.authRequest("report-meeting-attendance", { 
-        "sco-id": scoId,
-        "filter-is-in-room": "true"
-      });
+      // Try with filter first
+      let result: string;
+      try {
+        result = await this.authRequest("report-meeting-attendance", { 
+          "sco-id": scoId,
+          "filter-is-in-room": "true"
+        });
+      } catch {
+        // If filter fails, get all attendance records
+        result = await this.authRequest("report-meeting-attendance", { 
+          "sco-id": scoId
+        });
+      }
 
       const attendees: Array<{
         principalId: string;
@@ -804,14 +896,37 @@ export class AdobeConnectApiClient {
         dateJoined?: string;
       }> = [];
 
-      const rowRegex = /<row[^>]*principal-id="([^"]+)"[^>]*>[\s\S]*?<name>([^<]*)<\/name>[\s\S]*?<login>([^<]*)<\/login>[\s\S]*?(?:<date-created>([^<]*)<\/date-created>)?[\s\S]*?<\/row>/g;
+      // Parse rows from the response
+      const rowRegex = /<row[^>]*principal-id="([^"]+)"[^>]*>([\s\S]*?)<\/row>/g;
       let match;
+      
       while ((match = rowRegex.exec(result)) !== null) {
-        attendees.push({
-          principalId: match[1],
-          name: match[2],
-          login: match[3],
-          dateJoined: match[4],
+        const principalId = match[1];
+        const rowContent = match[2];
+        
+        const nameMatch = rowContent.match(/<name>([^<]*)<\/name>/);
+        const loginMatch = rowContent.match(/<login>([^<]*)<\/login>/);
+        const dateCreatedMatch = rowContent.match(/<date-created>([^<]*)<\/date-created>/);
+        const dateJoinedMatch = rowContent.match(/<date-joined>([^<]*)<\/date-joined>/);
+        
+        if (nameMatch && loginMatch) {
+          attendees.push({
+            principalId,
+            name: nameMatch[1],
+            login: loginMatch[1],
+            dateJoined: dateJoinedMatch?.[1] || dateCreatedMatch?.[1],
+          });
+        }
+      }
+
+      // If we got all records (not filtered), try to filter by recent activity
+      // Consider attendees active if they joined in the last 2 hours
+      if (attendees.length > 0) {
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        return attendees.filter(attendee => {
+          if (!attendee.dateJoined) return false;
+          const joinDate = new Date(attendee.dateJoined);
+          return joinDate >= twoHoursAgo;
         });
       }
 
