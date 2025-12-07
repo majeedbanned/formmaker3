@@ -4,10 +4,14 @@ import { OpenAI } from "openai";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAssistantModel, IDBSchema, IAssistant } from "../models/assistant";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client to avoid build-time errors
+const getOpenAI = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  return new OpenAI({ apiKey });
+};
 
 // Type definition for the configuration file
 interface AssistantConfig {
@@ -87,6 +91,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Create a new assistant in OpenAI
+    const openai = getOpenAI();
     const assistantResponse = await openai.beta.assistants.create({
       name: config.name,
       description: "MongoDB Query Generator with custom schema",
@@ -121,7 +126,7 @@ export async function POST(request: NextRequest) {
       
       // Optionally delete the OpenAI assistant
       try {
-        await openai.beta.assistants.del(existingAssistant.assistantId);
+        await getOpenAI().beta.assistants.del(existingAssistant.assistantId);
         logger.info(`Deleted previous OpenAI assistant: ${existingAssistant.assistantId}`);
       } catch (error) {
         logger.warn(`Error deleting previous OpenAI assistant: ${(error as Error).message}`);

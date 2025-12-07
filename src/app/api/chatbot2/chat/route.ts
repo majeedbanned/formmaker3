@@ -5,10 +5,18 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Document } from "mongodb";
 import { getAssistantModel, getThreadModel, IAssistant } from "../models/assistant";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client to avoid build-time errors
+let openaiInstance: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY environment variable is not set");
+    }
+    openaiInstance = new OpenAI({ apiKey });
+  }
+  return openaiInstance;
+};
 
 // MongoDB query interface
 interface MongoQuery {
@@ -26,6 +34,7 @@ interface TokenUsage {
 
 // Helper function to wait for run to complete
 async function waitForRunCompletion(threadId: string, runId: string): Promise<OpenAI.Beta.Threads.Runs.Run> {
+  const openai = getOpenAI();
   let run = await openai.beta.threads.runs.retrieve(threadId, runId);
   
   // Poll for status change
@@ -104,6 +113,8 @@ export async function POST(request: NextRequest) {
     // Get or create thread
     let threadId = existingThreadId;
     let threadDoc;
+    
+    const openai = getOpenAI();
     
     if (!threadId) {
       // Create a new thread

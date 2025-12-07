@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
 
-const uri = process.env.MONGODB_URI!;
-const client = new MongoClient(uri);
+// Create client lazily to avoid build-time errors
+const getClient = () => {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("MONGODB_URI environment variable is not set");
+  }
+  return new MongoClient(uri);
+};
 
 interface Article {
   id: string;
@@ -41,6 +47,7 @@ interface ArticlesData {
 
 // GET - Fetch articles data
 export async function GET() {
+  const client = getClient();
   try {
     await client.connect();
     const db = client.db("formmaker3");
@@ -149,6 +156,7 @@ export async function GET() {
 
 // POST - Save articles data
 export async function POST(request: NextRequest) {
+  const client = getClient();
   try {
     const articlesData: ArticlesData = await request.json();
 

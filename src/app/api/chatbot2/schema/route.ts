@@ -3,10 +3,14 @@ import { logger } from "@/lib/logger";
 import { OpenAI } from "openai";
 import { v4 as uuidv4 } from "uuid";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client to avoid build-time errors
+const getOpenAI = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  return new OpenAI({ apiKey });
+};
 
 // Assistant data storage
 interface StoredAssistant {
@@ -70,6 +74,7 @@ export async function POST(request: NextRequest) {
     const fileBuffer = await schemaFile.arrayBuffer();
     
     // Upload the schema file to OpenAI
+    const openai = getOpenAI();
     const uploadedFile = await openai.files.create({
       file: new Blob([fileBuffer]),
       purpose: "assistants",

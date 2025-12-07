@@ -4,10 +4,14 @@ import { OpenAI } from "openai";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAssistantModel, IAssistant } from "../models/assistant";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client to avoid build-time errors
+const getOpenAI = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  return new OpenAI({ apiKey });
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +40,7 @@ export async function GET(request: NextRequest) {
     // If not, create a new assistant
     logger.info("Creating new MongoDB query generator assistant...");
     
+    const openai = getOpenAI();
     const newAssistant = await openai.beta.assistants.create({
       name: "MongoDB Query Generator",
       description: "A specialized assistant that converts Farsi user queries into valid MongoDB queries, executes them, and formats the results in a human-friendly way.",

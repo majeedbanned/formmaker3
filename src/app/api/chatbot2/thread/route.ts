@@ -4,10 +4,14 @@ import { OpenAI } from "openai";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAssistantModel, getThreadModel, IThread } from "../models/assistant";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization of OpenAI client to avoid build-time errors
+const getOpenAI = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  return new OpenAI({ apiKey });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create a new thread
-    const thread = await openai.beta.threads.create();
+    const thread = await getOpenAI().beta.threads.create();
     
     // Store the thread in the database
     const threadDoc = new ThreadModel({
